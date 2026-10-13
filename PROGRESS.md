@@ -8,19 +8,21 @@
 
 - P0 最小闭环：已完成，Windows 实机通过（PR #1，尚未合入 `main`）。
 - P1 采集节奏：等稳、排错模式、补拍、允许/排除规则、未保存变化的中断标记已实现（分支 `feat/capture-cadence`）。只在 macOS 上用替身做过逻辑测试，**Windows 实机待验证**。
-- P1 其余（语义/全图检索、证据浏览、分类、生命周期、导入、评测）：未开始。
+- P1 向量基础设施（schema v3、文本块分块与复用、OCR 后登记向量待办）：已实现（分支 `feat/vector-search`），Mac 单元测试通过。
+- P1 其余（语义/全图检索、证据浏览、分类、生命周期、导入、评测）：进行中，见"下一步"。
 
 ## 交接记录（最新在上）
 
 | 日期 | 分支 | 基于 | 本轮提交 / PR | 内容 | 验证状态 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-10-13 | `feat/vector-search` | `feat/capture-cadence` @ `244c19f` | 阶段 1 提交见分支；草稿 PR（base `feat/capture-cadence`） | 向量基础设施 schema v3 | macOS 单元测试 53/53 |
 | 2026-10-13 | `feat/capture-cadence` | `feat/p0-closed-loop` @ `7bfe972` | `e0739a2`；草稿 PR #2（base `feat/p0-closed-loop`） | 采集节奏（P1） | macOS 单元测试 41/41；Windows 实机待验证 |
 | 2026-10-13 | `feat/p0-closed-loop` | `main` @ `1d01dbe` | `7bfe972`；PR #1（base `main`，未合并） | P0 最小闭环 | Windows 11 实机通过 |
 
 ### 分支依赖与合并顺序
 
 ```
-main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-cadence (e0739a2, 草稿 PR #2)
+main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-cadence (244c19f, 草稿 PR #2) ── feat/vector-search (草稿 PR #3)
 ```
 
 1. 先合 PR #1 到 `main`。**请用 "Create a merge commit"，不要 Squash**：Squash 会改写 P0 的提交，`feat/capture-cadence` 再合时会重复出现 P0 的全部改动。
@@ -87,6 +89,15 @@ python -m pytest tests
 | 数据结构 v2 | 改为逐版本增量迁移（`db._MIGRATIONS`）；`control` 新增 desired_mode / actual_mode / mode_until_ms / mode_reason / snapshot_* / hotkey_status；`frames.capture_meta` 增加 `mode` 与 `trigger`（auto / held / manual） | `db.py`, `control.py` |
 | 测试 | `tests/`：假 `winapi` 替身 + 注入单调时钟 + 真实 SQLite/WebP，任何平台可跑 | `tests/` |
 
+### P1 向量基础设施（分支 `feat/vector-search`，schema v3）
+
+| 能力 | 规则（方案 3.1、3.3、3.7、5.1；提案 4.2、5.1） | 文件 |
+| --- | --- | --- |
+| 数据结构 v3 | `text_blocks`（共享文本块，`block_key` = 规范化版本 + 分块版本 + 规范化文本）、`frame_blocks`（每帧各自的块顺序、行范围、原文范围、坐标）、`embeddings`（目标、分支、`model_id`=repo@revision、预处理版本、维度、float32 BLOB，唯一键防止混用）、`frames.text_embed_status / image_embed_status` | `db.py` |
+| 规范化与分块 | NFC + 去行尾空白（不动行内空白和大小写）；按行序、垂直间距（> 1.5 倍行高中位数换块）和真实 tokenizer 长度（含特殊 token，≤128）切块，超长换块时 1 行重叠，单行超长按字符切 | `vectors.py` |
+| 待办登记 | OCR 成功：有文字登记 `text_embed` + `image_embed`，无文字只登记 `image_embed` 并标 `skipped`；OCR 最终失败但原图可用：仍登记 `image_embed`；待办 `created_at_ms` = 抓拍时间（延迟从抓拍算起）；v2→v3 迁移为已有帧补登记 | `ocr.py`, `vectors.py`, `db.py` |
+| 统计 | `index_stats` 分阶段：OCR 待办（文字可搜）与文本/全图向量待办分开计数 | `db.py` |
+
 ## 验证记录
 
 ### 已验证
@@ -121,7 +132,7 @@ python -m pytest tests
 
 1. **采集节奏实机验证**（需 Windows）：按上面"待验证"1–6 执行，记录结果；通过后草稿 PR 转 Ready。依赖：无。
 2. **合并 PR #1，再合采集节奏 PR**：按"分支依赖与合并顺序"。依赖：1。
-3. **向量基础设施 schema v3**（Mac 可做）：`text_blocks`（共享文本块，复用键 = 文本 + 规范化版本 + 模型版本）、帧-块关联（行号、坐标）、`embeddings`（目标 ID、分支、模型/预处理版本、维度、数据类型、向量）；OCR 完成后登记 `text_embed`、`image_embed` 待办；写回校验 `worker_token` 与 `record_version` 并 `bump_revision`。方案 3.3、3.7、5.1。依赖：2（迁移接在 v2 之后，追加到 `db._MIGRATIONS`，不要改 v2）。
+3. ~~向量基础设施 schema v3~~ **已完成**（Mac 可做）：`text_blocks`（共享文本块，复用键 = 文本 + 规范化版本 + 模型版本）、帧-块关联（行号、坐标）、`embeddings`（目标 ID、分支、模型/预处理版本、维度、数据类型、向量）；OCR 完成后登记 `text_embed`、`image_embed` 待办；写回校验 `worker_token` 与 `record_version` 并 `bump_revision`。方案 3.3、3.7、5.1。依赖：2（迁移接在 v2 之后，追加到 `db._MIGRATIONS`，不要改 v2）。
 4. **文本语义分支**（Mac 可做）：MiniLM（paraphrase-multilingual-MiniLM-L12-v2）按真实分词器分块（≤128 token，含特殊 token）、帧级取最高块分数、Top-50 帧；文字模式两路 RRF（k=60，同分按最新时间再帧 ID）。方案 5.1–5.3。依赖：3。
 5. **全图分支与画面模式**（Mac 可做）：clip-ViT-B-32 图像向量（保持比例补边）、clip-ViT-B-32-multilingual-v1 文本查询；只检索原图可用的帧。依赖：3。
 6. **页面查询缓存与模式切换**（Mac 写代码，需 Windows 联调）：`st.cache_resource` 按模型版本缓存、按 `meta.index_revision` 刷新；文字/画面两种模式；向量未就绪时显示索引状态。依赖：4、5。
