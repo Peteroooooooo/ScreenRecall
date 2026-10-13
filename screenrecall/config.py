@@ -17,6 +17,22 @@ class CaptureConfig:
     webp_quality: int
     webp_lossless: bool
     webp_method: int
+    stable_change_ratio: float = 0.01
+    stable_timeout_seconds: float = 10.0
+    debug_interval_seconds: float = 1.0
+    debug_min_save_gap_seconds: float = 2.0
+    debug_max_minutes: float = 30.0
+    debug_exit_backlog: int = 50
+    snapshot_hotkey: str = ""
+
+
+@dataclass(frozen=True)
+class RulesConfig:
+    """允许/排除规则（方案 1.1）。进程名比较前统一小写。"""
+
+    allowed_processes: tuple[str, ...] = ()
+    excluded_processes: tuple[str, ...] = ()
+    excluded_title_keywords: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -33,6 +49,7 @@ class Config:
     data_dir: Path
     capture: CaptureConfig
     ocr: OcrConfig
+    rules: RulesConfig = RulesConfig()
 
     @property
     def db_path(self) -> Path:
@@ -74,6 +91,21 @@ def load_config(data_dir_override: str | os.PathLike | None = None) -> Config:
         webp_quality=int(cap["webp_quality"]),
         webp_lossless=bool(cap["webp_lossless"]),
         webp_method=int(cap["webp_method"]),
+        stable_change_ratio=float(cap.get("stable_change_ratio", 0.01)),
+        stable_timeout_seconds=float(cap.get("stable_timeout_seconds", 10.0)),
+        debug_interval_seconds=float(cap.get("debug_interval_seconds", 1.0)),
+        debug_min_save_gap_seconds=float(cap.get("debug_min_save_gap_seconds", 2.0)),
+        debug_max_minutes=float(cap.get("debug_max_minutes", 30.0)),
+        debug_exit_backlog=int(cap.get("debug_exit_backlog", 50)),
+        snapshot_hotkey=str(cap.get("snapshot_hotkey", "")).strip(),
+    )
+    rules_raw = raw.get("rules", {})
+    rules = RulesConfig(
+        allowed_processes=tuple(str(x).strip().lower() for x in rules_raw.get("allowed_processes", []) if str(x).strip()),
+        excluded_processes=tuple(str(x).strip().lower() for x in rules_raw.get("excluded_processes", []) if str(x).strip()),
+        excluded_title_keywords=tuple(
+            str(x).strip() for x in rules_raw.get("excluded_title_keywords", []) if str(x).strip()
+        ),
     )
     ocr_cfg = OcrConfig(
         intra_op_threads=int(ocr["intra_op_threads"]),
@@ -86,8 +118,14 @@ def load_config(data_dir_override: str | os.PathLike | None = None) -> Config:
         raise ValueError("capture.interval_seconds 必须大于 0")
     if not 0 <= capture.webp_quality <= 100:
         raise ValueError("capture.webp_quality 必须在 0–100")
+    if not 0 <= capture.stable_change_ratio < 1:
+        raise ValueError("capture.stable_change_ratio 必须在 [0, 1)")
+    if capture.stable_timeout_seconds <= 0 or capture.debug_interval_seconds <= 0:
+        raise ValueError("capture.stable_timeout_seconds 与 debug_interval_seconds 必须大于 0")
+    if capture.debug_min_save_gap_seconds < 0 or capture.debug_max_minutes <= 0:
+        raise ValueError("capture.debug_min_save_gap_seconds 不能为负，debug_max_minutes 必须大于 0")
     if capture.recent_cache_size < 0:
         raise ValueError("capture.recent_cache_size 不能为负")
     if ocr_cfg.max_attempts < 1:
         raise ValueError("ocr.max_attempts 至少为 1")
-    return Config(data_dir=data_dir.resolve(), capture=capture, ocr=ocr_cfg)
+    return Config(data_dir=data_dir.resolve(), capture=capture, ocr=ocr_cfg, rules=rules)

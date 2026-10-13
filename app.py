@@ -16,7 +16,7 @@ from contextlib import contextmanager
 import streamlit as st
 from PIL import Image, ImageDraw
 
-from screenrecall import control, db, search, storage, timeutil, winapi
+from screenrecall import control, db, rules, search, storage, timeutil, winapi
 from screenrecall.config import load_config
 
 st.set_page_config(page_title="ScreenRecall", page_icon="🔎", layout="wide")
@@ -69,10 +69,26 @@ def status_panel() -> None:
         st.info("正在开启录制…" if ctrl["desired_state"] == "recording" else "正在暂停…")
     elif ctrl["actual_state"] == "recording":
         st.success(f"录制中：{target}")
+        if ctrl["actual_mode"] == "debug":
+            left_s = max(0, ((ctrl["mode_until_ms"] or now) - now) // 1000)
+            st.error(
+                f"**排错模式**：每 1 秒检查、至少间隔 2 秒自动保存，"
+                f"剩余 {left_s // 60:02d}:{left_s % 60:02d} 后自动回到普通模式"
+            )
+            if st.button("退出排错模式", type="primary", width="stretch", key="exit_debug"):
+                _send_mode("normal")
+        else:
+            st.caption("普通模式：每 3 秒检查，画面稳定后保存")
         if ctrl["capture_note"]:
             st.warning(ctrl["capture_note"])
     else:
         st.info(f"未在录制。{ctrl['state_reason'] or ''}")
+    if ctrl["mode_reason"] and ctrl["actual_mode"] == "normal":
+        st.caption(ctrl["mode_reason"])
+    if ctrl["snapshot_result"]:
+        st.caption(f"补拍（{_age(ctrl['snapshot_at_ms'], now)}前）：{ctrl['snapshot_result']}")
+    if control.daemon_alive(ctrl, now) and ctrl["hotkey_status"]:
+        st.caption(ctrl["hotkey_status"])
 
     c1, c2 = st.columns(2)
     c1.metric("OCR 待办", stats["backlog"], help="尚未完成文字识别的画面数；这些画面暂时搜不到")
@@ -85,22 +101,52 @@ def status_panel() -> None:
     )
 
 
+def _send_mode(mode: str) -> None:
+    with open_db() as conn:
+        ctrl = control.read(conn)
+        if not control.daemon_alive(ctrl) or ctrl["actual_state"] != "recording":
+            st.toast("未在录制，模式没有切换")
+            return
+        control.send_mode_request(conn, mode)
+    st.toast("请求已发送，等待后台确认")
+
+
 @st.fragment
 def control_panel() -> None:
     if st.button("刷新窗口列表") or "windows" not in st.session_state:
         st.session_state.windows = {w.hwnd: w for w in winapi.list_windows()}
     windows: dict[int, winapi.WindowInfo] = st.session_state.windows
+    denied = {h: rules.check(w.process, w.title, CFG.rules) for h, w in windows.items()}
     hwnd = st.selectbox(
         "要录制的窗口",
         list(windows),
-        format_func=lambda h: f"{windows[h].title[:50]} — {windows[h].process}",
+        format_func=lambda h: f"{windows[h].title[:50]} — {windows[h].process}" + ("（不可录制）" if denied[h] else ""),
         index=None,
         placeholder="选择一个窗口",
         key="target_hwnd",
     )
+    if hwnd is not None and denied.get(hwnd):
+        st.warning(f"{denied[hwnd]}，不能录制。")
     c1, c2 = st.columns(2)
-    start = c1.button("开始录制", type="primary", disabled=hwnd is None, width="stretch")
+    start = c1.button(
+        "开始录制", type="primary", disabled=hwnd is None or bool(denied.get(hwnd)), width="stretch"
+    )
     pause = c2.button("暂停录制", width="stretch")
+    c3, c4 = st.columns(2)
+    debug = c3.button("排错模式 30 分钟", width="stretch", help="每 1 秒检查、至少间隔 2 秒自动保存，不等画面稳定；到时自动退出")
+    snap = c4.button("立即补拍", width="stretch", help="立即保存当前画面并记一次出现；仍受暂停、锁屏和排除规则限制")
+    if debug:
+        _send_mode("debug")
+        return
+    if snap:
+        with open_db() as conn:
+            ctrl = control.read(conn)
+            if not control.daemon_alive(ctrl) or ctrl["actual_state"] != "recording":
+                st.error("未在录制，补拍没有发送。")
+                return
+            control.request_snapshot(conn)
+        st.toast("补拍请求已发送")
+        return
     if start or pause:
         with open_db() as conn:
             if not control.daemon_alive(control.read(conn)):
@@ -119,6 +165,10 @@ with st.sidebar:
     status_panel()
     st.divider()
     control_panel()
+    with st.expander("允许 / 排除规则"):
+        for line in rules.describe(CFG.rules):
+            st.caption(md(line))
+        st.caption("在 config.local.toml 的 [rules] 中修改，重启后台和页面后生效。")
     st.caption("页面只在本机访问（127.0.0.1），没有登录鉴权。请只录制受控的测试内容。")
 
 
@@ -230,6 +280,7 @@ def render_detail(conn, sel: dict, parsed: search.ParsedQuery, case_sensitive: b
                 "采样次数": o.observations,
                 "应用": o.app,
                 "窗口标题": o.window_title,
+                "来源": "补拍" if o.source_type == "manual" else "自动",
                 "当前": "◀" if o.occurrence_id == occ.occurrence_id else "",
             }
             for o in d.occurrences
