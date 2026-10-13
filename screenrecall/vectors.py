@@ -253,6 +253,18 @@ def put_embedding(
     )
 
 
+def gc_blocks(conn: sqlite3.Connection, block_ids: Iterable[int]) -> int:
+    """只检查给定块：没有任何帧再引用时回收块及其向量（共享块最后一个引用消失后才删）。"""
+    n = 0
+    for bid in set(block_ids):
+        if conn.execute("SELECT 1 FROM frame_blocks WHERE block_id = ? LIMIT 1", (bid,)).fetchone():
+            continue
+        conn.execute("DELETE FROM embeddings WHERE target_kind = 'block' AND target_id = ?", (str(bid),))
+        conn.execute("DELETE FROM text_blocks WHERE block_id = ?", (bid,))
+        n += 1
+    return n
+
+
 def gc_orphan_blocks(conn: sqlite3.Connection) -> int:
     """回收不再被任何帧引用的文本块及其向量（最后一个有效引用消失后才回收，方案 3.2）。"""
     orphans = [
