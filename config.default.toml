@@ -1,0 +1,20 @@
+# 默认配置（随代码提交）。本机覆盖写到 config.local.toml（已 gitignore），只需写要改的键。
+# 标注"初值"的参数需在小样测量后冻结（实现方案附录）。
+
+[storage]
+# 运行数据目录：相对路径以仓库根目录为基准；环境变量 SCREENRECALL_DATA_DIR 优先
+data_dir = "data"
+
+[capture]
+interval_seconds = 3.0     # 普通模式采样间隔（方案 4.1）
+recent_cache_size = 4      # 最近已接受画面缓存，用于 A→B→A 精确复用（方案 4.2：3–5 个）
+webp_quality = 92          # 初值，待与无损对比后冻结（方案 6.5）
+webp_lossless = false
+webp_method = 4            # 0–6，越大越慢、文件越小
+
+[ocr]
+intra_op_threads = 2       # 推理线程数必须明确配置（方案 2.5），初值
+inter_op_threads = 1
+max_side_len = 2000        # RapidOCR 检测前最长边上限（库默认值）
+max_attempts = 3           # 有界重试（方案 4.3），初值
+retry_backoff_seconds = 5.0
