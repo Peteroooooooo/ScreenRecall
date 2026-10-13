@@ -35,7 +35,7 @@ main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-c
 
 本轮在用户要求下停止，没有开始新功能。当前状态：
 
-- 分支 `feat/vector-search`，草稿 PR #3（base `feat/capture-cadence`），所有源码已提交推送；本地只有被忽略的 `.venv/`、`data/`（不提交）。
+- 分支 `feat/vector-search`，草稿 PR #3（base `feat/capture-cadence`），所有源码已提交推送；README 已按分支实际内容更新（`feat/capture-cadence` 的 README 提交 `d325790` 已合并进本分支 `fd0dcca`，本分支再单独改写 README）；本地只有被忽略的 `.venv/`、`data/`（不提交）。
 - **已完成并测试**：schema v3、分块与共享块、OCR 后登记向量待办、向量 worker（`embed.py`）、检索编排（`retrieval.py`：文字模式 RRF、画面模式）。
 - **未完成（WIP）**：页面接入。`app.py` 还没有"文字 / 画面"切换，没有用 `st.cache_resource` 加载查询模型，结果卡片也没有展示 `sources`、`semantic_lines` 高亮和 `notes`（索引覆盖说明）。后端接口已就绪：`retrieval.run(conn, parsed, filters, mode=..., engines=retrieval.Engines(...))`。
 - **模型状态**：三套模型已按锁定 revision 下载到本机 `~/.cache/huggingface/hub`（只下载了 sentence-transformers 实际加载的文件，见 `models.ALLOW_PATTERNS`）；`python -m screenrecall.models` 输出"模型齐全"；离线加载正常（MiniLM 384 维、max_seq_length 128；CLIP 图像/多语言文本均 512 维）。本轮遇到的问题是"检查函数把部分快照判为不完整"导致真实模型测试被跳过，已通过让检查与下载使用同一 `ALLOW_PATTERNS` 修复，之后 2 条真实模型测试通过。没有其他未解决的模型问题。
