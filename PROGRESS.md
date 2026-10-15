@@ -7,15 +7,16 @@
 ## 一句话状态
 
 - P0 最小闭环：已完成，Windows 实机通过（PR #1，尚未合入 `main`）。
-- P1 采集节奏：等稳、排错模式、补拍、允许/排除规则、未保存变化的中断标记已实现（分支 `feat/capture-cadence`）。只在 macOS 上用替身做过逻辑测试，**Windows 实机待验证**。
-- P1 向量基础设施（schema v3、文本块分块与复用、OCR 后登记向量待办）：已实现（分支 `feat/vector-search`），Mac 单元测试通过。
-- P1 向量 worker、文字模式（词法 + 语义 RRF）、画面模式（多语言 CLIP）后端：已实现，Mac 上用真实模型做过冒烟测试；**页面尚未接入**（`app.py` 仍只调用词法 `search.search`，没有文字/画面切换），见"下次恢复"。
-- P1 其余（语义/全图检索、证据浏览、分类、生命周期、导入、评测）：进行中，见"下一步"。
+- P1 采集节奏：等稳、排错模式、补拍、允许/排除规则、未保存变化的中断标记已实现（分支 `feat/capture-cadence`）。2026-10-13 晚在 **Windows 11 实机**跑通主要场景（见"验证记录"），30 分钟自动退出、快捷键被占用两项仍待实机确认。
+- P1 向量基础设施、向量 worker、文字模式（词法 + 语义 RRF）、画面模式（多语言 CLIP）：已实现（分支 `feat/vector-search`），Windows 实机端到端通过。
+- P1 页面接入：**已完成**。`app.py` 有"文字 / 画面"切换，查询模型按需加载并用 `st.cache_resource` 缓存，侧栏显示语义 / 全图向量待办，结果标注命中分支，详情页蓝框标语义贡献块。
+- P1 其余（资源测量、证据浏览、分类、生命周期、导入、评测）：未开始，见"下一步"。
 
 ## 交接记录（最新在上）
 
 | 日期 | 分支 | 基于 | 本轮提交 / PR | 内容 | 验证状态 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-10-14 | `feat/vector-search`（同一分支接力） | `95f4995` | 本轮提交（见 `git log`）；仍在草稿 PR #3 | 页面接入文字/画面模式；采集节奏与向量功能 Windows 实机验证 | Windows 11：pytest 71/71（含真实模型）、环境检查 9/9、实机端到端 35/35、页面 AppTest 16/16 |
 | 2026-10-13 | `feat/vector-search` | `feat/capture-cadence` @ `244c19f` | `fad7ab7`（v3 基础设施）+ 本轮收尾提交（见 `git log`）；草稿 PR #3（base `feat/capture-cadence`） | 向量基础设施、向量 worker、文字/画面检索后端；**页面未接入（WIP）** | macOS 71/71（含 2 条真实模型冒烟）；Windows 未测 |
 | 2026-10-13 | `feat/capture-cadence` | `feat/p0-closed-loop` @ `7bfe972` | `e0739a2`；草稿 PR #2（base `feat/p0-closed-loop`） | 采集节奏（P1） | macOS 单元测试 41/41；Windows 实机待验证 |
 | 2026-10-13 | `feat/p0-closed-loop` | `main` @ `1d01dbe` | `7bfe972`；PR #1（base `main`，未合并） | P0 最小闭环 | Windows 11 实机通过 |
@@ -31,44 +32,54 @@ main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-c
 3. 采集节奏在 Windows 实机验证通过后，再把草稿 PR 转为 Ready 并合并。
 4. 之后的新任务从最新 `main` 建分支；如果依赖的 PR 还没合，就从那个功能分支建，并在本表写明"基于"哪一个提交。
 
-## 下次恢复（2026-10-13 收尾时的状态）
+## 下次恢复（2026-10-14 收尾时的状态）
 
-本轮在用户要求下停止，没有开始新功能。当前状态：
+- 分支 `feat/vector-search`，草稿 PR #3（base `feat/capture-cadence`）。本轮只改了 `app.py`、`PROGRESS.md`、`README.md`，已提交推送；没有改后端模块。
+- **本轮完成**：页面接入（"下一步"第 6 项）；采集节奏与向量功能的 Windows 实机验证（第 1 项的大部分、"待验证" 1–7）。
+- **未完成**：30 分钟自动退出与快捷键被占用两个场景未实机确认；资源测量（第 7 项）只在 12 帧小库上测过查询耗时，内存没有测出有效数字（见"验证记录"）。
+- **后台进程**：没有残留的 daemon、Streamlit 或下载进程；测试数据和临时脚本已删除，未提交。
 
-- 分支 `feat/vector-search`，草稿 PR #3（base `feat/capture-cadence`），所有源码已提交推送；README 已按分支实际内容更新（`feat/capture-cadence` 的 README 提交 `d325790` 已合并进本分支 `fd0dcca`，本分支再单独改写 README）；本地只有被忽略的 `.venv/`、`data/`（不提交）。
-- **已完成并测试**：schema v3、分块与共享块、OCR 后登记向量待办、向量 worker（`embed.py`）、检索编排（`retrieval.py`：文字模式 RRF、画面模式）。
-- **未完成（WIP）**：页面接入。`app.py` 还没有"文字 / 画面"切换，没有用 `st.cache_resource` 加载查询模型，结果卡片也没有展示 `sources`、`semantic_lines` 高亮和 `notes`（索引覆盖说明）。后端接口已就绪：`retrieval.run(conn, parsed, filters, mode=..., engines=retrieval.Engines(...))`。
-- **模型状态**：三套模型已按锁定 revision 下载到本机 `~/.cache/huggingface/hub`（只下载了 sentence-transformers 实际加载的文件，见 `models.ALLOW_PATTERNS`）；`python -m screenrecall.models` 输出"模型齐全"；离线加载正常（MiniLM 384 维、max_seq_length 128；CLIP 图像/多语言文本均 512 维）。本轮遇到的问题是"检查函数把部分快照判为不完整"导致真实模型测试被跳过，已通过让检查与下载使用同一 `ALLOW_PATTERNS` 修复，之后 2 条真实模型测试通过。没有其他未解决的模型问题。
-- **测试结果**（macOS，`.venv` Python 3.12.15）：`python -m pytest tests` → 71 通过、0 失败、0 跳过（未下载模型的机器上 2 条真实模型测试会自动跳过）。pyflakes 无告警。均为模拟/单元测试，不代表 Windows 实机通过。
-- **后台进程**：本轮启动的模型下载进程已自行结束（日志 `data/logs/model_download.log` 末尾为 `ALL DONE`）；没有启动后台 daemon、Streamlit 或常驻推理进程。
+页面接入怎么做的（给下一位改页面时参考）：
 
-恢复步骤（macOS）：
+- `build_engines(mode)` 只加载当前模式的编码器：文字模式加载 MiniLM，画面模式加载多语言 CLIP 文本；两者都用 `st.cache_resource` 按 model_id 缓存，同时缓存对应的 `TextVectorIndex` / `ImageVectorIndex`，它们在 `retrieval.run` 里按 `meta.index_revision` 自行刷新。
+- 只有引号原串时不加载模型；模型未下载、配置关闭或加载失败时把原因写进 `Engines.unavailable_reason`，由 `retrieval` 退回词法（文字模式）或提示不可用（画面模式，不自动切换）。`models.available` 的结果缓存 60 秒，下载完成后不用重启页面。
+- 结果卡片显示 `sources`（词法 / 语义 / 画面）；`resp.notes` 用 warning 显示；画面模式不显示 OCR 摘要。详情页：橙框 = 原词命中行，蓝框 = 语义贡献块中不与橙框重复的行；画面模式不画框。
 
-```bash
-cd "Practice Module 2/ScreenRecall"
-git fetch origin && git switch feat/vector-search && git pull --ff-only
-source .venv/bin/activate              # 不存在则按"开发环境 → macOS"重建，再：
-# uv pip install -r requirements-dev.txt torch==2.14.1 transformers==5.19.0 sentence-transformers==6.1.0 huggingface-hub==1.33.0 scikit-learn==1.9.1 streamlit==1.65.0 pyflakes==3.4.0
-# （Mac 上未安装 rapidocr/opencv，OCR 由测试替身代替）
-python -m screenrecall.models          # 应输出"模型齐全"；否则 python -m screenrecall.models --download
-python -m pytest tests                 # 期望 71 passed
+恢复步骤（Windows）：
+
+```powershell
+git fetch origin; git switch feat/vector-search; git pull --ff-only
+# 首次：py -3.12 -m venv .venv（或用 uv 的 Python 3.12）
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m screenrecall.models      # 应输出"模型齐全"，否则加 --download
+.\.venv\Scripts\python.exe -m pytest tests             # 期望 71 passed（含 2 条真实模型）
 ```
 
-接着做"下一步"第 6 项（页面接入）：在 `app.py` 加模式切换，用 `st.cache_resource` 按 `model_id` 缓存 `models.StText`（MiniLM、多语言 CLIP 文本）与 `retrieval.TextVectorIndex` / `ImageVectorIndex`，调用 `retrieval.run`；侧栏增加文本/全图向量待办数与最老年龄（`db.index_stats` 已提供 `text_backlog`、`image_backlog` 等）；用 Streamlit AppTest + 假 winapi 在 Mac 上测页面。完成后在 PR #3 勾选阶段 4。
+下一步从"下一步"第 7 项（资源测量）或第 8 项（证据浏览）开始，二者互不依赖。
 
 ## 开发环境
 
 ### Windows（运行与实机验证）
 
+建议在仓库内单独建 `.venv`（已在 `.gitignore`），不要装进其他课程共用的环境：本分支锁定 `torch==2.14.1`，会替换已有的 GPU 版 torch。
+
 ```powershell
 git fetch origin
-git switch feat/capture-cadence
-pip install -r requirements.txt          # Python 3.12
-python -m screenrecall.daemon --check    # 8 项环境检查应全部 [ OK ]
-python -m screenrecall.daemon            # 终端 1
-streamlit run app.py                     # 终端 2，http://127.0.0.1:8501
-python -m pip install -r requirements-dev.txt; python -m pytest tests
+git switch feat/vector-search
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt   # 约 1 GB，torch 为 CPU 版
+.\.venv\Scripts\python.exe -m screenrecall.models --download   # 联网一次，约 1.5 GB
+.\.venv\Scripts\python.exe -m screenrecall.daemon --check      # 9 项环境检查应全部 [ OK ]
+.\.venv\Scripts\python.exe -m screenrecall.daemon              # 终端 1
+.\.venv\Scripts\streamlit.exe run app.py                       # 终端 2，http://127.0.0.1:8501
+.\.venv\Scripts\python.exe -m pytest tests
 ```
+
+国内网络下载注意：
+
+- git、pip 和 Hugging Face 都不读 Windows 系统代理。用 Clash 等代理时，要给 git 配 `http.proxy`，下载模型前设置 `$env:HTTPS_PROXY = "http://127.0.0.1:<端口>"`。
+- 模型下载若报 `CAS Client Error ... error decoding response body`，是 Hugging Face 的 Xet 传输经代理失败。先设 `$env:HF_HUB_DISABLE_XET = "1"` 再重试，已下载的文件会续传。
+- 冷启动慢：首次在页面做语义或画面查询时，需要导入 torch 并加载模型，本机实测约 50–100 秒，之后同一页面进程内不再加载。
 
 ### macOS（开发与单元测试）
 
@@ -138,23 +149,37 @@ python -m pytest tests
 
 - 向量与检索，2026-10-13，macOS（arm64）+ Python 3.12 + torch 2.14.1 + sentence-transformers 6.1.0：`python -m pytest tests` 71/71（含 2 条真实模型冒烟：中文查询"同事推荐的餐厅"经 MiniLM 找到英文餐厅文字且排第一；CLIP 画面模式区分深色图与白色页面）。其余检索规则用确定性替身编码器验证：RRF 公式、两路融合、引号过滤作用于两路、只有引号不调模型、模型缺失退回词法、向量未完成仍参与词法、日期筛选限制语义分支、画面模式排除过期原图且不切换模式、修订号变化后重载矩阵、共享文本只编码一次、OCR 积压时向量让路、推理中删除不写回、一路失败另一路照常。
 
+- 采集节奏 + 向量 + 页面，**2026-10-14，Windows 11 实机**（150% 缩放，Python 3.12.13，torch 2.14.1+cpu，sentence-transformers 6.1.0）：
+  - `pytest tests` 71/71，含 2 条真实模型测试；环境检查 9/9；pyflakes 无告警。
+  - 实机端到端 35/35。测试窗口是 tkinter 窗口，脚本按时间表切换文字、标题和画面；后台是真实 daemon 子进程。结果：
+    - P0 的 v1 库自动升到 v3，旧数据可原词搜到，迁移补登了向量待办。启动日志里热键注册成功。
+    - 等稳：开启后首帧直接保存；单次变化约 4 秒后保存；持续变化 22 秒内只存 1 帧（8.5 秒处），并留下 2 条 `unsaved_change` 标记；变化停下后保存了最终画面。
+    - 排错模式：ACK 时剩余 30.0 分钟；9 秒存了 4 帧，相邻间隔 2.0、2.01、2.0 秒；退出立即生效。
+    - 补拍：页面补拍和 `Ctrl+Alt+S`（用 `keybd_event` 模拟按键）各新增 1 条补拍出现。
+    - 排除规则：录制中标题变成含 "InPrivate" 时记 `excluded` 缺口、帧数不变；含 InPrivate 的窗口无法开始录制。
+    - 向量：12 帧的 OCR 和两类向量 21 秒内全部完成，0 失败；日志各有 12 条 `text_embed done` / `image_embed done`。
+    - 检索：中文"同事推荐的餐厅"经语义分支找到英文餐厅画面，排第一；画面模式"深色背景 雪山大图"把雪山画面排第一；纯引号查询按时间排序；引号加描述走 RRF，结果都含原串；迁移来的旧帧也能被语义搜到。
+    - Ctrl+Break 后 2.2 秒退出，热键线程没有残留。
+  - 页面 AppTest 16/16：模式切换、语义结果与"命中分支"、蓝框说明、画面模式结果和详情（不显示 OCR 摘要、不标注局部）、纯引号查询。
+  - 耗时，只作参考，不是方案 7.3 的验收：12 帧库、后台空闲时，热查询文字 P50 17 ms，画面 P50 24 ms。新进程冷加载：import torch 约 50 秒，MiniLM 11 秒，多语言 CLIP 文本 4 秒；页面首次语义查询约 99 秒。
+  - 没测出有效内存：Windows 上 venv 的 `python.exe` 只是启动器，按启动器 PID 读到的工作集不是真实进程的。测内存要按子进程 PID 统计。
+  - 测试脚本临时编写，未提交。
+
 ### 待验证（需要 Windows 实机）
 
-1. `python -m screenrecall.daemon --check` 仍 8/8；启动日志出现 `hotkey registered Ctrl+Alt+S`；已有的 v1 数据库能自动升级到 v2 且旧数据可搜。
-2. 录记事本：打一个字 → 3 秒内存 1 张；持续打字 → 约 10 秒存 1 张；停下 → 下一次采样存最终画面。记录 1% 阈值在真实窗口（光标闪烁、滚动、动画）下是否合适。
-3. 排错模式：快速切换内容 → 日志 `trigger=auto/held` 间隔 ≥ 2 秒；侧栏倒计时走动；「退出排错模式」立即生效；30 分钟到时自动退出（可临时把 `debug_max_minutes` 改成 1 验证）。
-4. 按 `Ctrl+Alt+S` → 侧栏显示补拍结果，出现记录「来源」为补拍；快捷键被占用时侧栏提示注册失败、页面按钮仍可补拍；后台退出时热键线程正常结束（Ctrl+Break 后进程不残留）。
-5. Edge InPrivate 窗口不能开始录制；录制普通窗口时标题变成含关键词 → 侧栏提示排除、`gaps` 有 `excluded`、不产生截图。
-6. 页面新按钮在 Streamlit 1.65 下显示和交互正常（fragment 内按钮、倒计时刷新）。
-7. Windows 上安装 `requirements.txt` 中的 torch / sentence-transformers 版本、`python -m screenrecall.models --download` 后离线启动，环境检查"向量模型"为 OK，日志出现 `text_embed done` / `image_embed done`。
-8. 实机 1,500–2,000 帧底库下：后台 OCR + 向量的吞吐与积压、两进程合计内存、文字/画面热查询 P95（方案 7.3，必须在指定测试机上测）。
+1. 排错模式满 30 分钟自动退出：可在 `config.local.toml` 把 `debug_max_minutes` 改成 1 来验证。积压 ≥ 50 时提前退出。
+2. 快捷键被其他程序占用时，侧栏提示注册失败，页面按钮仍可补拍。
+3. 真实应用的节奏：记事本连续打字、终端光标闪烁、浏览器滚动和动画下，1% 阈值与 `unsaved_change` 的数量是否合适。本轮只用了 tkinter 测试窗口。
+4. 真实 Edge InPrivate 窗口：本轮是让测试窗口的标题包含 InPrivate 来模拟的。
+5. 在浏览器里看页面的实际排版和交互：侧栏的排错/补拍按钮、倒计时刷新。AppTest 只验证了逻辑，没有点这些侧栏按钮。
+6. 实机 1,500–2,000 帧底库下：后台 OCR + 向量的吞吐与积压、两进程合计内存（按真实子进程统计）、文字/画面热查询 P95，按方案 7.3 在指定测试机上测。
 
 ## 已知问题
 
 - 采集节奏：每次"变化后等稳"都会写一条 `unsaved_change` 缺口，正常使用时行数会较多；光标闪烁的终端会在两张画面之间来回复用并产生大量出现记录。均符合方案字面规则，待实机数据决定是否合并短缺口或调整阈值。
 - 排错模式在少见时序下（候选在限频中保留，下一次仍未到允许时间而画面已回到原内容）会把同一画面的出现拆成两段，时间仍正确。
-- 快捷键注册与消息循环只做了语法检查，未在 Windows 运行过。
 - Mac 上无法运行后台与页面（设计如此，见"开发环境"）。
+- 页面进程首次语义或画面查询需要导入 torch、加载模型，本机约 50–100 秒，期间页面显示"正在加载…"。后台与页面各持有一份模型，内存是两份。
 - 每个 OCR 文字框作为一行、以换行连接，跨两个框的原串搜不到；OCR 有误读（实测 `under_score` → `under score`）。
 - 部分硬件加速窗口 PrintWindow 可能取不到内容，仅前台时退回屏幕拷贝，否则记缺口。
 - DPI 不感知程序按逻辑分辨率保存，比屏幕显示小。
@@ -165,13 +190,13 @@ python -m pytest tests
 
 标"Mac 可做"的可以在 macOS 上开发和做单元测试；标"需 Windows"的必须实机完成。
 
-1. **采集节奏实机验证**（需 Windows）：按上面"待验证"1–6 执行，记录结果；通过后草稿 PR 转 Ready。依赖：无。
+1. ~~采集节奏实机验证~~ **主要场景已通过**（2026-10-14，见"验证记录"）。剩下的是"待验证" 1–5，可以与后续开发并行。通过后草稿 PR 转 Ready。
 2. **合并 PR #1，再合采集节奏 PR**：按"分支依赖与合并顺序"。依赖：1。
 3. ~~向量基础设施 schema v3~~ **已完成**（Mac 可做）：`text_blocks`（共享文本块，复用键 = 文本 + 规范化版本 + 模型版本）、帧-块关联（行号、坐标）、`embeddings`（目标 ID、分支、模型/预处理版本、维度、数据类型、向量）；OCR 完成后登记 `text_embed`、`image_embed` 待办；写回校验 `worker_token` 与 `record_version` 并 `bump_revision`。方案 3.3、3.7、5.1。依赖：2（迁移接在 v2 之后，追加到 `db._MIGRATIONS`，不要改 v2）。
 4. ~~文本语义分支~~ **后端已完成**（Mac 可做）：MiniLM（paraphrase-multilingual-MiniLM-L12-v2）按真实分词器分块（≤128 token，含特殊 token）、帧级取最高块分数、Top-50 帧；文字模式两路 RRF（k=60，同分按最新时间再帧 ID）。方案 5.1–5.3。依赖：3。
 5. ~~全图分支与画面模式~~ **后端已完成**（Mac 可做）：clip-ViT-B-32 图像向量（保持比例补边）、clip-ViT-B-32-multilingual-v1 文本查询；只检索原图可用的帧。依赖：3。
-6. **页面查询缓存与模式切换**（Mac 写代码，需 Windows 联调）——**下次从这里开始**：`st.cache_resource` 按模型版本缓存、按 `meta.index_revision` 刷新；文字/画面两种模式；向量未就绪时显示索引状态。依赖：4、5。
-7. **两进程合计内存与延迟测量**（需 Windows 测试机）：方案 7.3。依赖：6。
+6. ~~页面查询缓存与模式切换~~ **已完成**（2026-10-14，Windows 实机 + AppTest）。
+7. **两进程合计内存与延迟测量**（需 Windows 测试机）——**下次可从这里开始**：方案 7.3。先写一个可提交的测量脚本，统计后台和页面的真实 Python 子进程，再用复制数据扩大到 1,500–2,000 帧测查询 P95。复制数据只能用于资源压测，不能用于准确率评估。依赖：6。
 8. **证据浏览**（Mac 可做逻辑与测试）：沿所选出现的 session 前后浏览，遇 `gaps`（含 `unsaved_change`、`excluded`）提示；两图并排。方案 6.1。依赖：2（与 3–7 可并行）。
 9. **"放宽匹配"按钮与 A05–A13 自动化测试**（Mac 可做）：方案 5.2、8.3。依赖：2。
 10. **收藏 / 删除 / 配额 / 30·90 天到期**（Mac 可做逻辑）：逻辑失效先于文件回收、共享文本块引用计数、删除中推理不复活。方案 3.2、6.4–6.7。依赖：3（共享块与向量要一起回收）。
