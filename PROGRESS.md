@@ -11,13 +11,14 @@
 - P1 向量基础设施、向量 worker、文字模式（词法 + 语义 RRF）、画面模式（多语言 CLIP）：已实现（分支 `feat/vector-search`），Windows 实机端到端通过。
 - P1 页面接入：**已完成**。`app.py` 有"文字 / 画面"切换，查询模型按需加载并用 `st.cache_resource` 缓存，侧栏显示语义 / 全图向量待办，结果标注命中分支，详情页蓝框标语义贡献块。
 - P1 证据浏览（前后浏览 + 并排）：**已实现**（分支 `feat/evidence-browse`，2026-10-15）。Mac 上逻辑测试 8/8、页面 AppTest 4/4 通过；Windows 浏览器里的排版与真实录制数据**待实机查看**。
-- P1 其余（资源测量、放宽匹配、分类、生命周期、导入、评测）：未开始，见"下一步"。
+- P1 "放宽匹配"按钮与 A05–A10 自动化验收：**已实现**（同一分支，2026-10-15）。Mac 上 13 条新测试通过（A05–A10 共 12 条 + 页面 1 条）；A11、A12 等第 10 项，A13 需 Windows 实机。
+- P1 其余（资源测量、分类、生命周期、导入、评测）：未开始，见"下一步"。
 
 ## 交接记录（最新在上）
 
 | 日期 | 分支 | 基于 | 本轮提交 / PR | 内容 | 验证状态 |
 | --- | --- | --- | --- | --- | --- |
-| 2026-10-15 | `feat/evidence-browse`（新分支） | `feat/vector-search` @ `40aad90` | 见 `git log`；草稿 PR（base `feat/vector-search`） | 证据浏览：同一录制段内前后浏览、缺口/段边界提示、两图并排、切换到同帧的其他出现 | macOS：pytest 83/83（含 2 条真实模型）、pyflakes 无告警；Windows 未测 |
+| 2026-10-15 | `feat/evidence-browse`（新分支） | `feat/vector-search` @ `40aad90` | `72f36ac`（证据浏览）+ 放宽匹配提交（见 `git log`）；草稿 PR #4（base `feat/vector-search`） | 证据浏览：同一录制段内前后浏览、缺口/段边界提示、两图并排、切换到同帧的其他出现；"放宽匹配"按钮；A05–A10 自动化验收测试 | macOS：pytest 96/96（含 2 条真实模型）、pyflakes 无告警；Windows 未测 |
 | 2026-10-14 | `feat/vector-search`（同一分支接力） | `95f4995` | 本轮提交（见 `git log`）；仍在草稿 PR #3 | 页面接入文字/画面模式；采集节奏与向量功能 Windows 实机验证 | Windows 11：pytest 71/71（含真实模型）、环境检查 9/9、实机端到端 35/35、页面 AppTest 16/16 |
 | 2026-10-13 | `feat/vector-search` | `feat/capture-cadence` @ `244c19f` | `fad7ab7`（v3 基础设施）+ 本轮收尾提交（见 `git log`）；草稿 PR #3（base `feat/capture-cadence`） | 向量基础设施、向量 worker、文字/画面检索后端；**页面未接入（WIP）** | macOS 71/71（含 2 条真实模型冒烟）；Windows 未测 |
 | 2026-10-13 | `feat/capture-cadence` | `feat/p0-closed-loop` @ `7bfe972` | `e0739a2`；草稿 PR #2（base `feat/p0-closed-loop`） | 采集节奏（P1） | macOS 单元测试 41/41；Windows 实机待验证 |
@@ -39,9 +40,11 @@ main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-c
 ## 下次恢复（2026-10-15，`feat/evidence-browse`）
 
 - 分支 `feat/evidence-browse`，基于 `feat/vector-search` @ `40aad90`（肖天奕 10-14 的页面接入与 Windows 验证），草稿 PR #4（base `feat/vector-search`）。
-- **本轮完成**："下一步"第 8 项证据浏览。新增 `screenrecall/evidence.py`（时间线、前后关系、缺口归属）、`app.py` 详情页"前后浏览"区、`tests/test_evidence.py`（真实 Recorder 生成数据，8 条）、`tests/test_page.py`（Streamlit AppTest + 假 winapi，4 条，**第一批提交进仓库的页面测试**）。
-- **恢复（macOS）**：`git switch feat/evidence-browse && git pull --ff-only`，`source .venv/bin/activate`，`python -m screenrecall.models` 应输出"模型齐全"，`python -m pytest tests` 期望 83 passed。若 pytest 报 `sqlite3.OperationalError: unable to open database file`（临时目录不可写的沙箱环境里出现过），加 `--basetemp=data/pytest`（`data/` 已被忽略）。
-- **下一步**：第 9 项"放宽匹配"按钮与 A05–A13 自动化测试（Mac 可做）；第 7 项资源测量要在 Windows 测试机上做。
+- **本轮完成**："下一步"第 8 项证据浏览（提交 `72f36ac`）与第 9 项"放宽匹配"+ A05–A10 验收测试（下一个提交）。
+  - 证据浏览：新增 `screenrecall/evidence.py`（时间线、前后关系、缺口归属）、`app.py` 详情页"前后浏览"区、`tests/test_evidence.py`（真实 Recorder 生成数据，8 条）、`tests/test_page.py`（Streamlit AppTest + 假 winapi，**第一批提交进仓库的页面测试**）。
+  - 放宽匹配：`search.search(..., relaxed=True)` / `retrieval.run(..., relaxed=True)`；`textutil.squeeze` 去空白并保留到原文的位置映射；页面在严格规则下引号原串无匹配时显示规则说明和"放宽匹配"按钮，放宽后显示规则与"恢复严格匹配"。`tests/test_acceptance.py` 按方案 8.3 编号写了 A05–A10。
+- **恢复（macOS）**：`git switch feat/evidence-browse && git pull --ff-only`，`source .venv/bin/activate`，`python -m screenrecall.models` 应输出"模型齐全"，`python -m pytest tests` 期望 96 passed。若 pytest 报 `sqlite3.OperationalError: unable to open database file`（临时目录不可写的沙箱环境里出现过），加 `--basetemp=data/pytest`（`data/` 已被忽略）。
+- **下一步**：第 10 项（收藏 / 删除 / 配额 / 到期）要先由团队定"删除整幅画面时收藏怎么处理"（见"待团队拍板"2）；不依赖这项决定的第 12 项批量导入可以先做。第 7 项资源测量要在 Windows 测试机上做。
 
 ## 上一轮恢复记录（2026-10-14 收尾时的状态）
 
@@ -181,6 +184,12 @@ python -m pytest tests
   - `test_page.py` 4 条（Streamlit AppTest 驱动真实 `app.py`，引号原串查询，不加载模型）：打开结果后显示"第 2 / 3 次出现"和前后缺口提示；下一条 → 回到搜索结果；与上一条并排；第一条没有"上一条"按钮。
   - 均为 Mac 上的逻辑与页面测试，**不等于 Windows 实机通过**。
 
+- 放宽匹配与验收矩阵，**2026-10-15，macOS**：`python -m pytest tests` 96/96（再新增 13 条），pyflakes 无告警。
+  - `test_acceptance.py` 12 条，按方案 8.3 编号：A05 两字中文 / 数字 16 / 长短混合，短片段不丢且顺序可重复，`%`、`_` 按字面；A06 两段引号 AND + 日期条件、区分大小写、无匹配不自动放宽、放宽后忽略大小写与空白（可跨 OCR 行，两行都高亮）、放宽后仍保留日期筛选与 AND、从基础筛选重新扫描、文字模式放宽后仍走 RRF 并显示规则、只有空白的引号不能放宽；A07 一帧多块多次出现只占一位；A08 OCR 异常可见、不阻塞下一帧、与"确实没有文字"区分、仍登记全图任务；A09 中断任务恢复后续做，既有索引照常可查，没有重复结果；A10 删除后词法、语义、画面三路都不再返回。
+  - 做过一次反向检查：临时关掉放宽分支，3 条放宽测试会失败，说明测试确实覆盖到这段代码。
+  - `test_page.py` 新增 1 条：只有引号无匹配时才出现"放宽匹配"，点击后才放宽，可恢复严格匹配，新查询回到严格规则。
+  - A01–A04 由 `test_recorder.py` 覆盖；A11、A12 等第 10 项实现；A13（断网、100/125/150% 缩放下高亮对齐）只能在 Windows 实机做。
+
 ### 待验证（需要 Windows 实机）
 
 1. 排错模式满 30 分钟自动退出：可在 `config.local.toml` 把 `debug_max_minutes` 改成 1 来验证。积压 ≥ 50 时提前退出。
@@ -190,6 +199,8 @@ python -m pytest tests
 5. 在浏览器里看页面的实际排版和交互：侧栏的排错/补拍按钮、倒计时刷新。AppTest 只验证了逻辑，没有点这些侧栏按钮。
 6. 实机 1,500–2,000 帧底库下：后台 OCR + 向量的吞吐与积压、两进程合计内存（按真实子进程统计）、文字/画面热查询 P95，按方案 7.3 在指定测试机上测。
 7. 证据浏览（`feat/evidence-browse`）：用真实录制数据在浏览器里打开结果 → 前后浏览、并排两张原图的排版与清晰度；跨锁屏、暂停和 `unsaved_change` 时提示是否正确；`unsaved_change` 很多时提示文字是否过长。
+8. 放宽匹配：在真实 OCR 结果上试一条因空格或换行没搜到的原串（如错误码被 OCR 拆成两段），点"放宽匹配"后能找到、原图上两行都标出。
+9. A13：模型下载后断网，文字/画面查询仍可用；单屏 100%、125%、150% 缩放下窗口边界与 OCR 高亮对齐。
 
 ## 已知问题
 
@@ -197,7 +208,8 @@ python -m pytest tests
 - 排错模式在少见时序下（候选在限频中保留，下一次仍未到允许时间而画面已回到原内容）会把同一画面的出现拆成两段，时间仍正确。
 - Mac 上无法运行后台与页面（设计如此，见"开发环境"）。
 - 页面进程首次语义或画面查询需要导入 torch、加载模型，本机约 50–100 秒，期间页面显示"正在加载…"。后台与页面各持有一份模型，内存是两份。
-- 每个 OCR 文字框作为一行、以换行连接，跨两个框的原串搜不到；OCR 有误读（实测 `under_score` → `under score`）。
+- 每个 OCR 文字框作为一行、以换行连接，跨两个框的原串严格匹配搜不到（可点"放宽匹配"忽略空白后找到）；OCR 有误读（实测 `under_score` → `under score`）。
+- 放宽匹配在日期/应用筛选后的全部 OCR 文字上逐帧扫描，没有用全文索引；1,500–2,000 帧下的耗时未测。放宽且有引号外文字时，词法分支按命中片段数排序（不用 bm25）。
 - 部分硬件加速窗口 PrintWindow 可能取不到内容，仅前台时退回屏幕拷贝，否则记缺口。
 - DPI 不感知程序按逻辑分辨率保存，比屏幕显示小。
 - WebP q92、1% 阈值、OCR 线程数、重试次数、积压 50 等是初值，未在固定测试机测量冻结。
@@ -215,8 +227,8 @@ python -m pytest tests
 6. ~~页面查询缓存与模式切换~~ **已完成**（2026-10-14，Windows 实机 + AppTest）。
 7. **两进程合计内存与延迟测量**（需 Windows 测试机）——可与第 9 项并行：方案 7.3。先写一个可提交的测量脚本，统计后台和页面的真实 Python 子进程，再用复制数据扩大到 1,500–2,000 帧测查询 P95。复制数据只能用于资源压测，不能用于准确率评估。依赖：6。
 8. ~~证据浏览~~ **已完成**（2026-10-15，`feat/evidence-browse`，Mac 逻辑 + AppTest；Windows 待查看，见"待验证"7）：只在选中出现的录制段内前后浏览，跨缺口和段边界提示，不拼接其他录制段；两图并排不算差异；可切到同帧的另一次出现。
-9. **"放宽匹配"按钮与 A05–A13 自动化测试**（Mac 可做）——**下次从这里开始**：方案 5.2、8.3。依赖：2。
-10. **收藏 / 删除 / 配额 / 30·90 天到期**（Mac 可做逻辑）：逻辑失效先于文件回收、共享文本块引用计数、删除中推理不复活。方案 3.2、6.4–6.7。依赖：3（共享块与向量要一起回收）。
+9. ~~"放宽匹配"按钮与 A05–A13 自动化测试~~ **已完成可在 Mac 上做的部分**（2026-10-15，`feat/evidence-browse`）：放宽按钮 + A05–A10。A11、A12 随第 10 项补；A13 见"待验证"9。
+10. **收藏 / 删除 / 配额 / 30·90 天到期**（Mac 可做逻辑）——**开始前先定"待团队拍板"2**：逻辑失效先于文件回收、共享文本块引用计数、删除中推理不复活。方案 3.2、6.4–6.7。依赖：3（共享块与向量要一起回收）。
 11. **分类**（Mac 可做训练与评测）：全图向量 + Logistic Regression，对照多数类与进程名规则，按任务/批次分组划分。方案 5.3、7.2。依赖：5 和标注数据（13）。
 12. **批量导入**（Mac 可做）：PNG/JPEG/WebP，导入批次来源、时间未知标注、批次幂等。方案 6.8。依赖：3。
 13. **受控数据采集与标注、40 条查询真值**（需 Windows 录制）：方案 7.1。依赖：1（采集节奏稳定后再录）。

@@ -301,7 +301,7 @@ def thumbnail(path: str, _mtime: float) -> bytes:
         return buf.getvalue()
 
 
-def render_detail(conn, sel: dict, parsed: search.ParsedQuery, case_sensitive: bool) -> None:
+def render_detail(conn, sel: dict, parsed: search.ParsedQuery, case_sensitive: bool, relaxed: bool = False) -> None:
     mode = sel.get("mode", retrieval.TEXT)
     sem_lines = set(sel.get("semantic_lines") or [])
     d = search.frame_detail(conn, sel["frame_id"])
@@ -323,7 +323,7 @@ def render_detail(conn, sel: dict, parsed: search.ParsedQuery, case_sensitive: b
     spans = [ln["span"] for ln in d.lines]
     # 画面模式只展示整图，不伪造局部定位（方案 5.2、6.2）
     hit = [] if mode == retrieval.IMAGE else search.match_lines(
-        d.text, d.text_fold, spans, parsed.quoted + parsed.terms, case_sensitive
+        d.text, d.text_fold, spans, parsed.quoted + parsed.terms, case_sensitive, relaxed
     )
     sem_only = sorted(i for i in sem_lines if i not in hit and i < len(d.lines))
     path = storage.resolve(CFG.data_dir, d.image_path)
@@ -484,21 +484,33 @@ if query:
     qmode = query.get("mode", retrieval.TEXT)
     # 只有引号原串时不调用模型，也就不必加载
     engines = build_engines(qmode) if parsed.terms and not parsed.error else retrieval.Engines()
+    relaxed = bool(query.get("relaxed"))
     with open_db() as conn:
         resp = retrieval.run(
             conn, parsed, query["filters"], mode=qmode, engines=engines,
             case_sensitive=query["case_sensitive"], limit=query["limit"],
-            rrf_k=CFG.search.rrf_k, branch_top=CFG.search.branch_top,
+            rrf_k=CFG.search.rrf_k, branch_top=CFG.search.branch_top, relaxed=relaxed,
         )
         sel = st.session_state.get("selected")
         if sel:
             with st.container(border=True):
-                render_detail(conn, sel, parsed, query["case_sensitive"])
+                render_detail(conn, sel, parsed, query["case_sensitive"], resp.relaxed)
 
     for note in resp.notes:
         st.warning(note)
+    if resp.relaxed and st.button("恢复严格匹配", key="strict_again"):
+        st.session_state.query = {**query, "relaxed": False}
+        st.session_state.pop("selected", None)
+        st.rerun()
     if resp.message:
         st.info(resp.message)
+        # 只在严格规则下引号原串无匹配时提供，且必须由用户点击（方案 5.2）
+        if resp.can_relax:
+            st.caption(search.RELAX_RULE)
+            if st.button("放宽匹配", key="relax"):
+                st.session_state.query = {**query, "relaxed": True}
+                st.session_state.pop("selected", None)
+                st.rerun()
     else:
         basis = RANK_BASIS.get(resp.rank_basis, resp.rank_basis)
         st.caption(

@@ -102,3 +102,30 @@ def test_first_step_has_no_prev_button(page):
     assert not at.exception
     assert "已是本录制段的第一条" in " ".join(_texts(at, "caption"))
     assert not [b for b in at.button if b.key == "ctx-prev"]
+
+
+# ---------- 放宽匹配按钮（方案 5.2、A06） ----------
+
+def _search(at, raw):
+    at.text_input(key="q_input").input(raw)
+    at.button(key="search_submit").click().run()
+    assert not at.exception
+
+
+def test_relax_button_only_after_quote_miss_and_only_on_click(page):
+    at, (fa, fb, fc) = page
+    assert not [b for b in at.button if b.key == "relax"]  # 有匹配时不出现
+    _search(at, '"INVOICE"')
+    assert not [b for b in at.button if b.key == "relax"]  # 默认忽略大小写，仍有匹配
+    _search(at, '"alphainvoice"')
+    assert "没有画面同时包含全部引号原串" in " ".join(_texts(at, "info"))
+    assert at.session_state.query.get("relaxed") is not True  # 不自动放宽
+    at.button(key="relax").click().run()
+    assert not at.exception
+    assert at.session_state.query["relaxed"] is True
+    assert "放宽匹配：忽略大小写和全部空白" in " ".join(_texts(at, "warning"))
+    assert [b.key for b in at.button if b.key == f"open-{fa}"]
+    at.button(key="strict_again").click().run()
+    assert at.session_state.query["relaxed"] is False
+    _search(at, '"gamma"')
+    assert at.session_state.query.get("relaxed") is None  # 新查询从严格规则开始
