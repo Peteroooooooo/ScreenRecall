@@ -10,12 +10,14 @@
 - P1 采集节奏：等稳、排错模式、补拍、允许/排除规则、未保存变化的中断标记已实现（分支 `feat/capture-cadence`）。2026-10-13 晚在 **Windows 11 实机**跑通主要场景（见"验证记录"），30 分钟自动退出、快捷键被占用两项仍待实机确认。
 - P1 向量基础设施、向量 worker、文字模式（词法 + 语义 RRF）、画面模式（多语言 CLIP）：已实现（分支 `feat/vector-search`），Windows 实机端到端通过。
 - P1 页面接入：**已完成**。`app.py` 有"文字 / 画面"切换，查询模型按需加载并用 `st.cache_resource` 缓存，侧栏显示语义 / 全图向量待办，结果标注命中分支，详情页蓝框标语义贡献块。
-- P1 其余（资源测量、证据浏览、分类、生命周期、导入、评测）：未开始，见"下一步"。
+- P1 证据浏览（前后浏览 + 并排）：**已实现**（分支 `feat/evidence-browse`，2026-10-15）。Mac 上逻辑测试 8/8、页面 AppTest 4/4 通过；Windows 浏览器里的排版与真实录制数据**待实机查看**。
+- P1 其余（资源测量、放宽匹配、分类、生命周期、导入、评测）：未开始，见"下一步"。
 
 ## 交接记录（最新在上）
 
 | 日期 | 分支 | 基于 | 本轮提交 / PR | 内容 | 验证状态 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-10-15 | `feat/evidence-browse`（新分支） | `feat/vector-search` @ `40aad90` | 见 `git log`；草稿 PR（base `feat/vector-search`） | 证据浏览：同一录制段内前后浏览、缺口/段边界提示、两图并排、切换到同帧的其他出现 | macOS：pytest 83/83（含 2 条真实模型）、pyflakes 无告警；Windows 未测 |
 | 2026-10-14 | `feat/vector-search`（同一分支接力） | `95f4995` | 本轮提交（见 `git log`）；仍在草稿 PR #3 | 页面接入文字/画面模式；采集节奏与向量功能 Windows 实机验证 | Windows 11：pytest 71/71（含真实模型）、环境检查 9/9、实机端到端 35/35、页面 AppTest 16/16 |
 | 2026-10-13 | `feat/vector-search` | `feat/capture-cadence` @ `244c19f` | `fad7ab7`（v3 基础设施）+ 本轮收尾提交（见 `git log`）；草稿 PR #3（base `feat/capture-cadence`） | 向量基础设施、向量 worker、文字/画面检索后端；**页面未接入（WIP）** | macOS 71/71（含 2 条真实模型冒烟）；Windows 未测 |
 | 2026-10-13 | `feat/capture-cadence` | `feat/p0-closed-loop` @ `7bfe972` | `e0739a2`；草稿 PR #2（base `feat/p0-closed-loop`） | 采集节奏（P1） | macOS 单元测试 41/41；Windows 实机待验证 |
@@ -24,15 +26,24 @@
 ### 分支依赖与合并顺序
 
 ```
-main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-cadence (244c19f, 草稿 PR #2) ── feat/vector-search (fad7ab7 + 收尾提交, 草稿 PR #3)
+main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-cadence (d325790, 草稿 PR #2) ── feat/vector-search (40aad90, 草稿 PR #3) ── feat/evidence-browse (草稿 PR #4)
 ```
+
+截至 2026-10-15：PR #1–#3 都没有合并，`main` 仍是 `1d01dbe`。新分支 `feat/evidence-browse` 依赖页面接入（`app.py` 在 PR #3 里改过），所以从 `feat/vector-search` 的最新提交建，PR base 选 `feat/vector-search`；按 #1 → #2 → #3 → #4 顺序合并，前一个合并后把下一个的 base 改成 `main`。
 
 1. 先合 PR #1 到 `main`。**请用 "Create a merge commit"，不要 Squash**：Squash 会改写 P0 的提交，`feat/capture-cadence` 再合时会重复出现 P0 的全部改动。
 2. PR #1 合并后，把采集节奏 PR 的 base 改成 `main`（PR 页面标题旁 Edit → base）。若 PR #1 已被 Squash，则在本地 `git fetch origin && git rebase --onto origin/main 7bfe972 feat/capture-cadence`，检查无误后用 `git push --force-with-lease origin feat/capture-cadence`（只覆盖自己的功能分支）。
 3. 采集节奏在 Windows 实机验证通过后，再把草稿 PR 转为 Ready 并合并。
 4. 之后的新任务从最新 `main` 建分支；如果依赖的 PR 还没合，就从那个功能分支建，并在本表写明"基于"哪一个提交。
 
-## 下次恢复（2026-10-14 收尾时的状态）
+## 下次恢复（2026-10-15，`feat/evidence-browse`）
+
+- 分支 `feat/evidence-browse`，基于 `feat/vector-search` @ `40aad90`（肖天奕 10-14 的页面接入与 Windows 验证），草稿 PR #4（base `feat/vector-search`）。
+- **本轮完成**："下一步"第 8 项证据浏览。新增 `screenrecall/evidence.py`（时间线、前后关系、缺口归属）、`app.py` 详情页"前后浏览"区、`tests/test_evidence.py`（真实 Recorder 生成数据，8 条）、`tests/test_page.py`（Streamlit AppTest + 假 winapi，4 条，**第一批提交进仓库的页面测试**）。
+- **恢复（macOS）**：`git switch feat/evidence-browse && git pull --ff-only`，`source .venv/bin/activate`，`python -m screenrecall.models` 应输出"模型齐全"，`python -m pytest tests` 期望 83 passed。若 pytest 报 `sqlite3.OperationalError: unable to open database file`（临时目录不可写的沙箱环境里出现过），加 `--basetemp=data/pytest`（`data/` 已被忽略）。
+- **下一步**：第 9 项"放宽匹配"按钮与 A05–A13 自动化测试（Mac 可做）；第 7 项资源测量要在 Windows 测试机上做。
+
+## 上一轮恢复记录（2026-10-14 收尾时的状态）
 
 - 分支 `feat/vector-search`，草稿 PR #3（base `feat/capture-cadence`）。本轮只改了 `app.py`、`PROGRESS.md`、`README.md`，已提交推送；没有改后端模块。
 - **本轮完成**：页面接入（"下一步"第 6 项）；采集节奏与向量功能的 Windows 实机验证（第 1 项的大部分、"待验证" 1–7）。
@@ -165,6 +176,11 @@ python -m pytest tests
   - 没测出有效内存：Windows 上 venv 的 `python.exe` 只是启动器，按启动器 PID 读到的工作集不是真实进程的。测内存要按子进程 PID 统计。
   - 测试脚本临时编写，未提交。
 
+- 证据浏览，**2026-10-15，macOS**（arm64，Python 3.12.15，Streamlit 1.65.0）：`python -m pytest tests` 83/83（原 71 + 新增 12），pyflakes 无告警。
+  - `test_evidence.py` 8 条，数据由真实 Recorder（假窗口 + 注入时钟）生成：段内上一条/下一条；A→B（未保存）→A 时两次 A 出现之间提示"画面有变化但未保存"；锁屏缺口；暂停后新段不与旧段拼接、段结束原因"用户暂停"；段尾未结束的缺口；原图过期的出现仍在时间线、已删除画面被跳过；后台异常退出留下的未结束段；同类缺口合并计数。
+  - `test_page.py` 4 条（Streamlit AppTest 驱动真实 `app.py`，引号原串查询，不加载模型）：打开结果后显示"第 2 / 3 次出现"和前后缺口提示；下一条 → 回到搜索结果；与上一条并排；第一条没有"上一条"按钮。
+  - 均为 Mac 上的逻辑与页面测试，**不等于 Windows 实机通过**。
+
 ### 待验证（需要 Windows 实机）
 
 1. 排错模式满 30 分钟自动退出：可在 `config.local.toml` 把 `debug_max_minutes` 改成 1 来验证。积压 ≥ 50 时提前退出。
@@ -173,6 +189,7 @@ python -m pytest tests
 4. 真实 Edge InPrivate 窗口：本轮是让测试窗口的标题包含 InPrivate 来模拟的。
 5. 在浏览器里看页面的实际排版和交互：侧栏的排错/补拍按钮、倒计时刷新。AppTest 只验证了逻辑，没有点这些侧栏按钮。
 6. 实机 1,500–2,000 帧底库下：后台 OCR + 向量的吞吐与积压、两进程合计内存（按真实子进程统计）、文字/画面热查询 P95，按方案 7.3 在指定测试机上测。
+7. 证据浏览（`feat/evidence-browse`）：用真实录制数据在浏览器里打开结果 → 前后浏览、并排两张原图的排版与清晰度；跨锁屏、暂停和 `unsaved_change` 时提示是否正确；`unsaved_change` 很多时提示文字是否过长。
 
 ## 已知问题
 
@@ -196,9 +213,9 @@ python -m pytest tests
 4. ~~文本语义分支~~ **后端已完成**（Mac 可做）：MiniLM（paraphrase-multilingual-MiniLM-L12-v2）按真实分词器分块（≤128 token，含特殊 token）、帧级取最高块分数、Top-50 帧；文字模式两路 RRF（k=60，同分按最新时间再帧 ID）。方案 5.1–5.3。依赖：3。
 5. ~~全图分支与画面模式~~ **后端已完成**（Mac 可做）：clip-ViT-B-32 图像向量（保持比例补边）、clip-ViT-B-32-multilingual-v1 文本查询；只检索原图可用的帧。依赖：3。
 6. ~~页面查询缓存与模式切换~~ **已完成**（2026-10-14，Windows 实机 + AppTest）。
-7. **两进程合计内存与延迟测量**（需 Windows 测试机）——**下次可从这里开始**：方案 7.3。先写一个可提交的测量脚本，统计后台和页面的真实 Python 子进程，再用复制数据扩大到 1,500–2,000 帧测查询 P95。复制数据只能用于资源压测，不能用于准确率评估。依赖：6。
-8. **证据浏览**（Mac 可做逻辑与测试）：沿所选出现的 session 前后浏览，遇 `gaps`（含 `unsaved_change`、`excluded`）提示；两图并排。方案 6.1。依赖：2（与 3–7 可并行）。
-9. **"放宽匹配"按钮与 A05–A13 自动化测试**（Mac 可做）：方案 5.2、8.3。依赖：2。
+7. **两进程合计内存与延迟测量**（需 Windows 测试机）——可与第 9 项并行：方案 7.3。先写一个可提交的测量脚本，统计后台和页面的真实 Python 子进程，再用复制数据扩大到 1,500–2,000 帧测查询 P95。复制数据只能用于资源压测，不能用于准确率评估。依赖：6。
+8. ~~证据浏览~~ **已完成**（2026-10-15，`feat/evidence-browse`，Mac 逻辑 + AppTest；Windows 待查看，见"待验证"7）：只在选中出现的录制段内前后浏览，跨缺口和段边界提示，不拼接其他录制段；两图并排不算差异；可切到同帧的另一次出现。
+9. **"放宽匹配"按钮与 A05–A13 自动化测试**（Mac 可做）——**下次从这里开始**：方案 5.2、8.3。依赖：2。
 10. **收藏 / 删除 / 配额 / 30·90 天到期**（Mac 可做逻辑）：逻辑失效先于文件回收、共享文本块引用计数、删除中推理不复活。方案 3.2、6.4–6.7。依赖：3（共享块与向量要一起回收）。
 11. **分类**（Mac 可做训练与评测）：全图向量 + Logistic Regression，对照多数类与进程名规则，按任务/批次分组划分。方案 5.3、7.2。依赖：5 和标注数据（13）。
 12. **批量导入**（Mac 可做）：PNG/JPEG/WebP，导入批次来源、时间未知标注、批次幂等。方案 6.8。依赖：3。

@@ -18,7 +18,7 @@ from contextlib import contextmanager
 import streamlit as st
 from PIL import Image, ImageDraw
 
-from screenrecall import control, db, models, retrieval, rules, search, storage, timeutil, winapi
+from screenrecall import control, db, evidence, models, retrieval, rules, search, storage, timeutil, winapi
 from screenrecall.config import load_config
 
 st.set_page_config(page_title="ScreenRecall", page_icon="🔎", layout="wide")
@@ -361,6 +361,8 @@ def render_detail(conn, sel: dict, parsed: search.ParsedQuery, case_sensitive: b
         )
         st.download_button("下载原图", path.read_bytes(), file_name=f"{d.frame_id}.webp", mime="image/webp")
 
+    render_context(conn, sel, occ.occurrence_id)
+
     st.markdown("**OCR 原文**")
     st.code(d.text or "（识别完成，但没有文字）", language=None, wrap_lines=True, height=260)
     st.markdown("**出现记录**（同一内容被多次观察到）")
@@ -379,6 +381,93 @@ def render_detail(conn, sel: dict, parsed: search.ParsedQuery, case_sensitive: b
         ],
         hide_index=True,
     )
+    if len(d.occurrences) > 1:
+        ids = [o.occurrence_id for o in d.occurrences]
+        by_id = {o.occurrence_id: o for o in d.occurrences}
+        pick = st.selectbox(
+            "围绕另一次出现前后浏览",
+            ids,
+            index=ids.index(occ.occurrence_id),
+            format_func=lambda i: f"{timeutil.fmt_local(by_id[i].first_seen_ms)} · {by_id[i].app or ''}",
+            key=f"occ-pick-{d.frame_id}",
+        )
+        if pick != occ.occurrence_id:
+            _goto(sel, d.frame_id, pick)
+
+
+def _goto(sel: dict, frame_id: str, occurrence_id: str) -> None:
+    """切换到另一次出现。语义贡献行只属于搜索结果那一帧，换帧后不再沿用。"""
+    origin = sel.get("origin") or {k: sel.get(k) for k in ("frame_id", "occurrence_id", "semantic_lines")}
+    st.session_state.selected = {
+        "frame_id": frame_id,
+        "occurrence_id": occurrence_id,
+        "mode": sel.get("mode", retrieval.TEXT),
+        "semantic_lines": origin["semantic_lines"] if frame_id == origin["frame_id"] else [],
+        "origin": origin,
+    }
+    st.session_state.pop("compare_with", None)
+    st.rerun()
+
+
+def _step_caption(s: evidence.Step) -> str:
+    src = "补拍" if s.source_type == "manual" else "自动"
+    return f"{timeutil.fmt_local(s.first_seen_ms)} · {md(s.app)} · {md(s.window_title)} · {src}"
+
+
+def _step_image(col, s: evidence.Step) -> None:
+    path = storage.resolve(CFG.data_dir, s.image_path)
+    if s.image_status == "ok" and path.exists():
+        col.image(thumbnail(str(path), path.stat().st_mtime), width="stretch")
+    else:
+        col.info("原图已过期或缺失，只保留了文字，不生成替代预览。")
+    col.caption(_step_caption(s))
+
+
+def render_context(conn, sel: dict, occurrence_id: str) -> None:
+    """前后浏览与并排（方案 6.1）：只在选中出现所在的录制段内移动，跨缺口与段边界明确提示。"""
+    ctx = evidence.context(conn, occurrence_id)
+    if ctx is None:
+        return
+    s = ctx.timeline.session
+    st.markdown("**前后浏览**（本次出现所在的录制段）")
+    end = timeutil.fmt_local(s.ended_at_ms) if s.ended_at_ms else "—"
+    st.caption(
+        f"录制段 {timeutil.fmt_local(s.started_at_ms)} 至 {end}（{s.end_label}）· "
+        f"第 {ctx.index + 1} / {len(ctx.timeline.steps)} 次出现。只显示这一段，不把其他录制段拼成连续录像。"
+    )
+    c_prev, c_back, c_next = st.columns([2, 2, 2])
+    if ctx.prev and c_prev.button("◀ 上一条", key="ctx-prev", width="stretch"):
+        _goto(sel, ctx.prev.frame_id, ctx.prev.occurrence_id)
+    if not ctx.prev:
+        c_prev.caption("已是本录制段的第一条")
+    origin = sel.get("origin")
+    if origin and origin["occurrence_id"] != occurrence_id and c_back.button("回到搜索结果", key="ctx-back", width="stretch"):
+        _goto(sel, origin["frame_id"], origin["occurrence_id"])
+    if ctx.next and c_next.button("下一条 ▶", key="ctx-next", width="stretch"):
+        _goto(sel, ctx.next.frame_id, ctx.next.occurrence_id)
+    if not ctx.next:
+        c_next.caption(f"已是本录制段的最后一条（{s.end_label}）")
+
+    before = evidence.describe_gaps(ctx.gaps_before)
+    after = evidence.describe_gaps(ctx.gaps_after)
+    if before:
+        st.warning(("与上一条之间" if ctx.prev else "录制段开始到这一条之间") + before)
+    if after:
+        st.warning(("与下一条之间" if ctx.next else "这一条到录制段结束之间") + after)
+
+    options = [k for k, v in (("上一条", ctx.prev), ("下一条", ctx.next)) if v]
+    if not options:
+        return
+    choice = st.radio("并排比较", ["不比较"] + options, horizontal=True, key="compare_with")
+    if choice == "不比较":
+        return
+    other = ctx.prev if choice == "上一条" else ctx.next
+    left, right = (other, ctx.current) if choice == "上一条" else (ctx.current, other)
+    c1, c2 = st.columns(2)
+    _step_image(c1, left)
+    _step_image(c2, right)
+    gap_msg = before if choice == "上一条" else after
+    st.caption("并排只放两张原图，不计算文字或表格差异。" + (gap_msg or "两次出现之间没有记录到缺口。"))
 
 
 RANK_BASIS = {
