@@ -22,6 +22,7 @@ class Check:
 class EnvReport:
     checks: list[Check] = field(default_factory=list)
     engine: object | None = None  # 通过检查后的 OcrEngine，直接交给后台复用
+    models_ready: bool = False
 
     @property
     def ok(self) -> bool:
@@ -96,5 +97,19 @@ def run_checks(cfg: Config, dpi_mode: str) -> EnvReport:
         rep.engine = engine
     except Exception as exc:  # noqa: BLE001
         add("RapidOCR", "fail", f"{type(exc).__name__}: {exc}")
+
+    if cfg.models.enabled:
+        from . import models
+
+        missing = models.available(cfg.models)
+        rep.models_ready = not missing
+        add(
+            "向量模型（P1）",
+            "ok" if not missing else "warn",
+            "MiniLM / CLIP / 多语言 CLIP 已在本机" if not missing
+            else "缺少 " + "、".join(missing) + "；文字仍可搜，向量待办会保留。准备：python -m screenrecall.models --download",
+        )
+    else:
+        add("向量模型（P1）", "warn", "配置中已关闭（models.enabled = false），只做词法检索")
 
     return rep

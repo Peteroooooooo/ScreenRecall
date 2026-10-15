@@ -21,6 +21,7 @@ from . import control, db, envcheck, storage, winapi
 from .capture import Recorder
 from .config import Config, load_config
 from .hotkey import HotkeyListener, parse_hotkey
+from .embed import EmbedWorker
 from .ocr import OcrWorker, recover_interrupted
 
 CONTROL_POLL_S = 0.3
@@ -120,6 +121,11 @@ def main(argv: list[str] | None = None) -> int:
         threading.Thread(target=recorder.run, name="capture", daemon=True),
         threading.Thread(target=worker.run, name="ocr", daemon=True),
     ]
+    if report.models_ready:
+        embedder = EmbedWorker(cfg, threading.Event(), stop, log)
+        threads.append(threading.Thread(target=embedder.run, name="embed", daemon=True))
+    else:
+        log.warning("向量模型未就绪或已关闭：只建立文字索引，向量待办保留到模型就绪后补齐")
     listener = _start_hotkey(cfg, recorder, conn, log)
     if listener is not None:
         threads.append(threading.Thread(target=listener.run, name="hotkey", daemon=True))

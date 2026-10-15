@@ -91,6 +91,9 @@ class SearchResult:
     matched_lines: list[int]
     snippet: list[str]
     bm25: float | None = None
+    semantic_lines: list[int] = field(default_factory=list)  # 贡献最高的文本块所在 OCR 行
+    score: float | None = None  # RRF 或余弦分数，只用于排序，不是正确率
+    sources: tuple[str, ...] = ()  # 命中的分支：词法 / 语义 / 画面
 
 
 @dataclass
@@ -127,14 +130,18 @@ def _candidate_ids(conn: sqlite3.Connection, needle: str, case_sensitive: bool) 
 
 
 def _qualifying_occurrences(
-    conn: sqlite3.Connection, frame_ids: set[str], filters: Filters
+    conn: sqlite3.Connection, frame_ids: set[str] | None, filters: Filters
 ) -> dict[str, list[Occurrence]]:
+    """筛选范围内的出现记录，按帧分组、最近的在前。frame_ids 为 None 时不限帧（供向量分支取全部候选）。"""
     sql = (
         "SELECT o.occurrence_id, o.frame_id, o.session_id, o.first_seen_ms, o.last_seen_ms, o.observations, "
         "o.app, o.window_title, o.source_type FROM occurrences o JOIN frames f ON f.frame_id = o.frame_id "
-        "WHERE o.frame_id IN (SELECT value FROM json_each(?)) AND f.image_status != 'deleted'"
+        "WHERE f.image_status != 'deleted'"
     )
-    params: list = [json.dumps(sorted(frame_ids))]
+    params: list = []
+    if frame_ids is not None:
+        sql += " AND o.frame_id IN (SELECT value FROM json_each(?))"
+        params.append(json.dumps(sorted(frame_ids)))
     if filters.start_ms is not None:
         sql += " AND o.last_seen_ms >= ?"
         params.append(filters.start_ms)
@@ -175,6 +182,28 @@ def match_lines(
     for n in needles:
         spans.extend(textutil.find_all(hay, _norm(n, case_sensitive)))
     return textutil.lines_for_spans(spans, line_spans)
+
+
+def required_frames(conn: sqlite3.Connection, parsed: ParsedQuery, case_sensitive: bool) -> set[str] | None:
+    """全部引号原串（AND）核验通过的帧；没有引号时返回 None（不限制）。"""
+    if not parsed.quoted:
+        return None
+    required: set[str] | None = None
+    for q in parsed.quoted:
+        ids = _candidate_ids(conn, q, case_sensitive)
+        required = ids if required is None else required & ids
+        if not required:
+            return set()
+    rows = conn.execute(
+        "SELECT frame_id, text, text_fold FROM frame_text WHERE frame_id IN (SELECT value FROM json_each(?))",
+        (json.dumps(sorted(required)),),
+    )
+    out = set()
+    for r in rows:
+        hay = r["text"] if case_sensitive else r["text_fold"]
+        if all(_norm(q, case_sensitive) in hay for q in parsed.quoted):
+            out.add(r["frame_id"])
+    return out
 
 
 def search(

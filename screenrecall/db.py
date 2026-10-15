@@ -14,7 +14,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -176,6 +176,63 @@ ALTER TABLE control ADD COLUMN snapshot_at_ms INTEGER;
 ALTER TABLE control ADD COLUMN hotkey_status TEXT;
 CREATE INDEX IF NOT EXISTS idx_gaps_session ON gaps (session_id, started_at_ms);
 """,
+    # v3 向量基础设施（方案 3.1、3.3、3.7、5.1）：共享文本块、帧-块关联、带模型身份的向量、分阶段就绪状态
+    3: """
+CREATE TABLE IF NOT EXISTS text_blocks (
+    block_id        INTEGER PRIMARY KEY,
+    block_key       TEXT NOT NULL UNIQUE,   -- blake2b(规范化版本, 分块版本, 规范化文本)
+    text            TEXT NOT NULL,          -- 规范化后的块文本，用于编码；显示原文取 frame_text
+    norm_version    TEXT NOT NULL,
+    chunker_version TEXT NOT NULL,
+    token_count     INTEGER NOT NULL,
+    created_at_ms   INTEGER NOT NULL
+);
+-- 每帧各自的块顺序与位置：相同文本块被多帧复用时，坐标仍分别保存
+CREATE TABLE IF NOT EXISTS frame_blocks (
+    frame_id        TEXT NOT NULL REFERENCES frames (frame_id),
+    seq             INTEGER NOT NULL,
+    block_id        INTEGER NOT NULL REFERENCES text_blocks (block_id),
+    chunker_version TEXT NOT NULL,
+    line_start      INTEGER NOT NULL,       -- ocr_lines.line_no，含两端
+    line_end        INTEGER NOT NULL,
+    char_start      INTEGER NOT NULL,       -- frame_text.text 中的 [start, end)
+    char_end        INTEGER NOT NULL,
+    x0 REAL NOT NULL, y0 REAL NOT NULL, x1 REAL NOT NULL, y1 REAL NOT NULL,
+    PRIMARY KEY (frame_id, seq)
+);
+CREATE INDEX IF NOT EXISTS idx_frame_blocks_block ON frame_blocks (block_id);
+-- 向量：文本块（branch=text）或整帧（branch=image）；同一检索矩阵只装同一模型与预处理版本
+CREATE TABLE IF NOT EXISTS embeddings (
+    emb_id             INTEGER PRIMARY KEY,
+    target_kind        TEXT NOT NULL CHECK (target_kind IN ('block', 'frame')),
+    target_id          TEXT NOT NULL,
+    branch             TEXT NOT NULL CHECK (branch IN ('text', 'image')),
+    model_id           TEXT NOT NULL,       -- repo@revision
+    preprocess_version TEXT NOT NULL,
+    dim                INTEGER NOT NULL,
+    dtype              TEXT NOT NULL,
+    vector             BLOB NOT NULL,
+    created_at_ms      INTEGER NOT NULL,
+    UNIQUE (target_kind, target_id, branch, model_id, preprocess_version)
+);
+CREATE INDEX IF NOT EXISTS idx_emb_matrix ON embeddings (branch, model_id, preprocess_version);
+ALTER TABLE frames ADD COLUMN text_embed_status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (text_embed_status IN ('pending', 'done', 'failed', 'skipped'));
+ALTER TABLE frames ADD COLUMN image_embed_status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (image_embed_status IN ('pending', 'done', 'failed', 'skipped'));
+-- 已有数据补登记：OCR 已完成且有文字的帧补文本待办；OCR 已结束、原图可用的帧补全图待办
+UPDATE frames SET text_embed_status = 'skipped'
+    WHERE ocr_status = 'failed'
+       OR (ocr_status = 'done' AND NOT EXISTS
+           (SELECT 1 FROM frame_text t WHERE t.frame_id = frames.frame_id AND t.text != ''));
+INSERT OR IGNORE INTO index_jobs (frame_id, stage, status, target_version, created_at_ms, updated_at_ms)
+    SELECT f.frame_id, 'text_embed', 'pending', f.record_version, f.captured_at_ms, f.captured_at_ms
+    FROM frames f WHERE f.ocr_status = 'done' AND f.image_status != 'deleted' AND f.text_embed_status = 'pending';
+INSERT OR IGNORE INTO index_jobs (frame_id, stage, status, target_version, created_at_ms, updated_at_ms)
+    SELECT f.frame_id, 'image_embed', 'pending', f.record_version, f.captured_at_ms, f.captured_at_ms
+    FROM frames f WHERE f.ocr_status IN ('done', 'failed') AND f.image_status = 'ok';
+UPDATE frames SET image_embed_status = 'skipped' WHERE image_status != 'ok';
+""",
 }
 
 
@@ -258,20 +315,38 @@ def get_revision(conn: sqlite3.Connection) -> int:
 
 
 def index_stats(conn: sqlite3.Connection) -> dict:
-    jobs = conn.execute(
-        "SELECT COUNT(*) AS n, MIN(created_at_ms) AS oldest FROM index_jobs "
-        "WHERE status IN ('pending', 'running')"
-    ).fetchone()
-    failed = conn.execute("SELECT COUNT(*) FROM index_jobs WHERE status = 'failed'").fetchone()[0]
+    """分阶段统计：backlog / backlog_oldest_ms / failed 只算 OCR（文字可搜的前提），向量另列。"""
+    stages = {
+        r["stage"]: r
+        for r in conn.execute(
+            "SELECT stage, SUM(status IN ('pending', 'running')) AS n, "
+            "MIN(CASE WHEN status IN ('pending', 'running') THEN created_at_ms END) AS oldest, "
+            "SUM(status = 'failed') AS failed FROM index_jobs GROUP BY stage"
+        )
+    }
+
+    def stat(stage: str, key: str) -> int:
+        row = stages.get(stage)
+        return int(row[key] or 0) if row is not None else 0
+
+    def oldest(stage: str):
+        row = stages.get(stage)
+        return row["oldest"] if row is not None else None
+
     frames = conn.execute(
         "SELECT COUNT(*) AS n, COALESCE(SUM(image_bytes), 0) AS bytes FROM frames "
         "WHERE image_status = 'ok'"
     ).fetchone()
     occurrences = conn.execute("SELECT COUNT(*) FROM occurrences").fetchone()[0]
     return {
-        "backlog": int(jobs["n"]),
-        "backlog_oldest_ms": jobs["oldest"],
-        "failed": int(failed),
+        "backlog": stat("ocr", "n"),
+        "backlog_oldest_ms": oldest("ocr"),
+        "failed": stat("ocr", "failed"),
+        "text_backlog": stat("text_embed", "n"),
+        "text_oldest_ms": oldest("text_embed"),
+        "image_backlog": stat("image_embed", "n"),
+        "image_oldest_ms": oldest("image_embed"),
+        "embed_failed": stat("text_embed", "failed") + stat("image_embed", "failed"),
         "frames": int(frames["n"]),
         "image_bytes": int(frames["bytes"]),
         "occurrences": int(occurrences),

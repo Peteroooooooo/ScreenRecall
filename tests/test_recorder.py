@@ -287,7 +287,7 @@ def test_migration_from_v1(tmp_path):
     conn.executescript("BEGIN;" + db._SCHEMA + "COMMIT;")
     assert conn.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == "1"
     db.init_schema(conn)
-    assert conn.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == "2"
+    assert conn.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == str(db.SCHEMA_VERSION)
     row = conn.execute("SELECT actual_mode, snapshot_seq FROM control").fetchone()
     assert tuple(row) == ("normal", 0)
     db.init_schema(conn)  # 再次调用无副作用

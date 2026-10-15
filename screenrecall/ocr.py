@@ -20,7 +20,7 @@ from dataclasses import dataclass
 
 from PIL import Image
 
-from . import db, storage, textutil
+from . import db, storage, textutil, vectors
 from .config import Config, OcrConfig
 from .timeutil import utc_ms
 
@@ -205,6 +205,8 @@ class OcrWorker:
                     rows,
                 )
                 conn.execute("UPDATE frames SET ocr_status = 'done' WHERE frame_id = ?", (job.frame_id,))
+                # 文字可搜后再补向量：有文字登记文本+全图，无文字只登记全图（方案 2.1、3.2）
+                vectors.register_embed_jobs(conn, job.frame_id, job.target_version, has_text=bool(full.strip()))
                 conn.execute(
                     "UPDATE index_jobs SET status = 'done', worker_token = NULL, updated_at_ms = ?, last_error = NULL "
                     "WHERE job_id = ?",
@@ -243,6 +245,15 @@ class OcrWorker:
                     + " WHERE frame_id = ?",
                     (job.frame_id,),
                 )
+                if image_missing:
+                    conn.execute(
+                        "UPDATE frames SET text_embed_status = 'skipped', image_embed_status = 'skipped' "
+                        "WHERE frame_id = ?",
+                        (job.frame_id,),
+                    )
+                else:
+                    # OCR 失败不删除其他分支：原图仍可用时照常计算全图向量（方案 3.2）
+                    vectors.register_embed_jobs(conn, job.frame_id, job.target_version, has_text=False)
                 final = True
         self.log.warning(
             "ocr %s frame=%s attempt=%d %s", "failed" if final else "retry", job.frame_id, job.attempt, error

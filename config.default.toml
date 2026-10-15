@@ -36,3 +36,25 @@ inter_op_threads = 1
 max_side_len = 2000        # RapidOCR 检测前最长边上限（库默认值）
 max_attempts = 3           # 有界重试（方案 4.3），初值
 retry_backoff_seconds = 5.0
+
+[models]
+# 提案 4.1 的固定模型组合，revision 锁定；更换须有开发集测量依据（向量身份含 revision）
+enabled = true
+threads = 2                 # 每个进程的 torch 推理线程数（后台与页面各自生效），初值
+batch_size = 16
+local_files_only = true     # 离线加载；首次准备运行：python -m screenrecall.models --download
+text_repo = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+text_revision = "e8f8c211226b894fcb81acc59f3b34ba3efd5f42"
+image_repo = "sentence-transformers/clip-ViT-B-32"
+image_revision = "327ab6726d33c0e22f920c83f2ff9e4bd38ca37f"
+clip_text_repo = "sentence-transformers/clip-ViT-B-32-multilingual-v1"
+clip_text_revision = "58edf8cada9e398793dca955574a48cbb7f18be2"
+
+[index]
+ocr_high_water = 50         # OCR 待办达到此值时向量暂停、先处理 OCR（方案 4.3），初值
+embed_max_attempts = 3
+embed_retry_backoff_seconds = 10.0
+
+[search]
+rrf_k = 60                  # 固定等权 RRF（方案 5.3）
+branch_top = 50             # 每个分支先合并到帧再取 Top-50
