@@ -102,6 +102,28 @@ class SearchResponse:
     total: int = 0
     rank_basis: str = ""  # 'time' | 'bm25' | 'terms'
     message: str | None = None
+    # 严格规则下引号原串没有匹配：页面据此提供"放宽匹配"按钮，只有用户点击才放宽（方案 5.2）
+    can_relax: bool = False
+    relaxed: bool = False
+
+
+RELAX_RULE = "放宽匹配：忽略大小写和全部空白（含 OCR 行之间的换行），所有引号原串仍须同时包含。放宽可能改变代码含义，请回原图确认。"
+_NO_QUOTED = "没有画面同时包含全部引号原串。"
+_RELAX_EMPTY = "引号原串去掉空白后为空，无法放宽匹配。"
+
+
+def _relax_key(s: str) -> str:
+    return textutil.squeeze(textutil.fold(s))[0]
+
+
+def _relaxed_rows(conn: sqlite3.Connection, frame_ids: set[str]) -> list[sqlite3.Row]:
+    """放宽时从基础筛选后的全部文字重新扫描，不沿用严格匹配得到的空集合。"""
+    return conn.execute(
+        "SELECT ft.frame_id, ft.text, ft.text_fold, f.image_path, f.image_status, f.width, f.height "
+        "FROM frame_text ft JOIN frames f ON f.frame_id = ft.frame_id "
+        "WHERE ft.frame_id IN (SELECT value FROM json_each(?))",
+        (json.dumps(sorted(frame_ids)),),
+    ).fetchall()
 
 
 def _norm(s: str, case_sensitive: bool) -> str:
@@ -174,20 +196,41 @@ def _bm25(conn: sqlite3.Connection, terms: tuple[str, ...]) -> dict[str, float]:
 
 
 def match_lines(
-    text: str, text_fold: str, line_spans: list[tuple[int, int]], needles: tuple[str, ...], case_sensitive: bool
+    text: str, text_fold: str, line_spans: list[tuple[int, int]], needles: tuple[str, ...], case_sensitive: bool,
+    relaxed: bool = False,
 ) -> list[int]:
-    """needles 在本帧 OCR 全文中命中的行号，用于摘要与高亮。"""
-    hay = text if case_sensitive else text_fold
+    """needles 在本帧 OCR 全文中命中的行号，用于摘要与高亮。放宽时命中可能跨行，相关各行都会标出。"""
     spans: list[tuple[int, int]] = []
+    if relaxed:
+        for n in needles:
+            spans.extend(textutil.find_all_squeezed(text_fold, textutil.fold(n)))
+        return textutil.lines_for_spans(spans, line_spans)
+    hay = text if case_sensitive else text_fold
     for n in needles:
         spans.extend(textutil.find_all(hay, _norm(n, case_sensitive)))
     return textutil.lines_for_spans(spans, line_spans)
 
 
-def required_frames(conn: sqlite3.Connection, parsed: ParsedQuery, case_sensitive: bool) -> set[str] | None:
-    """全部引号原串（AND）核验通过的帧；没有引号时返回 None（不限制）。"""
+def required_frames(
+    conn: sqlite3.Connection, parsed: ParsedQuery, case_sensitive: bool, *,
+    relaxed: bool = False, within: set[str] | None = None,
+) -> set[str] | None:
+    """全部引号原串（AND）核验通过的帧；没有引号时返回 None（不限制）。
+
+    relaxed=True 时在 within（基础筛选后的帧，None 表示全部）的 OCR 全文中重新扫描。
+    """
     if not parsed.quoted:
         return None
+    if relaxed:
+        keys = [_relax_key(q) for q in parsed.quoted]
+        if not all(keys):
+            return set()
+        if within is None:
+            within = {r[0] for r in conn.execute("SELECT frame_id FROM frame_text")}
+        return {
+            r["frame_id"] for r in _relaxed_rows(conn, within)
+            if all(k in textutil.squeeze(r["text_fold"])[0] for k in keys)
+        }
     required: set[str] | None = None
     for q in parsed.quoted:
         ids = _candidate_ids(conn, q, case_sensitive)
@@ -206,26 +249,15 @@ def required_frames(conn: sqlite3.Connection, parsed: ParsedQuery, case_sensitiv
     return out
 
 
-def search(
-    conn: sqlite3.Connection,
-    parsed: ParsedQuery,
-    filters: Filters = Filters(),
-    *,
-    case_sensitive: bool = False,
-    limit: int = 10,
-) -> SearchResponse:
-    if parsed.error:
-        return SearchResponse(message=parsed.error)
-    if parsed.is_empty:
-        return SearchResponse(message="请输入要查找的文字。")
-
+def _strict_verify(conn, parsed: ParsedQuery, filters: Filters, case_sensitive: bool):
+    """严格规则：返回 (verified, occs)，或说明为何为空的 SearchResponse。"""
     # 1. 引号硬过滤（AND）
     required: set[str] | None = None
     for q in parsed.quoted:
         ids = _candidate_ids(conn, q, case_sensitive)
         required = ids if required is None else required & ids
         if not required:
-            return SearchResponse(message="没有画面同时包含全部引号原串。")
+            return SearchResponse(message=_NO_QUOTED)
 
     # 2. 候选集合：有引号时引号条件决定集合（引号外文字只用于排序）；
     #    没有引号时由各片段 OR 召回
@@ -262,6 +294,57 @@ def search(
         verified[r["frame_id"]] = (r, hits)
     if not verified:
         return SearchResponse(message="没有找到匹配的记录。")
+    return verified, occs
+
+
+def _relaxed_verify(conn, parsed: ParsedQuery, filters: Filters):
+    """放宽规则：从日期 / 应用筛选后的全部文字重新扫描，忽略大小写与空白，引号原串仍为 AND。"""
+    occs = _qualifying_occurrences(conn, None, filters)
+    if not occs:
+        return SearchResponse(message="当前日期或应用筛选范围内没有记录。", relaxed=True)
+    keys = [_relax_key(q) for q in parsed.quoted]
+    if not all(keys):
+        return SearchResponse(message=_RELAX_EMPTY, relaxed=True)
+    term_keys = [(t, _relax_key(t)) for t in parsed.terms]
+    verified: dict[str, tuple[sqlite3.Row, tuple[str, ...]]] = {}
+    for r in _relaxed_rows(conn, set(occs)):
+        hay = textutil.squeeze(r["text_fold"])[0]
+        if any(k not in hay for k in keys):
+            continue
+        hits = tuple(t for t, k in term_keys if k and k in hay)
+        if not parsed.quoted and not hits:
+            continue
+        verified[r["frame_id"]] = (r, hits)
+    if not verified:
+        return SearchResponse(message="放宽匹配后仍没有符合条件的记录。", relaxed=True)
+    return verified, occs
+
+
+def search(
+    conn: sqlite3.Connection,
+    parsed: ParsedQuery,
+    filters: Filters = Filters(),
+    *,
+    case_sensitive: bool = False,
+    limit: int = 10,
+    relaxed: bool = False,
+) -> SearchResponse:
+    if parsed.error:
+        return SearchResponse(message=parsed.error)
+    if parsed.is_empty:
+        return SearchResponse(message="请输入要查找的文字。")
+
+    if relaxed:
+        found = _relaxed_verify(conn, parsed, filters)
+        if isinstance(found, SearchResponse):
+            return found
+        verified, occs = found
+    else:
+        found = _strict_verify(conn, parsed, filters, case_sensitive)
+        if isinstance(found, SearchResponse):
+            found.can_relax = bool(parsed.quoted)
+            return found
+        verified, occs = found
 
     # 5. 排序
     def latest(fid: str) -> int:
@@ -271,7 +354,7 @@ def search(
     if not parsed.terms:
         basis = "time"
         order = sorted(verified, key=lambda f: (-latest(f), f))
-    elif all(len(t) >= MIN_TRIGRAM_CHARS for t in parsed.terms):
+    elif not relaxed and all(len(t) >= MIN_TRIGRAM_CHARS for t in parsed.terms):
         basis = "bm25"
         scores = _bm25(conn, parsed.terms)
         # bm25 越小越相关；没有命中任何片段的（仅满足引号条件）排在最后
@@ -298,7 +381,7 @@ def search(
         r, hits = verified[fid]
         lines = lines_by_frame.get(fid, [])
         spans = [(lr["char_start"], lr["char_end"]) for lr in lines]
-        hit_lines = match_lines(r["text"], r["text_fold"], spans, parsed.quoted + hits, case_sensitive)
+        hit_lines = match_lines(r["text"], r["text_fold"], spans, parsed.quoted + hits, case_sensitive, relaxed)
         snippet = [lines[i]["text"] for i in hit_lines[:3]] if hit_lines else [lr["text"] for lr in lines[:1]]
         results.append(
             SearchResult(
@@ -315,7 +398,7 @@ def search(
                 bm25=scores.get(fid) if basis == "bm25" else None,
             )
         )
-    return SearchResponse(results=results, total=len(verified), rank_basis=basis)
+    return SearchResponse(results=results, total=len(verified), rank_basis=basis, relaxed=relaxed)
 
 
 @dataclass

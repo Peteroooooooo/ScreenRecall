@@ -14,7 +14,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -232,6 +232,29 @@ INSERT OR IGNORE INTO index_jobs (frame_id, stage, status, target_version, creat
     SELECT f.frame_id, 'image_embed', 'pending', f.record_version, f.captured_at_ms, f.captured_at_ms
     FROM frames f WHERE f.ocr_status IN ('done', 'failed') AND f.image_status = 'ok';
 UPDATE frames SET image_embed_status = 'skipped' WHERE image_status != 'ok';
+""",
+    # v4 批量导入（方案 6.8）：批次清单与逐文件结果。批次以文件指纹清单去重，重交同一批次只处理未成功的文件
+    4: """
+CREATE TABLE IF NOT EXISTS import_batches (
+    batch_id        TEXT PRIMARY KEY,
+    fingerprint     TEXT NOT NULL UNIQUE,   -- blake2b(按顺序的 文件名 + 内容指纹)
+    label           TEXT,
+    session_id      TEXT NOT NULL REFERENCES sessions (session_id),
+    time_known      INTEGER NOT NULL,       -- 1 = 用户给了可信捕获时间；0 = 记导入时间并标"时间未知"
+    created_at_ms   INTEGER NOT NULL,
+    updated_at_ms   INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS import_items (
+    batch_id        TEXT NOT NULL REFERENCES import_batches (batch_id),
+    seq             INTEGER NOT NULL,       -- 批次内固定顺序
+    file_name       TEXT NOT NULL,
+    content_hash    TEXT NOT NULL,          -- 文件字节 blake2b-128，只用于导入幂等
+    status          TEXT NOT NULL CHECK (status IN ('ok', 'failed', 'skipped')),
+    reason          TEXT,
+    frame_id        TEXT REFERENCES frames (frame_id),
+    updated_at_ms   INTEGER NOT NULL,
+    PRIMARY KEY (batch_id, seq)
+);
 """,
 }
 

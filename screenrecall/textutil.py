@@ -45,3 +45,25 @@ def lines_for_spans(spans: list[tuple[int, int]], line_spans: list[tuple[int, in
             if ls < e and s < le:
                 hit.add(idx)
     return sorted(hit)
+
+
+def squeeze(text: str) -> tuple[str, list[int]]:
+    """"放宽匹配"用的检索副本：去掉全部空白（含 OCR 行之间的换行）。
+
+    返回副本与位置映射：副本第 i 个字符来自原文第 pos[i] 个字符，便于把命中换回原文区间、
+    再关联 OCR 行；不能直接用副本偏移裁剪原文。
+    """
+    chars: list[str] = []
+    pos: list[int] = []
+    for i, ch in enumerate(text):
+        if not ch.isspace():
+            chars.append(ch)
+            pos.append(i)
+    return "".join(chars), pos
+
+
+def find_all_squeezed(text: str, needle: str) -> list[tuple[int, int]]:
+    """在去空白副本里查找（needle 同样去空白），返回原文中的 [start, end)。调用方负责大小写折叠。"""
+    hay, pos = squeeze(text)
+    key, _ = squeeze(needle)
+    return [(pos[s], pos[e - 1] + 1) for s, e in find_all(hay, key)]
