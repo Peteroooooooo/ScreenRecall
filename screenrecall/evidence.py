@@ -36,6 +36,7 @@ SESSION_END_LABELS = {
     "target_excluded": "目标窗口命中排除规则",
     "window_gone": "目标窗口已关闭",
     "daemon_stop": "后台退出",
+    "import": "导入批次",
 }
 
 
@@ -79,6 +80,11 @@ class SessionInfo:
     target_process: str | None
     target_title: str | None
     is_active: bool  # 后台当前仍在这一段录制
+    source_type: str = "live"  # live 实时录制 / import 导入批次
+
+    @property
+    def is_import(self) -> bool:
+        return self.source_type == "import"
 
     @property
     def end_label(self) -> str:
@@ -148,6 +154,7 @@ def load_timeline(conn: sqlite3.Connection, session_id: str) -> Timeline | None:
         target_process=s["target_process"],
         target_title=s["target_title"],
         is_active=bool(active and active["active_session_id"] == session_id),
+        source_type=s["source_type"],
     )
     steps = [
         Step(
@@ -172,6 +179,15 @@ def load_timeline(conn: sqlite3.Connection, session_id: str) -> Timeline | None:
             (session_id,),
         )
     ]
+    if session.is_import:
+        # 导入批次按文件顺序排列；时间可能是同一个导入时间，不能据此排序（方案 6.8）
+        seq = {
+            r[0]: r[1] for r in conn.execute(
+                "SELECT i.frame_id, i.seq FROM import_items i JOIN import_batches b ON b.batch_id = i.batch_id "
+                "WHERE b.session_id = ? AND i.frame_id IS NOT NULL", (session_id,)
+            )
+        }
+        steps.sort(key=lambda st: (seq.get(st.frame_id, 1 << 30), st.first_seen_ms, st.occurrence_id))
     gaps = [
         Gap(r["gap_id"], r["started_at_ms"], r["ended_at_ms"], r["reason"], r["detail"])
         for r in conn.execute(

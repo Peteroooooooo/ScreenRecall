@@ -12,13 +12,14 @@
 - P1 页面接入：**已完成**。`app.py` 有"文字 / 画面"切换，查询模型按需加载并用 `st.cache_resource` 缓存，侧栏显示语义 / 全图向量待办，结果标注命中分支，详情页蓝框标语义贡献块。
 - P1 证据浏览（前后浏览 + 并排）：**已实现**（分支 `feat/evidence-browse`，2026-10-15）。Mac 上逻辑测试 8/8、页面 AppTest 4/4 通过；Windows 浏览器里的排版与真实录制数据**待实机查看**。
 - P1 "放宽匹配"按钮与 A05–A10 自动化验收：**已实现**（同一分支，2026-10-15）。Mac 上 13 条新测试通过（A05–A10 共 12 条 + 页面 1 条）；A11、A12 等第 10 项，A13 需 Windows 实机。
-- P1 其余（资源测量、分类、生命周期、导入、评测）：未开始，见"下一步"。
+- P1 批量导入：**已实现**（同一分支，2026-10-15）。PNG/JPEG/WebP 逐文件校验、时间未知标注、批次幂等与失败重试、页面"批量导入截图"面板与命令行；数据库升到 **v4**。Mac 上 9 条新测试通过；Windows 待实机。
+- P1 其余（资源测量、分类、收藏/删除/到期、评测）：未开始，见"下一步"。
 
 ## 交接记录（最新在上）
 
 | 日期 | 分支 | 基于 | 本轮提交 / PR | 内容 | 验证状态 |
 | --- | --- | --- | --- | --- | --- |
-| 2026-10-15 | `feat/evidence-browse`（新分支） | `feat/vector-search` @ `40aad90` | `72f36ac`（证据浏览）+ 放宽匹配提交（见 `git log`）；草稿 PR #4（base `feat/vector-search`） | 证据浏览：同一录制段内前后浏览、缺口/段边界提示、两图并排、切换到同帧的其他出现；"放宽匹配"按钮；A05–A10 自动化验收测试 | macOS：pytest 96/96（含 2 条真实模型）、pyflakes 无告警；Windows 未测 |
+| 2026-10-15 | `feat/evidence-browse`（新分支） | `feat/vector-search` @ `40aad90` | `72f36ac`（证据浏览）、`da23ba5`（放宽匹配 + A05–A10）、批量导入提交（见 `git log`）；草稿 PR #4（base `feat/vector-search`） | 证据浏览：同一录制段内前后浏览、缺口/段边界提示、两图并排、切换到同帧的其他出现；"放宽匹配"按钮；A05–A10 自动化验收测试；批量导入（schema v4） | macOS：pytest 105/105（含 2 条真实模型）、pyflakes 无告警；Windows 未测 |
 | 2026-10-14 | `feat/vector-search`（同一分支接力） | `95f4995` | 本轮提交（见 `git log`）；仍在草稿 PR #3 | 页面接入文字/画面模式；采集节奏与向量功能 Windows 实机验证 | Windows 11：pytest 71/71（含真实模型）、环境检查 9/9、实机端到端 35/35、页面 AppTest 16/16 |
 | 2026-10-13 | `feat/vector-search` | `feat/capture-cadence` @ `244c19f` | `fad7ab7`（v3 基础设施）+ 本轮收尾提交（见 `git log`）；草稿 PR #3（base `feat/capture-cadence`） | 向量基础设施、向量 worker、文字/画面检索后端；**页面未接入（WIP）** | macOS 71/71（含 2 条真实模型冒烟）；Windows 未测 |
 | 2026-10-13 | `feat/capture-cadence` | `feat/p0-closed-loop` @ `7bfe972` | `e0739a2`；草稿 PR #2（base `feat/p0-closed-loop`） | 采集节奏（P1） | macOS 单元测试 41/41；Windows 实机待验证 |
@@ -40,11 +41,12 @@ main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-c
 ## 下次恢复（2026-10-15，`feat/evidence-browse`）
 
 - 分支 `feat/evidence-browse`，基于 `feat/vector-search` @ `40aad90`（肖天奕 10-14 的页面接入与 Windows 验证），草稿 PR #4（base `feat/vector-search`）。
-- **本轮完成**："下一步"第 8 项证据浏览（提交 `72f36ac`）与第 9 项"放宽匹配"+ A05–A10 验收测试（下一个提交）。
+- **本轮完成**："下一步"第 8 项证据浏览（`72f36ac`）、第 9 项"放宽匹配"+ A05–A10 验收测试（`da23ba5`）、第 12 项批量导入（之后的提交）。
   - 证据浏览：新增 `screenrecall/evidence.py`（时间线、前后关系、缺口归属）、`app.py` 详情页"前后浏览"区、`tests/test_evidence.py`（真实 Recorder 生成数据，8 条）、`tests/test_page.py`（Streamlit AppTest + 假 winapi，**第一批提交进仓库的页面测试**）。
   - 放宽匹配：`search.search(..., relaxed=True)` / `retrieval.run(..., relaxed=True)`；`textutil.squeeze` 去空白并保留到原文的位置映射；页面在严格规则下引号原串无匹配时显示规则说明和"放宽匹配"按钮，放宽后显示规则与"恢复严格匹配"。`tests/test_acceptance.py` 按方案 8.3 编号写了 A05–A10。
-- **恢复（macOS）**：`git switch feat/evidence-browse && git pull --ff-only`，`source .venv/bin/activate`，`python -m screenrecall.models` 应输出"模型齐全"，`python -m pytest tests` 期望 96 passed。若 pytest 报 `sqlite3.OperationalError: unable to open database file`（临时目录不可写的沙箱环境里出现过），加 `--basetemp=data/pytest`（`data/` 已被忽略）。
-- **下一步**：第 10 项（收藏 / 删除 / 配额 / 到期）要先由团队定"删除整幅画面时收藏怎么处理"（见"待团队拍板"2）；不依赖这项决定的第 12 项批量导入可以先做。第 7 项资源测量要在 Windows 测试机上做。
+  - 批量导入：新增 `screenrecall/importer.py`（`import_batch()` 与命令行 `python -m screenrecall.importer <文件或目录> [--label] [--captured "YYYY-MM-DD HH:MM"]`）、数据库 v4（`import_batches`、`import_items`）、页面"批量导入截图"面板；导入的截图走与实时截图相同的 WebP 落盘 → OCR → 向量流水线，每批一个 `source_type='import'` 的录制段；证据浏览对导入批次按文件顺序排列并说明不是连续屏幕历史。`tests/test_importer.py` 8 条。
+- **恢复（macOS）**：`git switch feat/evidence-browse && git pull --ff-only`，`source .venv/bin/activate`，`python -m screenrecall.models` 应输出"模型齐全"，`python -m pytest tests` 期望 105 passed。若 pytest 报 `sqlite3.OperationalError: unable to open database file`（临时目录不可写的沙箱环境里出现过），加 `--basetemp=data/pytest`（`data/` 已被忽略）。
+- **下一步**：第 10 项（收藏 / 删除 / 配额 / 到期）要先由团队定"删除整幅画面时收藏怎么处理"（见"待团队拍板"2）；第 7 项资源测量、第 13 项受控数据采集要在 Windows 上做；第 11 项分类依赖第 13 项的标注数据。Mac 上暂时没有不依赖决定或数据的大项，可先补第 7 项的可提交测量脚本（按真实子进程统计内存、复制数据扩库测 P95），再拿到 Windows 上跑。
 
 ## 上一轮恢复记录（2026-10-14 收尾时的状态）
 
@@ -190,6 +192,10 @@ python -m pytest tests
   - `test_page.py` 新增 1 条：只有引号无匹配时才出现"放宽匹配"，点击后才放宽，可恢复严格匹配，新查询回到严格规则。
   - A01–A04 由 `test_recorder.py` 覆盖；A11、A12 等第 10 项实现；A13（断网、100/125/150% 缩放下高亮对齐）只能在 Windows 实机做。
 
+- 批量导入，**2026-10-15，macOS**：`python -m pytest tests` 105/105（再新增 9 条），pyflakes 无告警。
+  - `test_importer.py` 8 条：PNG/JPEG/WebP 导入成功，损坏文件、`.txt`、扩展名为 `.png` 的 GIF、8×8 小图分别失败且不阻塞后续；落盘为 WebP 并登记 OCR 待办；未给时间时标"时间未知"、给了时间时出现记录用该时间；同一批次重交时已成功的跳过、因空间不足失败的重试成功、第三次全部跳过；批次内重复内容跳过，其他批次照常导入；导入后经替身 OCR 可被原串搜到；导入批次时间线按文件顺序而不是时间；已有库迁移到 v4；命令行按文件名导入目录。
+  - `test_page.py` 新增 1 条：搜索结果与详情显示"捕获时间未知"，前后浏览说明"导入批次……不是连续的屏幕历史"。**页面上传控件本身没有自动化测试**（Streamlit AppTest 不能操作 `file_uploader`）。
+
 ### 待验证（需要 Windows 实机）
 
 1. 排错模式满 30 分钟自动退出：可在 `config.local.toml` 把 `debug_max_minutes` 改成 1 来验证。积压 ≥ 50 时提前退出。
@@ -201,6 +207,7 @@ python -m pytest tests
 7. 证据浏览（`feat/evidence-browse`）：用真实录制数据在浏览器里打开结果 → 前后浏览、并排两张原图的排版与清晰度；跨锁屏、暂停和 `unsaved_change` 时提示是否正确；`unsaved_change` 很多时提示文字是否过长。
 8. 放宽匹配：在真实 OCR 结果上试一条因空格或换行没搜到的原串（如错误码被 OCR 拆成两段），点"放宽匹配"后能找到、原图上两行都标出。
 9. A13：模型下载后断网，文字/画面查询仍可用；单屏 100%、125%、150% 缩放下窗口边界与 OCR 高亮对齐。
+10. 批量导入：在浏览器里用"批量导入截图"面板上传一批真实截图（含一张损坏文件），逐项结果正确、后台 OCR 与向量补算完成后可搜到；daemon 正在录制时导入，两边同时写库不报 `database is locked`；后台为旧版本、库仍是 v3 时由页面导入触发升级到 v4。
 
 ## 已知问题
 
@@ -209,6 +216,7 @@ python -m pytest tests
 - Mac 上无法运行后台与页面（设计如此，见"开发环境"）。
 - 页面进程首次语义或画面查询需要导入 torch、加载模型，本机约 50–100 秒，期间页面显示"正在加载…"。后台与页面各持有一份模型，内存是两份。
 - 每个 OCR 文字框作为一行、以换行连接，跨两个框的原串严格匹配搜不到（可点"放宽匹配"忽略空白后找到）；OCR 有误读（实测 `under_score` → `under score`）。
+- 导入的截图在没给捕获时间时以导入时间存档并标"时间未知"，日期筛选对它们按导入时间生效；同一批次内所有截图共用一个用户给定的时间。
 - 放宽匹配在日期/应用筛选后的全部 OCR 文字上逐帧扫描，没有用全文索引；1,500–2,000 帧下的耗时未测。放宽且有引号外文字时，词法分支按命中片段数排序（不用 bm25）。
 - 部分硬件加速窗口 PrintWindow 可能取不到内容，仅前台时退回屏幕拷贝，否则记缺口。
 - DPI 不感知程序按逻辑分辨率保存，比屏幕显示小。
@@ -230,7 +238,7 @@ python -m pytest tests
 9. ~~"放宽匹配"按钮与 A05–A13 自动化测试~~ **已完成可在 Mac 上做的部分**（2026-10-15，`feat/evidence-browse`）：放宽按钮 + A05–A10。A11、A12 随第 10 项补；A13 见"待验证"9。
 10. **收藏 / 删除 / 配额 / 30·90 天到期**（Mac 可做逻辑）——**开始前先定"待团队拍板"2**：逻辑失效先于文件回收、共享文本块引用计数、删除中推理不复活。方案 3.2、6.4–6.7。依赖：3（共享块与向量要一起回收）。
 11. **分类**（Mac 可做训练与评测）：全图向量 + Logistic Regression，对照多数类与进程名规则，按任务/批次分组划分。方案 5.3、7.2。依赖：5 和标注数据（13）。
-12. **批量导入**（Mac 可做）：PNG/JPEG/WebP，导入批次来源、时间未知标注、批次幂等。方案 6.8。依赖：3。
+12. ~~批量导入~~ **已完成**（2026-10-15，`feat/evidence-browse`；Windows 待验证，见"待验证"10）：PNG/JPEG/WebP，导入批次来源、时间未知标注、批次幂等。方案 6.8。依赖：3。
 13. **受控数据采集与标注、40 条查询真值**（需 Windows 录制）：方案 7.1。依赖：1（采集节奏稳定后再录）。
 14. **五组检索实验、资源与存储测量、报告与演示**：方案 7.2、7.3、8.2。依赖：4、5、11、13。
 

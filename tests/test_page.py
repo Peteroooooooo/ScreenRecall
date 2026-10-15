@@ -129,3 +129,34 @@ def test_relax_button_only_after_quote_miss_and_only_on_click(page):
     assert at.session_state.query["relaxed"] is False
     _search(at, '"gamma"')
     assert at.session_state.query.get("relaxed") is None  # 新查询从严格规则开始
+
+
+# ---------- 导入的截图（方案 6.8） ----------
+
+def test_imported_screenshot_shows_time_unknown_and_batch_order(h, monkeypatch):
+    import io
+
+    from PIL import Image
+
+    from screenrecall import importer
+
+    def png(seed):
+        buf = io.BytesIO()
+        Image.fromarray(make_image(seed, 64, 48)[:, :, ::-1]).save(buf, "PNG")
+        return buf.getvalue()
+
+    res = importer.import_batch(
+        h.conn, h.cfg, [importer.ImportFile("one.png", png(1)), importer.ImportFile("two.png", png(2))],
+        label="旧截图", free_bytes=lambda p: 100 * 1024**3,
+    )
+    _ocr_all(h, {res.items[0].frame_id: ["imported invoice"], res.items[1].frame_id: ["second page"]})
+    monkeypatch.setenv("SCREENRECALL_DATA_DIR", str(h.cfg.data_dir))
+    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=30)
+    at.run()
+    _search(at, '"imported"')
+    assert "捕获时间未知" in " ".join(m.value for m in at.markdown)
+    at.button(key=f"open-{res.items[0].frame_id}").click().run()
+    assert not at.exception
+    text = " ".join(m.value for m in at.markdown) + " ".join(_texts(at, "caption"))
+    assert "捕获时间未知" in text and "导入批次" in text and "不是连续的屏幕历史" in text
+    assert "第 1 / 2 张" in text
