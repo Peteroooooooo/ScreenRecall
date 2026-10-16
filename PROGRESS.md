@@ -148,7 +148,8 @@ main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-c
 1. 先合 PR #1 到 `main`。**请用 "Create a merge commit"，不要 Squash**：Squash 会改写 P0 的提交，`feat/capture-cadence` 再合时会重复出现 P0 的全部改动。
 2. PR #1 合并后，把采集节奏 PR 的 base 改成 `main`（PR 页面标题旁 Edit → base）。若 PR #1 已被 Squash，则在本地 `git fetch origin && git rebase --onto origin/main 7bfe972 feat/capture-cadence`，检查无误后用 `git push --force-with-lease origin feat/capture-cadence`（只覆盖自己的功能分支）。
 3. 采集节奏在 Windows 实机验证通过后，再把草稿 PR 转为 Ready 并合并。
-4. 之后的新任务从最新 `main` 建分支；如果依赖的 PR 还没合，就从那个功能分支建，并在本表写明"基于"哪一个提交。
+4. PR #3、#4、#5 依次照做：前一个合并进 `main` 后，把下一个的 base 改成 `main`（同样用 merge commit）；每个都要在对应的 Windows 实机项通过后再转 Ready。截至 2026-10-16 五个 PR 均未合并、#2–#5 为草稿，`main` 仍是 `1d01dbe`。合并 PR 需要仓库写权限的人在 GitHub 页面操作，代理不会自动合并。
+5. 之后的新任务从最新 `main` 建分支；如果依赖的 PR 还没合，就从那个功能分支建，并在本表写明"基于"哪一个提交。
 
 ## 下次恢复（2026-10-16，`feat/lifecycle`）
 
