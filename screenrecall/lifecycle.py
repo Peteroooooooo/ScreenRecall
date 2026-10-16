@@ -183,6 +183,89 @@ def delete_frame(
     return res
 
 
+@dataclass
+class RangePlan:
+    """按时间范围删除前展示的影响范围。与搜索的日期筛选一致：出现记录的 [首次, 最近] 与范围有交集即算在内。"""
+
+    start_ms: int
+    end_ms: int
+    apps: tuple[str, ...]
+    occurrences: int
+    frames_purged: int          # 删除后不再被任何记录引用、将连同图片文字向量一起删除的画面
+    frames_kept: int            # 仍被范围外（或保留的收藏）记录引用、只删范围内时间与来源的画面
+    favorites: frozenset[str]   # 范围内被收藏的出现记录
+
+
+def _range_sql(apps: tuple[str, ...]) -> tuple[str, list]:
+    sql = "o.last_seen_ms >= ? AND o.first_seen_ms < ?"
+    extra: list = []
+    if apps:
+        sql += " AND o.app IN (SELECT value FROM json_each(?))"
+        extra.append(json.dumps(list(apps)))
+    return sql, extra
+
+
+def plan_range_delete(conn: sqlite3.Connection, start_ms: int, end_ms: int, apps: Iterable[str] = (),
+                      *, include_favorites: bool = False) -> RangePlan:
+    apps = tuple(apps)
+    cond, extra = _range_sql(apps)
+    rows = conn.execute(
+        "SELECT o.occurrence_id, o.frame_id, EXISTS (SELECT 1 FROM favorites fv WHERE fv.occurrence_id = o.occurrence_id) "
+        f"AS fav FROM occurrences o WHERE {cond}", [start_ms, end_ms, *extra],
+    ).fetchall()
+    favs = frozenset(r[0] for r in rows if r[2])
+    doomed = {r[0] for r in rows if include_favorites or not r[2]}
+    frames = {r[1] for r in rows if r[0] in doomed}
+    purged = sum(
+        all(o[0] in doomed for o in conn.execute("SELECT occurrence_id FROM occurrences WHERE frame_id = ?", (fid,)))
+        for fid in frames
+    )
+    return RangePlan(start_ms, end_ms, apps, len(doomed), purged, len(frames) - purged, favs)
+
+
+def delete_range(
+    conn: sqlite3.Connection, data_dir: Path, start_ms: int, end_ms: int, apps: Iterable[str] = (), *,
+    include_favorites: bool = False, confirmed_favorites: frozenset[str] | set[str] = frozenset(), batch: int = 500,
+) -> DeleteResult:
+    """按时间范围删除（用户明确操作，先看过 plan_range_delete）。
+
+    默认保留范围内的收藏记录；只有用户勾选 include_favorites 时才删，且范围内的收藏必须都在
+    confirmed_favorites 里，否则抛 PlanChanged。画面只在没有任何剩余记录引用时回收。
+    """
+    apps = tuple(apps)
+    cond, extra = _range_sql(apps)
+    params = [start_ms, end_ms, *extra]
+    if include_favorites:
+        now_favs = {r[0] for r in conn.execute(
+            "SELECT fv.occurrence_id FROM favorites fv JOIN occurrences o ON o.occurrence_id = fv.occurrence_id "
+            f"WHERE {cond}", params)}
+        if not now_favs <= set(confirmed_favorites):
+            raise PlanChanged("确认后范围内又有新的收藏，请重新确认删除范围")
+    fav_filter = "" if include_favorites else (
+        " AND NOT EXISTS (SELECT 1 FROM favorites fv WHERE fv.occurrence_id = o.occurrence_id)")
+    total = DeleteResult()
+    while True:
+        res = DeleteResult()
+        with db.write_txn(conn):
+            rows = conn.execute(
+                f"SELECT o.occurrence_id, o.frame_id FROM occurrences o WHERE {cond}{fav_filter} LIMIT ?",
+                [*params, batch],
+            ).fetchall()
+            if not rows:
+                break
+            ids = [(r[0],) for r in rows]
+            res.favorites_removed = sum(
+                conn.execute("DELETE FROM favorites WHERE occurrence_id = ?", i).rowcount for i in ids)
+            conn.executemany("DELETE FROM occurrences WHERE occurrence_id = ?", ids)
+            res.occurrences_removed = len(ids)
+            _purge_if_unreferenced(conn, [r[1] for r in rows], res)
+            db.bump_revision(conn)
+        _remove_files(data_dir, res)
+        for k in ("occurrences_removed", "favorites_removed", "frames_purged", "blocks_freed", "files_removed"):
+            setattr(total, k, getattr(total, k) + getattr(res, k))
+    return total
+
+
 # ---------------- 内部：回收 ----------------
 
 def _purge_if_unreferenced(conn: sqlite3.Connection, frame_ids: Iterable[str], res: DeleteResult) -> None:

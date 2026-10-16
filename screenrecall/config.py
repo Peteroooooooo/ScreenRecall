@@ -103,6 +103,12 @@ def load_config(data_dir_override: str | os.PathLike | None = None) -> Config:
     )
     if not data_dir.is_absolute():
         data_dir = REPO_ROOT / data_dir
+    # 数据目录自带的覆盖（最后合并）：只作用于这一份数据，用于独立的删除 / 配额测试库，不影响正式数据
+    per_dir = data_dir / "config.toml"
+    if per_dir.exists():
+        override = tomllib.loads(per_dir.read_text(encoding="utf-8"))
+        override.pop("storage", None)
+        raw = _merge(raw, override)
 
     cap, ocr = raw["capture"], raw["ocr"]
     capture = CaptureConfig(

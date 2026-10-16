@@ -215,3 +215,26 @@ def test_favorites_panel_opens_detail_without_a_query(h, monkeypatch):
     assert not at.exception
     assert at.session_state.selected["occurrence_id"] == occ
     assert [b for b in at.button if b.key == f"unfav-{occ}"]
+
+
+def test_range_delete_preview_then_confirm(page):
+    from datetime import datetime, timedelta
+
+    from screenrecall import db as _db
+    from screenrecall.config import load_config
+
+    at, (fa, fb, fc) = page
+    c = _db.connect(load_config().db_path)
+    first = c.execute("SELECT MIN(first_seen_ms) FROM occurrences").fetchone()[0]
+    c.close()
+    day = datetime.fromtimestamp(first / 1000).date()
+    at.date_input(key="rd_days").set_value((day - timedelta(days=1), day + timedelta(days=1))).run()
+    at.button(key="rd_preview").click().run()
+    assert not at.exception
+    err = " ".join(_texts(at, "error"))
+    assert "3 次出现记录" in err and "3 幅画面不再被任何记录引用" in err
+    assert [b for b in at.button if b.key == f"open-{fa}"]  # 预览不删除
+    at.button(key="rd_go").click().run()
+    assert not at.exception
+    assert "已按范围删除 3 次出现记录" in " ".join(_texts(at, "success"))
+    assert not [b for b in at.button if (b.key or "").startswith("open-")]
