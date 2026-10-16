@@ -386,3 +386,27 @@ def index_stats(conn: sqlite3.Connection) -> dict:
         "occurrences": int(occurrences),
         "revision": get_revision(conn),
     }
+
+
+def main(argv: list[str] | None = None) -> int:
+    """python -m screenrecall.db [--data-dir PATH]：只读打印结构版本与基本计数（升级后核对用）。"""
+    import argparse
+
+    from .config import load_config
+
+    ap = argparse.ArgumentParser(prog="python -m screenrecall.db")
+    ap.add_argument("--data-dir")
+    cfg = load_config(ap.parse_args(argv).data_dir)
+    conn = sqlite3.connect(f"file:{cfg.db_path.as_posix()}?mode=ro", uri=True)
+    try:
+        ver = conn.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()[0]
+        frames = conn.execute("SELECT COUNT(*) FROM frames WHERE image_status != 'deleted'").fetchone()[0]
+        occ = conn.execute("SELECT COUNT(*) FROM occurrences").fetchone()[0]
+    finally:
+        conn.close()
+    print(f"数据库 {cfg.db_path}：结构版本 v{ver}（代码支持 v{SCHEMA_VERSION}），画面 {frames}，出现记录 {occ}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

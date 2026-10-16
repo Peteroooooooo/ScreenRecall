@@ -15,13 +15,116 @@
 - P1 批量导入：**已实现**（同一分支，2026-10-15）。PNG/JPEG/WebP 逐文件校验、时间未知标注、批次幂等与失败重试、页面"批量导入截图"面板与命令行；数据库升到 **v4**。Mac 上 9 条新测试通过；Windows 待实机。
 - P1 收藏 / 删除 / 到期 / 配额：**已实现**（分支 `feat/lifecycle`，2026-10-16，数据库 **v5**）。规则按主方案 5.2、5.4 + 团队 10-16 决定（见"待团队拍板"2）。Mac 上新增 21 条测试通过（含 A11、A12 可在 Mac 验证的部分、删除中后台写回、共享内容引用、缓存刷新）；Windows 待实机。
 - P1 资源测量（第 7 项）：**测量脚本已写好**（`python -m screenrecall.bench`，同一分支，2026-10-16），Mac 上只做了冒烟；**还没有任何测试机上的测量数字**，见"待验证"12。
-- P1 其余（分类、评测）：未开始，见"下一步"。
+- P1 按时间范围删除：**已实现**（同一分支 `ce66848`）；数据目录可带自己的 `config.toml`，用于独立测试库。
+- P1 其余（受控数据与标注、分类、五组检索实验、捕获覆盖实验、编码对照）：代码未完成，见"完成度总表"与"下一步"。
+
+## 完成度总表（对照 `readable_Proposal.md`，2026-10-16）
+
+四种状态分开写：**代码**（是否写完）、**模拟测试**（Mac/Windows 上用假窗口、替身 OCR / 编码器的 pytest）、**真实模型测试**（加载锁定版本的 MiniLM / CLIP 实际推理）、**Windows 实机**（真实窗口、真实录制数据）。测试通过条数只说明已写的代码按预期运行，不代表方案已完成。
+
+| 方案内容 | 代码 | 模拟测试 | 真实模型测试 | Windows 实机 |
+| --- | --- | --- | --- | --- |
+| P0 主链：指定窗口采集、WebP、OCR、原串 / 短词 / FTS 检索、原图页 | 完成 | 通过 | 不涉及 | 通过（10-13） |
+| 采集节奏：等稳、排错、补拍、允许/排除、`unsaved_change` | 完成 | 通过 | 不涉及 | 主要场景通过（10-14）；30 分钟自动退出、快捷键被占用、真实应用节奏、真实 InPrivate **待验证** |
+| 向量、文字模式 RRF、画面模式、页面切换与模型缓存 | 完成 | 通过 | 仅 2 条冒烟（中文查英文餐厅、深色 vs 白色），Mac 与 Windows 都跑过 | 端到端通过（肖天奕 10-14 记录，未复核） |
+| 证据浏览、并排（5.4 前后查看） | 完成 | 通过 | 不涉及 | **待验证**（"待验证"7） |
+| 放宽匹配（5.2） | 完成 | 通过 | 不涉及 | **待验证**（8） |
+| 批量导入（6.8） | 完成 | 通过（上传控件本身未自动化） | 不涉及 | **待验证**（10） |
+| 收藏、两种删除、按时间范围删除、30/90 天到期、配额与暂停（5.2、5.4） | 完成 | 通过 | 不涉及 | **待验证**（11） |
+| 验收 A01–A10 | 测试已写 | 通过 | 不涉及 | A01–A04 由采集节奏实机覆盖；A05–A10 **待验证** |
+| A11、A12 | 测试已写 | 通过（时间、磁盘占用是注入的） | 不涉及 | **待验证**（11） |
+| A13 断网与 100/125/150% 缩放对齐 | 无需新代码 | 不适用 | 不适用 | **待验证**（9） |
+| 资源与速度测量（6.3） | 测量脚本完成（`bench.py`） | 冒烟通过 | 空库上能加载真实模型跑通 | **未运行，没有任何测量数字**（12） |
+| 捕获覆盖实验（6.3 第一行：1/3/4/6/10 秒事件脚本） | **未完成**（事件脚本未写） | — | — | 未做 |
+| WebP 编码对照（5.1：原始像素 / q92 / 无损） | **未完成** | — | — | 未做 |
+| 失败待办人工重试入口（2.4 "允许重试"） | 自动有界重试已有，**人工重试入口未做** | — | — | — |
+| 受控数据、标注规则、分组划分、40 条查询真值（6.1） | **未完成**（工具见"下一步"） | — | — | 需要 Windows 录制 |
+| 五组检索实验 Exp 1–5、Hit@5 / MRR@10（6.2） | **未完成** | — | — | 依赖查询真值 |
+| 分类器：LR + 多数类 / 进程名规则基线、Macro F1、混淆矩阵（6.4），页面显示标签并可筛选 | **未完成** | — | — | 依赖标注数据 |
+| 报告、Slides、演示视频、运行包（8.3） | 未开始 | — | — | — |
+
+## Windows 交接步骤（给下一位在 Windows 上接手的同学）
+
+接 **`feat/lifecycle`**，代码提交至少包含 `1c4f0f5`（收藏 / 删除 / 到期 / 配额）、`0fd523d`（测量脚本）、`ce66848`（按时间范围删除、数据目录独立配置）和之后的交接文档提交；以分支最新提交为准，`git log --oneline -5` 应能看到这三个。它依赖 PR #1–#4，全部未合并，不要从 `main` 开始。
+
+### 1. 取代码、装环境
+
+```powershell
+cd <你的 ScreenRecall 目录>
+git fetch origin
+git switch feat/lifecycle            # 本地没有这个分支时：git switch -c feat/lifecycle --track origin/feat/lifecycle
+git pull --ff-only
+git log --oneline -5                 # 确认含 ce66848、0fd523d、1c4f0f5
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt   # 本轮新增 psutil==7.1.3
+.\.venv\Scripts\python.exe -m screenrecall.models   # 应输出"模型齐全"；否则加 --download（代理与 Xet 问题见"开发环境 → Windows"）
+.\.venv\Scripts\python.exe -m pytest tests          # Mac 上为 137 passed（含 2 条真实模型）；Windows 结果请写进"验证记录"
+```
+
+### 2. 备份正式数据，再升级到 v5
+
+旧代码（v4）打不开 v5 的库，所以升级前必须备份。
+
+```powershell
+# 先在后台终端按 Ctrl+C 停掉后台，并关掉页面；确认没有 python 进程还在用 data\
+$stamp = Get-Date -Format yyyyMMdd-HHmm
+Copy-Item -Recurse data "data-backup-$stamp"         # data-*/ 已在 .gitignore，不会被提交
+.\.venv\Scripts\python.exe -m screenrecall.daemon --check
+.\.venv\Scripts\python.exe -m screenrecall.daemon    # 终端 1：第一次启动时自动迁移到 v5
+.\.venv\Scripts\streamlit.exe run app.py              # 终端 2：http://127.0.0.1:8501
+.\.venv\Scripts\python.exe -m screenrecall.db       # 另开终端；应显示"结构版本 v5"（只读，不改库）
+```
+
+回退：停后台和页面 → `Rename-Item data data-v5-failed-$stamp` → `Copy-Item -Recurse data-backup-$stamp data` → `git switch feat/evidence-browse`。
+
+### 3. 删除和配额只在独立测试库上测
+
+不要在正式 `data\` 上试删除和小配额。用一个单独的数据目录，并把测试用的配额写在**这个目录自己的** `config.toml` 里（只影响这份数据，不影响正式数据；不要改 `config.local.toml`）：
+
+```powershell
+New-Item -ItemType Directory data-lifecycle-test | Out-Null
+Set-Content -Encoding utf8 data-lifecycle-test\config.toml "[retention]`nquota_gib = 0.05`nreserve_mib = 8`nmaintenance_interval_seconds = 30"
+.\.venv\Scripts\python.exe -m screenrecall.daemon --data-dir data-lifecycle-test     # 终端 1
+$env:SCREENRECALL_DATA_DIR = "$PWD\data-lifecycle-test"; .\.venv\Scripts\streamlit.exe run app.py   # 终端 2（同一个 PowerShell 窗口里设变量）
+```
+
+在测试窗口里录一些画面（或用"批量导入截图"导入一批测试截图），再按"待验证"11 逐项测。测完 `Remove-Item -Recurse data-lifecycle-test`。
+
+### 4. 本分支链上还没在 Windows 验证过的项目（都要测）
+
+按"验证记录 → 待验证（需要 Windows 实机）"逐条执行，至少包括：
+
+- 7 证据浏览与并排（`feat/evidence-browse` 引入）
+- 8 放宽匹配
+- 9 A13 断网与缩放对齐
+- 10 批量导入（含 daemon 录制时同时导入、v3→v4 由页面触发升级）
+- 11 收藏、两种删除、按时间范围删除、到期、配额暂停（用第 3 步的测试库）
+- 1、2、3、4 采集节奏的剩余场景
+- 12 资源测量
+
+### 5. 测量命令与结果保存位置
+
+结果统一放 `results/windows/<日期>-<机器名>/`（会提交；**不要放截图或真实聊天内容**），原始大文件放 `results/raw/`（已忽略）。每个目录写一个 `README.md`：机器型号、CPU、内存、Windows 版本、缩放、分辨率、线程配置、后台是否在录制。
+
+```powershell
+$out = "results\windows\2026-10-xx-<机器名>"; New-Item -ItemType Directory -Force $out | Out-Null
+# 扩库（只用于速度 / 资源，不能用于准确率）：源库至少要有一些 OCR 和向量都完成的帧
+.\.venv\Scripts\python.exe -m screenrecall.bench expand --src data --dst data-bench --frames 2000 --out "$out\expand.json"
+# 查询耗时：后台空闲、后台忙碌（正在录制 + OCR 积压）各跑一遍，文件名区分
+.\.venv\Scripts\python.exe -m screenrecall.bench query --data-dir data-bench --mode text  --repeat 5 --out "$out\query-text-idle.json"
+.\.venv\Scripts\python.exe -m screenrecall.bench query --data-dir data-bench --mode image --repeat 5 --out "$out\query-image-idle.json"
+# 两进程 CPU / 内存：后台和页面都在运行、页面已做过一次语义查询后再开始，采 10 分钟
+.\.venv\Scripts\python.exe -m screenrecall.bench mem --duration 600 --out "$out\mem-recording.json"
+# 就绪延迟：实时录制 30 分钟后
+.\.venv\Scripts\python.exe -m screenrecall.bench readiness --data-dir data --out "$out\readiness-30min.json"
+```
+
+对照方案 6.3 的初始目标（文字就绪 P95 ≤15 秒、语义 / 画面就绪 P95 ≤30 秒、热查询 P95 ≤2 秒），把数字和未完成 / 失败数写进本文件"验证记录"，达不到就写未达标，不要只挑好的一次。
 
 ## 交接记录（最新在上）
 
 | 日期 | 分支 | 基于 | 本轮提交 / PR | 内容 | 验证状态 |
 | --- | --- | --- | --- | --- | --- |
-| 2026-10-16 | `feat/lifecycle`（新分支） | `feat/evidence-browse` @ `c35ae9e` | `1c4f0f5`（收藏 / 删除 / 到期 / 配额）+ 测量脚本提交（见 `git log`）；草稿 PR #5（base `feat/evidence-browse`） | 收藏、删除本次记录 / 删除此画面的全部记录（先说明后确认）、30/90 天到期、配额与空间不足暂停（schema v5）；第 7 项测量脚本 | macOS：pytest 132/132（含 2 条真实模型）、pyflakes 无告警、5 处变异检查均被测试发现；Windows 未测，测量脚本未在测试机上运行 |
+| 2026-10-16 | `feat/lifecycle`（新分支） | `feat/evidence-browse` @ `c35ae9e` | `1c4f0f5`（收藏 / 删除 / 到期 / 配额）、`0fd523d`（测量脚本）、`ce66848`（按时间范围删除、数据目录独立配置）；草稿 PR #5（base `feat/evidence-browse`） | 收藏、删除本次记录 / 删除此画面的全部记录（先说明后确认）、30/90 天到期、配额与空间不足暂停（schema v5）；第 7 项测量脚本 | macOS：pytest 137/137（含 2 条真实模型）、pyflakes 无告警、5 处变异检查均被测试发现；Windows 未测，测量脚本未在测试机上运行 |
 | 2026-10-15 | `feat/evidence-browse`（新分支） | `feat/vector-search` @ `40aad90` | `72f36ac`（证据浏览）、`da23ba5`（放宽匹配 + A05–A10）、批量导入提交（见 `git log`）；草稿 PR #4（base `feat/vector-search`） | 证据浏览：同一录制段内前后浏览、缺口/段边界提示、两图并排、切换到同帧的其他出现；"放宽匹配"按钮；A05–A10 自动化验收测试；批量导入（schema v4） | macOS：pytest 105/105（含 2 条真实模型）、pyflakes 无告警；Windows 未测 |
 | 2026-10-14 | `feat/vector-search`（同一分支接力） | `95f4995` | 本轮提交（见 `git log`）；仍在草稿 PR #3 | 页面接入文字/画面模式；采集节奏与向量功能 Windows 实机验证 | Windows 11：pytest 71/71（含真实模型）、环境检查 9/9、实机端到端 35/35、页面 AppTest 16/16 |
 | 2026-10-13 | `feat/vector-search` | `feat/capture-cadence` @ `244c19f` | `fad7ab7`（v3 基础设施）+ 本轮收尾提交（见 `git log`）；草稿 PR #3（base `feat/capture-cadence`） | 向量基础设施、向量 worker、文字/画面检索后端；**页面未接入（WIP）** | macOS 71/71（含 2 条真实模型冒烟）；Windows 未测 |
@@ -47,7 +150,7 @@ main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-c
 
 - 分支 `feat/lifecycle`，基于 `feat/evidence-browse` @ `c35ae9e`，草稿 PR #5（base `feat/evidence-browse`）。远程 10-16 无他人新提交，PR #1–#4 都未合并。
 - **本轮完成**："下一步"第 10 项（收藏 / 删除 / 配额 / 到期），A11、A12 中可在 Mac 上验证的部分。新增 `screenrecall/lifecycle.py`、`tests/test_lifecycle.py`；改了 `db.py`（v5 `favorites`）、`config.py` 与 `config.default.toml`（`[retention]`）、`capture.py`（删除当前记录后不延长不重存、空间不足暂停）、`daemon.py`（维护线程）、`evidence.py`（段结束原因"存储空间不足"）、`app.py`（收藏、两种删除确认、我的收藏、侧栏存储状态、"原图已过期"文案）。
-- **恢复（macOS）**：`git switch feat/lifecycle && git pull --ff-only`，`source .venv/bin/activate`，`python -m pytest tests --basetemp=data/pytest` 期望 132 passed。新增依赖 `psutil==7.1.3`（已写入两个 requirements 文件，旧 venv 需补装）。
+- **恢复（macOS）**：`git switch feat/lifecycle && git pull --ff-only`，`source .venv/bin/activate`，`python -m pytest tests --basetemp=data/pytest` 期望 137 passed。新增依赖 `psutil==7.1.3`（已写入两个 requirements 文件，旧 venv 需补装）。
 - **升级注意**：新代码第一次启动后台会把库迁到 v5；页面遇到旧结构会提示先重启后台。
 - **本轮还完成**：第 7 项的测量脚本 `screenrecall/bench.py`（`tests/test_bench.py` 6 条冒烟）。
 - **下一步**：Mac 上已经没有不依赖 Windows 数据的大项。Windows 上按顺序："待验证"11（收藏/删除/配额实机）→ 12（用 bench 跑第 7 项测量，结果写进"验证记录"并据此冻结预算）→ 第 13 项受控数据采集与标注 → 第 11 项分类（Mac 可做训练与评测，但要先有 13 的标注数据）。
@@ -229,7 +332,7 @@ python -m pytest tests
 8. 放宽匹配：在真实 OCR 结果上试一条因空格或换行没搜到的原串（如错误码被 OCR 拆成两段），点"放宽匹配"后能找到、原图上两行都标出。
 9. A13：模型下载后断网，文字/画面查询仍可用；单屏 100%、125%、150% 缩放下窗口边界与 OCR 高亮对齐。
 10. 批量导入：在浏览器里用"批量导入截图"面板上传一批真实截图（含一张损坏文件），逐项结果正确、后台 OCR 与向量补算完成后可搜到；daemon 正在录制时导入，两边同时写库不报 `database is locked`；后台为旧版本、库仍是 v3 时由页面导入触发升级到 v4。
-11. 收藏 / 删除 / 到期 / 配额（`feat/lifecycle`）：浏览器里收藏、取消收藏、两种删除的确认文案与结果；录制进行中删除当前画面的记录后，后台不报错、画面不变时不重新存入；删除后图片文件确实从 `data/frames` 消失（Windows 上文件被页面或杀毒软件占用时会留下残留，下次后台启动时清除，需确认）；临时把 `quota_gib` 调小（如 0.05）验证按顺序清理、空间不足时暂停采集并在侧栏说明原因、调回后可重新开启；`measure_usage` 在上万张图片下的耗时；把系统时间或测试数据的时间往前调，验证 30/90 天到期。
+11. 收藏 / 删除 / 到期 / 配额（`feat/lifecycle`）：浏览器里收藏、取消收藏、两种删除和"按时间范围删除"（预览数量与实际删除一致、默认保留收藏）的确认文案与结果；录制进行中删除当前画面的记录后，后台不报错、画面不变时不重新存入；删除后图片文件确实从 `data/frames` 消失（Windows 上文件被页面或杀毒软件占用时会留下残留，下次后台启动时清除，需确认）；在独立测试库的 `config.toml` 里把 `quota_gib` 调小（见"Windows 交接步骤"3）验证按顺序清理、空间不足时暂停采集并在侧栏说明原因、调回后可重新开启；`measure_usage` 在上万张图片下的耗时；把系统时间或测试数据的时间往前调，验证 30/90 天到期。
 
 12. 第 7 项资源测量（用 `python -m screenrecall.bench`，在指定测试机上）：
     - 先录一段真实数据（或用第 13 项的受控数据），`python -m screenrecall.bench expand --src data --dst data-bench --frames 2000`；复制数据只用于资源 / 速度测量。
@@ -253,7 +356,6 @@ python -m pytest tests
 - 删除数据库记录不会立即缩小数据库文件（没有开启自动 VACUUM）；配额按实际文件占用判断，"提前清理最旧非收藏记录"通常释放不了多少空间，没有效果时只删一批就停并暂停采集。是否加维护时的 VACUUM 待实机测量后定。
 - 维护每 300 秒执行一次，两次之间靠 256 MiB 预留余量兜底，采集线程写图前不单独检查磁盘；`measure_usage` 每次遍历整个数据目录，大库耗时未测。
 - 用户删除了正在录制的当前画面的记录后，同一画面在变化前不再记录；若用户希望立即重新记下来，需要点"立即补拍"。
-- 按时间范围删除（方案 5.4）只有设计，没有入口。
 - `bench expand` 复制帧共用源帧的录制段 ID，时间整体后移；复制帧的文字与源帧相同，词法候选会成倍增加，这正是压测想要的，但不能用于准确率。`bench mem` 的 RSS 两进程相加会重复计入共享库，合计以 USS 为准（取不到 USS 时会标 null）。
 
 ## 下一步（按依赖排序）
@@ -269,13 +371,15 @@ python -m pytest tests
 7. **两进程合计内存与延迟测量**（需 Windows 测试机）：方案 7.3。**测量脚本已完成**（2026-10-16，`screenrecall/bench.py`）；剩下在测试机上按"待验证"12 运行并记录、冻结预算。复制数据只能用于资源压测，不能用于准确率评估。依赖：6。
 8. ~~证据浏览~~ **已完成**（2026-10-15，`feat/evidence-browse`，Mac 逻辑 + AppTest；Windows 待查看，见"待验证"7）：只在选中出现的录制段内前后浏览，跨缺口和段边界提示，不拼接其他录制段；两图并排不算差异；可切到同帧的另一次出现。
 9. ~~"放宽匹配"按钮与 A05–A13 自动化测试~~ **已完成可在 Mac 上做的部分**（2026-10-15，`feat/evidence-browse`）：放宽按钮 + A05–A10。A11、A12 随第 10 项补；A13 见"待验证"9。
-10. ~~收藏 / 删除 / 配额 / 30·90 天到期~~ **已完成**（2026-10-16，`feat/lifecycle`，Mac 逻辑 + AppTest；Windows 待验证，见"待验证"11）。未做：按时间范围删除的入口（方案 5.4 提到，首期页面只有两种删除）。
+10. ~~收藏 / 删除 / 配额 / 30·90 天到期~~ **已完成**（2026-10-16，`feat/lifecycle`，Mac 逻辑 + AppTest；Windows 待验证，见"待验证"11）。按时间范围删除 10-16 补上（`ce66848`）。
 11. **分类**（Mac 可做训练与评测）：全图向量 + Logistic Regression，对照多数类与进程名规则，按任务/批次分组划分。方案 5.3、7.2。依赖：5 和标注数据（13）。
 12. ~~批量导入~~ **已完成**（2026-10-15，`feat/evidence-browse`；Windows 待验证，见"待验证"10）：PNG/JPEG/WebP，导入批次来源、时间未知标注、批次幂等。方案 6.8。依赖：3。
 13. **受控数据采集与标注、40 条查询真值**（需 Windows 录制）：方案 7.1。依赖：1（采集节奏稳定后再录）。
 14. **五组检索实验、资源与存储测量、报告与演示**：方案 7.2、7.3、8.2。依赖：4、5、11、13。
 
 ## 待团队拍板
+
+0. **按时间范围删除时收藏怎么处理（10-16 我先按保守做法实现，请确认）**：默认保留范围内被收藏的记录；只有勾选"同时删除范围内的收藏"并在预览里看到数量后才删。范围与搜索的日期筛选一致，按记录的首次到最近观察与范围有交集计算。
 
 1. 空输入：现按方案 5.2 提示"请输入要查找的文字"（旧版是展示最近记录）。
 2. ~~删除整幅画面时收藏怎么处理~~ **已定（2026-10-16）**：用户明确选择"删除此画面的全部记录"时，界面说明会删除哪些出现记录及关联收藏，确认后执行；到期或配额触发的自动清理保护收藏；删除单次出现记录时不误删仍被其他记录引用的共享内容。

@@ -13,3 +13,10 @@ def test_data_dir_config_overrides_only_that_data_dir(tmp_path):
     assert t.data_dir == test_dir.resolve()  # [storage] 在这里被忽略，不能把数据目录改走
     assert t.retention.quota_bytes == int(0.05 * 1024**3) and t.retention.image_days == 1
     assert r.retention.quota_bytes == 10 * 1024**3 and r.retention.image_days == 30
+
+
+def test_db_info_cli_reports_version(h, capsys):
+    from screenrecall import db
+
+    assert db.main(["--data-dir", str(h.cfg.data_dir)]) == 0
+    assert f"结构版本 v{db.SCHEMA_VERSION}" in capsys.readouterr().out
