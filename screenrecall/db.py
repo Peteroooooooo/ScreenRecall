@@ -14,7 +14,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -266,6 +266,17 @@ CREATE TABLE IF NOT EXISTS favorites (
 );
 CREATE INDEX IF NOT EXISTS idx_fav_frame ON favorites (frame_id);
 CREATE INDEX IF NOT EXISTS idx_occ_last_seen ON occurrences (last_seen_ms);
+""",
+    # v6 内容分类（方案 6.4）：模型预测的类别，只用于显示和用户主动筛选；人工标注在数据集 CSV 里，不进库
+    6: """
+CREATE TABLE IF NOT EXISTS frame_labels (
+    frame_id        TEXT PRIMARY KEY REFERENCES frames (frame_id),
+    label           TEXT NOT NULL,
+    score           REAL NOT NULL,
+    model_version   TEXT NOT NULL,
+    created_at_ms   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_frame_labels_label ON frame_labels (label);
 """,
 }
 

@@ -21,7 +21,7 @@ import streamlit as st
 from PIL import Image, ImageDraw
 
 from screenrecall import (
-    control, db, evidence, importer, lifecycle, models, retrieval, rules, search, storage, timeutil, winapi,
+    classify, control, db, evidence, importer, lifecycle, models, retrieval, rules, search, storage, timeutil, winapi,
 )
 from screenrecall.config import load_config
 
@@ -219,6 +219,7 @@ st.caption(
 
 with open_db() as conn:
     apps = search.known_apps(conn)
+    content_labels = classify.known_labels(conn)
 
 if st.session_state.get("lifecycle_msg"):
     st.success(st.session_state.pop("lifecycle_msg"))
@@ -367,6 +368,11 @@ with st.form("search_form"):
     chosen_apps = c2.multiselect("应用（可选）", apps)
     case_sensitive = c3.checkbox("区分大小写")
     limit = c4.selectbox("数量", [10, 20, 50], index=0)
+    chosen_labels = st.multiselect(
+        "内容类别（可选，模型预测）", content_labels, key="labels_input",
+        help="默认搜索全部类别；选择后只保留预测为这些类别的画面，尚未分类的画面不在结果中。类别是模型预测，可能出错",
+        disabled=not content_labels, placeholder="还没有分类结果" if not content_labels else "全部类别",
+    )
     submitted = st.form_submit_button("搜索", type="primary", key="search_submit")
 
 if submitted:
@@ -378,7 +384,7 @@ if submitted:
     st.session_state.query = {
         "raw": q,
         "mode": mode,
-        "filters": search.Filters(start_ms, end_ms, tuple(chosen_apps)),
+        "filters": search.Filters(start_ms, end_ms, tuple(chosen_apps), tuple(chosen_labels)),
         "case_sensitive": case_sensitive,
         "limit": limit,
     }
@@ -775,6 +781,12 @@ if query:
             rrf_k=CFG.search.rrf_k, branch_top=CFG.search.branch_top, relaxed=relaxed,
         )
         unknown_time = importer.time_unknown_frames(conn, [r.frame_id for r in resp.results])
+        predicted = {
+            r[0]: (r[1], r[2]) for r in conn.execute(
+                "SELECT frame_id, label, score FROM frame_labels WHERE frame_id IN (SELECT value FROM json_each(?))",
+                (json.dumps([r.frame_id for r in resp.results]),),
+            )
+        }
         fav_frames = {
             r[0] for r in conn.execute(
                 "SELECT DISTINCT frame_id FROM favorites WHERE frame_id IN (SELECT value FROM json_each(?))",
@@ -825,6 +837,8 @@ if query:
                 if r.occurrences_in_filter > 1:
                     c_info.caption(f"筛选范围内出现 {r.occurrences_in_filter} 次，显示最近一次")
                 tags = []
+                lab = predicted.get(r.frame_id)
+                tags.append(f"类别（模型预测）：{md(lab[0])} {lab[1]:.2f}" if lab else "类别：待分类")
                 if r.sources:
                     tags.append("命中分支：" + " + ".join(r.sources))
                 if r.matched_terms:

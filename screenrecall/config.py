@@ -61,6 +61,11 @@ class SearchConfig:
 
 
 @dataclass(frozen=True)
+class ClassifyConfig:
+    model_dir: str = ""  # 训练产物目录（model.npz + card.json）；空表示不做预测，页面显示"待分类"
+
+
+@dataclass(frozen=True)
 class Config:
     data_dir: Path
     capture: CaptureConfig
@@ -70,6 +75,7 @@ class Config:
     index: IndexConfig = IndexConfig()
     search: SearchConfig = SearchConfig()
     retention: RetentionConfig = RetentionConfig()
+    classify: ClassifyConfig = ClassifyConfig()
 
     @property
     def db_path(self) -> Path:
@@ -194,4 +200,5 @@ def load_config(data_dir_override: str | os.PathLike | None = None) -> Config:
     return Config(
         data_dir=data_dir.resolve(), capture=capture, ocr=ocr_cfg, rules=rules,
         models=models, index=index, search=search, retention=retention,
+        classify=ClassifyConfig(model_dir=str(raw.get("classify", {}).get("model_dir", "")).strip()),
     )

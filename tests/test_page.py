@@ -238,3 +238,26 @@ def test_range_delete_preview_then_confirm(page):
     assert not at.exception
     assert "已按范围删除 3 次出现记录" in " ".join(_texts(at, "success"))
     assert not [b for b in at.button if (b.key or "").startswith("open-")]
+
+
+def test_predicted_label_shown_and_filter_is_opt_in(h, monkeypatch):
+    h.show(A)
+    h.start()
+    h.rec.sample(h.conn)
+    h.show(B)
+    h.tick()
+    h.tick()
+    fa, fb = [f["frame_id"] for f in h.frames()]
+    _ocr_all(h, {fa: ["invoice alpha"], fb: ["invoice beta"]})
+    h.conn.execute("INSERT INTO frame_labels VALUES (?, 'chat', 0.91, 'v1', 0)", (fa,))
+    monkeypatch.setenv("SCREENRECALL_DATA_DIR", str(h.cfg.data_dir))
+    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=30)
+    at.run()
+    _search(at, '"invoice"')
+    caps = " ".join(_texts(at, "caption"))
+    assert "类别（模型预测）：chat 0.91" in caps and "类别：待分类" in caps
+    assert {b.key for b in at.button} >= {f"open-{fa}", f"open-{fb}"}  # 默认不按类别过滤
+    at.multiselect(key="labels_input").set_value(["chat"])
+    at.button(key="search_submit").click().run()
+    keys = {b.key for b in at.button}
+    assert f"open-{fa}" in keys and f"open-{fb}" not in keys

@@ -20,7 +20,7 @@ from typing import Callable
 
 from PIL import Image
 
-from . import db, models, storage, vectors
+from . import classify, db, models, storage, vectors
 from .config import Config
 from .timeutil import utc_ms
 
@@ -64,6 +64,7 @@ class EmbedWorker:
         *,
         text_encoder_factory: Callable[[], models.TextEncoder] | None = None,
         image_encoder_factory: Callable[[], models.ImageEncoder] | None = None,
+        classifier=...,
     ):
         self.cfg = cfg
         self.wake = wake
@@ -73,6 +74,12 @@ class EmbedWorker:
         self._image_factory = image_encoder_factory or (lambda: models.StImage(cfg.models.image, cfg.models))
         self._text: models.TextEncoder | None = None
         self._image: models.ImageEncoder | None = None
+        # 内容分类器（可选）：写回全图向量时顺带写预测标签；加载失败只记日志，不影响向量
+        try:
+            self.classifier = classify.load_for(cfg) if classifier is ... else classifier
+        except Exception:
+            log.exception("分类器加载失败，页面将显示待分类")
+            self.classifier = None
 
     @property
     def text_encoder(self) -> models.TextEncoder:
@@ -245,6 +252,9 @@ class EmbedWorker:
                 return
             vectors.put_embedding(conn, target_kind="frame", target_id=job.frame_id, branch="image",
                                   model_id=enc.model_id, preprocess=models.IMAGE_PREPROCESS, vec=vec, now_ms=now)
+            clf = self.classifier
+            if clf is not None and clf.card["feature_model_id"] == enc.model_id:
+                classify.write_prediction(conn, clf, job.frame_id, vec)
             self._done(conn, job, "image_embed_status")
         self.log.info("image_embed done frame=%s ms=%d", job.frame_id, int((time.perf_counter() - t0) * 1000))
 

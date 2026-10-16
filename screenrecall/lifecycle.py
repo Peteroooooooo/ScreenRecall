@@ -302,6 +302,7 @@ def _purge_if_unreferenced(conn: sqlite3.Connection, frame_ids: Iterable[str], r
         )
         conn.execute("DELETE FROM frame_blocks WHERE frame_id = ?", (fid,))
         conn.execute("DELETE FROM embeddings WHERE target_kind = 'frame' AND target_id = ?", (fid,))
+        conn.execute("DELETE FROM frame_labels WHERE frame_id = ?", (fid,))
         res.frames_purged += 1
         if f["image_status"] in ("ok", "missing"):
             res.image_paths.append(f["image_path"])
