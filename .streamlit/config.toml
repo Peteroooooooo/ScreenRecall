@@ -1,0 +1,7 @@
+# 页面只绑定本机（方案 6.3），且不发送使用统计。页面本身没有登录鉴权。
+[server]
+address = "127.0.0.1"
+headless = true
+
+[browser]
+gatherUsageStats = false
