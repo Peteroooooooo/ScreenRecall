@@ -17,7 +17,8 @@
 - P1 资源测量（第 7 项）：**测量脚本已写好**（`python -m screenrecall.bench`，同一分支，2026-10-16），Mac 上只做了冒烟；**还没有任何测试机上的测量数字**，见"待验证"12。
 - P1 按时间范围删除：**已实现**（同一分支 `ce66848`）；数据目录可带自己的 `config.toml`，用于独立测试库。
 - P1 标注 / 划分工具与分类器流程：**代码完成**（同一分支 `94657e1`，数据库 **v6**），只在合成数据上测过流程；**没有真实标注数据，也没有分类实验结果**。
-- P1 其余（受控数据与标注手册、五组检索实验、捕获覆盖实验、编码对照）：代码未完成，见"完成度总表"与"下一步"。
+- P1 五组检索实验：**评测脚本完成**（同一分支 `dc9a355`），替身编码器上测过流程；**没有查询真值，也没有实验结果**。
+- P1 其余（受控数据与标注手册、40 条查询真值、捕获覆盖实验、编码对照、失败待办人工重试）：未完成，见"完成度总表"与"下一步"。
 
 ## 完成度总表（对照 `readable_Proposal.md`，2026-10-16）
 
@@ -41,13 +42,13 @@
 | 失败待办人工重试入口（2.4 "允许重试"） | 自动有界重试已有，**人工重试入口未做** | — | — | — |
 | 标注与分组划分工具（6.1） | 完成（`dataset.py`：导出标注清单、校验、按来源组划分） | 通过（合成数据） | 不涉及 | 未用真实数据跑过 |
 | 受控数据、标注手册、40 条查询真值（6.1） | **未完成**（要团队录制和人工标注；类别表只有示例，未冻结） | — | — | 需要 Windows 录制 |
-| 五组检索实验 Exp 1–5、Hit@5 / MRR@10（6.2） | **未完成** | — | — | 依赖查询真值 |
+| 五组检索实验 Exp 1–5、Hit@5 / MRR@10（6.2） | 评测脚本完成（`evaluate.py`：五组同候选、逐条结果、按场景 / 语言给命中数 / 查询数、查询设计检查） | 通过（替身编码器） | 未在真实模型和真实查询上跑 | **没有查询真值，没有任何检索实验结果** |
 | 分类器：LR + 多数类 / 进程名规则基线、Macro F1、混淆矩阵（6.4），页面显示标签并可筛选 | 流程完成（`classify.py`、数据库 v6 `frame_labels`、页面标签与主动筛选） | 通过（**合成数据，只验证流程**） | 未在真实 CLIP 向量上训练 | **没有真实标注，没有任何分类结果**；页面标签未实机查看 |
 | 报告、Slides、演示视频、运行包（8.3） | 未开始 | — | — | — |
 
 ## Windows 交接步骤（给下一位在 Windows 上接手的同学）
 
-接 **`feat/lifecycle`**，代码提交至少包含 `1c4f0f5`（收藏 / 删除 / 到期 / 配额）、`0fd523d`（测量脚本）、`ce66848`（按时间范围删除、数据目录独立配置）、`94657e1`（标注 / 划分工具、分类器，数据库 v6）和之后的文档提交；以分支最新提交为准，`git log --oneline -5` 应能看到这三个。它依赖 PR #1–#4，全部未合并，不要从 `main` 开始。
+接 **`feat/lifecycle`**，代码提交至少包含 `1c4f0f5`（收藏 / 删除 / 到期 / 配额）、`0fd523d`（测量脚本）、`ce66848`（按时间范围删除、数据目录独立配置）、`94657e1`（标注 / 划分工具、分类器，数据库 v6）、`dc9a355`（检索评测脚本）和之后的文档提交；以分支最新提交为准，`git log --oneline -5` 应能看到这三个。它依赖 PR #1–#4，全部未合并，不要从 `main` 开始。
 
 ### 1. 取代码、装环境
 
@@ -56,10 +57,10 @@ cd <你的 ScreenRecall 目录>
 git fetch origin
 git switch feat/lifecycle            # 本地没有这个分支时：git switch -c feat/lifecycle --track origin/feat/lifecycle
 git pull --ff-only
-git log --oneline -8                 # 确认含 94657e1、ce66848、0fd523d、1c4f0f5
+git log --oneline -8                 # 确认含 dc9a355、94657e1、ce66848、0fd523d、1c4f0f5
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt   # 本轮新增 psutil==7.1.3
 .\.venv\Scripts\python.exe -m screenrecall.models   # 应输出"模型齐全"；否则加 --download（代理与 Xet 问题见"开发环境 → Windows"）
-.\.venv\Scripts\python.exe -m pytest tests          # Mac 上为 147 passed（含 2 条真实模型）；Windows 结果请写进"验证记录"
+.\.venv\Scripts\python.exe -m pytest tests          # Mac 上为 151 passed（含 2 条真实模型）；Windows 结果请写进"验证记录"
 ```
 
 ### 2. 备份正式数据，再升级到 v6
@@ -127,7 +128,7 @@ $out = "results\windows\2026-10-xx-<机器名>"; New-Item -ItemType Directory -F
 
 | 日期 | 分支 | 基于 | 本轮提交 / PR | 内容 | 验证状态 |
 | --- | --- | --- | --- | --- | --- |
-| 2026-10-16 | `feat/lifecycle`（新分支） | `feat/evidence-browse` @ `c35ae9e` | `1c4f0f5`（收藏 / 删除 / 到期 / 配额）、`0fd523d`（测量脚本）、`ce66848`（按时间范围删除、数据目录独立配置）；草稿 PR #5（base `feat/evidence-browse`） | 收藏、删除本次记录 / 删除此画面的全部记录（先说明后确认）、30/90 天到期、配额与空间不足暂停（schema v5）；第 7 项测量脚本 | macOS：pytest 147/147（含 2 条真实模型）、pyflakes 无告警、5 处变异检查均被测试发现；Windows 未测，测量脚本未在测试机上运行 |
+| 2026-10-16 | `feat/lifecycle`（新分支） | `feat/evidence-browse` @ `c35ae9e` | `1c4f0f5`（收藏 / 删除 / 到期 / 配额）、`0fd523d`（测量脚本）、`ce66848`（按时间范围删除、数据目录独立配置）；草稿 PR #5（base `feat/evidence-browse`） | 收藏、删除本次记录 / 删除此画面的全部记录（先说明后确认）、30/90 天到期、配额与空间不足暂停（schema v5）；第 7 项测量脚本 | macOS：pytest 151/151（含 2 条真实模型）、pyflakes 无告警、5 处变异检查均被测试发现；Windows 未测，测量脚本未在测试机上运行 |
 | 2026-10-15 | `feat/evidence-browse`（新分支） | `feat/vector-search` @ `40aad90` | `72f36ac`（证据浏览）、`da23ba5`（放宽匹配 + A05–A10）、批量导入提交（见 `git log`）；草稿 PR #4（base `feat/vector-search`） | 证据浏览：同一录制段内前后浏览、缺口/段边界提示、两图并排、切换到同帧的其他出现；"放宽匹配"按钮；A05–A10 自动化验收测试；批量导入（schema v4） | macOS：pytest 105/105（含 2 条真实模型）、pyflakes 无告警；Windows 未测 |
 | 2026-10-14 | `feat/vector-search`（同一分支接力） | `95f4995` | 本轮提交（见 `git log`）；仍在草稿 PR #3 | 页面接入文字/画面模式；采集节奏与向量功能 Windows 实机验证 | Windows 11：pytest 71/71（含真实模型）、环境检查 9/9、实机端到端 35/35、页面 AppTest 16/16 |
 | 2026-10-13 | `feat/vector-search` | `feat/capture-cadence` @ `244c19f` | `fad7ab7`（v3 基础设施）+ 本轮收尾提交（见 `git log`）；草稿 PR #3（base `feat/capture-cadence`） | 向量基础设施、向量 worker、文字/画面检索后端；**页面未接入（WIP）** | macOS 71/71（含 2 条真实模型冒烟）；Windows 未测 |
@@ -153,7 +154,7 @@ main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-c
 
 - 分支 `feat/lifecycle`，基于 `feat/evidence-browse` @ `c35ae9e`，草稿 PR #5（base `feat/evidence-browse`）。远程 10-16 无他人新提交，PR #1–#4 都未合并。
 - **本轮完成**："下一步"第 10 项（收藏 / 删除 / 配额 / 到期），A11、A12 中可在 Mac 上验证的部分。新增 `screenrecall/lifecycle.py`、`tests/test_lifecycle.py`；改了 `db.py`（v5 `favorites`）、`config.py` 与 `config.default.toml`（`[retention]`）、`capture.py`（删除当前记录后不延长不重存、空间不足暂停）、`daemon.py`（维护线程）、`evidence.py`（段结束原因"存储空间不足"）、`app.py`（收藏、两种删除确认、我的收藏、侧栏存储状态、"原图已过期"文案）。
-- **恢复（macOS）**：`git switch feat/lifecycle && git pull --ff-only`，`source .venv/bin/activate`，`python -m pytest tests --basetemp=data/pytest` 期望 147 passed。新增依赖 `psutil==7.1.3`（已写入两个 requirements 文件，旧 venv 需补装）。
+- **恢复（macOS）**：`git switch feat/lifecycle && git pull --ff-only`，`source .venv/bin/activate`，`python -m pytest tests --basetemp=data/pytest` 期望 151 passed。新增依赖 `psutil==7.1.3`（已写入两个 requirements 文件，旧 venv 需补装）。
 - **升级注意**：新代码第一次启动后台会把库迁到 v5；页面遇到旧结构会提示先重启后台。
 - **本轮还完成**：第 7 项的测量脚本 `screenrecall/bench.py`（`tests/test_bench.py` 6 条冒烟）。
 - **下一步**：Mac 上已经没有不依赖 Windows 数据的大项。Windows 上按顺序："待验证"11（收藏/删除/配额实机）→ 12（用 bench 跑第 7 项测量，结果写进"验证记录"并据此冻结预算）→ 第 13 项受控数据采集与标注 → 第 11 项分类（Mac 可做训练与评测，但要先有 13 的标注数据）。
@@ -322,6 +323,7 @@ python -m pytest tests
   - 变异检查：去掉引用检查、去掉到期时的收藏保护、去掉版本号 +1、去掉删除后的修订号 +1、去掉"删记录无效就停"，每一处都有测试变红；检查后代码已恢复。
 
 - 标注 / 划分 / 分类流程，**2026-10-16，macOS**：`tests/test_classify.py` 9 条 + 页面 1 条，**全部是合成数据**（纯色加噪声的假图、替身编码器的平均颜色向量，类别天然可分），只证明流程：标注校验（未知类别、缺复核、复核改动无理由）、同任务与同文字画面强制同组、整组同去同留、缺类与组数提醒、比例必须显式给出；超参数只在 val 上选、test 有分类器与两个基线、零分母记 0、无样本类别不进分母；模型存取后预测一致；预测写库、类别筛选只在主动选择时生效、删除画面时标签一起删；向量 worker 只在特征模型一致时写预测；标注在划分后被改动时拒绝训练。页面：卡片显示"类别（模型预测）"或"待分类"，筛选默认关闭。**没有任何真实分类结果。**
+- 检索评测脚本，**2026-10-16，macOS**：`tests/test_evaluate.py` 4 条，替身编码器上验证：Hit@5 / MRR@10 定义（第 6 名不算 Hit@5、第 11 名 MRR 为 0）；五组实验共用候选；只有引号的查询五组走同一产品路径；无命中、引号硬过滤为空、模型不可用的查询都保留并计 0，分母不变；按 split / 场景 / 语言汇总；查询设计检查（40 条、每侧每场景 5 条、中英各 20、无答案提示）。**没有任何实验结果。**
 - 测量脚本，**2026-10-16，macOS**：`tests/test_bench.py` 6 条——最近秩百分位；`expand` 扩到 20 帧后每帧有独立出现、OCR、FTS、文本块与带噪声的全图向量，图片文件齐全，源库不变，目标非空时拒绝；`bench_query` 分开统计冷 / 热、编码 / 读库 + 排序；`readiness` 计入未完成待办；`mem` 能按命令行找到进程并采样 RSS（沙箱里取不到 USS 时只报 RSS）；命令行 `readiness` 可运行。另在空库上用真实 MiniLM 和多语言 CLIP 跑通了 `bench query`。**这些只证明脚本能跑，不是测量结果。**
 
 ### 待验证（需要 Windows 实机）
@@ -345,6 +347,7 @@ python -m pytest tests
     - 实时录制 30 分钟后 `bench readiness --data-dir data`，对照方案 7.3（文字就绪 P95 ≤15 秒，语义 / 画面就绪 P95 ≤30 秒），未完成与失败数一并报告。
 
 13. 分类（`feat/lifecycle` @ `94657e1`）：受控数据标注完成后，按 `datasets/README.md` 跑 export → check → split → train，报告与模型放 `results/classifier/<名称>/`；然后在 `config.local.toml` 配 `[classify] model_dir`，重启后台，检查新画面自动得到标签、页面卡片显示"类别（模型预测）"、类别筛选只在主动选择时生效。
+14. 五组检索实验（`dc9a355`）：查询真值冻结后按 `datasets/README.md` 跑 dev、再只跑一次 blind，结果放 `results/retrieval/<日期>-<split>/`。实验只读数据库，可以把录好的 `data\` 拷到 Mac 上跑。
 
 ## 已知问题
 
@@ -381,7 +384,7 @@ python -m pytest tests
 11. **分类**：~~训练与评测流程~~ **代码完成**（2026-10-16，`94657e1`，合成数据流程测试）：标注清单导出与校验、按来源组划分、LR + 两个基线、Macro F1 / 逐类 / 混淆矩阵、预测写库与页面筛选。**剩下**：真实标注（13）后训练、写报告；标注手册与类别表冻结。依赖：13。
 12. ~~批量导入~~ **已完成**（2026-10-15，`feat/evidence-browse`；Windows 待验证，见"待验证"10）：PNG/JPEG/WebP，导入批次来源、时间未知标注、批次幂等。方案 6.8。依赖：3。
 13. **受控数据采集与标注、40 条查询真值**（需 Windows 录制）：方案 7.1。依赖：1（采集节奏稳定后再录）。
-14. **五组检索实验、资源与存储测量、报告与演示**：方案 7.2、7.3、8.2。依赖：4、5、11、13。
+14. **五组检索实验、资源与存储测量、报告与演示**：方案 6.2、6.3、8.3。**评测脚本已完成**（`dc9a355`，`python -m screenrecall.evaluate`，用法见 `datasets/README.md`）、测量脚本已完成（`0fd523d`）；剩下：40 条查询真值（依赖 13）→ dev 调规则 → 冻结后只跑一次 blind → 报告、Slides、视频。依赖：13。
 
 ## 待团队拍板
 
