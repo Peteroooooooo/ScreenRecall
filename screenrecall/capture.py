@@ -129,6 +129,8 @@ class Recorder:
         self._snapshots: list[int | None] = []  # 待处理补拍：页面请求序号，或 None（快捷键）
         self._last_snapshot_seq = 0
         self._next_due = 0.0
+        self.suppressed: tuple | None = None  # (occ_ctx, digest)：用户刚删除的当前画面，画面变化前不再记录
+        self.storage_block: str | None = None  # 空间不足时由维护线程设置；期间不开始录制、不写新图片
 
     # ================= 控制线程调用 =================
 
@@ -142,7 +144,10 @@ class Recorder:
             if desired == "recording":
                 info = self._resolve_target(ctrl)
                 denied = rules.check(info.process, info.title, self.cfg.rules) if info else None
-                if info is None:
+                if self.storage_block:
+                    end_reason = "storage_full" if self.recording else None
+                    actual, reason = "paused", self.storage_block
+                elif info is None:
                     end_reason = "target_invalid" if self.recording else None
                     actual, reason = "paused", "目标窗口不存在或已变化，请重新选择"
                 elif denied:
@@ -211,6 +216,28 @@ class Recorder:
                 self._last_snapshot_seq = seq
             self._snapshots.append(seq)
         self.tick.set()
+
+    def storage_pause(self, conn: sqlite3.Connection, reason: str) -> None:
+        """维护线程发现空间不足：结束录制段并暂停，之后的开启请求也被拒绝，直到 storage_clear。"""
+        with self.lock:
+            first = self.storage_block is None
+            self.storage_block = reason
+            if self.recording:
+                with db.write_txn(conn):
+                    self._sql_end_session(conn, utc_ms(), "storage_full")
+                    control.set_state(conn, "paused", reason)
+                self.epoch += 1
+                self._mem_end_session()
+                self.held = None
+        if first:
+            self.log.warning(reason)
+        self.tick.set()
+
+    def storage_clear(self) -> None:
+        with self.lock:
+            was, self.storage_block = self.storage_block, None
+        if was:
+            self.log.info("存储空间已恢复，可以重新开启录制")
 
     def shutdown(self, conn: sqlite3.Connection) -> None:
         with self.lock:
@@ -379,7 +406,12 @@ class Recorder:
         return _Obs(info, cap, digest, reuse_ctx, reuse_ctx + (info.title,), observed_ms), None
 
     def _classify(self, obs: _Obs):
-        """返回 'same'（与当前出现的内容一致）、_Recent（可精确复用的缓存内容）或 None（新内容）。"""
+        """返回 'same'（与当前出现的内容一致）、'suppressed'（刚被用户删除、画面未变）、
+        _Recent（可精确复用的缓存内容）或 None（新内容）。"""
+        if self.suppressed is not None:
+            if self.suppressed == (obs.occ_ctx, obs.digest):
+                return "suppressed"
+            self.suppressed = None
         cur = self.current
         if cur and cur.occ_ctx == obs.occ_ctx and cur.digest == obs.digest and cur.bgr == obs.cap.bgr:
             return "same"
@@ -409,6 +441,9 @@ class Recorder:
             kind = self._classify(obs)
 
         w, h = obs.cap.width, obs.cap.height
+        if kind == "suppressed":
+            self.cadence.observe(now, obs.reuse_ctx, obs.cap.bgr, w, h, changed=False)
+            return
         if kind == "same":
             self.cadence.observe(now, obs.reuse_ctx, obs.cap.bgr, w, h, changed=False)
             self._commit_extend(conn, epoch, self.current, obs.observed_ms)
@@ -442,6 +477,8 @@ class Recorder:
                 result = f"补拍没有执行：{why}"
             else:
                 kind = self._classify(obs)
+                if kind == "suppressed":
+                    kind, self.suppressed = None, None  # 手动补拍是用户明确要求，按新内容保存
                 if kind == "same":
                     kind = _Recent(self.current.frame_id, self.current.bgr)
                 if kind is not None:
@@ -485,13 +522,22 @@ class Recorder:
             if cur is None or epoch != self.epoch or self.current is not cur:
                 return
             with db.write_txn(conn):
-                conn.execute(
+                extended = conn.execute(
                     "UPDATE occurrences SET last_seen_ms = MAX(last_seen_ms, ?), observations = observations + 1 "
                     "WHERE occurrence_id = ?",
                     (observed_ms, cur.occurrence_id),
-                )
-                self._sql_close_gap(conn, observed_ms)
-                control.set_capture_note(conn, None, observed_ms)
+                ).rowcount
+                if extended:
+                    self._sql_close_gap(conn, observed_ms)
+                    control.set_capture_note(conn, None, observed_ms)
+            if not extended:
+                # 用户刚删除了这次记录：不再延长，也不在画面不变时立刻重新存入（画面变化或手动补拍后恢复）
+                self.current = None
+                for k in [k for k, v in self.recent.items() if v.frame_id == cur.frame_id]:
+                    self.recent.pop(k, None)
+                self.suppressed = (cur.occ_ctx, cur.digest)
+                self.log.info("occurrence=%s 已被删除，相同画面不再记录，直到画面变化", cur.occurrence_id)
+                return
             self._mem_gap_closed()
 
     def _commit_reuse(self, conn, epoch: int, obs: _Obs, hit: _Recent, source: str = "live") -> bool:

@@ -35,6 +35,7 @@ SESSION_END_LABELS = {
     "target_invalid": "目标窗口失效",
     "target_excluded": "目标窗口命中排除规则",
     "window_gone": "目标窗口已关闭",
+    "storage_full": "存储空间不足，已暂停",
     "daemon_stop": "后台退出",
     "import": "导入批次",
 }

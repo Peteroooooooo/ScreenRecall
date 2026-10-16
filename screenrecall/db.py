@@ -14,7 +14,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -255,6 +255,17 @@ CREATE TABLE IF NOT EXISTS import_items (
     updated_at_ms   INTEGER NOT NULL,
     PRIMARY KEY (batch_id, seq)
 );
+""",
+    # v5 收藏（方案 5.2、5.4）：收藏挂在某一次出现上，frame_id 冗余存放便于按画面判断是否受保护。
+    # 外键使"有收藏的出现记录"不能被直接删除，删除流程必须先显式处理收藏。
+    5: """
+CREATE TABLE IF NOT EXISTS favorites (
+    occurrence_id   TEXT PRIMARY KEY REFERENCES occurrences (occurrence_id),
+    frame_id        TEXT NOT NULL REFERENCES frames (frame_id),
+    created_at_ms   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fav_frame ON favorites (frame_id);
+CREATE INDEX IF NOT EXISTS idx_occ_last_seen ON occurrences (last_seen_ms);
 """,
 }
 

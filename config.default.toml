@@ -58,3 +58,12 @@ embed_retry_backoff_seconds = 10.0
 [search]
 rrf_k = 60                  # 固定等权 RRF（方案 5.3）
 branch_top = 50             # 每个分支先合并到帧再取 Top-50
+
+[retention]
+# 保留周期与容量上限（方案 5.2）。收藏不随到期或配额清理；配额优先于保留天数
+image_days = 30             # 普通原图供近 30 天出现记录使用
+record_days = 90            # 普通出现记录、OCR 与特征保留 90 天
+quota_gib = 10              # 运行数据配额：图片、数据库（含 WAL）、任务数据、日志与缓存
+min_free_gib = 2            # 磁盘最低剩余空间
+reserve_mib = 256           # 写入前预留余量，初值
+maintenance_interval_seconds = 300

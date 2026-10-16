@@ -160,3 +160,58 @@ def test_imported_screenshot_shows_time_unknown_and_batch_order(h, monkeypatch):
     text = " ".join(m.value for m in at.markdown) + " ".join(_texts(at, "caption"))
     assert "捕获时间未知" in text and "导入批次" in text and "不是连续的屏幕历史" in text
     assert "第 1 / 2 张" in text
+
+
+# ---------- 收藏与删除（方案 5.2、5.4） ----------
+
+def test_favorite_then_delete_frame_requires_confirmation_naming_favorites(page):
+    at, (fa, fb, fc) = page
+    at.button(key=f"open-{fb}").click().run()
+    occ = at.session_state.selected["occurrence_id"]
+    at.button(key=f"fav-{occ}").click().run()
+    assert not at.exception
+    assert [b for b in at.button if b.key == f"unfav-{occ}"]
+    assert "★ 已收藏" in " ".join(_texts(at, "caption"))
+
+    at.button(key=f"del-frame-{fb}").click().run()
+    assert not at.exception
+    err = " ".join(_texts(at, "error"))
+    assert "全部 1 次出现记录" in err and "1 个收藏" in err
+    assert at.session_state.selected["frame_id"] == fb  # 只是展示影响范围，尚未删除
+    at.button(key=f"yes-confirm-frame-{fb}").click().run()
+    assert not at.exception
+    assert "selected" not in at.session_state
+    assert "已删除这幅画面" in " ".join(_texts(at, "success"))
+    assert not [b for b in at.button if b.key == f"open-{fb}"]
+    assert [b for b in at.button if b.key == f"open-{fa}"]
+
+
+def test_delete_occurrence_cancel_keeps_record(page):
+    at, (fa, fb, fc) = page
+    at.button(key=f"open-{fa}").click().run()
+    occ = at.session_state.selected["occurrence_id"]
+    at.button(key=f"del-occ-{occ}").click().run()
+    assert "唯一一次出现" in " ".join(_texts(at, "warning"))
+    at.button(key=f"no-confirm-occ-{occ}").click().run()
+    assert not at.exception
+    assert at.session_state.selected["frame_id"] == fa
+    assert [b for b in at.button if b.key == f"open-{fa}"]
+
+
+def test_favorites_panel_opens_detail_without_a_query(h, monkeypatch):
+    from screenrecall import lifecycle
+
+    h.show(A)
+    h.start()
+    h.rec.sample(h.conn)
+    fid = h.frames()[0]["frame_id"]
+    _ocr_all(h, {fid: ["kept receipt"]})
+    occ = h.occurrences()[0]["occurrence_id"]
+    lifecycle.add_favorite(h.conn, occ)
+    monkeypatch.setenv("SCREENRECALL_DATA_DIR", str(h.cfg.data_dir))
+    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=30)
+    at.run()
+    at.button(key=f"favopen-{occ}").click().run()
+    assert not at.exception
+    assert at.session_state.selected["occurrence_id"] == occ
+    assert [b for b in at.button if b.key == f"unfav-{occ}"]
