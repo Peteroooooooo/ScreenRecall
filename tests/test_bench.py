@@ -76,12 +76,18 @@ def test_mem_samples_process_tree():
     psutil = pytest.importorskip("psutil")
     child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)  # bench-mem-probe"])
     try:
+        # Windows venv 的 python.exe 是启动器 shim，会再 spawn 真正的解释器；两者命令行都含标记，
+        # 都该被采样（正是 bench 要统计整棵进程树的本意）。只断言根进程 child.pid 在其中。
         groups = bench.find_processes(psutil, ["bench-mem-probe"])
-        assert [x.pid for x in groups["bench-mem-probe"]] == [child.pid]
+        pids = {x.pid for x in groups["bench-mem-probe"]}
+        assert child.pid in pids
+        child_proc = psutil.Process(child.pid)
+        expected = {child.pid} | {c.pid for c in child_proc.children(recursive=True)}
+        assert pids <= expected  # 只匹配到探针进程树，没有误伤无关进程
         out = bench.sample_memory(psutil, groups, duration_s=0.2, interval_s=0.1)
         g = out["groups"]["bench-mem-probe"]
         assert g["rss_mib"]["max"] > 0 and out["groups"]["total"]["rss_mib"]["n"] >= 1
-        assert out["pids"]["bench-mem-probe"] == [child.pid]
+        assert child.pid in out["pids"]["bench-mem-probe"]
     finally:
         child.kill()
         child.wait()
