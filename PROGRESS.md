@@ -14,13 +14,14 @@
 - P1 "放宽匹配"按钮与 A05–A10 自动化验收：**已实现**（同一分支，2026-10-15）。Mac 上 13 条新测试通过（A05–A10 共 12 条 + 页面 1 条）；A11、A12 等第 10 项，A13 需 Windows 实机。
 - P1 批量导入：**已实现**（同一分支，2026-10-15）。PNG/JPEG/WebP 逐文件校验、时间未知标注、批次幂等与失败重试、页面"批量导入截图"面板与命令行；数据库升到 **v4**。Mac 上 9 条新测试通过；Windows 待实机。
 - P1 收藏 / 删除 / 到期 / 配额：**已实现**（分支 `feat/lifecycle`，2026-10-16，数据库 **v5**）。规则按主方案 5.2、5.4 + 团队 10-16 决定（见"待团队拍板"2）。Mac 上新增 21 条测试通过（含 A11、A12 可在 Mac 验证的部分、删除中后台写回、共享内容引用、缓存刷新）；Windows 待实机。
-- P1 其余（资源测量、分类、评测）：未开始，见"下一步"。
+- P1 资源测量（第 7 项）：**测量脚本已写好**（`python -m screenrecall.bench`，同一分支，2026-10-16），Mac 上只做了冒烟；**还没有任何测试机上的测量数字**，见"待验证"12。
+- P1 其余（分类、评测）：未开始，见"下一步"。
 
 ## 交接记录（最新在上）
 
 | 日期 | 分支 | 基于 | 本轮提交 / PR | 内容 | 验证状态 |
 | --- | --- | --- | --- | --- | --- |
-| 2026-10-16 | `feat/lifecycle`（新分支） | `feat/evidence-browse` @ `c35ae9e` | 本轮提交（见 `git log`）；草稿 PR #5（base `feat/evidence-browse`） | 收藏、删除本次记录 / 删除此画面的全部记录（先说明后确认）、30/90 天到期、配额与空间不足暂停（schema v5） | macOS：pytest 126/126（含 2 条真实模型）、pyflakes 无告警、5 处变异检查均被测试发现；Windows 未测 |
+| 2026-10-16 | `feat/lifecycle`（新分支） | `feat/evidence-browse` @ `c35ae9e` | `1c4f0f5`（收藏 / 删除 / 到期 / 配额）+ 测量脚本提交（见 `git log`）；草稿 PR #5（base `feat/evidence-browse`） | 收藏、删除本次记录 / 删除此画面的全部记录（先说明后确认）、30/90 天到期、配额与空间不足暂停（schema v5）；第 7 项测量脚本 | macOS：pytest 132/132（含 2 条真实模型）、pyflakes 无告警、5 处变异检查均被测试发现；Windows 未测，测量脚本未在测试机上运行 |
 | 2026-10-15 | `feat/evidence-browse`（新分支） | `feat/vector-search` @ `40aad90` | `72f36ac`（证据浏览）、`da23ba5`（放宽匹配 + A05–A10）、批量导入提交（见 `git log`）；草稿 PR #4（base `feat/vector-search`） | 证据浏览：同一录制段内前后浏览、缺口/段边界提示、两图并排、切换到同帧的其他出现；"放宽匹配"按钮；A05–A10 自动化验收测试；批量导入（schema v4） | macOS：pytest 105/105（含 2 条真实模型）、pyflakes 无告警；Windows 未测 |
 | 2026-10-14 | `feat/vector-search`（同一分支接力） | `95f4995` | 本轮提交（见 `git log`）；仍在草稿 PR #3 | 页面接入文字/画面模式；采集节奏与向量功能 Windows 实机验证 | Windows 11：pytest 71/71（含真实模型）、环境检查 9/9、实机端到端 35/35、页面 AppTest 16/16 |
 | 2026-10-13 | `feat/vector-search` | `feat/capture-cadence` @ `244c19f` | `fad7ab7`（v3 基础设施）+ 本轮收尾提交（见 `git log`）；草稿 PR #3（base `feat/capture-cadence`） | 向量基础设施、向量 worker、文字/画面检索后端；**页面未接入（WIP）** | macOS 71/71（含 2 条真实模型冒烟）；Windows 未测 |
@@ -46,9 +47,10 @@ main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-c
 
 - 分支 `feat/lifecycle`，基于 `feat/evidence-browse` @ `c35ae9e`，草稿 PR #5（base `feat/evidence-browse`）。远程 10-16 无他人新提交，PR #1–#4 都未合并。
 - **本轮完成**："下一步"第 10 项（收藏 / 删除 / 配额 / 到期），A11、A12 中可在 Mac 上验证的部分。新增 `screenrecall/lifecycle.py`、`tests/test_lifecycle.py`；改了 `db.py`（v5 `favorites`）、`config.py` 与 `config.default.toml`（`[retention]`）、`capture.py`（删除当前记录后不延长不重存、空间不足暂停）、`daemon.py`（维护线程）、`evidence.py`（段结束原因"存储空间不足"）、`app.py`（收藏、两种删除确认、我的收藏、侧栏存储状态、"原图已过期"文案）。
-- **恢复（macOS）**：`git switch feat/lifecycle && git pull --ff-only`，`source .venv/bin/activate`，`python -m pytest tests --basetemp=data/pytest` 期望 126 passed。
+- **恢复（macOS）**：`git switch feat/lifecycle && git pull --ff-only`，`source .venv/bin/activate`，`python -m pytest tests --basetemp=data/pytest` 期望 132 passed。新增依赖 `psutil==7.1.3`（已写入两个 requirements 文件，旧 venv 需补装）。
 - **升级注意**：新代码第一次启动后台会把库迁到 v5；页面遇到旧结构会提示先重启后台。
-- **下一步**：Mac 上按依赖可做的是第 7 项的**测量脚本**（真实子进程内存、扩库到 1,500–2,000 帧测查询 P95，脚本在 Mac 上只做语法与小库冒烟，数字必须在 Windows 测试机上测）；第 11 项分类依赖第 13 项标注数据；第 13 项需要 Windows 录制。Windows 上优先跑"待验证"7–11。
+- **本轮还完成**：第 7 项的测量脚本 `screenrecall/bench.py`（`tests/test_bench.py` 6 条冒烟）。
+- **下一步**：Mac 上已经没有不依赖 Windows 数据的大项。Windows 上按顺序："待验证"11（收藏/删除/配额实机）→ 12（用 bench 跑第 7 项测量，结果写进"验证记录"并据此冻结预算）→ 第 13 项受控数据采集与标注 → 第 11 项分类（Mac 可做训练与评测，但要先有 13 的标注数据）。
 
 ## 上一轮恢复记录（2026-10-15，`feat/evidence-browse`）
 
@@ -213,6 +215,8 @@ python -m pytest tests
   - `test_page.py` 新增 3 条 AppTest：收藏后"删除此画面的全部记录"写明"全部 1 次出现记录"和"1 个收藏"，确认前不删、确认后结果消失；"删除本次记录"取消后不删；"我的收藏"在没有搜索时也能打开详情。
   - 变异检查：去掉引用检查、去掉到期时的收藏保护、去掉版本号 +1、去掉删除后的修订号 +1、去掉"删记录无效就停"，每一处都有测试变红；检查后代码已恢复。
 
+- 测量脚本，**2026-10-16，macOS**：`tests/test_bench.py` 6 条——最近秩百分位；`expand` 扩到 20 帧后每帧有独立出现、OCR、FTS、文本块与带噪声的全图向量，图片文件齐全，源库不变，目标非空时拒绝；`bench_query` 分开统计冷 / 热、编码 / 读库 + 排序；`readiness` 计入未完成待办；`mem` 能按命令行找到进程并采样 RSS（沙箱里取不到 USS 时只报 RSS）；命令行 `readiness` 可运行。另在空库上用真实 MiniLM 和多语言 CLIP 跑通了 `bench query`。**这些只证明脚本能跑，不是测量结果。**
+
 ### 待验证（需要 Windows 实机）
 
 1. 排错模式满 30 分钟自动退出：可在 `config.local.toml` 把 `debug_max_minutes` 改成 1 来验证。积压 ≥ 50 时提前退出。
@@ -226,6 +230,12 @@ python -m pytest tests
 9. A13：模型下载后断网，文字/画面查询仍可用；单屏 100%、125%、150% 缩放下窗口边界与 OCR 高亮对齐。
 10. 批量导入：在浏览器里用"批量导入截图"面板上传一批真实截图（含一张损坏文件），逐项结果正确、后台 OCR 与向量补算完成后可搜到；daemon 正在录制时导入，两边同时写库不报 `database is locked`；后台为旧版本、库仍是 v3 时由页面导入触发升级到 v4。
 11. 收藏 / 删除 / 到期 / 配额（`feat/lifecycle`）：浏览器里收藏、取消收藏、两种删除的确认文案与结果；录制进行中删除当前画面的记录后，后台不报错、画面不变时不重新存入；删除后图片文件确实从 `data/frames` 消失（Windows 上文件被页面或杀毒软件占用时会留下残留，下次后台启动时清除，需确认）；临时把 `quota_gib` 调小（如 0.05）验证按顺序清理、空间不足时暂停采集并在侧栏说明原因、调回后可重新开启；`measure_usage` 在上万张图片下的耗时；把系统时间或测试数据的时间往前调，验证 30/90 天到期。
+
+12. 第 7 项资源测量（用 `python -m screenrecall.bench`，在指定测试机上）：
+    - 先录一段真实数据（或用第 13 项的受控数据），`python -m screenrecall.bench expand --src data --dst data-bench --frames 2000`；复制数据只用于资源 / 速度测量。
+    - 后台空闲与忙碌（正在录制 + OCR 积压）两种情况下各跑 `bench query --data-dir data-bench --mode text` 和 `--mode image`，记录冷 / 热 P95、编码与读库 + 排序分项。
+    - 同时启动后台与页面（各自做过一次语义查询），`bench mem --duration 600` 记录两进程合计平均 / P95 CPU、峰值与常驻内存；注意 Windows venv 的 `python.exe` 是启动器，脚本已带上子进程。
+    - 实时录制 30 分钟后 `bench readiness --data-dir data`，对照方案 7.3（文字就绪 P95 ≤15 秒，语义 / 画面就绪 P95 ≤30 秒），未完成与失败数一并报告。
 
 ## 已知问题
 
@@ -244,6 +254,7 @@ python -m pytest tests
 - 维护每 300 秒执行一次，两次之间靠 256 MiB 预留余量兜底，采集线程写图前不单独检查磁盘；`measure_usage` 每次遍历整个数据目录，大库耗时未测。
 - 用户删除了正在录制的当前画面的记录后，同一画面在变化前不再记录；若用户希望立即重新记下来，需要点"立即补拍"。
 - 按时间范围删除（方案 5.4）只有设计，没有入口。
+- `bench expand` 复制帧共用源帧的录制段 ID，时间整体后移；复制帧的文字与源帧相同，词法候选会成倍增加，这正是压测想要的，但不能用于准确率。`bench mem` 的 RSS 两进程相加会重复计入共享库，合计以 USS 为准（取不到 USS 时会标 null）。
 
 ## 下一步（按依赖排序）
 
@@ -255,7 +266,7 @@ python -m pytest tests
 4. ~~文本语义分支~~ **后端已完成**（Mac 可做）：MiniLM（paraphrase-multilingual-MiniLM-L12-v2）按真实分词器分块（≤128 token，含特殊 token）、帧级取最高块分数、Top-50 帧；文字模式两路 RRF（k=60，同分按最新时间再帧 ID）。方案 5.1–5.3。依赖：3。
 5. ~~全图分支与画面模式~~ **后端已完成**（Mac 可做）：clip-ViT-B-32 图像向量（保持比例补边）、clip-ViT-B-32-multilingual-v1 文本查询；只检索原图可用的帧。依赖：3。
 6. ~~页面查询缓存与模式切换~~ **已完成**（2026-10-14，Windows 实机 + AppTest）。
-7. **两进程合计内存与延迟测量**（需 Windows 测试机）——可与第 9 项并行：方案 7.3。先写一个可提交的测量脚本，统计后台和页面的真实 Python 子进程，再用复制数据扩大到 1,500–2,000 帧测查询 P95。复制数据只能用于资源压测，不能用于准确率评估。依赖：6。
+7. **两进程合计内存与延迟测量**（需 Windows 测试机）：方案 7.3。**测量脚本已完成**（2026-10-16，`screenrecall/bench.py`）；剩下在测试机上按"待验证"12 运行并记录、冻结预算。复制数据只能用于资源压测，不能用于准确率评估。依赖：6。
 8. ~~证据浏览~~ **已完成**（2026-10-15，`feat/evidence-browse`，Mac 逻辑 + AppTest；Windows 待查看，见"待验证"7）：只在选中出现的录制段内前后浏览，跨缺口和段边界提示，不拼接其他录制段；两图并排不算差异；可切到同帧的另一次出现。
 9. ~~"放宽匹配"按钮与 A05–A13 自动化测试~~ **已完成可在 Mac 上做的部分**（2026-10-15，`feat/evidence-browse`）：放宽按钮 + A05–A10。A11、A12 随第 10 项补；A13 见"待验证"9。
 10. ~~收藏 / 删除 / 配额 / 30·90 天到期~~ **已完成**（2026-10-16，`feat/lifecycle`，Mac 逻辑 + AppTest；Windows 待验证，见"待验证"11）。未做：按时间范围删除的入口（方案 5.4 提到，首期页面只有两种删除）。

@@ -11,3 +11,5 @@ transformers==5.19.0
 sentence-transformers==6.1.0
 huggingface-hub==1.33.0
 scikit-learn==1.9.1
+# P1 资源测量（python -m screenrecall.bench mem）
+psutil==7.1.3
