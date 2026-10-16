@@ -67,3 +67,8 @@ quota_gib = 10              # 运行数据配额：图片、数据库（含 WAL�
 min_free_gib = 2            # 磁盘最低剩余空间
 reserve_mib = 256           # 写入前预留余量，初值
 maintenance_interval_seconds = 300
+
+[classify]
+# 内容分类器训练产物目录（python -m screenrecall.classify train 的 --out），相对路径以仓库根目录为基准。
+# 留空则不预测；特征模型与 [models] 的全图模型不一致时不会加载
+model_dir = ""

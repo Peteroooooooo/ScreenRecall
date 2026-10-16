@@ -21,7 +21,7 @@ import streamlit as st
 from PIL import Image, ImageDraw
 
 from screenrecall import (
-    control, db, evidence, importer, lifecycle, models, retrieval, rules, search, storage, timeutil, winapi,
+    classify, control, db, evidence, importer, lifecycle, models, retrieval, rules, search, storage, timeutil, winapi,
 )
 from screenrecall.config import load_config
 
@@ -219,6 +219,7 @@ st.caption(
 
 with open_db() as conn:
     apps = search.known_apps(conn)
+    content_labels = classify.known_labels(conn)
 
 if st.session_state.get("lifecycle_msg"):
     st.success(st.session_state.pop("lifecycle_msg"))
@@ -249,6 +250,64 @@ def favorites_panel() -> None:
 
 with st.expander("我的收藏"):
     favorites_panel()
+
+
+@st.fragment
+def range_delete_panel() -> None:
+    """按时间范围删除（方案 5.4）：先预览影响范围，确认后执行；默认保留范围内的收藏。"""
+    c1, c2, c3 = st.columns([2, 1, 1])
+    days = c1.date_input("日期范围", value=(), format="YYYY/MM/DD", key="rd_days")
+    t0 = c2.time_input("开始时间", value=datetime.min.time(), key="rd_t0", step=300)
+    t1 = c3.time_input("结束时间（不含）", value=datetime.max.time().replace(second=0, microsecond=0),
+                       key="rd_t1", step=300)
+    chosen = st.multiselect("只删这些应用（可选，留空为全部）", apps, key="rd_apps")
+    include_fav = st.checkbox("同时删除范围内的收藏", key="rd_fav",
+                              help="默认保留收藏；勾选后，确认前会列出将删除的收藏数量")
+    if not days:
+        st.caption("选择日期后点\"预览\"。范围按本机时区；与搜索的日期筛选一致，首次到最近观察与范围有交集的记录都算在内。")
+        return
+    d0, d1 = days[0], days[1] if len(days) > 1 else days[0]
+    start_ms = int(datetime.combine(d0, t0).timestamp() * 1000)
+    end_ms = int(datetime.combine(d1, t1).timestamp() * 1000)
+    if end_ms <= start_ms:
+        st.error("结束时间必须晚于开始时间。")
+        return
+    if st.button("预览", key="rd_preview"):
+        with open_db() as conn:
+            plan = lifecycle.plan_range_delete(conn, start_ms, end_ms, chosen, include_favorites=include_fav)
+        st.session_state.rd_plan = (start_ms, end_ms, tuple(chosen), include_fav, sorted(plan.favorites), plan)
+    saved = st.session_state.get("rd_plan")
+    if not saved or saved[:4] != (start_ms, end_ms, tuple(chosen), include_fav):
+        return  # 条件改了，要重新预览
+    *_, shown_favs, plan = saved
+    if plan.occurrences == 0:
+        st.info("这个范围内没有可删除的记录" + ("（只有被收藏的记录，已按设置保留）。" if plan.favorites else "。"))
+        return
+    msg = (f"将删除 {timeutil.fmt_local(start_ms)} 至 {timeutil.fmt_local(end_ms)} 之间的 {plan.occurrences} 次出现记录："
+           f"{plan.frames_purged} 幅画面不再被任何记录引用，图片、OCR 文字和向量一并删除；"
+           f"{plan.frames_kept} 幅画面仍被范围外的记录引用，只删范围内的时间与来源。")
+    if plan.favorites:
+        msg += (f"范围内有 {len(plan.favorites)} 个收藏，" + ("将一并删除。" if include_fav else "按设置保留。"))
+    st.error(msg + "这是应用数据删除，不保证存储介质上不可恢复。")
+    if st.button("确认按范围删除", type="primary", key="rd_go"):
+        with open_db() as conn:
+            try:
+                res = lifecycle.delete_range(conn, CFG.data_dir, start_ms, end_ms, chosen,
+                                             include_favorites=include_fav, confirmed_favorites=set(shown_favs))
+            except lifecycle.PlanChanged as exc:
+                st.session_state.pop("rd_plan", None)
+                st.warning(f"{exc}。请重新预览。")
+                return
+        st.session_state.pop("rd_plan", None)
+        st.session_state.pop("selected", None)
+        st.session_state.lifecycle_msg = (
+            f"已按范围删除 {res.occurrences_removed} 次出现记录、{res.frames_purged} 幅画面"
+            + (f"、{res.favorites_removed} 个收藏" if res.favorites_removed else "") + "。")
+        st.rerun(scope="app")
+
+
+with st.expander("按时间范围删除"):
+    range_delete_panel()
 
 
 @st.fragment
@@ -309,6 +368,11 @@ with st.form("search_form"):
     chosen_apps = c2.multiselect("应用（可选）", apps)
     case_sensitive = c3.checkbox("区分大小写")
     limit = c4.selectbox("数量", [10, 20, 50], index=0)
+    chosen_labels = st.multiselect(
+        "内容类别（可选，模型预测）", content_labels, key="labels_input",
+        help="默认搜索全部类别；选择后只保留预测为这些类别的画面，尚未分类的画面不在结果中。类别是模型预测，可能出错",
+        disabled=not content_labels, placeholder="还没有分类结果" if not content_labels else "全部类别",
+    )
     submitted = st.form_submit_button("搜索", type="primary", key="search_submit")
 
 if submitted:
@@ -320,7 +384,7 @@ if submitted:
     st.session_state.query = {
         "raw": q,
         "mode": mode,
-        "filters": search.Filters(start_ms, end_ms, tuple(chosen_apps)),
+        "filters": search.Filters(start_ms, end_ms, tuple(chosen_apps), tuple(chosen_labels)),
         "case_sensitive": case_sensitive,
         "limit": limit,
     }
@@ -717,6 +781,12 @@ if query:
             rrf_k=CFG.search.rrf_k, branch_top=CFG.search.branch_top, relaxed=relaxed,
         )
         unknown_time = importer.time_unknown_frames(conn, [r.frame_id for r in resp.results])
+        predicted = {
+            r[0]: (r[1], r[2]) for r in conn.execute(
+                "SELECT frame_id, label, score FROM frame_labels WHERE frame_id IN (SELECT value FROM json_each(?))",
+                (json.dumps([r.frame_id for r in resp.results]),),
+            )
+        }
         fav_frames = {
             r[0] for r in conn.execute(
                 "SELECT DISTINCT frame_id FROM favorites WHERE frame_id IN (SELECT value FROM json_each(?))",
@@ -767,6 +837,8 @@ if query:
                 if r.occurrences_in_filter > 1:
                     c_info.caption(f"筛选范围内出现 {r.occurrences_in_filter} 次，显示最近一次")
                 tags = []
+                lab = predicted.get(r.frame_id)
+                tags.append(f"类别（模型预测）：{md(lab[0])} {lab[1]:.2f}" if lab else "类别：待分类")
                 if r.sources:
                     tags.append("命中分支：" + " + ".join(r.sources))
                 if r.matched_terms:

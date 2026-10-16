@@ -61,6 +61,11 @@ class SearchConfig:
 
 
 @dataclass(frozen=True)
+class ClassifyConfig:
+    model_dir: str = ""  # 训练产物目录（model.npz + card.json）；空表示不做预测，页面显示"待分类"
+
+
+@dataclass(frozen=True)
 class Config:
     data_dir: Path
     capture: CaptureConfig
@@ -70,6 +75,7 @@ class Config:
     index: IndexConfig = IndexConfig()
     search: SearchConfig = SearchConfig()
     retention: RetentionConfig = RetentionConfig()
+    classify: ClassifyConfig = ClassifyConfig()
 
     @property
     def db_path(self) -> Path:
@@ -103,6 +109,12 @@ def load_config(data_dir_override: str | os.PathLike | None = None) -> Config:
     )
     if not data_dir.is_absolute():
         data_dir = REPO_ROOT / data_dir
+    # 数据目录自带的覆盖（最后合并）：只作用于这一份数据，用于独立的删除 / 配额测试库，不影响正式数据
+    per_dir = data_dir / "config.toml"
+    if per_dir.exists():
+        override = tomllib.loads(per_dir.read_text(encoding="utf-8"))
+        override.pop("storage", None)
+        raw = _merge(raw, override)
 
     cap, ocr = raw["capture"], raw["ocr"]
     capture = CaptureConfig(
@@ -188,4 +200,5 @@ def load_config(data_dir_override: str | os.PathLike | None = None) -> Config:
     return Config(
         data_dir=data_dir.resolve(), capture=capture, ocr=ocr_cfg, rules=rules,
         models=models, index=index, search=search, retention=retention,
+        classify=ClassifyConfig(model_dir=str(raw.get("classify", {}).get("model_dir", "")).strip()),
     )

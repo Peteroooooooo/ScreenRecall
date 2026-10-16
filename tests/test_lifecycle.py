@@ -408,3 +408,49 @@ def test_recorder_does_not_extend_or_resave_deleted_current_record(h):
     h.show(a)
     h.rec.snapshot(h.conn, None)  # 用户主动补拍：按新内容保存
     assert _count(h, "SELECT COUNT(*) FROM frames WHERE image_status = 'ok'") == 2
+
+
+# ---------- 按时间范围删除（方案 5.4） ----------
+
+def test_range_delete_respects_shared_frames_favorites_and_apps(h):
+    p = Pipeline(h)
+    shared = p.add(make_image(1), ["shared page"])
+    inside = p.add(make_image(2), ["inside only"])
+    fav = p.add(make_image(3), ["favorite inside"])
+    h.show(make_image(1))
+    h.rec.snapshot(h.conn, None)  # shared 在范围之后又出现一次
+    o_shared_in, o_shared_out = _occ(h, shared)
+    t_out = h.conn.execute("SELECT first_seen_ms FROM occurrences WHERE occurrence_id = ?", (o_shared_out,)).fetchone()[0]
+    start = _count(h, "SELECT MIN(first_seen_ms) FROM occurrences")
+    end = t_out  # 半开区间，不含 shared 的第二次出现
+    lifecycle.add_favorite(h.conn, _occ(h, fav)[0])
+
+    plan = lifecycle.plan_range_delete(h.conn, start, end)
+    assert (plan.occurrences, plan.frames_purged, plan.frames_kept) == (2, 1, 1)
+    assert plan.favorites == set(_occ(h, fav))
+    assert lifecycle.plan_range_delete(h.conn, start, end, ["other.exe"]).occurrences == 0
+
+    res = lifecycle.delete_range(h.conn, h.cfg.data_dir, start, end)
+    assert (res.occurrences_removed, res.frames_purged, res.favorites_removed) == (2, 1, 0)
+    assert _frame(h, inside)["image_status"] == "deleted"
+    assert _frame(h, shared)["image_status"] == "ok" and _occ(h, shared) == [o_shared_out]
+    assert _frame(h, fav)["image_status"] == "ok"  # 默认保留收藏
+
+    with pytest.raises(lifecycle.PlanChanged):
+        lifecycle.delete_range(h.conn, h.cfg.data_dir, start, end, include_favorites=True)
+    plan = lifecycle.plan_range_delete(h.conn, start, end, include_favorites=True)
+    res = lifecycle.delete_range(h.conn, h.cfg.data_dir, start, end, include_favorites=True,
+                                 confirmed_favorites=plan.favorites)
+    assert (res.favorites_removed, res.frames_purged) == (1, 1)
+    assert _ids(search.search(h.conn, q('"inside"'))) == []
+    assert _ids(search.search(h.conn, q('"shared"'))) == [shared]
+
+
+def test_range_delete_batches_and_bumps_revision(h):
+    p = Pipeline(h)
+    fids = [p.add(make_image(i), [f"row {i}"]) for i in range(1, 6)]
+    rev = db.get_revision(h.conn)
+    res = lifecycle.delete_range(h.conn, h.cfg.data_dir, 0, 2**62, batch=2)
+    assert res.occurrences_removed == 5 and res.frames_purged == 5
+    assert all(_frame(h, f)["image_status"] == "deleted" for f in fids)
+    assert db.get_revision(h.conn) >= rev + 3  # 每批一个短事务，各自递增修订号
