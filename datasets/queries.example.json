@@ -1,0 +1,16 @@
+[
+  {
+    "id": "dev-chat-zh-01",
+    "split": "dev",
+    "scenario": "chat",
+    "language": "zh",
+    "mode": "text",
+    "query": "同事推荐的聚餐地点",
+    "start": "2026-10-20 09:00",
+    "end": "2026-10-20 18:00",
+    "apps": [],
+    "case_sensitive": false,
+    "relevant": ["<frame_id，示例占位，不是真实数据>"],
+    "rationale": "原图中能看到同事发的餐厅名称与地址"
+  }
+]

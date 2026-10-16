@@ -11,3 +11,12 @@
 5. 划分：`python -m screenrecall.dataset --data-dir data split --labels ... --labelset ... --fractions <train,val,test> --seed 0 --out datasets/<名称>/split.json`。同一 `task_id`（没填时用录制段）、像素完全相同或 OCR 全文相同的画面强制同组；比例由团队按组数决定，清单里会记录比例、种子、标注文件指纹和各划分的类别分布，并提示缺类。
 6. 训练与评测：`python -m screenrecall.classify --data-dir data train --labels ... --labelset ... --split ... --out results/classifier/<名称> --report results/classifier/<名称>/report.json`。划分后再改标注会被拒绝，需要重新划分。
 7. 页面显示标签：在 `config.local.toml` 写 `[classify] model_dir = "results/classifier/<名称>"`，重启后台；已有画面用 `python -m screenrecall.classify --data-dir data predict --model results/classifier/<名称>` 补预测。
+
+## 检索查询真值与五组实验（方案 6.1、6.2）
+
+1. 按方案写 40 条有答案的主查询：开发 / 盲测各 20 条，每侧每场景（代码、聊天、网页、数字/表格）5 条，整体中英各 20 条。格式见 `queries.example.json`；`relevant` 填相关 frame_id，`rationale` 写判定依据（依据原图与任务记录，不以某个检索器是否命中反推）。第二位成员复核后冻结，冻结后不再改。
+2. 检查是否符合查询设计：`python -m screenrecall.evaluate --data-dir data --queries datasets/<名称>/queries.json --split all --out results/retrieval/check --check-only`。
+3. 开发阶段只跑 dev：`python -m screenrecall.evaluate --data-dir data --queries ... --split dev --out results/retrieval/<日期>-dev`，据此决定规则与参数。
+4. 规则冻结后**只跑一次** blind：`--split blind --out results/retrieval/<日期>-blind`，结果（`results.json` 逐条 + `results.md` 汇总，含查询文件指纹）原样提交，不根据答案补写引号、切换模式或启用放宽匹配。
+
+实验只需要数据目录和模型，可以把 Windows 上录好的 `data\`（整个目录拷贝）拿到 Mac 上跑；frame_id 跟着数据库走。
