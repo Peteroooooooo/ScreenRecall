@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import base64
 import io
+import json
 import re
 from contextlib import contextmanager
 from datetime import datetime
@@ -19,7 +20,9 @@ from datetime import datetime
 import streamlit as st
 from PIL import Image, ImageDraw
 
-from screenrecall import control, db, evidence, importer, models, retrieval, rules, search, storage, timeutil, winapi
+from screenrecall import (
+    classify, control, db, evidence, importer, lifecycle, models, retrieval, rules, search, storage, timeutil, winapi,
+)
 from screenrecall.config import load_config
 
 st.set_page_config(page_title="ScreenRecall", page_icon="🔎", layout="wide")
@@ -48,6 +51,13 @@ if not CFG.db_path.exists():
     st.markdown("请先在仓库根目录运行后台：`python -m screenrecall.daemon`，再刷新本页。")
     st.stop()
 
+with open_db() as _conn:
+    _ver = int(_conn.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()[0])
+if _ver < db.SCHEMA_VERSION:
+    st.title("ScreenRecall")
+    st.error(f"数据库结构是 v{_ver}，代码需要 v{db.SCHEMA_VERSION}。请重启后台（python -m screenrecall.daemon）完成升级后刷新本页。")
+    st.stop()
+
 
 # ======================= 侧栏：录制状态与控制 =======================
 
@@ -63,6 +73,8 @@ def status_panel() -> None:
     with open_db() as conn:
         ctrl = control.read(conn)
         stats = db.index_stats(conn)
+        maint = lifecycle.last_maintenance(conn)
+        n_fav = conn.execute("SELECT COUNT(*) FROM favorites").fetchone()[0]
     now = timeutil.utc_ms()
     target = f"{md(ctrl['target_title'])}（{md(ctrl['target_process'])}）"
     if not control.daemon_alive(ctrl, now):
@@ -112,6 +124,18 @@ def status_panel() -> None:
         f"向量失败 {stats['embed_failed']} · 最老向量待办 {_age(min(vec_oldest), now) if vec_oldest else '—'} · "
         f"最近采样 {_age(ctrl['last_capture_ms'], now)}前 · 心跳 {_age(ctrl['heartbeat_ms'], now)}前"
     )
+    if maint:
+        rt = CFG.retention
+        st.caption(
+            f"运行数据 {maint['usage_bytes'] / lifecycle.GIB:.2f} / {maint['quota_bytes'] / lifecycle.GIB:.0f} GiB · "
+            f"磁盘剩余 {maint['free_bytes'] / lifecycle.GIB:.1f} GiB · 收藏 {n_fav} 条 · "
+            f"原图保留 {rt.image_days} 天、记录保留 {rt.record_days} 天（收藏除外）· "
+            f"上次维护 {_age(maint['at_ms'], now)}前"
+        )
+        if maint.get("paused"):
+            st.error(maint["reason"])
+    else:
+        st.caption(f"收藏 {n_fav} 条 · 后台尚未执行到期与配额维护")
 
 
 def _send_mode(mode: str) -> None:
@@ -195,6 +219,95 @@ st.caption(
 
 with open_db() as conn:
     apps = search.known_apps(conn)
+    content_labels = classify.known_labels(conn)
+
+if st.session_state.get("lifecycle_msg"):
+    st.success(st.session_state.pop("lifecycle_msg"))
+
+
+@st.fragment
+def favorites_panel() -> None:
+    with open_db() as conn:
+        favs = lifecycle.list_favorites(conn)
+    if not favs:
+        st.caption("还没有收藏。在原图核验页点击\"收藏本次记录\"。")
+        return
+    st.caption("收藏的记录不随 30/90 天到期或配额清理；取消收藏后按普通规则处理。")
+    for f in favs:
+        c1, c2 = st.columns([5, 1])
+        status = "" if f["image_status"] == "ok" else "（原图已不可用，只保留文字）"
+        c1.markdown(f"★ {timeutil.fmt_local(f['first_seen_ms'])} · {md(f['app'])} · {md(f['window_title'])}{status}")
+        if c2.button("查看", key=f"favopen-{f['occurrence_id']}", width="stretch"):
+            st.session_state.selected = {
+                "frame_id": f["frame_id"], "occurrence_id": f["occurrence_id"],
+                "mode": retrieval.TEXT, "semantic_lines": [],
+            }
+            st.session_state.setdefault("query", {
+                "raw": "", "mode": retrieval.TEXT, "filters": search.Filters(), "case_sensitive": False, "limit": 10,
+            })
+            st.rerun(scope="app")
+
+
+with st.expander("我的收藏"):
+    favorites_panel()
+
+
+@st.fragment
+def range_delete_panel() -> None:
+    """按时间范围删除（方案 5.4）：先预览影响范围，确认后执行；默认保留范围内的收藏。"""
+    c1, c2, c3 = st.columns([2, 1, 1])
+    days = c1.date_input("日期范围", value=(), format="YYYY/MM/DD", key="rd_days")
+    t0 = c2.time_input("开始时间", value=datetime.min.time(), key="rd_t0", step=300)
+    t1 = c3.time_input("结束时间（不含）", value=datetime.max.time().replace(second=0, microsecond=0),
+                       key="rd_t1", step=300)
+    chosen = st.multiselect("只删这些应用（可选，留空为全部）", apps, key="rd_apps")
+    include_fav = st.checkbox("同时删除范围内的收藏", key="rd_fav",
+                              help="默认保留收藏；勾选后，确认前会列出将删除的收藏数量")
+    if not days:
+        st.caption("选择日期后点\"预览\"。范围按本机时区；与搜索的日期筛选一致，首次到最近观察与范围有交集的记录都算在内。")
+        return
+    d0, d1 = days[0], days[1] if len(days) > 1 else days[0]
+    start_ms = int(datetime.combine(d0, t0).timestamp() * 1000)
+    end_ms = int(datetime.combine(d1, t1).timestamp() * 1000)
+    if end_ms <= start_ms:
+        st.error("结束时间必须晚于开始时间。")
+        return
+    if st.button("预览", key="rd_preview"):
+        with open_db() as conn:
+            plan = lifecycle.plan_range_delete(conn, start_ms, end_ms, chosen, include_favorites=include_fav)
+        st.session_state.rd_plan = (start_ms, end_ms, tuple(chosen), include_fav, sorted(plan.favorites), plan)
+    saved = st.session_state.get("rd_plan")
+    if not saved or saved[:4] != (start_ms, end_ms, tuple(chosen), include_fav):
+        return  # 条件改了，要重新预览
+    *_, shown_favs, plan = saved
+    if plan.occurrences == 0:
+        st.info("这个范围内没有可删除的记录" + ("（只有被收藏的记录，已按设置保留）。" if plan.favorites else "。"))
+        return
+    msg = (f"将删除 {timeutil.fmt_local(start_ms)} 至 {timeutil.fmt_local(end_ms)} 之间的 {plan.occurrences} 次出现记录："
+           f"{plan.frames_purged} 幅画面不再被任何记录引用，图片、OCR 文字和向量一并删除；"
+           f"{plan.frames_kept} 幅画面仍被范围外的记录引用，只删范围内的时间与来源。")
+    if plan.favorites:
+        msg += (f"范围内有 {len(plan.favorites)} 个收藏，" + ("将一并删除。" if include_fav else "按设置保留。"))
+    st.error(msg + "这是应用数据删除，不保证存储介质上不可恢复。")
+    if st.button("确认按范围删除", type="primary", key="rd_go"):
+        with open_db() as conn:
+            try:
+                res = lifecycle.delete_range(conn, CFG.data_dir, start_ms, end_ms, chosen,
+                                             include_favorites=include_fav, confirmed_favorites=set(shown_favs))
+            except lifecycle.PlanChanged as exc:
+                st.session_state.pop("rd_plan", None)
+                st.warning(f"{exc}。请重新预览。")
+                return
+        st.session_state.pop("rd_plan", None)
+        st.session_state.pop("selected", None)
+        st.session_state.lifecycle_msg = (
+            f"已按范围删除 {res.occurrences_removed} 次出现记录、{res.frames_purged} 幅画面"
+            + (f"、{res.favorites_removed} 个收藏" if res.favorites_removed else "") + "。")
+        st.rerun(scope="app")
+
+
+with st.expander("按时间范围删除"):
+    range_delete_panel()
 
 
 @st.fragment
@@ -255,6 +368,11 @@ with st.form("search_form"):
     chosen_apps = c2.multiselect("应用（可选）", apps)
     case_sensitive = c3.checkbox("区分大小写")
     limit = c4.selectbox("数量", [10, 20, 50], index=0)
+    chosen_labels = st.multiselect(
+        "内容类别（可选，模型预测）", content_labels, key="labels_input",
+        help="默认搜索全部类别；选择后只保留预测为这些类别的画面，尚未分类的画面不在结果中。类别是模型预测，可能出错",
+        disabled=not content_labels, placeholder="还没有分类结果" if not content_labels else "全部类别",
+    )
     submitted = st.form_submit_button("搜索", type="primary", key="search_submit")
 
 if submitted:
@@ -266,7 +384,7 @@ if submitted:
     st.session_state.query = {
         "raw": q,
         "mode": mode,
-        "filters": search.Filters(start_ms, end_ms, tuple(chosen_apps)),
+        "filters": search.Filters(start_ms, end_ms, tuple(chosen_apps), tuple(chosen_labels)),
         "case_sensitive": case_sensitive,
         "limit": limit,
     }
@@ -378,8 +496,10 @@ def render_detail(conn, sel: dict, parsed: search.ParsedQuery, case_sensitive: b
     )
     sem_only = sorted(i for i in sem_lines if i not in hit and i < len(d.lines))
     path = storage.resolve(CFG.data_dir, d.image_path)
-    if d.image_status != "ok" or not path.exists():
-        st.warning("原图已不可用（过期或缺失），只保留了文字。")
+    if d.image_status == "expired":
+        st.warning("原图已过期（超过保留期，或因空间配额提前清理），只保留了文字，无法再核验画面细节。")
+    elif d.image_status != "ok" or not path.exists():
+        st.warning("原图已不可用（文件缺失），只保留了文字。")
     else:
         with Image.open(path) as im:
             img = draw_highlights(
@@ -444,6 +564,112 @@ def render_detail(conn, sel: dict, parsed: search.ParsedQuery, case_sensitive: b
         )
         if pick != occ.occurrence_id:
             _goto(sel, d.frame_id, pick)
+
+    render_lifecycle(conn, d, occ)
+
+
+def _after_delete(msg: str) -> None:
+    for k in [k for k in st.session_state if str(k).startswith("confirm-")]:
+        st.session_state.pop(k, None)
+    st.session_state.pop("selected", None)
+    st.session_state.pop("compare_with", None)
+    st.session_state.lifecycle_msg = msg
+    st.rerun()
+
+
+def render_lifecycle(conn, d, occ) -> None:
+    """收藏与删除（方案 5.2、5.4）。删除前都要确认，并写明会删掉什么、保留什么。"""
+    st.markdown("**收藏与删除**")
+    fav = occ.occurrence_id in lifecycle.favorite_ids(conn, [occ.occurrence_id])
+    c1, c2, c3 = st.columns(3)
+    if fav:
+        if c1.button("取消收藏", key=f"unfav-{occ.occurrence_id}", width="stretch"):
+            lifecycle.remove_favorite(conn, occ.occurrence_id)
+            st.rerun()
+        st.caption("★ 已收藏：这次记录及其原图、文字、特征和来源不随 30/90 天到期或配额清理。")
+    else:
+        if c1.button("收藏本次记录", key=f"fav-{occ.occurrence_id}", width="stretch"):
+            if lifecycle.add_favorite(conn, occ.occurrence_id):
+                st.rerun()
+            st.error("这条记录已不存在，无法收藏。")
+        if d.image_status != "ok":
+            st.caption("原图已不可用：收藏只保护现有的文字、特征和来源，不能恢复已删除的原图。")
+        else:
+            st.caption("收藏保留已保存的文件，不重新编码，也不会让有损截图变清晰。")
+
+    key_occ, key_frame = f"confirm-occ-{occ.occurrence_id}", f"confirm-frame-{d.frame_id}"
+    if c2.button("删除本次记录", key=f"del-occ-{occ.occurrence_id}", width="stretch"):
+        st.session_state[key_occ] = True
+        st.session_state.pop(key_frame, None)
+    if c3.button("删除此画面的全部记录", key=f"del-frame-{d.frame_id}", width="stretch"):
+        plan = lifecycle.plan_frame_delete(conn, d.frame_id)
+        st.session_state[key_frame] = sorted(plan.favorites) if plan else []
+        st.session_state.pop(key_occ, None)
+
+    if st.session_state.get(key_occ):
+        others = len(d.occurrences) - 1
+        lines = [f"将删除 {timeutil.fmt_local(occ.first_seen_ms)} 这一次出现的时间与来源。"]
+        if fav:
+            lines.append("这次记录的收藏也会一起删除。")
+        if others > 0:
+            lines.append(f"这幅画面还有 {others} 次其他出现记录，图片、OCR 文字和向量保留，那些记录不受影响。")
+        else:
+            lines.append("这是这幅画面唯一一次出现，图片、OCR 文字和向量会一起删除。")
+        st.warning(" ".join(lines))
+        a, b = st.columns(2)
+        if a.button("确认删除本次记录", type="primary", key=f"yes-{key_occ}", width="stretch"):
+            res = lifecycle.delete_occurrence(conn, CFG.data_dir, occ.occurrence_id)
+            _after_delete(
+                f"已删除 {res.occurrences_removed} 次出现记录"
+                + (f"、{res.favorites_removed} 个收藏" if res.favorites_removed else "")
+                + ("，画面内容已一并删除。" if res.frames_purged else "，画面内容仍被其他记录引用，已保留。")
+            )
+        if b.button("取消", key=f"no-{key_occ}", width="stretch"):
+            st.session_state.pop(key_occ, None)
+            st.rerun()
+
+    if key_frame in st.session_state:
+        plan = lifecycle.plan_frame_delete(conn, d.frame_id)
+        if plan is None:
+            st.session_state.pop(key_frame, None)
+            st.info("这幅画面已被删除。")
+            return
+        shown = set(st.session_state[key_frame])
+        st.error(
+            f"将删除这幅画面的全部 {len(plan.occurrences)} 次出现记录"
+            + (f"，以及其中 {len(plan.favorites)} 个收藏" if plan.favorites else "")
+            + "，并删除图片、OCR 文字和向量。删除后搜索不再返回这些记录。"
+            "这是应用数据删除，不保证存储介质上不可恢复。"
+        )
+        st.dataframe(
+            [
+                {
+                    "首次观察": timeutil.fmt_local(o["first_seen_ms"]),
+                    "最近观察": timeutil.fmt_local(o["last_seen_ms"]),
+                    "应用": o["app"],
+                    "窗口标题": o["window_title"],
+                    "来源": SOURCE_LABELS.get(o["source_type"], o["source_type"]),
+                    "收藏": "★ 将删除" if o["occurrence_id"] in plan.favorites else "",
+                }
+                for o in plan.occurrences
+            ],
+            hide_index=True,
+        )
+        a, b = st.columns(2)
+        if a.button("确认删除全部记录", type="primary", key=f"yes-{key_frame}", width="stretch"):
+            try:
+                res = lifecycle.delete_frame(conn, CFG.data_dir, d.frame_id, confirmed_favorites=shown)
+            except lifecycle.PlanChanged as exc:
+                st.session_state[key_frame] = sorted(plan.favorites)
+                st.warning(f"{exc}。上表已更新。")
+            else:
+                _after_delete(
+                    f"已删除这幅画面的 {res.occurrences_removed} 次出现记录"
+                    + (f"和 {res.favorites_removed} 个收藏" if res.favorites_removed else "") + "。"
+                )
+        if b.button("取消", key=f"no-{key_frame}", width="stretch"):
+            st.session_state.pop(key_frame, None)
+            st.rerun()
 
 
 def _goto(sel: dict, frame_id: str, occurrence_id: str) -> None:
@@ -555,6 +781,18 @@ if query:
             rrf_k=CFG.search.rrf_k, branch_top=CFG.search.branch_top, relaxed=relaxed,
         )
         unknown_time = importer.time_unknown_frames(conn, [r.frame_id for r in resp.results])
+        predicted = {
+            r[0]: (r[1], r[2]) for r in conn.execute(
+                "SELECT frame_id, label, score FROM frame_labels WHERE frame_id IN (SELECT value FROM json_each(?))",
+                (json.dumps([r.frame_id for r in resp.results]),),
+            )
+        }
+        fav_frames = {
+            r[0] for r in conn.execute(
+                "SELECT DISTINCT frame_id FROM favorites WHERE frame_id IN (SELECT value FROM json_each(?))",
+                (json.dumps([r.frame_id for r in resp.results]),),
+            )
+        }
         sel = st.session_state.get("selected")
         if sel:
             with st.container(border=True):
@@ -594,10 +832,13 @@ if query:
                 else:
                     when = timeutil.fmt_local(r.latest.last_seen_ms)
                 src = " · 导入" if r.latest.source_type == "import" else ""
-                c_info.markdown(f"**{when}** · {md(r.latest.app)} · {md(r.latest.window_title)}{src}")
+                star = " · ★ 已收藏" if r.frame_id in fav_frames else ""
+                c_info.markdown(f"**{when}** · {md(r.latest.app)} · {md(r.latest.window_title)}{src}{star}")
                 if r.occurrences_in_filter > 1:
                     c_info.caption(f"筛选范围内出现 {r.occurrences_in_filter} 次，显示最近一次")
                 tags = []
+                lab = predicted.get(r.frame_id)
+                tags.append(f"类别（模型预测）：{md(lab[0])} {lab[1]:.2f}" if lab else "类别：待分类")
                 if r.sources:
                     tags.append("命中分支：" + " + ".join(r.sources))
                 if r.matched_terms:

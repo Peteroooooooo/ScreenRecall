@@ -14,7 +14,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 6
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -256,6 +256,28 @@ CREATE TABLE IF NOT EXISTS import_items (
     PRIMARY KEY (batch_id, seq)
 );
 """,
+    # v5 收藏（方案 5.2、5.4）：收藏挂在某一次出现上，frame_id 冗余存放便于按画面判断是否受保护。
+    # 外键使"有收藏的出现记录"不能被直接删除，删除流程必须先显式处理收藏。
+    5: """
+CREATE TABLE IF NOT EXISTS favorites (
+    occurrence_id   TEXT PRIMARY KEY REFERENCES occurrences (occurrence_id),
+    frame_id        TEXT NOT NULL REFERENCES frames (frame_id),
+    created_at_ms   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fav_frame ON favorites (frame_id);
+CREATE INDEX IF NOT EXISTS idx_occ_last_seen ON occurrences (last_seen_ms);
+""",
+    # v6 内容分类（方案 6.4）：模型预测的类别，只用于显示和用户主动筛选；人工标注在数据集 CSV 里，不进库
+    6: """
+CREATE TABLE IF NOT EXISTS frame_labels (
+    frame_id        TEXT PRIMARY KEY REFERENCES frames (frame_id),
+    label           TEXT NOT NULL,
+    score           REAL NOT NULL,
+    model_version   TEXT NOT NULL,
+    created_at_ms   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_frame_labels_label ON frame_labels (label);
+""",
 }
 
 
@@ -375,3 +397,27 @@ def index_stats(conn: sqlite3.Connection) -> dict:
         "occurrences": int(occurrences),
         "revision": get_revision(conn),
     }
+
+
+def main(argv: list[str] | None = None) -> int:
+    """python -m screenrecall.db [--data-dir PATH]：只读打印结构版本与基本计数（升级后核对用）。"""
+    import argparse
+
+    from .config import load_config
+
+    ap = argparse.ArgumentParser(prog="python -m screenrecall.db")
+    ap.add_argument("--data-dir")
+    cfg = load_config(ap.parse_args(argv).data_dir)
+    conn = sqlite3.connect(f"file:{cfg.db_path.as_posix()}?mode=ro", uri=True)
+    try:
+        ver = conn.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()[0]
+        frames = conn.execute("SELECT COUNT(*) FROM frames WHERE image_status != 'deleted'").fetchone()[0]
+        occ = conn.execute("SELECT COUNT(*) FROM occurrences").fetchone()[0]
+    finally:
+        conn.close()
+    print(f"数据库 {cfg.db_path}：结构版本 v{ver}（代码支持 v{SCHEMA_VERSION}），画面 {frames}，出现记录 {occ}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

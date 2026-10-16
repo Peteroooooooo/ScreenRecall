@@ -64,6 +64,7 @@ class Filters:
     start_ms: int | None = None  # UTC 半开区间 [start_ms, end_ms)
     end_ms: int | None = None
     apps: tuple[str, ...] = ()
+    labels: tuple[str, ...] = ()  # 预测类别（用户主动选择时才筛选；没有预测的画面不在筛选结果里）
 
 
 @dataclass(frozen=True)
@@ -173,6 +174,10 @@ def _qualifying_occurrences(
     if filters.apps:
         sql += " AND o.app IN (SELECT value FROM json_each(?))"
         params.append(json.dumps(list(filters.apps)))
+    if filters.labels:
+        sql += (" AND o.frame_id IN (SELECT frame_id FROM frame_labels "
+                "WHERE label IN (SELECT value FROM json_each(?)))")
+        params.append(json.dumps(list(filters.labels)))
     sql += " ORDER BY o.last_seen_ms DESC, o.occurrence_id"
     out: dict[str, list[Occurrence]] = {}
     for r in conn.execute(sql, params):
