@@ -123,6 +123,10 @@ def read_labels(conn: sqlite3.Connection, csv_path: Path, labels: list[str], *,
             if require_review and not final:
                 rep.errors.append(f"{where}：缺少复核结论（review_label 或 final_label）")
                 continue
+            ann, rev = (row["annotator"] or "").strip(), (row["reviewer"] or "").strip()
+            if require_review and (row["review_label"] or "").strip() and (not rev or rev == ann):
+                rep.errors.append(f"{where}：复核人 reviewer 要填，且不能与标注人 annotator 相同")
+                continue
             final = final or first
             for v in {first, final} - {""}:
                 if v not in allowed:

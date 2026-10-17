@@ -1,0 +1,3 @@
+﻿frame_id,image_path,captured_local,app,window_title,session_id,source_type,task_id,scenario,language,label,annotator,review_label,reviewer,final_label,change_reason,collector,image_id,source_file,facts,ocr_chars,time_known
+（labels 命令自动填）,（自动）,2026-10-18 10:02:31,Terminal,zsh — train.py,（自动）,import,cao-code-01,code,en,code,cao,code,xiao,,,cao,cao-code-01-001,cao/cao-code-01/截屏2026-10-18 10.02.31.png,cao-code-01#1;cao-code-01#2,412,yes
+（自动）,（自动）,,Google Chrome,,（自动）,import,cao-table-03,table,en,web,cao,table_doc,xiao,table_doc,参数表占主要区域，按规则 3 归 table_doc,cao,cao-table-03-007,cao/cao-table-03/x.png,,880,no
