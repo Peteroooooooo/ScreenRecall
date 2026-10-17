@@ -154,3 +154,22 @@ R=~/ScreenRecall-dataset          # 共享根目录（按实际路径改）
 7. 每个场景按第 6 节试写 1 条开发查询，跑 `collect facts --queries` 和 `evaluate --check-only`，确认流程通。
 
 通过标准：`check` 0 错误；40 张全部导入、OCR 与向量 0 失败；标注表能正常打开、中文不乱码；复核分歧都有结论。试采合格的帧可以保留进正式数据集，之后每个任务按 25 帧补齐。
+
+## 9. Mac 自动截图（受控场景，2026-10-17 起）
+
+`datasets/capture_mac.py` 用 Playwright 开一个**独立的** Chromium 窗口（不用自己浏览器的登录和书签），显示受控页面或公开网站，再用 macOS 的 `screencapture -l <窗口号>` 截这个真实窗口。每张图在截图那一刻记本机时间（`time_source=manual`）、窗口标题、来源和画面变化，写进任务目录的 `capture_log.csv`；`datasets/capture_finalize.py` 再把这些合进 `manifest.csv` 并写 `facts.csv`。
+
+- 场景计划写在 `datasets/scenes/*.py`（`TASKS` + `FACTS`）。code 场景真实运行 `datasets/scenes/code01_train.py`，报错是真的，只有 OOM 那条是脚本打印的文本；chat 和 table 是合成页面，页面上写明 synthetic；web 是公开网站原样显示，最多点一下 cookie 弹窗的拒绝按钮。
+- 受控页面的 HTML 原样留在 `data-dataset/scenes-html/`，有问题的整批截图移到 `data-dataset/rejected/<批次>/` 并写 `WHY.txt`，不删。
+- 需要 macOS 屏幕录制权限（运行 KiroCrew 或终端的那个 App）。工具环境与项目 `.venv` 分开：
+
+```bash
+T=data-dataset/.tools
+uv venv -p 3.12 $T/venv && uv pip install -p $T/venv/bin/python pyobjc-framework-Quartz==11.1 playwright==1.55.0 Pillow==11.3.0
+PLAYWRIGHT_BROWSERS_PATH=$PWD/$T/pw $T/venv/bin/python -m playwright install chromium
+PLAYWRIGHT_BROWSERS_PATH=$PWD/$T/pw $T/venv/bin/python datasets/capture_mac.py --plan datasets/scenes/pilot_plan.py --out data-dataset/raw/cao
+.venv/bin/python datasets/capture_finalize.py data-dataset/raw/cao --device cao-mbp --plan datasets/scenes/pilot_plan.py
+.venv/bin/python -m screenrecall.collect check data-dataset/raw    # 需要 data-dataset/raw/tasks.csv（从 datasets/collection/ 复制）
+```
+
+限制：这些图来自浏览器窗口（终端、聊天、表格都是页面形式），app 列如实写明；不能代表真实 Terminal / Slack / Numbers 的界面多样性，扩量时要混入真实应用截图（需人工操作或授权自动化）。
