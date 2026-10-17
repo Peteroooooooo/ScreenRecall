@@ -132,7 +132,7 @@ $out = "results\windows\2026-10-xx-<机器名>"; New-Item -ItemType Directory -F
 
 | 日期 | 分支 | 基于 | 本轮提交 / PR | 内容 | 验证状态 |
 | --- | --- | --- | --- | --- | --- |
-| 2026-10-17 | `feat/dataset-collection`（CAO 新分支） | `feat/lifecycle` @ `1e124b5` | 本轮提交（见 `git log`）；草稿 PR（base `feat/lifecycle`） | 受控数据采集与标注规程、80 个任务表、40 条查询分配、模板；`collect`（清单 / 检查 / 导入 / 标注表 / 事实→相关帧）、`indexer`（只建索引，Mac 可用）；导入支持逐张应用 / 标题 / 时间；`dataset check` 新增复核人≠标注人 | macOS：pytest 169/169（含 1 条真实 RapidOCR、2 条真实向量模型）、pyflakes 无告警、3 处变异检查均被测试发现；命令行全流程用真实 OCR + 向量跑通；**无真实数据**；Windows 未测 |
+| 2026-10-17 | `feat/dataset-collection`（CAO 新分支） | `feat/lifecycle` @ `1e124b5` | `eaa130c`；草稿 PR #6（base `feat/lifecycle`） | 受控数据采集与标注规程、80 个任务表、40 条查询分配、模板；`collect`（清单 / 检查 / 导入 / 标注表 / 事实→相关帧）、`indexer`（只建索引，Mac 可用）；导入支持逐张应用 / 标题 / 时间；`dataset check` 新增复核人≠标注人 | macOS：pytest 169/169（含 1 条真实 RapidOCR、2 条真实向量模型）、pyflakes 无告警、3 处变异检查均被测试发现；命令行全流程用真实 OCR + 向量跑通；**无真实数据**；Windows 未测 |
 | 2026-10-16 | `feat/lifecycle`（肖天奕接力，同一分支） | `0fd523d` | 本轮提交（修 bench 测试、记录验证）；仍在草稿 PR #5 | 合并 PR #1 进 main；证据浏览 / 批量导入 / 收藏删除到期配额的 **Windows 实机验证**；修一个在 Windows venv 下误判的 bench 测试（产品代码未改） | Windows 11：pytest 132/132（含真实模型）、环境检查 9/9、#4+#5 实机端到端 19/19 |
 | 2026-10-16 | `feat/lifecycle`（CAO 新分支，之后又续推） | `feat/evidence-browse` @ `c35ae9e` | `1c4f0f5`（收藏/删除/到期/配额）、`0fd523d`（测量脚本）、`ce66848`（按时间范围删除、数据目录独立配置）、`94657e1`（标注/划分工具 + LR 分类器，schema v6）、`dc9a355`（五组检索评测）；草稿 PR #5（base `feat/evidence-browse`） | 收藏、两种删除 + 按时间范围删除、30/90 天到期、配额暂停（v5）；测量脚本；分类器与评测脚本（仅合成/替身数据验证流程，无真实结果） | macOS：pytest 151/151（含 2 条真实模型）、pyflakes 无告警、5 处变异检查均被测试发现；Windows 未测 |
 | 2026-10-15 | `feat/evidence-browse`（新分支） | `feat/vector-search` @ `40aad90` | `72f36ac`（证据浏览）、`da23ba5`（放宽匹配 + A05–A10）、批量导入提交（见 `git log`）；草稿 PR #4（base `feat/vector-search`） | 证据浏览：同一录制段内前后浏览、缺口/段边界提示、两图并排、切换到同帧的其他出现；"放宽匹配"按钮；A05–A10 自动化验收测试；批量导入（schema v4） | macOS：pytest 105/105（含 2 条真实模型）、pyflakes 无告警；Windows 未测 |
@@ -144,7 +144,7 @@ $out = "results\windows\2026-10-xx-<机器名>"; New-Item -ItemType Directory -F
 ### 分支依赖与合并顺序
 
 ```
-main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-cadence (d325790, 草稿 PR #2) ── feat/vector-search (40aad90, 草稿 PR #3) ── feat/evidence-browse (c35ae9e, 草稿 PR #4) ── feat/lifecycle (草稿 PR #5) ── feat/dataset-collection (草稿 PR)
+main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-cadence (d325790, 草稿 PR #2) ── feat/vector-search (40aad90, 草稿 PR #3) ── feat/evidence-browse (c35ae9e, 草稿 PR #4) ── feat/lifecycle (草稿 PR #5) ── feat/dataset-collection (eaa130c, 草稿 PR #6)
 ```
 
 截至 2026-10-17：PR #1 已合入 `main`（`4525e6e`），PR #2–#5 仍是草稿。`feat/dataset-collection` 用到 `feat/lifecycle` 的 `dataset.py` 和导入 v6 结构，所以从 `feat/lifecycle` @ `1e124b5` 建，PR base 选 `feat/lifecycle`，排在 #5 之后合并。

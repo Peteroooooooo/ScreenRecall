@@ -7,7 +7,7 @@
 | 项目 | 状态 |
 | --- | --- |
 | 基于 | `feat/lifecycle` @ `1e124b5`（草稿 PR #5）← `feat/evidence-browse`（草稿 PR #4）← `feat/vector-search`（草稿 PR #3）← `feat/capture-cadence`（草稿 PR #2）← `main`（已含 P0，PR #1 于 10-16 合入） |
-| PR | 草稿 PR，base `feat/lifecycle`；合并顺序 #2 → #3 → #4 → #5 → 本 PR，详见 [PROGRESS.md](PROGRESS.md) |
+| PR | 草稿 [PR #6](https://github.com/Peteroooooooo/ScreenRecall/pull/6)，base `feat/lifecycle`；合并顺序 #2 → #3 → #4 → #5 → 本 PR，详见 [PROGRESS.md](PROGRESS.md) |
 | 本分支新增 | 受控数据集的**采集与标注规程**（[datasets/COLLECTION.md](datasets/COLLECTION.md)）、80 个任务的任务表、40 条查询的分配表、清单 / 事实 / 标注模板；工具 `python -m screenrecall.collect`（清单、检查、导入、标注表、事实→相关帧）和 `python -m screenrecall.indexer`（不采集、只跑 OCR 与向量，Mac 上可用）；导入支持逐张的应用、窗口标题和捕获时间 |
 | 测试 | **macOS**：`pytest tests` 169/169（继承 151 + 新增 18）；新增中 1 条用真实 RapidOCR，其余是逻辑测试；另在 Mac 上用真实 OCR + 真实向量模型跑通了一遍 manifest → check → import → indexer → labels 命令行流程（4 张合成文字图，只验证流程） |
 | 数据 | **还没有采集任何真实数据**，没有标注、分类结果或检索结果 |
