@@ -19,7 +19,8 @@
 - P1 按时间范围删除：**已实现**（同一分支 `ce66848`）；数据目录可带自己的 `config.toml`，用于独立测试库。
 - P1 标注 / 划分工具与分类器流程：**代码完成**（同一分支 `94657e1`，数据库 **v6**），只在合成数据上测过流程；**没有真实标注数据，也没有分类实验结果**。
 - P1 五组检索实验：**评测脚本完成**（同一分支 `dc9a355`），替身编码器上测过流程；**没有查询真值，也没有实验结果**。
-- P1 其余（受控数据与标注手册、40 条查询真值、捕获覆盖实验、编码对照、失败待办人工重试、报告与演示视频）：未完成，见"完成度总表"与"下一步"。
+- P1 受控数据采集与标注：**规程和工具已就绪，真实数据尚未采集**（分支 `feat/dataset-collection`，2026-10-17）。两人各约 1,000 个有效帧，统一用系统截图 + `collect` 导入同一个库；规程见 `datasets/COLLECTION.md`。Mac 上 169/169 通过（新增 18 条，1 条用真实 RapidOCR）。
+- P1 其余（40 条查询真值、捕获覆盖实验、编码对照、失败待办人工重试、报告与演示视频）：未完成，见"完成度总表"与"下一步"。
 - **证据浏览 / 批量导入 / 收藏删除到期配额已于 2026-10-16 在 Windows 11 实机验证**（真实 OCR + 向量 + 真实数据端到端 19 项全过，`pytest` 132/132；见"验证记录"）。注意：这是在 CAO 推送分类 / 评测（`94657e1`、`dc9a355`）**之前**的提交 `0fd523d` 上验证的；分类与评测脚本本身尚未在 Windows 上验证。
 
 ## 完成度总表（对照 `readable_Proposal.md`，2026-10-16）
@@ -43,7 +44,8 @@
 | WebP 编码对照（5.1：原始像素 / q92 / 无损） | **未完成** | — | — | 未做 |
 | 失败待办人工重试入口（2.4 "允许重试"） | 自动有界重试已有，**人工重试入口未做** | — | — | — |
 | 标注与分组划分工具（6.1） | 完成（`dataset.py`：导出标注清单、校验、按来源组划分） | 通过（合成数据） | 不涉及 | 未用真实数据跑过 |
-| 受控数据、标注手册、40 条查询真值（6.1） | **未完成**（要团队录制和人工标注；类别表只有示例，未冻结） | — | — | 需要 Windows 录制 |
+| 受控数据采集与标注规程、工具（6.1） | 完成（`datasets/COLLECTION.md`、任务表、查询分配、模板；`collect.py`、`indexer.py`） | 通过（合成图片；近重复阈值未在真实截图上校准） | Mac 上真实 RapidOCR + 向量模型跑通命令行流程（4 张合成图，只验证流程） | `collect` / `indexer` 未在 Windows 运行 |
+| 受控数据、标注、40 条查询真值（6.1） | **未开始采集**：类别表、划分比例、肖天奕的任务表待两人在试采后确认 | — | — | 不需要 Windows 录制（两人都用截图 + 导入）；数据集不能代替捕获覆盖和资源实测 |
 | 五组检索实验 Exp 1–5、Hit@5 / MRR@10（6.2） | 评测脚本完成（`evaluate.py`：五组同候选、逐条结果、按场景 / 语言给命中数 / 查询数、查询设计检查） | 通过（替身编码器） | 未在真实模型和真实查询上跑 | **没有查询真值，没有任何检索实验结果** |
 | 分类器：LR + 多数类 / 进程名规则基线、Macro F1、混淆矩阵（6.4），页面显示标签并可筛选 | 流程完成（`classify.py`、数据库 v6 `frame_labels`、页面标签与主动筛选） | 通过（**合成数据，只验证流程**） | 未在真实 CLIP 向量上训练 | **没有真实标注，没有任何分类结果**；页面标签未实机查看 |
 | 报告、Slides、演示视频、运行包（8.3） | 未开始 | — | — | — |
@@ -130,6 +132,7 @@ $out = "results\windows\2026-10-xx-<机器名>"; New-Item -ItemType Directory -F
 
 | 日期 | 分支 | 基于 | 本轮提交 / PR | 内容 | 验证状态 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-10-17 | `feat/dataset-collection`（CAO 新分支） | `feat/lifecycle` @ `1e124b5` | `eaa130c`；草稿 PR #6（base `feat/lifecycle`） | 受控数据采集与标注规程、80 个任务表、40 条查询分配、模板；`collect`（清单 / 检查 / 导入 / 标注表 / 事实→相关帧）、`indexer`（只建索引，Mac 可用）；导入支持逐张应用 / 标题 / 时间；`dataset check` 新增复核人≠标注人 | macOS：pytest 169/169（含 1 条真实 RapidOCR、2 条真实向量模型）、pyflakes 无告警、3 处变异检查均被测试发现；命令行全流程用真实 OCR + 向量跑通；**无真实数据**；Windows 未测 |
 | 2026-10-16 | `feat/lifecycle`（肖天奕接力，同一分支） | `0fd523d` | 本轮提交（修 bench 测试、记录验证）；仍在草稿 PR #5 | 合并 PR #1 进 main；证据浏览 / 批量导入 / 收藏删除到期配额的 **Windows 实机验证**；修一个在 Windows venv 下误判的 bench 测试（产品代码未改） | Windows 11：pytest 132/132（含真实模型）、环境检查 9/9、#4+#5 实机端到端 19/19 |
 | 2026-10-16 | `feat/lifecycle`（CAO 新分支，之后又续推） | `feat/evidence-browse` @ `c35ae9e` | `1c4f0f5`（收藏/删除/到期/配额）、`0fd523d`（测量脚本）、`ce66848`（按时间范围删除、数据目录独立配置）、`94657e1`（标注/划分工具 + LR 分类器，schema v6）、`dc9a355`（五组检索评测）；草稿 PR #5（base `feat/evidence-browse`） | 收藏、两种删除 + 按时间范围删除、30/90 天到期、配额暂停（v5）；测量脚本；分类器与评测脚本（仅合成/替身数据验证流程，无真实结果） | macOS：pytest 151/151（含 2 条真实模型）、pyflakes 无告警、5 处变异检查均被测试发现；Windows 未测 |
 | 2026-10-15 | `feat/evidence-browse`（新分支） | `feat/vector-search` @ `40aad90` | `72f36ac`（证据浏览）、`da23ba5`（放宽匹配 + A05–A10）、批量导入提交（见 `git log`）；草稿 PR #4（base `feat/vector-search`） | 证据浏览：同一录制段内前后浏览、缺口/段边界提示、两图并排、切换到同帧的其他出现；"放宽匹配"按钮；A05–A10 自动化验收测试；批量导入（schema v4） | macOS：pytest 105/105（含 2 条真实模型）、pyflakes 无告警；Windows 未测 |
@@ -141,8 +144,10 @@ $out = "results\windows\2026-10-xx-<机器名>"; New-Item -ItemType Directory -F
 ### 分支依赖与合并顺序
 
 ```
-main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-cadence (d325790, 草稿 PR #2) ── feat/vector-search (40aad90, 草稿 PR #3) ── feat/evidence-browse (c35ae9e, 草稿 PR #4) ── feat/lifecycle (草稿 PR #5)
+main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-cadence (d325790, 草稿 PR #2) ── feat/vector-search (40aad90, 草稿 PR #3) ── feat/evidence-browse (c35ae9e, 草稿 PR #4) ── feat/lifecycle (草稿 PR #5) ── feat/dataset-collection (eaa130c, 草稿 PR #6)
 ```
+
+截至 2026-10-17：PR #1 已合入 `main`（`4525e6e`），PR #2–#5 仍是草稿。`feat/dataset-collection` 用到 `feat/lifecycle` 的 `dataset.py` 和导入 v6 结构，所以从 `feat/lifecycle` @ `1e124b5` 建，PR base 选 `feat/lifecycle`，排在 #5 之后合并。
 
 截至 2026-10-16：PR #1–#4 都没有合并。`feat/lifecycle` 改动了 #4 引入的页面和导入、证据模块，所以从 `feat/evidence-browse` 的最新提交建，PR base 选 `feat/evidence-browse`，排在 #4 之后合并。
 
@@ -161,6 +166,13 @@ main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-c
 - **修了一个测试**：`test_bench.py::test_mem_samples_process_tree` 在 Windows venv 下会误判（启动器 shim 会多 spawn 一个解释器，两者都被 bench 正确采集）。只改了测试断言，`bench.py` 产品代码没动。
 - **没有开始任何新功能**。距离"项目完成"还缺的硬交付见"一句话状态 → 距离方案要求的交付还缺什么"。
 - **下一步建议**（按价值与依赖）：① 真实资源测量（第 7 项，bench 脚本已就绪，先录/导入到 1,500–2,000 帧再跑 P95 与两进程内存，据此冻结初值）→ ② 受控数据采集 + 40 条查询真值（第 13 项，需 Windows 录制）→ ③ 分类（第 11 项，依赖 ② 的标注数据）→ ④ 五组检索实验、报告、演示视频（方案 7、8.2）→ ⑤ 浏览器里人工过一遍页面 UI（"待验证"里的交互项）。
+
+## 下次恢复（2026-10-17，`feat/dataset-collection`）
+
+1. `git switch feat/dataset-collection && git pull`；`source .venv/bin/activate`；`python -m pytest tests -q --basetemp=data/pytest` 应为 169 passed。
+2. Mac 上导入 / 建索引需要 `rapidocr-onnxruntime==1.4.4 onnxruntime==1.20.1 opencv-python==5.0.0.93`（本机 .venv 已装）。
+3. 下一步是**小批试采**（`datasets/COLLECTION.md` 第 8 节）：需要人截图、填清单和标注；代理可以建目录、跑 `manifest / check / import / indexer / labels / facts`、读检查结果。试采后把类别表、划分比例和肖天奕任务表的确认结果写进"待团队拍板"5。
+4. 还没有任何真实截图、标注、分类或检索结果。
 
 ## 下次恢复（2026-10-16，`feat/lifecycle`）
 
@@ -232,7 +244,7 @@ py -3.12 -m venv .venv
 
 ### macOS（开发与单元测试）
 
-后台和页面依赖 Windows 窗口 API（`winapi.py` 在非 Windows 上直接报错），**在 Mac 上不能运行录制和页面**，也不打算做成 macOS 产品。Mac 上能做的是：写代码、跑 `tests/`（假窗口替身 + 注入时钟 + 真实 SQLite/WebP），以及以后不依赖窗口 API 的模块（向量、检索、分类、评测脚本）。
+后台和页面依赖 Windows 窗口 API（`winapi.py` 在非 Windows 上直接报错），**在 Mac 上不能运行录制和页面**，也不打算做成 macOS 产品。Mac 上能做的是：写代码、跑 `tests/`（假窗口替身 + 注入时钟 + 真实 SQLite/WebP），以及不依赖窗口 API 的模块（向量、检索、分类、评测脚本）；导入截图后可用 `python -m screenrecall.indexer --data-dir <目录>` 在 Mac 上跑真实 OCR 与向量（需额外安装 `rapidocr-onnxruntime==1.4.4 onnxruntime==1.20.1 opencv-python==5.0.0.93`，与 `requirements.txt` 同版本）。
 
 系统自带的 `python3` 是 3.9，缺 `tomllib`，需要另装 Python 3.12，例如用 uv：
 
@@ -407,7 +419,7 @@ python -m pytest tests
 10. ~~收藏 / 删除 / 配额 / 30·90 天到期~~ **已完成**（2026-10-16，`feat/lifecycle`，Mac 逻辑 + AppTest；Windows 待验证，见"待验证"11）。按时间范围删除 10-16 补上（`ce66848`）。
 11. **分类**：~~训练与评测流程~~ **代码完成**（2026-10-16，`94657e1`，合成数据流程测试）：标注清单导出与校验、按来源组划分、LR + 两个基线、Macro F1 / 逐类 / 混淆矩阵、预测写库与页面筛选。**剩下**：真实标注（13）后训练、写报告；标注手册与类别表冻结。依赖：13。
 12. ~~批量导入~~ **已完成**（2026-10-15，`feat/evidence-browse`；Windows 待验证，见"待验证"10）：PNG/JPEG/WebP，导入批次来源、时间未知标注、批次幂等。方案 6.8。依赖：3。
-13. **受控数据采集与标注、40 条查询真值**（需 Windows 录制）：方案 7.1。依赖：1（采集节奏稳定后再录）。
+13. **受控数据采集与标注、40 条查询真值**：规程与工具已完成（2026-10-17，`feat/dataset-collection`）。两人都用系统截图 + `collect import`，不需要 Windows 实时录制。顺序：小批试采（`datasets/COLLECTION.md` 第 8 节，每人每场景 10 张）→ 确认类别表、划分比例和肖天奕的任务表 → 各采约 1,000 有效帧 → 互相复核 → 写并冻结 40 条查询。Mac 与 Windows 都可做；建库统一在一台机器上（当前约定曹贺乔的 Mac，`data-dataset/`）。
 14. **五组检索实验、资源与存储测量、报告与演示**：方案 6.2、6.3、8.3。**评测脚本已完成**（`dc9a355`，`python -m screenrecall.evaluate`，用法见 `datasets/README.md`）、测量脚本已完成（`0fd523d`）；剩下：40 条查询真值（依赖 13）→ dev 调规则 → 冻结后只跑一次 blind → 报告、Slides、视频。依赖：13。
 
 ## 待团队拍板
@@ -418,3 +430,4 @@ python -m pytest tests
 2. ~~删除整幅画面时收藏怎么处理~~ **已定（2026-10-16）**：用户明确选择"删除此画面的全部记录"时，界面说明会删除哪些出现记录及关联收藏，确认后执行；到期或配额触发的自动清理保护收藏；删除单次出现记录时不误删仍被其他记录引用的共享内容。
 3. 页面文案目前是中文，演示视频若需英文需替换。
 4. `unsaved_change` 缺口是否在实机数据后合并短间隔（见"已知问题"）。
+5. **数据集（试采后两人确认）**：类别表 `code / chat / web / table_doc` 与第 5.3 节混合画面规则；分类划分比例（建议 `0.6,0.2,0.2`）；肖天奕的 40 个任务（`tasks.csv` 中 `status=draft`）；共享网盘位置；建库由谁做。

@@ -1,0 +1,4 @@
+﻿fact_id,task_id,kind,content,language,note
+cao-code-01#1,cao-code-01,error,"RuntimeError: shape '[16, 3, 224, 224]' is invalid for input of size 1204224",en,示例行：脚本故意触发
+cao-code-01#2,cao-code-01,param,"batch_size=16, lr=3e-4",en,示例行
+cao-web-01#1,cao-web-01,look,深色导航栏 + 雪山湖泊大图 + 白色大标题,zh,示例行：外观类事实写看得见的特征

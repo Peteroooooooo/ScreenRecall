@@ -1,0 +1,81 @@
+﻿task_id,collector,device,scenario,query_pool,apps,content,variations,planted_facts,target_frames,status
+cao-code-01,cao,cao-mbp,code,dev,Terminal,PyTorch 训练脚本报错：张量形状不匹配 RuntimeError、脚本打印的 CUDA out of memory 文本；启动参数 batch_size / lr / epochs,改参数重跑 5~6 次；浅色与深色终端；全屏与半屏窗口,#1 一条完整报错原文；#2 一组具体参数（如 batch_size=16）,25,todo
+cao-code-02,cao,cao-mbp,code,dev,Terminal,uv / pip 安装失败：依赖冲突 ResolutionImpossible、ModuleNotFoundError、版本号,不同包与版本；滚动到报错开头和结尾；字体大小 2 档,#1 冲突的包名与版本号,25,todo
+cao-code-03,cao,cao-mbp,code,dev,Google Chrome（Jupyter）,Notebook 里 pandas KeyError / ValueError traceback 与 DataFrame 输出,不同单元格；浏览器缩放 100% 与 125%；展开 / 折叠输出,#1 报错的列名；#2 表格中的某个数值,25,todo
+cao-code-04,cao,cao-mbp,code,dev,Visual Studio Code,pytest 断言失败：assert diff、参数化用例编号、失败数统计,改断言后重跑；集成终端与测试面板两种视图；浅色与深色主题,#1 失败用例名与期望值,25,todo
+cao-code-05,cao,cao-mbp,code,dev,Visual Studio Code,YAML / JSON 配置解析错误与超参数配置文件（config.yaml 中 batch_size、max_epochs、模型名）,改配置不同字段；编辑器分栏 / 不分栏；问题面板展开,#1 报错行号与字段；#2 配置中的模型名,25,todo
+cao-code-06,cao,cao-mbp,code,blind,Terminal,git：merge 冲突、push rejected、detached HEAD 提示与分支名,不同仓库与分支名；git log 输出；窗口大小 2 档,#1 冲突文件名与分支名,25,todo
+cao-code-07,cao,cao-mbp,code,blind,Terminal,curl 调用公开测试接口（如 httpbin）返回 401 / 429 / 500 与 JSON 错误体,不同状态码与请求头；带 -v 和不带 -v,#1 状态码与错误字段,25,todo
+cao-code-08,cao,cao-mbp,code,blind,Terminal（sqlite3）,SQL 语法错误、UNIQUE constraint failed、查询结果表（自建示例库）,不同表与查询；.mode box 与默认输出,#1 约束名或报错原文,25,todo
+cao-code-09,cao,cao-mbp,code,blind,Terminal（clang / make）,C 编译错误 use of undeclared identifier、警告行号、Segmentation fault,不同源文件与错误；彩色与无色输出,#1 报错的标识符与行号,25,todo
+cao-code-10,cao,cao-mbp,code,blind,Visual Studio Code,Python 调试：断点变量面板、调用栈、异常断点（脚本自定义错误码如 E-4127）,不同断点位置；变量展开程度；面板布局,#1 自定义错误码；#2 某个变量值,25,todo
+cao-chat-01,cao,cao-mbp,chat,dev,Slack,测试工作区 #ml-project 频道（英文）：分享 API 文档链接、模型版本、deadline,新消息逐条增加；频道与私信；浅色与深色,#1 文档链接或标题；#2 deadline 日期,25,todo
+cao-chat-02,cao,cao-mbp,chat,dev,WeChat,测试群（中文）：聚餐地点推荐、餐厅名、地址、人均,消息逐条增加；聊天窗口宽窄；滚动到不同位置,#1 推荐的餐厅名与地址,25,todo
+cao-chat-03,cao,cao-mbp,chat,dev,Telegram,中英混合：分享论文标题、arXiv 编号、讨论实验结论,私聊与群组；字体大小；夜间模式,#1 论文标题或 arXiv 编号,25,todo
+cao-chat-04,cao,cao-mbp,chat,dev,Discord,测试服务器（英文）：bug 报告、错误码、复现步骤,不同频道；线程展开；嵌入链接预览,#1 bug 编号与错误码,25,todo
+cao-chat-05,cao,cao-mbp,chat,dev,Feishu,中文组会安排：时间、会议室、待办事项,群聊与单聊；消息卡片；窗口大小,#1 会议时间与会议室,25,todo
+cao-chat-06,cao,cao-mbp,chat,blind,Google Chrome（WhatsApp Web 或 Messenger）,英文旅行行程：航班号、酒店名、集合时间,不同对话；浏览器缩放；浅色与深色,#1 航班号；#2 酒店名,25,todo
+cao-chat-07,cao,cao-mbp,chat,blind,WeChat,中英混合：数据集下载链接（示例）、提取码（假）、文件名,文件消息与文字消息；群与单聊,#1 文件名或链接,25,todo
+cao-chat-08,cao,cao-mbp,chat,blind,Slack,英文长线程：带代码块的讨论、emoji 反应、置顶消息,线程展开 / 收起；代码块长短,#1 线程中的关键结论句,25,todo
+cao-chat-09,cao,cao-mbp,chat,blind,QQ,中文课程作业分工与截止日期,群公告与聊天；消息逐条增加,#1 截止日期与分工,25,todo
+cao-chat-10,cao,cao-mbp,chat,blind,Microsoft Teams（或 Zoom 会议聊天）,英文会议 Q&A：问题、回答、链接,会议中与会后聊天；窗口大小,#1 某个问题与回答,25,todo
+cao-web-01,cao,cao-mbp,web,dev,Safari,旅行 / 户外：雪山、湖泊、滑雪场大图首页（2~4 个不同网站）,页面顶部与中部；窗口全屏 / 半屏；缩放 2 档,#1 页面主图的外观描述（如雪山大图 + 白色标题）,25,todo
+cao-web-02,cao,cao-mbp,web,dev,Google Chrome,科技产品发布页：深色背景、大幅产品图（耳机 / 手机 / 相机）,不同产品与网站；滚动位置；浏览器深浅色,#1 外观描述（深色背景 + 产品大图）,25,todo
+cao-web-03,cao,cao-mbp,web,dev,Safari,美食食谱博客：大幅食物照片、橙 / 红色按钮,不同菜谱页；滚动位置；阅读器模式关闭,#1 外观描述（如橙色按钮 + 食物大图）,25,todo
+cao-web-04,cao,cao-mbp,web,dev,Google Chrome,博物馆 / 美术馆：画作大图、白底极简排版,不同展品页；缩放 2 档,#1 外观描述,25,todo
+cao-web-05,cao,cao-mbp,web,dev,Safari,新闻门户首页：多图网格,不同网站与时段；窗口宽度,#1 外观描述（图片网格布局）,25,todo
+cao-web-06,cao,cao-mbp,web,blind,Google Chrome,流媒体 / 电影介绍页：深色主题海报墙,不同影片页；滚动位置,#1 外观描述,25,todo
+cao-web-07,cao,cao-mbp,web,blind,Safari,大学 / 课程官网：校园大图、蓝色导航栏,不同学校与页面；缩放 2 档,#1 外观描述,25,todo
+cao-web-08,cao,cao-mbp,web,blind,Google Chrome,体育赛事页：比分板、球场照片,不同比赛页；浅色与深色,#1 外观描述,25,todo
+cao-web-09,cao,cao-mbp,web,blind,Safari,地图 / 天气：卫星图、雷达图、天气卡片,不同城市；地图缩放级别,#1 外观描述,25,todo
+cao-web-10,cao,cao-mbp,web,blind,Google Chrome,设计作品集（Dribbble / Behance）：彩色卡片网格,不同作品集；滚动位置,#1 外观描述,25,todo
+cao-table-01,cao,cao-mbp,table,dev,Numbers,个人预算表（合成数据）：类别、金额、合计公式,改金额后重截；不同工作表；缩放,#1 某一项金额与合计,25,todo
+cao-table-02,cao,cao-mbp,table,dev,Google Chrome（Google Sheets）,实验结果表：模型、Accuracy、F1（合成数据）、条件格式,不同列排序；冻结行；缩放,#1 某个模型的分数,25,todo
+cao-table-03,cao,cao-mbp,table,dev,Safari,公开商品参数页：笔记本 / 手机规格对比（电池容量、重量、价格）,不同型号；展开 / 收起参数表,#1 某型号的某项参数（如 Model-X 电池容量）,25,todo
+cao-table-04,cao,cao-mbp,table,dev,Preview,自制示例订单确认 PDF：订单号、商品、金额、日期,不同订单；PDF 缩放；单页与连续滚动,#1 订单号与金额,25,todo
+cao-table-05,cao,cao-mbp,table,dev,Preview,自制缴费通知 PDF（水电 / 学费）：金额、截止日期、账号（假）,不同通知；缩放,#1 缴费金额与截止日期,25,todo
+cao-table-06,cao,cao-mbp,table,blind,Google Chrome（draw.io）,流程图：数据处理流程、带编号节点与箭头,不同流程；缩放；浅色与深色画布,#1 某个节点名称,25,todo
+cao-table-07,cao,cao-mbp,table,blind,Microsoft Excel（或 Numbers）,库存表 / 透视表（合成数据）,不同筛选；透视表展开,#1 某个商品库存数,25,todo
+cao-table-08,cao,cao-mbp,table,blind,Preview,公开论文 PDF 的结果表（arXiv）,不同论文；缩放,#1 表中某个数值与论文名,25,todo
+cao-table-09,cao,cao-mbp,table,blind,Safari,公开航班 / 火车时刻表网页,不同线路与日期；滚动位置,#1 某班次与时间,25,todo
+cao-table-10,cao,cao-mbp,table,blind,Google Chrome,公开汇率 / 行情表格网页,不同币种 / 页面；排序,#1 某个代码与数值,25,todo
+xiao-code-01,xiao,xiao-win,code,dev,PowerShell,权限错误 0x80070005、执行策略报错、Access is denied,不同命令；管理员与普通窗口,#1 错误码与命令,25,draft
+xiao-code-02,xiao,xiao-win,code,dev,Windows Terminal,conda 环境创建 / 安装失败、PackagesNotFoundError,不同环境名与包；终端主题,#1 包名与版本,25,draft
+xiao-code-03,xiao,xiao-win,code,dev,Visual Studio Code,Node.js / npm 报错（ERESOLVE、ENOENT）与 package.json,不同项目；分栏,#1 报错代码与包名,25,draft
+xiao-code-04,xiao,xiao-win,code,dev,IntelliJ IDEA（或 VS Code）,Java 编译错误与 NullPointerException 栈,不同类与行号；主题,#1 异常类与行号,25,draft
+xiao-code-05,xiao,xiao-win,code,dev,命令提示符,MSVC / cl 编译错误、链接错误 LNK2019,不同源文件,#1 错误号与符号名,25,draft
+xiao-code-06,xiao,xiao-win,code,blind,事件查看器,应用程序错误事件、事件 ID、错误模块,不同事件；详情面板,#1 事件 ID 与模块名,25,draft
+xiao-code-07,xiao,xiao-win,code,blind,PyCharm（或 VS Code）,TensorFlow / Keras 训练日志、形状错误、参数,不同模型与参数,#1 报错原文与参数,25,draft
+xiao-code-08,xiao,xiao-win,code,blind,Windows Terminal（WSL Ubuntu）,apt / bash 报错、权限与路径错误,不同命令,#1 报错原文,25,draft
+xiao-code-09,xiao,xiao-win,code,blind,Docker Desktop（或 PowerShell）,镜像构建失败日志、端口占用,不同 Dockerfile,#1 失败步骤与错误,25,draft
+xiao-code-10,xiao,xiao-win,code,blind,Windows 系统对话框,DLL 缺失、安装程序错误码对话框（受控触发）,不同对话框,#1 错误码与 DLL 名,25,draft
+xiao-chat-01,xiao,xiao-win,chat,dev,WeChat,中文二手交易 / 租房：价格、地址、看房时间,消息逐条增加；窗口宽窄,#1 价格与地址,25,draft
+xiao-chat-02,xiao,xiao-win,chat,dev,Microsoft Teams,英文项目周报：进度、风险、负责人,频道与私聊,#1 风险项与负责人,25,draft
+xiao-chat-03,xiao,xiao-win,chat,dev,Discord,英文游戏组队：时间、服务器、角色,不同频道,#1 组队时间与服务器,25,draft
+xiao-chat-04,xiao,xiao-win,chat,dev,QQ,中文社团活动报名：地点、人数、费用,群公告与聊天,#1 活动地点与费用,25,draft
+xiao-chat-05,xiao,xiao-win,chat,dev,Telegram,英文开源项目 issue 讨论：issue 号、版本,群组与私聊,#1 issue 号,25,draft
+xiao-chat-06,xiao,xiao-win,chat,blind,DingTalk,中文考勤 / 请假审批：日期、理由,消息卡片与聊天,#1 请假日期,25,draft
+xiao-chat-07,xiao,xiao-win,chat,blind,WhatsApp（或 LINE）桌面版,英文代购 / 购物：商品、价格、取货时间,不同对话,#1 商品与价格,25,draft
+xiao-chat-08,xiao,xiao-win,chat,blind,WeChat,中英混合外卖拼单：店名、菜品、金额,群与单聊,#1 店名与金额,25,draft
+xiao-chat-09,xiao,xiao-win,chat,blind,Slack,另一测试工作区英文 on-call 告警：服务名、告警级别,频道与线程,#1 服务名与告警级别,25,draft
+xiao-chat-10,xiao,xiao-win,chat,blind,Signal（或 Element）桌面版,英文读书会：书名、章节、时间,不同对话,#1 书名与章节,25,draft
+xiao-web-01,xiao,xiao-win,web,dev,Microsoft Edge,游戏官网：深色背景、角色大图,滚动位置；缩放,#1 外观描述,25,draft
+xiao-web-02,xiao,xiao-win,web,dev,Google Chrome,汽车品牌官网：车辆大图、黑白配色,不同车型,#1 外观描述,25,draft
+xiao-web-03,xiao,xiao-win,web,dev,Microsoft Edge,酒店预订：房间照片网格、蓝色按钮,不同酒店,#1 外观描述,25,draft
+xiao-web-04,xiao,xiao-win,web,dev,Google Chrome,时尚电商首页：模特大图、促销横幅,不同网站,#1 外观描述,25,draft
+xiao-web-05,xiao,xiao-win,web,dev,Firefox,音乐节 / 演出：彩色海报、深色背景,不同活动,#1 外观描述,25,draft
+xiao-web-06,xiao,xiao-win,web,blind,Microsoft Edge,动漫 / 漫画站：插画大图,不同作品页,#1 外观描述,25,draft
+xiao-web-07,xiao,xiao-win,web,blind,Google Chrome,运动品牌：运动员大图、橙色或红色按钮,不同页面,#1 外观描述,25,draft
+xiao-web-08,xiao,xiao-win,web,blind,Firefox,宠物领养：动物照片卡片,不同页面,#1 外观描述,25,draft
+xiao-web-09,xiao,xiao-win,web,blind,Microsoft Edge,家居（如 IKEA）：室内场景大图,不同房间页,#1 外观描述,25,draft
+xiao-web-10,xiao,xiao-win,web,blind,Google Chrome,航空公司：飞机与目的地大图、搜索框,不同航司,#1 外观描述,25,draft
+xiao-table-01,xiao,xiao-win,table,dev,Microsoft Excel,报销单 / 发票明细（合成数据）,不同表；缩放,#1 发票号与金额,25,draft
+xiao-table-02,xiao,xiao-win,table,dev,Microsoft Excel,库存与采购表（合成数据）、条件格式,筛选与排序,#1 某商品数量,25,draft
+xiao-table-03,xiao,xiao-win,table,dev,Microsoft Edge,外卖 / 电商订单详情页（测试账号或自制页面）,不同订单,#1 订单号与金额,25,draft
+xiao-table-04,xiao,xiao-win,table,dev,Google Chrome,公开商品参数页：显卡 / 手机规格表,不同型号,#1 某型号某参数,25,draft
+xiao-table-05,xiao,xiao-win,table,dev,Microsoft Excel（或 Word）,课程表 / 排班表（合成数据）,不同周,#1 某节课时间与教室,25,draft
+xiao-table-06,xiao,xiao-win,table,blind,Microsoft PowerPoint（或 Visio）,流程图：审批 / 部署流程,不同流程,#1 某个节点名称,25,draft
+xiao-table-07,xiao,xiao-win,table,blind,Microsoft Excel,银行流水（合成数据）：日期、金额、余额,不同月份,#1 某笔交易金额,25,draft
+xiao-table-08,xiao,xiao-win,table,blind,Microsoft Edge,物流跟踪（自制页面或测试订单）,不同运单,#1 运单号与状态,25,draft
+xiao-table-09,xiao,xiao-win,table,blind,Microsoft Word,实验报告中的数据表（合成）,不同报告,#1 表中某个数值,25,draft
+xiao-table-10,xiao,xiao-win,table,blind,Adobe Acrobat Reader（或 Edge PDF）,自制电费 / 话费账单 PDF,不同账单,#1 账单金额与周期,25,draft
