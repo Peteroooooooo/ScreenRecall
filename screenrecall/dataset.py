@@ -75,6 +75,7 @@ class CheckReport:
     errors: list[str] = field(default_factory=list)
     unlabeled: int = 0
     changed_by_review: int = 0
+    dev_only_skipped: int = 0   # source_kind=mock_ui 的仿界面样本：只作开发测试，不进正式数据集
 
     @property
     def ok(self) -> bool:
@@ -91,7 +92,7 @@ def load_labelset(path: Path) -> list[str]:
 
 
 def read_labels(conn: sqlite3.Connection, csv_path: Path, labels: list[str], *,
-                require_review: bool = True) -> CheckReport:
+                require_review: bool = True, include_dev_only: bool = False) -> CheckReport:
     """最终类别 = final_label；为空时用复核结论 review_label；require_review 时两者都空即报错。
 
     复核改动了原标注（review/final 与 label 不同）必须写 change_reason，保留原标注以便审计。
@@ -107,6 +108,9 @@ def read_labels(conn: sqlite3.Connection, csv_path: Path, labels: list[str], *,
             raise DatasetError(f"标注文件缺少列：{missing}")
         for n, row in enumerate(reader, start=2):
             fid = (row["frame_id"] or "").strip()
+            if not include_dev_only and (row.get("source_kind") or "").strip() == "mock_ui":
+                rep.dev_only_skipped += 1
+                continue
             first = (row["label"] or "").strip()
             final = (row["final_label"] or "").strip() or (row["review_label"] or "").strip()
             if not first and not final:
@@ -276,6 +280,7 @@ def main(argv: list[str] | None = None) -> int:
         labels = load_labelset(Path(args.labelset))
         rep = read_labels(conn, Path(args.labels), labels, require_review=not args.allow_unreviewed)
         print(f"已标注 {len(rep.items)} 帧，未标注 {rep.unlabeled} 帧，复核改动 {rep.changed_by_review} 帧；"
+              f"仿界面开发样本（mock_ui，已排除）{rep.dev_only_skipped} 帧；"
               f"类别分布 {dict(Counter(i.label for i in rep.items))}")
         for err in rep.errors:
             print("错误：" + err, file=sys.stderr)

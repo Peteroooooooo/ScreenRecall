@@ -42,15 +42,25 @@ SUFFIXES = {".png", ".jpg", ".jpeg", ".webp"}
 MANIFEST = "manifest.csv"
 MANIFEST_COLS = ["image_id", "file", "sha", "width", "height", "captured_local", "time_source", "collector",
                  "device", "task_id", "scenario", "app", "window_title", "language", "facts", "keep",
-                 "drop_reason", "note"]
+                 "drop_reason", "note", "source_kind"]
+# 旧清单（2026-10-18 之前）没有 source_kind 列：读的时候当空值，check 会要求补上
+OPTIONAL_MANIFEST_COLS = {"source_kind"}
 FILLED_BY_HUMAN = ["captured_local", "time_source", "device", "app", "window_title", "language", "facts", "keep",
-                   "drop_reason", "note"]
-EXTRA_LABEL_COLS = ["collector", "image_id", "source_file", "facts", "ocr_chars", "time_known"]
+                   "drop_reason", "note", "source_kind"]
+# 画面来源：app 只写实际进程名（如 Chromium、Terminal），界面性质写在这里，避免 app 名带出类别答案
+#   real_app  真实桌面应用窗口（Terminal、Numbers、VS Code…），内容可以是受控构造的
+#   real_web  真实网站或真实 Web 应用（公开网站、测试账号登录的 Slack 网页版…）
+#   mock_ui   自制 HTML 模仿终端 / 聊天 / 表格界面：只作开发测试样本，不进正式数据集
+SOURCE_KINDS = ("real_app", "real_web", "mock_ui")
+DEV_ONLY_KINDS = {"mock_ui"}
+EXTRA_LABEL_COLS = ["collector", "image_id", "source_file", "facts", "ocr_chars", "time_known", "source_kind",
+                    "ocr_task_id_leak"]
 MIN_SHORT_SIDE = 500          # 短边像素下限：低于它通常是裁得太小或缩放过的图
 MAX_TASK_FRAMES = 40          # 单个任务有效帧上限，避免一个任务撑起整个类别
 NEAR_HAMMING = 16             # 256 位差分哈希的候选阈值（约 6%）
 NEAR_DIFF_FRAC = 0.02         # 候选确认：缩略灰度图上明显不同的像素不到 2% 视为近重复
 NEAR_PIX_DELTA = 24
+NEAR_OK_MARK = "近重复保留："  # 写在 note 里，后接具体差异，表示人工判定这对近重复有意义、两张都留
 
 # 截图工具写进文件名的时间
 _TIME_PATTERNS = [
@@ -118,7 +128,8 @@ def write_csv(path: Path, cols: list[str], rows: list[dict]) -> None:
 
 # ---------------- manifest ----------------
 
-def build_manifest(task_dir: Path, *, device: str = "", app: str = "", language: str = "") -> tuple[int, int, list[str]]:
+def build_manifest(task_dir: Path, *, device: str = "", app: str = "", language: str = "",
+                   source_kind: str = "") -> tuple[int, int, list[str]]:
     """生成或刷新 task_dir/manifest.csv。返回（新增行数, 总行数, 提示）。
 
     已有行按 sha 保留人工填写的列；文件被删掉的行会提示但不自动删，避免误删已填的信息。
@@ -152,12 +163,14 @@ def build_manifest(task_dir: Path, *, device: str = "", app: str = "", language:
             w = h = ""
         if sha in old:
             r = dict(old[sha])
+            r.setdefault("source_kind", "")
             r.update(file=name, width=w, height=h, collector=collector, task_id=task_id, scenario=scenario)
         else:
             r = {c: "" for c in MANIFEST_COLS}
             r.update(image_id=f"{task_id}-{next_seq:03d}", file=name, sha=sha, width=w, height=h,
                      captured_local=t, time_source="filename" if t else "unknown", collector=collector,
-                     device=device, task_id=task_id, scenario=scenario, app=app, language=language, keep="yes")
+                     device=device, task_id=task_id, scenario=scenario, app=app, language=language, keep="yes",
+                     source_kind=source_kind)
             next_seq += 1
             added += 1
         rows.append(r)
@@ -226,11 +239,15 @@ def load_items(root: Path) -> tuple[list[Item], list[str]]:
         task_dir = mf.parent
         with open(mf, encoding="utf-8-sig", newline="") as fh:
             reader = csv.DictReader(fh)
-            missing = [c for c in MANIFEST_COLS if c not in (reader.fieldnames or [])]
+            missing = [c for c in MANIFEST_COLS
+                       if c not in (reader.fieldnames or []) and c not in OPTIONAL_MANIFEST_COLS]
             if missing:
                 errors.append(f"{mf.relative_to(root)}：缺少列 {missing}")
                 continue
             for r in reader:
+                for c in OPTIONAL_MANIFEST_COLS:
+                    r.setdefault(c, "")
+                    r[c] = r[c] or ""
                 items.append(Item(r, task_dir / (r.get("file") or ""), (r.get("keep") or "").strip() == "yes"))
     for d in sorted(p for p in root.glob("*/*") if p.is_dir() and not p.name.startswith(".")):
         if not (d / MANIFEST).exists() and any(c.suffix.lower() in SUFFIXES for c in d.iterdir()):
@@ -297,6 +314,9 @@ def check(root: Path, *, cache_path: Path | None = None, near: bool = True) -> C
                 res.errors.append(f"{where}：{col} 没填")
         if (r.get("language") or "").strip() and r["language"].strip() not in LANGS:
             res.errors.append(f"{where}：language 只能是 {LANGS}")
+        sk = (r.get("source_kind") or "").strip()
+        if sk not in SOURCE_KINDS:
+            res.errors.append(f"{where}：source_kind 只能是 {SOURCE_KINDS}（旧清单请补这一列）")
         ts = (r.get("time_source") or "").strip()
         cap = (r.get("captured_local") or "").strip()
         if ts not in ("filename", "manual", "unknown"):
@@ -373,32 +393,64 @@ def check(root: Path, *, cache_path: Path | None = None, near: bool = True) -> C
                     res.errors.append(
                         f"跨任务近重复：{a.row['image_id']} 与 {b.row['image_id']}；同一画面不能分在两个任务里，"
                         f"把其中一张 keep=drop（drop_reason 写 near-dup of ...）")
-                elif not (a.row.get("note") or "").strip() and not (b.row.get("note") or "").strip():
+                elif not any(NEAR_OK_MARK in (x.row.get("note") or "") for x in (a, b)):
                     res.warnings.append(
-                        f"任务内近重复：{a.row['image_id']} 与 {b.row['image_id']}；有意义的变化（如 16→18）请在"
-                        f"note 写明变化，否则删一张")
+                        f"任务内近重复（待人工判定）：{a.row['image_id']} 与 {b.row['image_id']}；有意义的变化"
+                        f"（如 16→18）请在其中一张的 note 写「{NEAR_OK_MARK}<具体差异>」，否则删一张")
 
     kept = [it for it in res.items if it.keep]
+    notes = {it.row.get("image_id"): it.row.get("note") for it in res.items}
+    same_pairs = [p for p in res.near_pairs if p[2]]
     res.counts = {
         "by_collector_scenario": dict(Counter(f"{i.row['collector']}/{i.row['scenario']}" for i in kept)),
         "tasks": dict(Counter(f"{i.row['collector']}/{i.row['scenario']}" for i in
                               {i.row["task_id"]: i for i in kept}.values())),
         "language": dict(Counter(i.row.get("language") for i in kept)),
+        "source_kind": dict(Counter(i.row.get("source_kind") or "（未填）" for i in kept)),
+        "dev_only": sum(1 for i in kept if i.row.get("source_kind") in DEV_ONLY_KINDS),
         "time_unknown": sum(1 for i in kept if i.row.get("time_source") == "unknown"),
-        "kept": len(kept), "dropped": len(res.items) - len(kept),
+        "total": len(res.items), "kept": len(kept), "dropped": len(res.items) - len(kept),
+        "exact_dup_groups": sum(1 for g in by_px.values() if len(g) > 1),
+        "near_checked": near,
+        "near_same_task": len(same_pairs),
+        "near_cross_task": len(res.near_pairs) - len(same_pairs),
+        "near_pending": sum(1 for a, b, s in same_pairs
+                            if not any(NEAR_OK_MARK in (notes.get(x) or "") for x in (a, b))),
     }
     return res
 
 
-def render_check(res: CheckResult) -> str:
-    lines = [f"有效帧（keep=yes）{res.counts.get('kept', 0)}，已剔除 {res.counts.get('dropped', 0)}；"
-             f"时间未知 {res.counts.get('time_unknown', 0)}",
-             "各采集者 / 场景帧数：" + json.dumps(res.counts.get("by_collector_scenario", {}), ensure_ascii=False),
-             "各采集者 / 场景任务数：" + json.dumps(res.counts.get("tasks", {}), ensure_ascii=False),
-             "语言：" + json.dumps(res.counts.get("language", {}), ensure_ascii=False)]
+def label_progress(labels_path: Path) -> dict:
+    """标注表进度：已标注（label+annotator）、已复核（review_label+reviewer）、已定稿（final_label）。"""
+    rows = read_csv(labels_path)
+    f = lambda r, *cs: all((r.get(c) or "").strip() for c in cs)  # noqa: E731
+    return {"rows": len(rows), "labeled": sum(f(r, "label", "annotator") for r in rows),
+            "reviewed": sum(f(r, "review_label", "reviewer") for r in rows),
+            "final": sum(f(r, "final_label") for r in rows)}
+
+
+def render_check(res: CheckResult, labels: dict | None = None) -> str:
+    c = res.counts
+    near = (f"任务内 {c.get('near_same_task', 0)} 对（待人工判定 {c.get('near_pending', 0)} 对）、"
+            f"跨任务 {c.get('near_cross_task', 0)} 对" if c.get("near_checked", True) else "未检查（--no-near）")
+    lines = [f"原始帧 {c.get('total', 0)}：清单保留（keep=yes）{c.get('kept', 0)}，已剔除 {c.get('dropped', 0)}；"
+             f"时间未知 {c.get('time_unknown', 0)}",
+             f"完全重复 {c.get('exact_dup_groups', 0)} 组；近重复（图像对数，不是无效张数）{near}",
+             "画面来源：" + json.dumps(c.get("source_kind", {}), ensure_ascii=False)
+             + f"；其中只作开发测试（mock_ui）{c.get('dev_only', 0)}",
+             "各采集者 / 场景帧数：" + json.dumps(c.get("by_collector_scenario", {}), ensure_ascii=False),
+             "各采集者 / 场景任务数：" + json.dumps(c.get("tasks", {}), ensure_ascii=False),
+             "语言：" + json.dumps(c.get("language", {}), ensure_ascii=False)]
+    if labels is None:
+        lines.append("人工标注 / 复核：未提供标注表（--labels），未统计；清单保留数不等于正式有效帧")
+    else:
+        lines.append(f"人工标注 / 复核：标注表 {labels['rows']} 行，已标注 {labels['labeled']}、"
+                     f"已复核 {labels['reviewed']}、已定稿 {labels['final']}")
+    for a, b, same in res.near_pairs:
+        lines.append(f"近重复对：{a} ~ {b}（{'同任务' if same else '跨任务'}）")
     lines += [f"错误：{e}" for e in res.errors]
     lines += [f"注意：{w}" for w in res.warnings]
-    lines.append("检查通过" if res.ok else f"检查未通过：{len(res.errors)} 个错误")
+    lines.append("格式检查通过（不代表已人工验收）" if res.ok else f"检查未通过：{len(res.errors)} 个错误")
     return "\n".join(lines)
 
 
@@ -517,7 +569,8 @@ def build_labels(root: Path, data_dir: str, out: Path, *, collector: str | None 
                 "language": r.get("language", ""), "collector": r["collector"], "image_id": r["image_id"],
                 "source_file": f"{r['collector']}/{r['task_id']}/{r['file']}", "facts": r.get("facts", ""),
                 "ocr_chars": "" if f["text"] is None else len("".join(f["text"].split())),
-                "time_known": "yes" if known else "no",
+                "time_known": "yes" if known else "no", "source_kind": r.get("source_kind", ""),
+                "ocr_task_id_leak": ";".join(task_id_leaks(f["text"] or "")),
             }
             old = prev.get(fid) or {}
             for c in human_cols:
@@ -526,11 +579,26 @@ def build_labels(root: Path, data_dir: str, out: Path, *, collector: str | None 
         write_csv(out, dataset.ALL_COLS + EXTRA_LABEL_COLS, rows)
         unindexed = sum(1 for r in rows if r["ocr_chars"] == "")
         notes = [f"{len(missing)} 张有效帧还没导入：{missing[:10]}{'…' if len(missing) > 10 else ''}"] if missing else []
+        leaks = [r["image_id"] for r in rows if r["ocr_task_id_leak"]]
+        if leaks:
+            notes.append(f"{len(leaks)} 帧的 OCR 文字里出现了任务编号 / 场景名（类别线索，见 ocr_task_id_leak 列）："
+                         f"{leaks[:10]}{'…' if len(leaks) > 10 else ''}")
+        devs = sum(1 for r in rows if r["source_kind"] in DEV_ONLY_KINDS)
+        if devs:
+            notes.append(f"{devs} 帧是 mock_ui 仿界面，只作开发测试样本，正式划分 / 训练 / 评测会排除")
         if unindexed:
             notes.append(f"{unindexed} 帧还没有 OCR 结果（ocr_chars 为空）：先运行 python -m screenrecall.indexer")
         return len(rows), len(prev), notes
     finally:
         conn.close()
+
+
+_LEAK_RE = re.compile(r"\b(?:[a-z]{2,}\s*[-_]\s*)?(code|chat|web|table)\s*[-_]\s*\d{2}\b", re.I)
+
+
+def task_id_leaks(text: str) -> list[str]:
+    """画面文字里形如 cao-code-01 / chat-01 的任务编号：分类时会变成类别答案。"""
+    return sorted({m.group(0).lower().replace(" ", "") for m in _LEAK_RE.finditer(text or "")})
 
 
 # ---------------- facts ----------------
@@ -585,9 +653,11 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("--device", default="", help="新行的设备编号，如 cao-mbp")
     m.add_argument("--app", default="", help="新行的应用名默认值（之后可逐行改）")
     m.add_argument("--language", default="", choices=("",) + LANGS)
+    m.add_argument("--source-kind", default="", choices=("",) + SOURCE_KINDS)
     c = sub.add_parser("check")
     c.add_argument("root")
     c.add_argument("--no-near", action="store_true", help="跳过近重复比较（只做快速格式检查）")
+    c.add_argument("--labels", help="同时统计这份标注表的已标注 / 已复核数")
     for name in ("import", "labels", "facts"):
         p = sub.add_parser(name)
         p.add_argument("root")
@@ -603,14 +673,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "manifest":
             for d in args.task_dirs:
                 added, total, notes = build_manifest(Path(d), device=args.device, app=args.app,
-                                                     language=args.language)
+                                                     language=args.language, source_kind=args.source_kind)
                 print(f"{Path(d).name}：新增 {added} 行，共 {total} 行")
                 for n in notes:
                     print("  注意：" + n)
             return 0
         if args.cmd == "check":
             res = check(Path(args.root), near=not args.no_near)
-            print(render_check(res))
+            print(render_check(res, label_progress(Path(args.labels)) if args.labels else None))
             return 0 if res.ok else 1
         if args.cmd == "import":
             for line in import_root(Path(args.root), args.data_dir, only_collector=args.collector,

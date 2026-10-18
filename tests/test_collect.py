@@ -27,6 +27,7 @@ def _rows(path):
 
 
 def _fill(task_dir, **cols):
+    cols.setdefault("source_kind", "real_app")
     rows = _rows(task_dir / collect.MANIFEST)
     for r in rows:
         for k, v in cols.items():
@@ -145,9 +146,50 @@ def test_within_task_near_dup_needs_note(tmp_path):
     res = collect.check(root)
     assert res.ok, res.errors
     assert any("任务内近重复" in w for w in res.warnings)
+    assert res.counts["near_same_task"] == 1 and res.counts["near_pending"] == 1
     a2 = next(r["image_id"] for r in _rows(t1 / collect.MANIFEST) if r["file"] == "a2.png")
-    _edit(t1, a2, note="batch_size 16→18")
-    assert not any("任务内近重复" in w for w in collect.check(root).warnings)
+    _edit(t1, a2, note="来源与变化的自动说明")              # 普通说明不算人工判定
+    res = collect.check(root)
+    assert any("任务内近重复" in w for w in res.warnings) and res.counts["near_pending"] == 1
+    _edit(t1, a2, note=collect.NEAR_OK_MARK + "batch_size 16→18")
+    res = collect.check(root)
+    assert not any("任务内近重复" in w for w in res.warnings)
+    # 近重复始终计数并逐对列出，不会因为写了理由就从报告里消失
+    assert res.counts["near_same_task"] == 1 and res.counts["near_pending"] == 0
+    text = collect.render_check(res)
+    assert "任务内 1 对（待人工判定 0 对）" in text and "近重复对：" in text and "未统计" in text
+
+
+def test_source_kind_required_and_mock_ui_is_dev_only(tmp_path):
+    root, t1, _, _ = _two_tasks(tmp_path)
+    rows = _rows(t1 / collect.MANIFEST)
+    _edit(t1, rows[0]["image_id"], source_kind="")
+    assert any("source_kind" in e for e in collect.check(root).errors)
+    _edit(t1, rows[0]["image_id"], source_kind="mock_ui")
+    res = collect.check(root)
+    assert res.ok and res.counts["dev_only"] == 1
+
+
+def test_old_manifest_without_source_kind_column_is_readable(tmp_path):
+    root, t1, _, _ = _two_tasks(tmp_path)
+    rows = _rows(t1 / collect.MANIFEST)
+    old_cols = [c for c in collect.MANIFEST_COLS if c != "source_kind"]
+    collect.write_csv(t1 / collect.MANIFEST, old_cols, rows)
+    res = collect.check(root)
+    assert not any("缺少列" in e for e in res.errors)
+    assert any("source_kind" in e for e in res.errors)          # 能读，但要求补上
+    collect.build_manifest(t1)                                  # 刷新清单会补出这一列（空值）
+    assert "source_kind" in _rows(t1 / collect.MANIFEST)[0]
+
+
+@pytest.mark.parametrize("text,expect", [
+    ("file:///Users/x/scenes-html/cao-code-01/001.html", ["cao-code-01"]),
+    ("Slack | chat - 01 workspace", ["chat-01"]),
+    ("RuntimeError: shape '[16, 3, 224, 224]'", []),
+    ("web page 2026-10-17", []),
+])
+def test_task_id_leaks(text, expect):
+    assert collect.task_id_leaks(text) == expect
 
 
 def test_import_labels_and_facts_round_trip(tmp_path, h):
@@ -225,6 +267,25 @@ def test_reviewer_must_differ_from_annotator(tmp_path, h):
     collect.write_csv(labels, list(rows[0].keys()), rows)
     rep = dataset.read_labels(h.conn, labels, ["code", "chat", "web", "table_doc"])
     assert not rep.ok and "不能与标注人" in rep.errors[0]
+
+
+def test_mock_ui_frames_are_excluded_from_formal_dataset(tmp_path, h):
+    root, t1, *_ = _two_tasks(tmp_path)
+    first = _rows(t1 / collect.MANIFEST)[0]["image_id"]
+    _edit(t1, first, source_kind="mock_ui")
+    collect.import_root(root, str(h.cfg.data_dir))
+    labels = tmp_path / "labels.csv"
+    _, _, notes = collect.build_labels(root, str(h.cfg.data_dir), labels)
+    assert any("mock_ui" in n for n in notes)
+    rows = _rows(labels)
+    assert {r["image_id"]: r["source_kind"] for r in rows}[first] == "mock_ui"
+    for r in rows:
+        r.update(label="code", annotator="cao", review_label="code", reviewer="xiao")
+    collect.write_csv(labels, list(rows[0].keys()), rows)
+    cats = ["code", "chat", "web", "table_doc"]
+    rep = dataset.read_labels(h.conn, labels, cats)
+    assert rep.ok and rep.dev_only_skipped == 1 and len(rep.items) == len(rows) - 1
+    assert len(dataset.read_labels(h.conn, labels, cats, include_dev_only=True).items) == len(rows)
 
 
 def test_importer_per_file_meta(h):

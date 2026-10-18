@@ -19,7 +19,7 @@
 - P1 按时间范围删除：**已实现**（同一分支 `ce66848`）；数据目录可带自己的 `config.toml`，用于独立测试库。
 - P1 标注 / 划分工具与分类器流程：**代码完成**（同一分支 `94657e1`，数据库 **v6**），只在合成数据上测过流程；**没有真实标注数据，也没有分类实验结果**。
 - P1 五组检索实验：**评测脚本完成**（同一分支 `dc9a355`），替身编码器上测过流程；**没有查询真值，也没有实验结果**。
-- P1 受控数据采集与标注：**规程和工具已就绪，真实数据尚未采集**（分支 `feat/dataset-collection`，2026-10-17）。两人各约 1,000 个有效帧，统一用系统截图 + `collect` 导入同一个库；规程见 `datasets/COLLECTION.md`。Mac 上 169/169 通过（新增 18 条，1 条用真实 RapidOCR）。
+- P1 受控数据采集与标注：规程和工具已就绪（分支 `feat/dataset-collection`）。**试采 45 帧已修正、待人工复核**（2026-10-18）：30 张自制 HTML 仿界面改标 `source_kind=mock_ui`，只作开发测试样本；10 张公开网站（含 3 张补采）；5 张**真实 Terminal 窗口**。正式数据集改为以真实应用界面为主。**还没有任何人工标注、分类或检索结果。** Mac 上 pytest 176/176。
 - P1 其余（40 条查询真值、捕获覆盖实验、编码对照、失败待办人工重试、报告与演示视频）：未完成，见"完成度总表"与"下一步"。
 - **证据浏览 / 批量导入 / 收藏删除到期配额已于 2026-10-16 在 Windows 11 实机验证**（真实 OCR + 向量 + 真实数据端到端 19 项全过，`pytest` 132/132；见"验证记录"）。注意：这是在 CAO 推送分类 / 评测（`94657e1`、`dc9a355`）**之前**的提交 `0fd523d` 上验证的；分类与评测脚本本身尚未在 Windows 上验证。
 
@@ -132,6 +132,7 @@ $out = "results\windows\2026-10-xx-<机器名>"; New-Item -ItemType Directory -F
 
 | 日期 | 分支 | 基于 | 本轮提交 / PR | 内容 | 验证状态 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-10-18 | `feat/dataset-collection`（CAO，同一分支续推） | `ed09461` | 本轮提交见 `git log`；仍在草稿 PR #6 | 按 40 帧试采检查报告修正：`check` 报告近重复对数 / 待人工判定数 / 来源分布，任务内近重复只认人工写的「近重复保留：」；清单新增 `source_kind`（`real_app / real_web / mock_ui`），`mock_ui` 默认不进 `dataset check / split / classify`；app 只写实际进程名；标注表新增 `source_kind`、`ocr_task_id_leak`；网页截图自动关 iframe 内弹窗、等图片加载；受控页面文件名不带任务编号；新增真实应用采集工具 `capture_real_mac.py`（Terminal / Numbers，prepare + attach）和复核材料脚本 `pilot_review.py` | macOS：pytest 176/176（新增 7 条）、pyflakes 无告警、2 处变异检查（mock_ui 排除、近重复判定标记）均被测试发现；试采数据见"下次恢复"；Windows 未测 |
 | 2026-10-17 | `feat/dataset-collection`（CAO 新分支） | `feat/lifecycle` @ `1e124b5` | `eaa130c`；草稿 PR #6（base `feat/lifecycle`） | 受控数据采集与标注规程、80 个任务表、40 条查询分配、模板；`collect`（清单 / 检查 / 导入 / 标注表 / 事实→相关帧）、`indexer`（只建索引，Mac 可用）；导入支持逐张应用 / 标题 / 时间；`dataset check` 新增复核人≠标注人 | macOS：pytest 169/169（含 1 条真实 RapidOCR、2 条真实向量模型）、pyflakes 无告警、3 处变异检查均被测试发现；命令行全流程用真实 OCR + 向量跑通；**无真实数据**；Windows 未测 |
 | 2026-10-16 | `feat/lifecycle`（肖天奕接力，同一分支） | `0fd523d` | 本轮提交（修 bench 测试、记录验证）；仍在草稿 PR #5 | 合并 PR #1 进 main；证据浏览 / 批量导入 / 收藏删除到期配额的 **Windows 实机验证**；修一个在 Windows venv 下误判的 bench 测试（产品代码未改） | Windows 11：pytest 132/132（含真实模型）、环境检查 9/9、#4+#5 实机端到端 19/19 |
 | 2026-10-16 | `feat/lifecycle`（CAO 新分支，之后又续推） | `feat/evidence-browse` @ `c35ae9e` | `1c4f0f5`（收藏/删除/到期/配额）、`0fd523d`（测量脚本）、`ce66848`（按时间范围删除、数据目录独立配置）、`94657e1`（标注/划分工具 + LR 分类器，schema v6）、`dc9a355`（五组检索评测）；草稿 PR #5（base `feat/evidence-browse`） | 收藏、两种删除 + 按时间范围删除、30/90 天到期、配额暂停（v5）；测量脚本；分类器与评测脚本（仅合成/替身数据验证流程，无真实结果） | macOS：pytest 151/151（含 2 条真实模型）、pyflakes 无告警、5 处变异检查均被测试发现；Windows 未测 |
@@ -167,12 +168,13 @@ main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-c
 - **没有开始任何新功能**。距离"项目完成"还缺的硬交付见"一句话状态 → 距离方案要求的交付还缺什么"。
 - **下一步建议**（按价值与依赖）：① 真实资源测量（第 7 项，bench 脚本已就绪，先录/导入到 1,500–2,000 帧再跑 P95 与两进程内存，据此冻结初值）→ ② 受控数据采集 + 40 条查询真值（第 13 项，需 Windows 录制）→ ③ 分类（第 11 项，依赖 ② 的标注数据）→ ④ 五组检索实验、报告、演示视频（方案 7、8.2）→ ⑤ 浏览器里人工过一遍页面 UI（"待验证"里的交互项）。
 
-## 下次恢复（2026-10-17，`feat/dataset-collection`）
+## 下次恢复（2026-10-18，`feat/dataset-collection`）
 
-1. `git switch feat/dataset-collection && git pull`；`source .venv/bin/activate`；`python -m pytest tests -q --basetemp=data/pytest` 应为 169 passed。
-2. Mac 上导入 / 建索引需要 `rapidocr-onnxruntime==1.4.4 onnxruntime==1.20.1 opencv-python==5.0.0.93`（本机 .venv 已装）。
-3. 下一步是**小批试采**（`datasets/COLLECTION.md` 第 8 节）：需要人截图、填清单和标注；代理可以建目录、跑 `manifest / check / import / indexer / labels / facts`、读检查结果。试采后把类别表、划分比例和肖天奕任务表的确认结果写进"待团队拍板"5。
-4. 还没有任何真实截图、标注、分类或检索结果。
+1. `git switch feat/dataset-collection && git pull`；`source .venv/bin/activate`；`python -m pytest tests -q --basetemp=data/pytest` 应为 176 passed。
+2. 试采数据（全被 git 忽略，只在曹贺乔的 Mac 上）：`data-dataset/raw/cao/` 原图 51 张、清单保留 45、剔除 6（`keep=drop` 带原因，原图未删）。来源：`mock_ui` 30（code/chat/table 各 10，开发测试样本）、`real_web` 10、`real_app` 5（`cao-code-01-011…015`，真实 Terminal）。导入 45、OCR / 向量 0 失败。检查报告 `data-dataset/reports/check-pilot-cao-v3.txt`：完全重复 0，任务内近重复 19 对（全部待人工判定），跨任务 0。修正前的清单 / 日志 / 数据库备份在 `data-dataset/backups/2026-10-18-before-pilot-fix/`。
+3. 复核材料在 `data-dataset/review/`：`pilot-review-cao.csv`（逐帧问题与空白人工列）、`web-facts-draft.csv`（网页事实草稿）、`queries-dev-draft.json`（四场景各 1 条开发查询草稿，`relevant` 是建议）。**都没有人工确认过**；没有跑过任何检索。
+4. 真实应用采集：代理沙箱不能让 Terminal / Numbers 打开文档，需要人先执行一次 `open`（`datasets/COLLECTION.md` 第 9 节）。Numbers 场景已 prepare（`data-dataset/scenes-real/wdbf1bb/`，3 个虚构预算表），等人打开后 `numbers attach --task cao-table-01 --seq-start 11`。
+5. 扩量前要人做：标注 + 互相复核这 45 帧；判定 19 对近重复和 `pilot-review-cao.csv` 里的问题；确认网页事实草稿；真实聊天应用的测试账号（见"待团队拍板"6）。
 
 ## 下次恢复（2026-10-16，`feat/lifecycle`）
 
@@ -430,4 +432,5 @@ python -m pytest tests
 2. ~~删除整幅画面时收藏怎么处理~~ **已定（2026-10-16）**：用户明确选择"删除此画面的全部记录"时，界面说明会删除哪些出现记录及关联收藏，确认后执行；到期或配额触发的自动清理保护收藏；删除单次出现记录时不误删仍被其他记录引用的共享内容。
 3. 页面文案目前是中文，演示视频若需英文需替换。
 4. `unsaved_change` 缺口是否在实机数据后合并短间隔（见"已知问题"）。
+6. **真实聊天界面从哪来（2026-10-18 起）**：正式数据集要真实应用界面，chat 场景目前只有 mock_ui。需要两人定：用哪个真实聊天应用的网页版（如 Slack / Discord 免费工作区），由谁注册测试账号、在 Playwright 独立窗口里登录一次；聊天内容仍是合成的、只在测试工作区里发，不发给任何真人。
 5. **数据集（试采后两人确认）**：类别表 `code / chat / web / table_doc` 与第 5.3 节混合画面规则；分类划分比例（建议 `0.6,0.2,0.2`）；肖天奕的 40 个任务（`tasks.csv` 中 `status=draft`）；共享网盘位置；建库由谁做。

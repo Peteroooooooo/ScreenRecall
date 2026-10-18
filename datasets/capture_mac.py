@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import importlib.util
 import subprocess
 import sys
@@ -29,8 +30,86 @@ from PIL import Image, ImageStat
 from playwright.sync_api import sync_playwright
 
 LOG_COLS = ["file", "captured_local", "time_source", "app", "window_title", "source", "language", "facts",
-            "variation", "note"]
-APP_NAME = "Chromium (Playwright 独立窗口)"
+            "variation", "note", "source_kind"]
+APP_NAME = "Chromium"   # 只写实际进程名；界面性质写 source_kind，避免 app 名带出类别答案
+
+# 网页里常见的遮挡：cookie 同意条、促销 / 订阅弹窗。只点"拒绝 / 关闭"类按钮，不登录、不提交任何内容。
+COOKIE_REJECT = ["#onetrust-reject-all-handler", "button:has-text('Reject All')", "button:has-text('Reject all')",
+                 "button:has-text('Decline')", "button:has-text('Only necessary')",
+                 "button:has-text('Necessary only')"]
+# 促销弹窗常放在 iframe 里（如 Braze 的 srcdoc iframe），所以每个 frame 都要找
+CLOSE_BUTTONS = ["button[aria-label^='Close' i]:visible", "button[aria-label^='Schließen' i]:visible",
+                 ".bz-close-btn:visible", ".ab-close-button:visible",
+                 "[role='dialog'] button[class*='close' i]:visible", "[role='dialog'] button:has-text('×'):visible"]
+# 页面上还有遮挡层 / 未加载的图片时返回说明；没有问题返回空串
+PAGE_ISSUES_JS = """() => {
+  const vw = innerWidth, vh = innerHeight, out = [];
+  const inView = r => r.width > 40 && r.height > 40 && r.bottom > 0 && r.right > 0 && r.top < vh && r.left < vw;
+  for (const im of document.images) {
+    const r = im.getBoundingClientRect();
+    if (inView(r) && getComputedStyle(im).visibility !== 'hidden' && (!im.complete || im.naturalWidth === 0))
+      out.push('图片未加载 ' + (im.currentSrc || im.src || '').slice(0, 60));
+  }
+  for (const el of document.querySelectorAll('body *')) {   // 盖住大半个视口的固定定位层（遮罩、全屏弹窗）
+    const cs = getComputedStyle(el);
+    if (cs.position !== 'fixed' || cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity <= 0.1) continue;
+    const r = el.getBoundingClientRect();
+    if (inView(r) && r.width * r.height > vw * vh * 0.5 && (+cs.zIndex || 0) >= 100)
+      out.push('全屏遮罩 ' + (el.id || el.className || el.tagName).toString().slice(0, 40));
+  }
+  for (const el of document.querySelectorAll('[role=dialog],[aria-modal=true],#onetrust-banner-sdk,.modal,[class*=iam-root]')) {
+    const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+    if (inView(r) && cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0.1 &&
+        r.width * r.height > vw * vh * 0.05)
+      out.push('遮挡层 ' + (el.id || el.className || el.tagName).toString().slice(0, 40));
+  }
+  return out.slice(0, 5).join('；');
+}"""
+
+
+def clear_overlays(page, wait_s: float = 10.0) -> str:
+    """在 wait_s 秒内持续守着，出现弹窗就关（cookie 条、拒绝 cookie 后几秒才弹出的促销窗）。返回做了什么。"""
+    done, deadline = [], time.time() + wait_s
+    while time.time() < deadline:
+        hit = False
+        for fr in page.frames:
+            for sel in COOKIE_REJECT + CLOSE_BUTTONS:
+                try:
+                    loc = fr.locator(sel)
+                    if loc.count() and loc.first.is_visible():
+                        loc.first.click(timeout=2000)
+                        done.append(sel)
+                        hit = True
+                        time.sleep(1.0)
+                        break
+                except Exception:  # noqa: BLE001
+                    pass
+            if hit:
+                break
+        if not hit:
+            time.sleep(0.5)
+    return "；点了弹窗的 " + " / ".join(done) if done else ""
+
+
+def wait_loaded(page, timeout_s: float = 20.0) -> str:
+    """等网络空闲、视口内图片加载完、没有遮挡层。超时返回剩余问题，交给人工判断。"""
+    try:
+        page.wait_for_load_state("networkidle", timeout=int(timeout_s * 1000))
+    except Exception:  # noqa: BLE001
+        pass
+    deadline, issues = time.time() + timeout_s, ""
+    while time.time() < deadline:
+        issues = page.evaluate(PAGE_ISSUES_JS)
+        if not issues:
+            return ""
+        time.sleep(1.0)
+    return issues
+
+
+def neutral_page_path(html_dir: Path, task_id: str, i: int) -> Path:
+    """受控页面的文件名不带任务编号 / 场景名：地址栏会被截进画面、被 OCR 读到，变成类别线索。"""
+    tok = hashlib.blake2b(f"{task_id}/{i}".encode(), digest_size=5).hexdigest()
+    return html_dir / "p" / f"{tok}.html"
 
 
 def chromium_window(title: str = "", pid_hint: str = "Chromium") -> tuple[int, str, tuple[int, int, int, int]] | None:
@@ -99,7 +178,7 @@ def run(plan: dict, out: Path, only: list[str] | None, html_dir: Path) -> int:
                 cdp.send("Browser.setWindowBounds",
                          {"windowId": wid, "bounds": {"left": 20, "top": 40, "width": w, "height": h}})
                 if "html" in fr:
-                    hp = html_dir / task_id / f"{i:03d}.html"
+                    hp = neutral_page_path(html_dir, task_id, i)
                     hp.parent.mkdir(parents=True, exist_ok=True)
                     hp.write_text(fr["html"], encoding="utf-8")
                     page.goto(hp.as_uri())
@@ -113,18 +192,7 @@ def run(plan: dict, out: Path, only: list[str] | None, html_dir: Path) -> int:
                 zoom = fr.get("zoom", 1.0)
                 if zoom != 1.0:
                     page.evaluate(f"document.documentElement.style.zoom='{zoom}'")
-                dismissed = ""
-                for label in fr.get("dismiss", []):   # 只点 cookie 弹窗的"拒绝"类按钮，不登录、不提交任何内容
-                    btn = (page.locator(label) if label.startswith("#")
-                           else page.get_by_role("button", name=label, exact=True))
-                    try:
-                        if btn.count() and btn.first.is_visible():
-                            btn.first.click(timeout=3000)
-                            dismissed = f"；点了 cookie 弹窗的 {label}"
-                            time.sleep(1.0)
-                            break
-                    except Exception:  # noqa: BLE001
-                        pass
+                dismissed = clear_overlays(page) if "url" in fr else ""
                 scrolled = ""
                 if fr.get("scroll"):
                     page.mouse.move(w // 2, h // 2)
@@ -134,15 +202,24 @@ def run(plan: dict, out: Path, only: list[str] | None, html_dir: Path) -> int:
                     scrolled = f"；滚动 {int(y)}px"
                     if y < fr["scroll"] * 0.3:
                         print(f"  !! {task_id} #{i}: 滚动没生效（{y}px）", file=sys.stderr)
+                    if "url" in fr:
+                        dismissed += clear_overlays(page, 3.0)   # 滚动后才弹出的促销窗
+                page.mouse.move(2, 2)   # 鼠标移出内容区：悬停会弹出链接状态栏、改变按钮样式
+                issues = wait_loaded(page) if "url" in fr else ""
+                if issues:
+                    print(f"  !! {task_id} #{i}: {issues}（照截，记进 note，交人工判断）", file=sys.stderr)
                 page.bring_to_front()
                 time.sleep(fr.get("settle", 1.5))
+                if "url" in fr:   # 截图前最后再看一次：等待期间又弹出的窗口
+                    dismissed += clear_overlays(page, 2.0)
+                    issues = page.evaluate(PAGE_ISSUES_JS) or issues
                 win = chromium_window(page.title())
                 if not win:
                     print(f"  !! {task_id} #{i}: 找不到唯一的 Chromium 窗口，跳过", file=sys.stderr)
                     failures += 1
                     continue
                 now = datetime.now()
-                name = f"{task_id}_{now:%Y%m%d-%H%M%S}_{i:03d}.png"
+                name = f"{task_id}_{now:%Y%m%d-%H%M%S}_{fr.get('seq', i):03d}.png"   # 补采时 seq 接着已有编号
                 dest = task_dir / name
                 if dest.exists():
                     print(f"  !! {dest} 已存在，不覆盖", file=sys.stderr)
@@ -161,7 +238,10 @@ def run(plan: dict, out: Path, only: list[str] | None, html_dir: Path) -> int:
                     "app": fr.get("app", APP_NAME), "window_title": win[1], "source": source,
                     "language": fr["language"], "facts": ";".join(fr.get("facts", [])),
                     "variation": f"窗口 {w}x{h}pt；{variation}".rstrip("；"),
-                    "note": (fr.get("note", "").replace("未点击", "只点过 cookie 弹窗的拒绝按钮" if dismissed else "未点击") + ("；" + bad if bad else "")).strip("；"),
+                    "note": "；".join(x for x in (
+                        fr.get("note", "").replace("未点击", "只点过弹窗的拒绝 / 关闭按钮" if dismissed else "未点击"),
+                        bad, f"截图时页面检查：{issues}" if issues else "") if x),
+                    "source_kind": fr.get("source_kind", ""),
                 })
                 print(f"  ok {task_id} #{i:02d} {name}  [{win[1][:50]}]")
         browser.close()

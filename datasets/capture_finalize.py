@@ -35,6 +35,7 @@ def finalize(root: Path, device: str, plan_facts: list[tuple] | None) -> list[st
                 continue   # 不是本工具截的，或者已经填过 / 人工改过
             r.update(captured_local=c["captured_local"], time_source=c["time_source"], app=c["app"],
                      window_title=c["window_title"], language=c["language"],
+                     source_kind=c.get("source_kind", ""),
                      note="；".join(x for x in (c["source"], c["variation"], c["note"]) if x))
             if not (r.get("facts") or "").strip():
                 r["facts"] = c["facts"]

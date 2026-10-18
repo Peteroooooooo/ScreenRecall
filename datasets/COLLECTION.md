@@ -57,7 +57,8 @@ ScreenRecall-dataset/
 4. **不重复**：
    - 像素完全相同：工具报错，只留一张；
    - 跨任务、跨人的近重复：工具报错，必须删掉一张（`keep=drop`，`drop_reason` 写 `near-dup of <image_id>`）；
-   - 同任务内近重复：只有内容发生有意义的变化（如 `batch_size=16→18`、多了一条消息）才保留，并在 `note` 写明变化；只有光标闪烁或鼠标移动的就删。
+   - 同任务内近重复：只有内容发生有意义的变化（如 `batch_size=16→18`、多了一条消息）才保留，并由人在其中一张的 `note` 写 `近重复保留：<具体差异>`；只有光标闪烁或鼠标移动的就删。普通的来源 / 变化说明不算判定，`check` 报告里每一对都会列出，并统计"待人工判定"的对数。
+   - 近重复数是**图像对数**，不是无效张数；`check` 通过只说明格式没问题，正式有效帧还要人工标注和复核（`check --labels <标注表>` 会一并统计已标注 / 已复核数）。
 5. **信息完整**：必填列齐全；时间取不到就 `time_source=unknown` 且 `captured_local` 留空。
 
 被剔除的帧不删文件，在清单里 `keep=drop` 并写原因。补采时回到原任务截**新画面**，或开新任务；不能复制旧图凑数。
@@ -72,12 +73,13 @@ ScreenRecall-dataset/
 | collector, task_id, scenario | 工具 | 由文件夹名得出 |
 | captured_local, time_source | 工具 / 人 | 文件名里有截图时间就 `filename`；当场记下的写 `manual`；否则 `unknown` 并留空 |
 | device | 人（可用 `--device`） | 设备编号 |
-| app | 人（可用 `--app` 先填默认值） | 统一用官方英文名：Terminal、Visual Studio Code、Google Chrome、Safari、Microsoft Edge、WeChat、Slack、Microsoft Excel、Numbers、Preview…… 两台机器同一应用写同一个名字 |
+| app | 人（可用 `--app` 先填默认值） | **只写实际进程名**，统一用官方英文名：Terminal、Visual Studio Code、Google Chrome、Chromium、Safari、Microsoft Edge、WeChat、Slack、Microsoft Excel、Numbers、Preview…… 两台机器同一应用写同一个名字。不要在 app 里写"终端样式页面""合成 Slack"这类说明——"只看应用名"基线会把它当类别答案 |
 | window_title | 人，可空 | 标题栏看得见的文字 |
 | language | 人 | 画面主要文字语言：`zh`、`en`、`mixed` |
 | facts | 人 | 这张图里看得见的事实编号 |
 | keep, drop_reason | 人 | `yes` / `drop`；drop 必须写原因 |
-| note | 人 | 任务内近重复的变化说明、其他备注 |
+| note | 人 | 来源与画面变化说明；人工判定保留的近重复写 `近重复保留：…` |
+| source_kind | 人（可用 `--source-kind`） | 画面来源：`real_app` 真实桌面应用窗口（内容可以是受控构造的）、`real_web` 真实网站或真实 Web 应用、`mock_ui` 自制 HTML 模仿终端 / 聊天 / 表格。**`mock_ui` 只作开发测试样本**，`dataset check / split / classify` 默认排除；2026-10-18 之前的旧清单没有这一列，`check` 会要求补上 |
 
 ### 5.2 事实表 `facts.csv`（每人一份，模板 `datasets/collection/facts.template.csv`）
 
@@ -85,7 +87,7 @@ ScreenRecall-dataset/
 
 ### 5.3 标注表（由 `collect labels` 生成，示例 `datasets/collection/labels.example.csv`）
 
-前半是 `dataset.py` 的标准列（`frame_id … change_reason`），后面附 `collector, image_id, source_file, facts, ocr_chars, time_known`。`task_id / scenario / language / app` 从清单带过来，**要改就改清单再重新生成**。人工只填：
+前半是 `dataset.py` 的标准列（`frame_id … change_reason`），后面附 `collector, image_id, source_file, facts, ocr_chars, time_known, source_kind, ocr_task_id_leak`。`ocr_task_id_leak` 非空表示 OCR 在画面里读到了任务编号（如地址栏里的 `cao-code-01`），这是类别线索，正式样本不应出现。`task_id / scenario / language / app` 从清单带过来，**要改就改清单再重新生成**。人工只填：
 
 - 采集者本人：`label`、`annotator`；
 - 另一个人复核：`review_label`、`reviewer`（不能和 annotator 相同，`dataset check` 会拒绝）；
@@ -155,21 +157,51 @@ R=~/ScreenRecall-dataset          # 共享根目录（按实际路径改）
 
 通过标准：`check` 0 错误；40 张全部导入、OCR 与向量 0 失败；标注表能正常打开、中文不乱码；复核分歧都有结论。试采合格的帧可以保留进正式数据集，之后每个任务按 25 帧补齐。
 
-## 9. Mac 自动截图（受控场景，2026-10-17 起）
+## 9. Mac 自动截图（2026-10-17 起，2026-10-18 调整）
 
-`datasets/capture_mac.py` 用 Playwright 开一个**独立的** Chromium 窗口（不用自己浏览器的登录和书签），显示受控页面或公开网站，再用 macOS 的 `screencapture -l <窗口号>` 截这个真实窗口。每张图在截图那一刻记本机时间（`time_source=manual`）、窗口标题、来源和画面变化，写进任务目录的 `capture_log.csv`；`datasets/capture_finalize.py` 再把这些合进 `manifest.csv` 并写 `facts.csv`。
+**原则：正式数据集以真实应用界面为主。** 内容可以受控构造（合成聊天、虚构表格、测试脚本的报错），但要放进真实的 Terminal、Numbers、真实网页应用里显示再截图。自制 HTML 仿终端 / 仿表格（`source_kind=mock_ui`）不再用来扩量；2026-10-17 的 30 张仿界面图保留为开发测试样本。
 
-- 场景计划写在 `datasets/scenes/*.py`（`TASKS` + `FACTS`）。code 场景真实运行 `datasets/scenes/code01_train.py`，报错是真的，只有 OOM 那条是脚本打印的文本；chat 和 table 是合成页面，页面上写明 synthetic；web 是公开网站原样显示，最多点一下 cookie 弹窗的拒绝按钮。
-- 受控页面的 HTML 原样留在 `data-dataset/scenes-html/`，有问题的整批截图移到 `data-dataset/rejected/<批次>/` 并写 `WHY.txt`，不删。
-- 需要 macOS 屏幕录制权限（运行 KiroCrew 或终端的那个 App）。工具环境与项目 `.venv` 分开：
+**本机能做什么（2026-10-18 实测）**
+
+| 能力 | 结果 |
+| --- | --- |
+| `screencapture -l <窗口号>` 截指定窗口、Quartz 列窗口标题 | 可以（已有屏幕录制权限） |
+| Playwright 开独立 Chromium 窗口，显示公开网站 / 本地页面 | 可以 |
+| AppleScript 移动窗口、在 Terminal / Numbers 里打字、点菜单 | 不行（没有"自动化"权限） |
+| 代理直接 `open -a Terminal run.command` / `open -a Numbers x.xlsx` | 不行：代理沙箱不允许让其他应用打开文档（弹出 "Sandbox is not allowed to open documents in Terminal"） |
+| 用户执行一次 `open`，之后代理按窗口标题截图 | 可以（Terminal 已实测 5 张） |
+
+**真实应用：`datasets/capture_real_mac.py`**（工具 venv 需要 `openpyxl==3.1.5`）
+
+```bash
+T=data-dataset/.tools/venv/bin/python
+$T datasets/capture_real_mac.py terminal prepare --task cao-code-01      # 生成工作目录 + 分步脚本，打印一条 open 命令
+# 用户在自己的终端执行打印出来的 open 命令（Terminal 会打开一个新窗口开始跑）
+$T datasets/capture_real_mac.py terminal attach --task cao-code-01 --out data-dataset/raw/cao --seq-start 11
+$T datasets/capture_real_mac.py numbers prepare --task cao-table-01      # 生成虚构表格 xlsx，打印 open -a Numbers 命令
+$T datasets/capture_real_mac.py numbers attach --task cao-table-01 --out data-dataset/raw/cao --seq-start 11
+.venv/bin/python datasets/capture_finalize.py data-dataset/raw/cao --device cao-mbp
+```
+
+- Terminal：分步脚本每一步真实运行命令后写 `ready.N`，`attach` 截完图写 `go.N`，脚本再继续，于是同一窗口里的输出逐步累积；窗口大小用终端控制序列调整。提示符 `wXXXXXX %` 由脚本打印（不是交互 shell），命令和输出是真实运行的，`note` 里写明。`attach` 中断后可以重跑，已有 `go.N` 的步骤会跳过。
+- Numbers：只截文件刚打开的样子，不能点单元格、不能滚动、不能切工作表；这些变化要人工操作或授权自动化。
+- 工作目录在 `data-dataset/scenes-real/w<哈希>/`，名字不带任务编号或场景名。Terminal 标题栏会显示本机用户名（默认标题），已在 `note` 里写明。
+- 开出来的 Terminal / Numbers 窗口代理关不掉，采完由用户关闭。
+
+**浏览器：`datasets/capture_mac.py`**（公开网站，`source_kind=real_web`）
+
+- 截图前自动关 cookie 条和促销弹窗：每个 frame（包括 iframe）里找"拒绝 / 关闭"按钮，只点这两类，不登录、不提交；拒绝 cookie 后几秒才出现的弹窗会持续守 10 秒，截图前再查一次。
+- 等网络空闲、视口内图片加载完、没有全屏遮罩；仍有问题时照截，把问题写进 `note` 交人工判断。鼠标移到窗口角落，但页眉链接可能仍触发左下角的链接状态栏。
+- 自动检查并不可靠：2026-10-18 补采 MySwitzerland 时两轮都漏掉了 iframe 里的弹窗，第三轮才干净。**每张网页截图都要打开看一遍**。
+- 受控页面（如果还要用）文件名改为 `scenes-html/p/<哈希>.html`，不带任务编号。
 
 ```bash
 T=data-dataset/.tools
-uv venv -p 3.12 $T/venv && uv pip install -p $T/venv/bin/python pyobjc-framework-Quartz==11.1 playwright==1.55.0 Pillow==11.3.0
+uv venv -p 3.12 $T/venv && uv pip install -p $T/venv/bin/python pyobjc-framework-Quartz==11.1 playwright==1.55.0 Pillow==11.3.0 openpyxl==3.1.5
 PLAYWRIGHT_BROWSERS_PATH=$PWD/$T/pw $T/venv/bin/python -m playwright install chromium
-PLAYWRIGHT_BROWSERS_PATH=$PWD/$T/pw $T/venv/bin/python datasets/capture_mac.py --plan datasets/scenes/pilot_plan.py --out data-dataset/raw/cao
-.venv/bin/python datasets/capture_finalize.py data-dataset/raw/cao --device cao-mbp --plan datasets/scenes/pilot_plan.py
-.venv/bin/python -m screenrecall.collect check data-dataset/raw    # 需要 data-dataset/raw/tasks.csv（从 datasets/collection/ 复制）
+PLAYWRIGHT_BROWSERS_PATH=$PWD/$T/pw $T/venv/bin/python datasets/capture_mac.py --plan datasets/scenes/pilot_web_retake.py --out data-dataset/raw/cao
 ```
 
-限制：这些图来自浏览器窗口（终端、聊天、表格都是页面形式），app 列如实写明；不能代表真实 Terminal / Slack / Numbers 的界面多样性，扩量时要混入真实应用截图（需人工操作或授权自动化）。
+**补采与剔除**：原图不删。被替换的帧在清单里 `keep=drop` 并写原因和替代帧编号；已导入的用 `lifecycle.delete_frame` 从数据集库删掉（原图仍在 `raw/`），这样评测底库里不会有被剔除的帧。补采用新文件、新编号（计划里写 `seq`）。
+
+**需要人工的部分**：真实聊天应用（Slack / Discord 等网页版）要测试账号，由你注册并在 Playwright 独立窗口里登录一次；Numbers 内的交互变化；每张图的视觉验收；类别标注与互相复核；网页画面事实的确认（`data-dataset/review/web-facts-draft.csv` 是代理草稿）。

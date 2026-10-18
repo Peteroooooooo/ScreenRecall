@@ -9,8 +9,8 @@
 | 基于 | `feat/lifecycle` @ `1e124b5`（草稿 PR #5）← `feat/evidence-browse`（草稿 PR #4）← `feat/vector-search`（草稿 PR #3）← `feat/capture-cadence`（草稿 PR #2）← `main`（已含 P0，PR #1 于 10-16 合入） |
 | PR | 草稿 [PR #6](https://github.com/Peteroooooooo/ScreenRecall/pull/6)，base `feat/lifecycle`；合并顺序 #2 → #3 → #4 → #5 → 本 PR，详见 [PROGRESS.md](PROGRESS.md) |
 | 本分支新增 | 受控数据集的**采集与标注规程**（[datasets/COLLECTION.md](datasets/COLLECTION.md)）、80 个任务的任务表、40 条查询的分配表、清单 / 事实 / 标注模板；工具 `python -m screenrecall.collect`（清单、检查、导入、标注表、事实→相关帧）和 `python -m screenrecall.indexer`（不采集、只跑 OCR 与向量，Mac 上可用）；导入支持逐张的应用、窗口标题和捕获时间 |
-| 测试 | **macOS**：`pytest tests` 169/169（继承 151 + 新增 18）；新增中 1 条用真实 RapidOCR，其余是逻辑测试；另在 Mac 上用真实 OCR + 真实向量模型跑通了一遍 manifest → check → import → indexer → labels 命令行流程（4 张合成文字图，只验证流程） |
-| 数据 | **还没有采集任何真实数据**，没有标注、分类结果或检索结果 |
+| 测试 | **macOS**：`pytest tests` 176/176（继承 151 + 本分支 25）；其中 1 条用真实 RapidOCR，其余是逻辑测试；命令行全流程用真实 OCR + 真实向量模型跑通 |
+| 数据 | 试采 45 帧（曹贺乔，只在本机、被 git 忽略）：30 张自制 HTML 仿界面（`mock_ui`，只作开发测试样本）、10 张公开网站、5 张真实 Terminal。**都还没有人工标注和复核；没有分类结果或检索结果** |
 | Windows 实机 | 本分支新增内容未在 Windows 上运行；`collect` / `indexer` 不依赖窗口 API，预期可用，**待验证** |
 
 ## 本分支新增内容（受控数据采集与标注，方案 6.1、6.2、6.4）
@@ -25,6 +25,10 @@
 | 只建索引 | `python -m screenrecall.indexer --data-dir DIR`：复用后台同一套 OCR / 向量 worker，不启动采集，跑完退出并报告剩余和失败数 | `screenrecall/indexer.py` | Mac 上真实 RapidOCR 测试 + 真实向量模型命令行跑通 |
 | 标注表 | `collect labels`：生成 `dataset.py` 格式的标注 CSV，附采集者、图片编号、原图路径、事实、OCR 字数、时间是否已知；两人各标分表，再合成总表，同一帧填法不一致会报错；复核人不能与标注人相同（`dataset check` 新增） | `collect.py`、`dataset.py` | Mac 测试 |
 | 查询相关帧 | `collect facts --queries`：按清单里的事实标记填 `relevant`，已有答案不覆盖 | `collect.py` | Mac 测试 |
+| 画面来源（10-18） | 清单新增 `source_kind`：`real_app` 真实桌面应用、`real_web` 真实网站、`mock_ui` 自制 HTML 仿界面；`mock_ui` 只作开发测试样本，`dataset check / split / classify` 默认排除。app 只写实际进程名，避免"只看应用名"基线拿到类别答案 | `collect.py`、`dataset.py` | Mac 测试 + 变异检查 |
+| 近重复报告（10-18） | `check` 输出原始帧、保留、剔除、完全重复组数、任务内 / 跨任务近重复**对数**和待人工判定数，并逐对列出；只有人工写的 `近重复保留：…` 才算判定；`--labels` 一并统计已标注 / 已复核数 | `collect.py` | Mac 测试 + 变异检查 |
+| 类别线索检查（10-18） | 标注表新增 `ocr_task_id_leak`：OCR 在画面里读到任务编号（如地址栏）就标出 | `collect.py` | Mac 测试 |
+| Mac 截图辅助 | `datasets/capture_mac.py`：独立 Chromium 窗口截公开网站，自动关 cookie / iframe 弹窗、等图片加载；`datasets/capture_real_mac.py`：真实 Terminal（分步脚本逐步截图）与 Numbers（虚构表格）；`datasets/pilot_review.py`：生成复核表、网页事实草稿和开发查询草稿 | `datasets/` | 实际截图验证（Terminal 5 张）；Numbers 待人打开文件 |
 
 ## 继承自 `feat/lifecycle`（P1 收藏 / 删除 / 到期 / 配额，方案 5.2、5.4，A11、A12）
 

@@ -28,7 +28,7 @@ CODE_RUNS = [  # (参数, 主题, 窗口, 画面变化说明)
     ("--batch_size 16 --img 200 --label_bs 8", "dark", HALF, "标签 batch 8 → cross_entropy batch 不一致报错；半屏"),
     ("--simulate-oom --batch_size 128", "light", HALF, "batch 128，脚本打印 CUDA OOM 文本；半屏"),
     ("--batch_size 64 --img 256", "light", FULL, "img 256 → 形状报错（batch 64）"),
-    ("--hidden 1024 --lr 1e-3 --epochs 4", "dark", FULL, "hidden 1024、lr 1e-3，4 个 epoch 成功"),
+    ("--hidden 1024 --lr 1e-3 --epochs 4", "dark", FULL, "hidden 1024、lr 1e-3、未给 --img（默认 224）→ 形状报错 [16, 3, 224, 224]"),
     ("--batch_size 8 --img 200 --label_bs 4 --lr 5e-5", "light", HALF, "batch 8 / 标签 4 报错，lr 5e-5；半屏"),
     ("--simulate-oom --batch_size 256 --img 200", "dark", FULL, "batch 256 打印 OOM 文本；深色全屏"),
 ]
@@ -64,7 +64,7 @@ def code_frames() -> list[dict]:
         shown = "".join(o for _, o in history)
         facts = [f for f, s in (("cao-code-01#1", FACT_CODE_1), ("cao-code-01#2", FACT_CODE_2)) if s in shown]
         frames.append(dict(html=_term(history, theme), window=win, language="en", facts=facts,
-                           app="Chromium（终端样式受控页面，输出来自真实运行 train.py）",
+                           source_kind="mock_ui",
                            variation=f"{var}；{'深色' if theme == 'dark' else '浅色'}终端"))
     return frames
 
@@ -130,7 +130,7 @@ def chat_frames() -> list[dict]:
         facts = [f for f, s in (("cao-chat-01#1", FACT_CHAT_1), ("cao-chat-01#2", FACT_CHAT_2)) if s in shown]
         frames.append(dict(html=_slack(msgs[-12:], theme, f"{header} - SR-Test Workspace (synthetic)", header),
                            window=win, language="en", facts=facts,
-                           app="Chromium（合成 Slack 风格聊天页，测试工作区）",
+                           source_kind="mock_ui",
                            variation=f"{var}；{'深色' if theme == 'dark' else '浅色'}",
                            note="合成聊天：人名、链接、日期都是编的"))
     return frames
@@ -152,7 +152,7 @@ WEB = [
 
 
 def web_frames() -> list[dict]:
-    return [dict(url=u, scroll=s, window=w, zoom=z, language="en", settle=5.0, variation=v,
+    return [dict(url=u, scroll=s, window=w, zoom=z, language="en", settle=5.0, variation=v, source_kind="real_web",
                  dismiss=["#onetrust-reject-all-handler", "Reject All", "Reject all", "Decline", "Only necessary", "Necessary only"],
                  note="公开网站原样显示，未登录、未点击；画面事实待人工看图后补")
             for u, s, w, z, v in WEB]
@@ -218,7 +218,7 @@ def table_frames() -> list[dict]:
         page, total = _sheet(sheet, rows, sel, z, edited)
         facts = ["cao-table-01#1"] if sheet == "Jan" and any(c.startswith("Groceries") and v == 465.0 for c, v in rows) else []
         frames.append(dict(html=page, window=win, language="mixed", facts=facts,
-                           app="Chromium（合成预算表页面，替代 Numbers）",
+                           source_kind="mock_ui",
                            variation=f"{var}；合计 {total}", note="合成数据；合计由脚本计算"))
     return frames
 
