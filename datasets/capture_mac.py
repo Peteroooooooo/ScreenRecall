@@ -167,7 +167,7 @@ def append_log(task_dir: Path, row: dict) -> None:
         w.writerow({c: row.get(c, "") for c in LOG_COLS})
 
 
-def run(plan: dict, out: Path, only: list[str] | None, html_dir: Path) -> int:
+def run(plan: dict, out: Path, only: list[str] | None, html_dir: Path, skip_existing: bool = False) -> int:
     failures = 0
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, args=["--window-position=20,40", "--window-size=1400,860",
@@ -182,6 +182,9 @@ def run(plan: dict, out: Path, only: list[str] | None, html_dir: Path) -> int:
             task_dir = out / task_id
             task_dir.mkdir(parents=True, exist_ok=True)
             for i, fr in enumerate(frames, 1):
+                seq = fr.get("seq", i)
+                if skip_existing and any(task_dir.glob(f"{task_id}_*_{seq:03d}.png")):
+                    continue   # 续跑：这个编号已经截过
                 w, h = fr.get("window", (1400, 860))
                 cdp.send("Browser.setWindowBounds", {"windowId": wid, "bounds": {"windowState": "normal"}})
                 cdp.send("Browser.setWindowBounds",
@@ -196,7 +199,11 @@ def run(plan: dict, out: Path, only: list[str] | None, html_dir: Path) -> int:
                     try:
                         page.goto(fr["url"], wait_until="load", timeout=45000)
                     except Exception as exc:  # noqa: BLE001
-                        print(f"  !! {task_id} #{i} 打不开 {fr['url']}: {exc}", file=sys.stderr)
+                        # 没加载完的页面不截：跳过这一帧，整批继续（之前在这里接着 evaluate 会让整批崩掉）
+                        print(f"  !! {task_id} #{i} 打不开 {fr['url']}，跳过这一帧: {str(exc).splitlines()[0]}",
+                              file=sys.stderr)
+                        failures += 1
+                        continue
                     source = f"公开网站 {fr['url']}"
                 zoom = fr.get("zoom", 1.0)
                 if zoom != 1.0:
@@ -262,11 +269,12 @@ def main() -> int:
     ap.add_argument("--plan", required=True)
     ap.add_argument("--out", required=True, help="采集者根目录，如 data-dataset/raw/cao")
     ap.add_argument("--task", nargs="*", help="只跑这些任务")
+    ap.add_argument("--skip-existing", action="store_true", help="续跑：跳过任务目录里已有同编号截图的帧")
     a = ap.parse_args()
     out = Path(a.out).resolve()
     html_dir = out.parent.parent / "scenes-html"   # data-dataset/scenes-html：受控页面原样留档
     plan = load_plan(Path(a.plan))
-    fails = run(plan, out, a.task, html_dir)
+    fails = run(plan, out, a.task, html_dir, a.skip_existing)
     print(f"完成，问题 {fails} 个")
     return 1 if fails else 0
 
