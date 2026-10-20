@@ -51,11 +51,15 @@ class Query:
     apps: tuple[str, ...] = ()
     case_sensitive: bool = False
     rationale: str = ""
+    review_status: str = ""  # draft / approved；正式出分只接受 approved
 
-    def filters(self) -> search.Filters:
+    def filters(self, candidates: frozenset[str] | None = None) -> search.Filters:
         def ms(s):
             return int(datetime.strptime(s, "%Y-%m-%d %H:%M").timestamp() * 1000) if s else None
-        return search.Filters(ms(self.start), ms(self.end), tuple(self.apps))
+        return search.Filters(ms(self.start), ms(self.end), tuple(self.apps), frames=candidates)
+
+
+APPROVED = "approved"
 
 
 def load_queries(path: Path) -> list[Query]:
@@ -68,6 +72,7 @@ def load_queries(path: Path) -> list[Query]:
                 mode=q.get("mode", "text"), query=q["query"], relevant=list(q["relevant"]),
                 start=q.get("start"), end=q.get("end"), apps=tuple(q.get("apps", ())),
                 case_sensitive=bool(q.get("case_sensitive", False)), rationale=q.get("rationale", ""),
+                review_status=str(q.get("review_status", "")).strip(),
             ))
         except KeyError as exc:
             raise ValueError(f"第 {i + 1} 条查询缺少字段 {exc}") from None
@@ -102,13 +107,30 @@ def protocol_check(queries: list[Query]) -> list[str]:
     return notes
 
 
+def formal_problems(queries: list[Query], candidates: frozenset[str] | None) -> list[str]:
+    """正式出分前的硬性条件：查询都已人工复核（review_status=approved），且相关帧都在正式候选名单里。"""
+    out = []
+    if candidates is None:
+        out.append("正式出分必须给 --candidates（dataset accepted 生成的已验收帧名单）")
+    for q in queries:
+        if q.review_status != APPROVED:
+            out.append(f"{q.id} 的 review_status 是 {q.review_status or '（空）'!r}，未经人工复核的查询不能用于正式出分")
+        if candidates is not None:
+            bad = [f for f in q.relevant if f not in candidates]
+            if bad:
+                out.append(f"{q.id} 有 {len(bad)} 个相关帧不在正式候选名单里（如 {bad[0][:8]}）")
+    return out
+
+
 # ---------------- 各实验的排名 ----------------
 
 def rankings(conn: sqlite3.Connection, q: Query, engines: retrieval.Engines, *, rrf_k: int = 60,
-             branch_top: int = 50) -> dict[str, list[str]]:
-    """返回每个实验的前 TOP 个帧（各分支同一候选集合）。失败的分支返回空列表并在 errors 里记原因。"""
+             branch_top: int = 50, candidates: frozenset[str] | None = None) -> dict[str, list[str]]:
+    """返回每个实验的前 TOP 个帧（各分支同一候选集合）。失败的分支返回空列表并在 errors 里记原因。
+
+    candidates 给定时，所有分支（含纯引号、词法、语义、画面、RRF）都只在名单内排名，在截断 TopK 之前过滤。"""
     parsed = search.parse_query(q.query)
-    filters = q.filters()
+    filters = q.filters(candidates)
     out: dict[str, list[str]] = {}
     if parsed.error or parsed.is_empty:
         return {e: [] for e in EXPERIMENTS} | {"_error": [parsed.error or "空查询"]}
@@ -191,12 +213,12 @@ def aggregate(per_query: list[dict]) -> dict:
 
 
 def evaluate(conn: sqlite3.Connection, queries: list[Query], engines: retrieval.Engines, *, split: str = "all",
-             **kw) -> dict:
+             candidates: frozenset[str] | None = None, run_kind: str = "formal", **kw) -> dict:
     chosen = [q for q in queries if split == "all" or q.split == split]
     per = []
     for q in chosen:
         try:
-            ranks = rankings(conn, q, engines, **kw)
+            ranks = rankings(conn, q, engines, candidates=candidates, **kw)
         except Exception as exc:  # noqa: BLE001 - 执行失败也要保留并计 0
             ranks = {e: [] for e in EXPERIMENTS} | {"_error": [f"{type(exc).__name__}: {exc}"]}
         rel = set(q.relevant)
@@ -207,13 +229,18 @@ def evaluate(conn: sqlite3.Connection, queries: list[Query], engines: retrieval.
             res[e] = {"first_relevant_rank": r, "hit5": h, "rr10": rr, "top10": ranks.get(e, [])}
         per.append({"id": q.id, "split": q.split, "scenario": q.scenario, "language": q.language, "mode": q.mode,
                     "query": q.query, "n_relevant": len(rel), "errors": ranks.get("_error", []), "results": res})
-    frames = conn.execute("SELECT COUNT(*) FROM frames WHERE image_status != 'deleted'").fetchone()[0]
-    return {"split": split, "frames_in_library": frames, "experiments": EXPERIMENTS,
+    alive = {r[0] for r in conn.execute("SELECT frame_id FROM frames WHERE image_status != 'deleted'")}
+    frames = len(alive if candidates is None else alive & candidates)
+    return {"split": split, "run_kind": run_kind, "candidates_restricted": candidates is not None,
+            "frames_in_library": frames, "experiments": EXPERIMENTS,
             "summary": aggregate(per), "per_query": per}
 
 
 def to_markdown(report: dict) -> str:
-    lines = [f"# 检索实验结果（split = {report['split']}，底库 {report['frames_in_library']} 帧）", "",
+    kind = report.get("run_kind", "formal")
+    head = "检索实验结果" if kind == "formal" else "开发演练（不是正式实验结果，不能写进报告）"
+    scope = "正式候选名单内" if report.get("candidates_restricted") else "整库（含开发样本）"
+    lines = [f"# {head}（split = {report['split']}，{scope} {report['frames_in_library']} 帧）", "",
              "命中数 / 查询数，Hit@5 与 MRR@10。Exp 5 仅为离线实验。逐条结果见同目录 JSON。", ""]
     for split, groups in report["summary"].items():
         lines += [f"## {split}", "", "| 分组 | " + " | ".join(EXPERIMENTS) + " |",
@@ -234,15 +261,40 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--queries", required=True)
     ap.add_argument("--split", choices=["dev", "blind", "all"], required=True)
     ap.add_argument("--out", required=True, help="结果目录：results.json + results.md")
-    ap.add_argument("--check-only", action="store_true", help="只检查查询文件是否符合方案的查询设计")
+    ap.add_argument("--check-only", action="store_true",
+                    help="只检查查询文件格式与方案查询设计（允许草稿；通过不代表查询已人工确认）")
+    ap.add_argument("--candidates", help="正式候选帧名单（dataset accepted 生成）；正式出分必须给")
+    ap.add_argument("--rehearsal", action="store_true",
+                    help="开发演练：允许草稿查询和整库检索，只能跑 dev，输出明确标为非正式结果")
     args = ap.parse_args(argv)
+    from .dataset import read_candidates
+
     qpath = Path(args.queries)
     queries = load_queries(qpath)
     notes = protocol_check(queries)
     for n in notes:
         print("注意：" + n)
+    drafts = sum(1 for q in queries if q.review_status != APPROVED)
     if args.check_only:
+        print(f"格式检查完成：{len(queries)} 条，其中未经人工复核（非 approved）{drafts} 条。这只是格式检查。")
         return 0
+    candidates = read_candidates(Path(args.candidates)) if args.candidates else None
+    chosen = [q for q in queries if args.split == "all" or q.split == args.split]
+    if args.rehearsal:
+        if args.split != "dev":
+            print("错误：开发演练只能跑 --split dev；盲测查询在规则冻结后只正式运行一次", file=sys.stderr)
+            return 1
+    else:
+        problems = formal_problems(chosen, candidates)
+        if problems:
+            for p in problems:
+                print("错误：" + p, file=sys.stderr)
+            print("正式出分被拒绝。开发阶段请用 --rehearsal --split dev。", file=sys.stderr)
+            return 1
+    out = Path(args.out)
+    if not args.rehearsal and (out / "results.json").exists():
+        print(f"错误：{out} 已有正式结果，不覆盖（盲测只运行一次；要重跑请换目录并在报告里说明）", file=sys.stderr)
+        return 1
     cfg = load_config(args.data_dir)
     t, i = bench.real_engines(cfg, retrieval.TEXT), bench.real_engines(cfg, retrieval.IMAGE)
     engines = retrieval.Engines(text_encoder=t.text_encoder, text_index=t.text_index,
@@ -250,11 +302,16 @@ def main(argv: list[str] | None = None) -> int:
     conn = db.connect(cfg.db_path)
     try:
         report = evaluate(conn, queries, engines, split=args.split, rrf_k=cfg.search.rrf_k,
-                          branch_top=cfg.search.branch_top)
+                          branch_top=cfg.search.branch_top, candidates=candidates,
+                          run_kind="rehearsal" if args.rehearsal else "formal")
     finally:
         conn.close()
     report["queries_file"] = str(qpath)
     report["queries_blake2b"] = hashlib.blake2b(qpath.read_bytes(), digest_size=16).hexdigest()
+    report["unreviewed_queries"] = sum(1 for q in chosen if q.review_status != APPROVED)
+    if args.candidates:
+        report["candidates_file"] = args.candidates
+        report["candidates_blake2b"] = hashlib.blake2b(Path(args.candidates).read_bytes(), digest_size=16).hexdigest()
     report["protocol_notes"] = notes
     report["models"] = {"text": cfg.models.text.model_id, "image": cfg.models.image.model_id,
                         "clip_text": cfg.models.clip_text.model_id}

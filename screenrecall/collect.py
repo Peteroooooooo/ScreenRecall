@@ -51,8 +51,8 @@ FILLED_BY_HUMAN = ["captured_local", "time_source", "device", "app", "window_tit
 #   real_app  真实桌面应用窗口（Terminal、Numbers、VS Code…），内容可以是受控构造的
 #   real_web  真实网站或真实 Web 应用（公开网站、测试账号登录的 Slack 网页版…）
 #   mock_ui   自制 HTML 模仿终端 / 聊天 / 表格界面：只作开发测试样本，不进正式数据集
-SOURCE_KINDS = ("real_app", "real_web", "mock_ui")
-DEV_ONLY_KINDS = {"mock_ui"}
+SOURCE_KINDS = dataset.SOURCE_KINDS
+DEV_ONLY_KINDS = dataset.DEV_ONLY_KINDS
 EXTRA_LABEL_COLS = ["collector", "image_id", "source_file", "facts", "ocr_chars", "time_known", "source_kind",
                     "ocr_task_id_leak"]
 MIN_SHORT_SIDE = 500          # 短边像素下限：低于它通常是裁得太小或缩放过的图
@@ -60,7 +60,14 @@ MAX_TASK_FRAMES = 40          # 单个任务有效帧上限，避免一个任务
 NEAR_HAMMING = 16             # 256 位差分哈希的候选阈值（约 6%）
 NEAR_DIFF_FRAC = 0.02         # 候选确认：缩略灰度图上明显不同的像素不到 2% 视为近重复
 NEAR_PIX_DELTA = 24
-NEAR_OK_MARK = "近重复保留："  # 写在 note 里，后接具体差异，表示人工判定这对近重复有意义、两张都留
+# 旧写法：note 里写这个标记。它会一次放行这张图涉及的所有近重复对，2026-10-20 起不再生效，只提示迁移
+NEAR_OK_MARK = "近重复保留："
+# 近重复逐对判定表：<root>/<采集者>/near_dups.csv（也接受 <root>/near_dups.csv）。每对一行，
+# 只有 decision=keep_both 且写了 reason（具体差异）和 reviewer 的那一对才算判定过；判了 A/B 不代表判了 A/C。
+# 要删一张的，直接在清单里把它 keep=drop，这一对就不再出现。
+NEAR_DUPS = "near_dups.csv"
+NEAR_DUP_COLS = ["image_id_a", "image_id_b", "decision", "reason", "reviewer"]
+NEAR_DECISIONS = ("keep_both",)
 
 # 截图工具写进文件名的时间
 _TIME_PATTERNS = [
@@ -226,6 +233,7 @@ class CheckResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     near_pairs: list[tuple[str, str, bool]] = field(default_factory=list)  # (image_id, image_id, 同任务)
+    judged_pairs: set = field(default_factory=set)  # near_dups.csv 里完整判定为 keep_both 的图片对（frozenset）
     counts: dict = field(default_factory=dict)
 
     @property
@@ -265,6 +273,30 @@ def _facts_table(root: Path) -> dict[str, dict]:
                 if fid:
                     out[fid] = r
     return out
+
+
+def near_judgements(root: Path) -> tuple[dict[frozenset, dict], list[str]]:
+    """读逐对判定表。返回（{图片对: 行}, 问题）；不完整的行不算判定，作为问题列出。"""
+    out: dict[frozenset, dict] = {}
+    problems: list[str] = []
+    for p in [root / NEAR_DUPS, *sorted(root.glob(f"*/{NEAR_DUPS}"))]:
+        if not p.exists():
+            continue
+        for n, r in enumerate(read_csv(p), start=2):
+            a, b = (r.get("image_id_a") or "").strip(), (r.get("image_id_b") or "").strip()
+            where = f"{p.parent.name}/{NEAR_DUPS} 第 {n} 行"
+            if not a or not b or a == b:
+                problems.append(f"{where}：要填两张不同的 image_id")
+                continue
+            dec, reason, who = ((r.get(c) or "").strip() for c in ("decision", "reason", "reviewer"))
+            if dec not in NEAR_DECISIONS:
+                problems.append(f"{where}（{a} ~ {b}）：decision 只能是 {NEAR_DECISIONS}；要删一张就在清单里 keep=drop")
+                continue
+            if not reason or not who:
+                problems.append(f"{where}（{a} ~ {b}）：reason（具体差异）和 reviewer 都要填，否则不算判定")
+                continue
+            out[frozenset((a, b))] = r
+    return out, problems
 
 
 def check(root: Path, *, cache_path: Path | None = None, near: bool = True) -> CheckResult:
@@ -371,6 +403,13 @@ def check(root: Path, *, cache_path: Path | None = None, near: bool = True) -> C
         if n > MAX_TASK_FRAMES:
             res.warnings.append(f"任务 {t} 有 {n} 个有效帧，超过 {MAX_TASK_FRAMES}；请拆成多个任务或减少相似帧")
 
+    judged, problems = near_judgements(root)
+    res.judged_pairs = set(judged)
+    res.warnings += problems
+    legacy = sorted(it.row["image_id"] for it in res.items if NEAR_OK_MARK in (it.row.get("note") or ""))
+    if legacy:
+        res.warnings.append(f"{len(legacy)} 张的 note 里有旧标记「{NEAR_OK_MARK}」，它已不再放行近重复："
+                            f"{legacy[:8]}{'…' if len(legacy) > 8 else ''}；请改为在 {NEAR_DUPS} 里逐对判定")
     if near:
         cand = [(a, b) for i, (a, ha) in enumerate(hashes) for (b, hb) in hashes[i + 1:]
                 if bin(ha ^ hb).count("1") <= NEAR_HAMMING]
@@ -393,13 +432,12 @@ def check(root: Path, *, cache_path: Path | None = None, near: bool = True) -> C
                     res.errors.append(
                         f"跨任务近重复：{a.row['image_id']} 与 {b.row['image_id']}；同一画面不能分在两个任务里，"
                         f"把其中一张 keep=drop（drop_reason 写 near-dup of ...）")
-                elif not any(NEAR_OK_MARK in (x.row.get("note") or "") for x in (a, b)):
+                elif frozenset((a.row["image_id"], b.row["image_id"])) not in judged:
                     res.warnings.append(
                         f"任务内近重复（待人工判定）：{a.row['image_id']} 与 {b.row['image_id']}；有意义的变化"
-                        f"（如 16→18）请在其中一张的 note 写「{NEAR_OK_MARK}<具体差异>」，否则删一张")
+                        f"（如 16→18）在 {NEAR_DUPS} 里给这一对写 keep_both + 具体差异 + 判定人，否则删一张")
 
     kept = [it for it in res.items if it.keep]
-    notes = {it.row.get("image_id"): it.row.get("note") for it in res.items}
     same_pairs = [p for p in res.near_pairs if p[2]]
     res.counts = {
         "by_collector_scenario": dict(Counter(f"{i.row['collector']}/{i.row['scenario']}" for i in kept)),
@@ -414,8 +452,7 @@ def check(root: Path, *, cache_path: Path | None = None, near: bool = True) -> C
         "near_checked": near,
         "near_same_task": len(same_pairs),
         "near_cross_task": len(res.near_pairs) - len(same_pairs),
-        "near_pending": sum(1 for a, b, s in same_pairs
-                            if not any(NEAR_OK_MARK in (notes.get(x) or "") for x in (a, b))),
+        "near_pending": sum(1 for a, b, s in same_pairs if frozenset((a, b)) not in judged),
     }
     return res
 
@@ -447,7 +484,9 @@ def render_check(res: CheckResult, labels: dict | None = None) -> str:
         lines.append(f"人工标注 / 复核：标注表 {labels['rows']} 行，已标注 {labels['labeled']}、"
                      f"已复核 {labels['reviewed']}、已定稿 {labels['final']}")
     for a, b, same in res.near_pairs:
-        lines.append(f"近重复对：{a} ~ {b}（{'同任务' if same else '跨任务'}）")
+        state = "跨任务，必须删一张" if not same else ("已逐对判定保留" if frozenset((a, b)) in res.judged_pairs
+                                                      else "待人工判定")
+        lines.append(f"近重复对：{a} ~ {b}（{state}）")
     lines += [f"错误：{e}" for e in res.errors]
     lines += [f"注意：{w}" for w in res.warnings]
     lines.append("格式检查通过（不代表已人工验收）" if res.ok else f"检查未通过：{len(res.errors)} 个错误")
@@ -585,7 +624,8 @@ def build_labels(root: Path, data_dir: str, out: Path, *, collector: str | None 
                          f"{leaks[:10]}{'…' if len(leaks) > 10 else ''}")
         devs = sum(1 for r in rows if r["source_kind"] in DEV_ONLY_KINDS)
         if devs:
-            notes.append(f"{devs} 帧是 mock_ui 仿界面，只作开发测试样本，正式划分 / 训练 / 评测会排除")
+            notes.append(f"{devs} 帧是 mock_ui 仿界面，只作开发测试样本：正式划分 / 训练默认排除；"
+                         f"正式检索评测要用 dataset accepted 生成的候选名单（--candidates）才会排除")
         if unindexed:
             notes.append(f"{unindexed} 帧还没有 OCR 结果（ocr_chars 为空）：先运行 python -m screenrecall.indexer")
         return len(rows), len(prev), notes

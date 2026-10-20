@@ -136,7 +136,11 @@ def test_check_rejects_copies_cross_task_near_dups_and_bad_fields(tmp_path):
     assert any("drop_reason" in e for e in res.errors)
 
 
-def test_within_task_near_dup_needs_note(tmp_path):
+def _judge(root, rows):
+    collect.write_csv(root / "cao" / collect.NEAR_DUPS, collect.NEAR_DUP_COLS, rows)
+
+
+def test_within_task_near_dup_needs_pairwise_judgement(tmp_path):
     root, t1, _, base = _two_tasks(tmp_path)
     near = base.copy()
     near[:4, :20] = 0
@@ -147,17 +151,49 @@ def test_within_task_near_dup_needs_note(tmp_path):
     assert res.ok, res.errors
     assert any("任务内近重复" in w for w in res.warnings)
     assert res.counts["near_same_task"] == 1 and res.counts["near_pending"] == 1
-    a2 = next(r["image_id"] for r in _rows(t1 / collect.MANIFEST) if r["file"] == "a2.png")
-    _edit(t1, a2, note="来源与变化的自动说明")              # 普通说明不算人工判定
-    res = collect.check(root)
-    assert any("任务内近重复" in w for w in res.warnings) and res.counts["near_pending"] == 1
+    ids = {r["file"]: r["image_id"] for r in _rows(t1 / collect.MANIFEST)}
+    a, a2 = ids["a.png"], ids["a2.png"]
+    # 旧写法（note 标记）不再放行，只提示迁移
     _edit(t1, a2, note=collect.NEAR_OK_MARK + "batch_size 16→18")
     res = collect.check(root)
-    assert not any("任务内近重复" in w for w in res.warnings)
-    # 近重复始终计数并逐对列出，不会因为写了理由就从报告里消失
+    assert res.counts["near_pending"] == 1 and any("旧标记" in w for w in res.warnings)
+    # 空理由 / 缺判定人：不算判定
+    _judge(root, [{"image_id_a": a, "image_id_b": a2, "decision": "keep_both", "reason": "", "reviewer": "xiao"}])
+    res = collect.check(root)
+    assert res.counts["near_pending"] == 1 and any("reason" in w for w in res.warnings)
+    _judge(root, [{"image_id_a": a2, "image_id_b": a, "decision": "keep_both", "reason": "batch_size 16→18",
+                   "reviewer": ""}])
+    assert collect.check(root).counts["near_pending"] == 1
+    # 完整判定（顺序无关）
+    _judge(root, [{"image_id_a": a2, "image_id_b": a, "decision": "keep_both", "reason": "batch_size 16→18",
+                   "reviewer": "xiao"}])
+    res = collect.check(root)
+    assert not any("待人工判定" in w for w in res.warnings)
+    # 近重复始终计数并逐对列出，不会因为判定过就从报告里消失
     assert res.counts["near_same_task"] == 1 and res.counts["near_pending"] == 0
     text = collect.render_check(res)
-    assert "任务内 1 对（待人工判定 0 对）" in text and "近重复对：" in text and "未统计" in text
+    assert "任务内 1 对（待人工判定 0 对）" in text and "已逐对判定保留" in text and "未统计" in text
+
+
+def test_judging_one_pair_does_not_release_others(tmp_path):
+    root, t1, _, base = _two_tasks(tmp_path)
+    for k, name in ((1, "n1.png"), (2, "n2.png")):
+        near = base.copy()
+        near[:4, k * 20:k * 20 + 20] = 0
+        _save(t1 / name, near)
+    collect.build_manifest(t1)
+    _fill(t1, app="Terminal", language="en")
+    ids = {r["file"]: r["image_id"] for r in _rows(t1 / collect.MANIFEST)}
+    res = collect.check(root)
+    assert res.counts["near_same_task"] == 3 and res.counts["near_pending"] == 3
+    _judge(root, [{"image_id_a": ids["a.png"], "image_id_b": ids["n1.png"], "decision": "keep_both",
+                   "reason": "左上角计数 1→2", "reviewer": "xiao"}])
+    res = collect.check(root)
+    assert res.counts["near_pending"] == 2      # 只放行判过的那一对，a~n2、n1~n2 仍待判
+    _judge(root, [{"image_id_a": ids["a.png"], "image_id_b": ids["n2.png"], "decision": "maybe",
+                   "reason": "x", "reviewer": "xiao"}])
+    res = collect.check(root)
+    assert res.counts["near_pending"] == 3 and any("decision 只能是" in w for w in res.warnings)
 
 
 def test_source_kind_required_and_mock_ui_is_dev_only(tmp_path):

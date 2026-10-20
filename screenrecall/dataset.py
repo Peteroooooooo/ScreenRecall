@@ -29,6 +29,9 @@ LABEL_COLS = ["task_id", "scenario", "language", "label", "annotator", "review_l
               "change_reason"]
 ALL_COLS = EXPORT_COLS + LABEL_COLS
 SPLITS = ("train", "val", "test")
+# 画面来源（与 collect 清单同一套取值）：mock_ui 是自制仿界面，只作开发测试
+SOURCE_KINDS = ("real_app", "real_web", "mock_ui")
+DEV_ONLY_KINDS = {"mock_ui"}
 
 
 class DatasetError(ValueError):
@@ -49,10 +52,13 @@ def export_frames(conn: sqlite3.Connection, out: Path, *, include_unprocessed: b
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", encoding="utf-8-sig", newline="") as fh:  # utf-8-sig：Windows Excel 直接打开不乱码
         w = csv.writer(fh)
-        w.writerow(ALL_COLS)
+        w.writerow(ALL_COLS + ["source_kind"])
         for r in rows:
+            # 实时录制的是真实应用窗口；导入的截图来源未知，留空由人填
+            kind = "" if r["source_type"] == "import" else "real_app"
             w.writerow([r["frame_id"], r["image_path"], timeutil.fmt_local(r["first_seen_ms"]), r["app"] or "",
-                        r["window_title"] or "", r["session_id"], r["source_type"]] + [""] * len(LABEL_COLS))
+                        r["window_title"] or "", r["session_id"], r["source_type"]] + [""] * len(LABEL_COLS)
+                       + [kind])
     return len(rows)
 
 
@@ -93,9 +99,12 @@ def load_labelset(path: Path) -> list[str]:
 
 def read_labels(conn: sqlite3.Connection, csv_path: Path, labels: list[str], *,
                 require_review: bool = True, include_dev_only: bool = False) -> CheckReport:
-    """最终类别 = final_label；为空时用复核结论 review_label；require_review 时两者都空即报错。
+    """正式（require_review）：每条都要有初标 label + annotator 和复核 review_label + reviewer，两人不同；
+    初标与复核不一致（分歧）时还要填定稿 final_label 和 change_reason。只填 final_label 不算标注。
+    试标（require_review=False）：有初标即可，最终类别 = final_label / review_label / label 中第一个非空。
 
-    复核改动了原标注（review/final 与 label 不同）必须写 change_reason，保留原标注以便审计。
+    source_kind 必须是 real_app / real_web / mock_ui；mock_ui 只作开发测试，默认排除。旧表没有这一列时，
+    正式模式报错（用 collect labels 重新生成或显式补列），试标模式按未知来源照常读取。
     """
     rep = CheckReport()
     allowed = set(labels)
@@ -106,17 +115,27 @@ def read_labels(conn: sqlite3.Connection, csv_path: Path, labels: list[str], *,
         missing = [c for c in ALL_COLS if c not in (reader.fieldnames or [])]
         if missing:
             raise DatasetError(f"标注文件缺少列：{missing}")
+        has_kind = "source_kind" in (reader.fieldnames or [])
+        if require_review and not has_kind:
+            raise DatasetError("标注文件没有 source_kind 列（旧表）：正式检查要逐行知道画面来源，"
+                               f"请用 collect labels 重新生成，或补上这一列并逐行填 {SOURCE_KINDS}")
         for n, row in enumerate(reader, start=2):
             fid = (row["frame_id"] or "").strip()
-            if not include_dev_only and (row.get("source_kind") or "").strip() == "mock_ui":
+            where = f"第 {n} 行（{fid[:8]}）"
+            kind = (row.get("source_kind") or "").strip()
+            if has_kind and kind not in SOURCE_KINDS:
+                rep.errors.append(f"{where}：source_kind {kind!r} 不合法，应为 {SOURCE_KINDS}")
+                continue
+            if not include_dev_only and kind in DEV_ONLY_KINDS:
                 rep.dev_only_skipped += 1
                 continue
             first = (row["label"] or "").strip()
-            final = (row["final_label"] or "").strip() or (row["review_label"] or "").strip()
-            if not first and not final:
+            ann, rev = (row["annotator"] or "").strip(), (row["reviewer"] or "").strip()
+            review, fin = (row["review_label"] or "").strip(), (row["final_label"] or "").strip()
+            reason = (row["change_reason"] or "").strip()
+            if not any((first, ann, review, rev, fin)):
                 rep.unlabeled += 1
                 continue
-            where = f"第 {n} 行（{fid[:8]}）"
             if fid in seen:
                 rep.errors.append(f"{where}：frame_id 重复")
                 continue
@@ -124,20 +143,30 @@ def read_labels(conn: sqlite3.Connection, csv_path: Path, labels: list[str], *,
             if fid not in alive:
                 rep.errors.append(f"{where}：数据库里没有这个画面（已删除或不是这份数据库）")
                 continue
-            if require_review and not final:
-                rep.errors.append(f"{where}：缺少复核结论（review_label 或 final_label）")
-                continue
-            ann, rev = (row["annotator"] or "").strip(), (row["reviewer"] or "").strip()
-            if require_review and (row["review_label"] or "").strip() and (not rev or rev == ann):
-                rep.errors.append(f"{where}：复核人 reviewer 要填，且不能与标注人 annotator 相同")
-                continue
-            final = final or first
-            for v in {first, final} - {""}:
+            if require_review:
+                lack = [c for c, v in (("label", first), ("annotator", ann), ("review_label", review),
+                                       ("reviewer", rev)) if not v]
+                if lack:
+                    rep.errors.append(f"{where}：初标与复核记录不完整，缺 {lack}（只填 final_label 不算标注）")
+                    continue
+                if rev == ann:
+                    rep.errors.append(f"{where}：复核人 reviewer 不能与标注人 annotator 相同")
+                    continue
+                if first != review and (not fin or not reason):
+                    rep.errors.append(f"{where}：初标 {first} 与复核 {review} 不一致，要填定稿 final_label 和 change_reason")
+                    continue
+                final = fin or review
+            else:
+                if not first:
+                    rep.errors.append(f"{where}：没有初标 label（只填复核或定稿列不算标注）")
+                    continue
+                final = fin or review or first
+            for v in {first, review, final} - {""}:
                 if v not in allowed:
                     rep.errors.append(f"{where}：类别 {v!r} 不在类别表 {labels} 中")
-            if first and final != first:
+            if final != first:
                 rep.changed_by_review += 1
-                if not (row["change_reason"] or "").strip():
+                if not reason:
                     rep.errors.append(f"{where}：复核改了类别（{first} → {final}），要写 change_reason")
             if final in allowed:
                 rep.items.append(Labeled(fid, final, (row["task_id"] or "").strip(), (row["scenario"] or "").strip(),
@@ -242,6 +271,21 @@ def file_hash(path: Path) -> str:
     return hashlib.blake2b(path.read_bytes(), digest_size=16).hexdigest()
 
 
+def write_candidates(path: Path, frame_ids: list[str], labels_sha: str) -> None:
+    """正式候选名单：# 开头的行是说明（来源标注表指纹），其余每行一个 frame_id。"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"# accepted frames from labels blake2b={labels_sha}; n={len(frame_ids)}\n"
+                    + "".join(f + "\n" for f in sorted(set(frame_ids))), encoding="utf-8")
+
+
+def read_candidates(path: Path) -> frozenset[str]:
+    ids = [ln.strip() for ln in path.read_text(encoding="utf-8").splitlines()]
+    out = frozenset(x for x in ids if x and not x.startswith("#"))
+    if not out:
+        raise DatasetError(f"{path} 里没有任何候选帧")
+    return out
+
+
 # ---------------- CLI ----------------
 
 def _parse_fractions(text: str) -> dict[str, float]:
@@ -260,11 +304,13 @@ def main(argv: list[str] | None = None) -> int:
     e = sub.add_parser("export")
     e.add_argument("--out", required=True)
     e.add_argument("--include-unprocessed", action="store_true")
-    for name in ("check", "split"):
+    for name in ("check", "split", "accepted"):
         p = sub.add_parser(name)
         p.add_argument("--labels", required=True, help="标注 CSV")
         p.add_argument("--labelset", required=True, help="冻结的类别表 JSON")
         p.add_argument("--allow-unreviewed", action="store_true", help="只用于试标阶段；正式划分必须有复核结论")
+    sub.choices["accepted"].add_argument("--out", required=True,
+                                         help="正式候选帧名单（每行一个 frame_id），给 evaluate --candidates 用")
     sp = sub.choices["split"]
     sp.add_argument("--fractions", required=True, help="train,val,test，例如 0.6,0.2,0.2")
     sp.add_argument("--seed", type=int, default=0)
@@ -287,6 +333,13 @@ def main(argv: list[str] | None = None) -> int:
         if not rep.ok:
             return 1
         if args.cmd == "check":
+            return 0
+        if args.cmd == "accepted":
+            if args.allow_unreviewed:
+                print("错误：正式候选名单只能来自完成双人复核的标注，不能加 --allow-unreviewed", file=sys.stderr)
+                return 1
+            write_candidates(Path(args.out), [i.frame_id for i in rep.items], file_hash(Path(args.labels)))
+            print(f"正式候选 {len(rep.items)} 帧（已双人复核、非仿界面）写入 {args.out}")
             return 0
         res = grouped_split(rep.items, source_groups(conn, rep.items), _parse_fractions(args.fractions), args.seed)
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)
