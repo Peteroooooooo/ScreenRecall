@@ -40,7 +40,11 @@ COOKIE_REJECT = ["#onetrust-reject-all-handler", "button:has-text('Reject All')"
 # 促销弹窗常放在 iframe 里（如 Braze 的 srcdoc iframe），所以每个 frame 都要找
 CLOSE_BUTTONS = ["button[aria-label^='Close' i]:visible", "button[aria-label^='Schließen' i]:visible",
                  ".bz-close-btn:visible", ".ab-close-button:visible",
-                 "[role='dialog'] button[class*='close' i]:visible", "[role='dialog'] button:has-text('×'):visible"]
+                 "[role='dialog'] button[class*='close' i]:visible", "[role='dialog'] button:has-text('×'):visible",
+                 # 地区跳转 / 订阅弹窗：选"留在当前站点"、"不用了"，不填写任何内容
+                 "button:has-text('Stay on'):visible", "a:has-text('Stay on'):visible",
+                 "button:has-text('No thanks'):visible", "button:has-text('Not now'):visible",
+                 "[class*='modal' i] [class*='close' i]:visible", "[class*='popup' i] [class*='close' i]:visible"]
 # 页面上还有遮挡层 / 未加载的图片时返回说明；没有问题返回空串
 PAGE_ISSUES_JS = """() => {
   const vw = innerWidth, vh = innerHeight, out = [];
@@ -87,6 +91,11 @@ def clear_overlays(page, wait_s: float = 10.0) -> str:
             if hit:
                 break
         if not hit:
+            if page.evaluate(PAGE_ISSUES_JS) and "Escape" not in done:
+                page.keyboard.press("Escape")   # 多数弹窗支持 Esc 关闭；只按一次
+                done.append("Escape")
+                time.sleep(1.0)
+                continue
             time.sleep(0.5)
     return "；点了弹窗的 " + " / ".join(done) if done else ""
 
