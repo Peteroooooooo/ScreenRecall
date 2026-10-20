@@ -38,6 +38,12 @@ UV_DIR = Path(shutil.which("uv") or "/Applications/KiroCrew.app/Contents/Resourc
 # 本机 CommandLineTools 默认 SDK（27.0）的 libSystem.tbd 链接器读不了（tapi error），固定用已装的 26.5
 SDKROOT = "/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk"
 SCENE = "terminal2"   # 与 2026-10-18 的 cao-code-01 试采目录（we77ba2）区分，避免重建时删掉它
+# 重新准备的任务用新的工作目录（原目录和其中已截的步骤原样保留）：任务编号 → 场景名
+SCENE_OVERRIDE = {"cao-code-06": "terminal4"}   # v1(w5c2037)、v2(w8235ca) 里 cd alpha 泄漏到后续行，标记文件写错目录；v3 每步用子 shell
+
+
+def scene_of(task: str) -> str:
+    return SCENE_OVERRIDE.get(task, SCENE)
 
 
 def next_seq(task_dir: Path) -> int:
@@ -65,13 +71,15 @@ def env_path() -> str:
 
 def write_script(work: Path, steps: list[dict]) -> Path:
     lines = ["#!/bin/zsh", f"cd {shlex.quote(str(work))}", f"export PATH={shlex.quote(env_path())}",
-             f"export PYTHONDONTWRITEBYTECODE=1 UV_NO_PROGRESS=1 SDKROOT={SDKROOT}", "clear"]
+             f"export PYTHONDONTWRITEBYTECODE=1 UV_NO_PROGRESS=1 SDKROOT={SDKROOT}",
+             # 真实终端是 tty：git log / diff 等会打开 less 分页器停住等按键，必须关掉
+             "export GIT_PAGER=cat PAGER=cat", "clear"]
     for i, st in enumerate(steps, 1):
         rows, cols = st["size"]
         lines += [f"printf '\\e[8;{rows};{cols}t'"] + ([] if st.get("keep") else ["clear"]) + [
             "sleep 0.4",
             f"print -r -- {shlex.quote(work.name + ' % ' + st['cmd'])}",
-            st["cmd"],
+            f"( {st['cmd']} )",   # 子 shell：命令里的 cd 不影响后面的 ready / go 标记文件位置
             f"print -rn -- {shlex.quote(work.name + ' % ')}",
             f"touch ready.{i}",
             f"while [ ! -f go.{i} ]; do sleep 0.2; done",
@@ -88,7 +96,7 @@ def terminal_prepare(tasks: list[str]) -> list[Path]:
     scripts = []
     for t in tasks:
         setup, steps = mod.TASKS[t]
-        work = neutral_dir(t, SCENE, fresh=True)
+        work = neutral_dir(t, scene_of(t), fresh=True)
         setup(work)
         scripts.append(write_script(work, steps()))
     return scripts
@@ -129,7 +137,7 @@ def terminal_attach(tasks: list[str], out: Path) -> int:
     for t in tasks:
         _, steps_fn = mod.TASKS[t]
         steps = steps_fn()
-        work = neutral_dir(t, SCENE, fresh=False)
+        work = neutral_dir(t, scene_of(t), fresh=False)
         task_dir = out / t
         task_dir.mkdir(parents=True, exist_ok=True)
         win = window_titled("Terminal", work.name)
@@ -142,16 +150,18 @@ def terminal_attach(tasks: list[str], out: Path) -> int:
             if (work / f"go.{i}").exists():
                 continue
             deadline = time.time() + 180
-            while not (work / f"ready.{i}").exists():
-                if time.time() > deadline:
-                    print(f"!! {t} 第 {i} 步超时", file=sys.stderr)
-                    return fails + 1
+            while not (work / f"ready.{i}").exists() and time.time() < deadline:
                 time.sleep(0.3)
+            if not (work / f"ready.{i}").exists():
+                print(f"!! {t} 第 {i} 步超时（命令可能在等输入），跳到下一个任务", file=sys.stderr)
+                fails += 1
+                break
             time.sleep(1.0)
             cur = window_by_id("Terminal", win[0])
             if not cur:
-                print(f"!! {t}: Terminal 窗口不见了", file=sys.stderr)
-                return fails + 1
+                print(f"!! {t}: Terminal 窗口不见了，跳到下一个任务", file=sys.stderr)
+                fails += 1
+                break
             dest, bad = shoot(task_dir, t, next_seq(task_dir), cur[0])
             if bad:
                 fails += 1

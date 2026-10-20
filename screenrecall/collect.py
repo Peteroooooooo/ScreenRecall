@@ -60,6 +60,8 @@ MAX_TASK_FRAMES = 40          # 单个任务有效帧上限，避免一个任务
 NEAR_HAMMING = 16             # 256 位差分哈希的候选阈值（约 6%）
 NEAR_DIFF_FRAC = 0.02         # 候选确认：缩略灰度图上明显不同的像素不到 2% 视为近重复
 NEAR_PIX_DELTA = 24
+NEAR_THUMB_W = 512            # 比较用缩略图宽度：256 时终端小字会糊成背景
+NEAR_INK_FRAC = 0.10          # 不同像素 / 有内容像素 低于 10% 才算近重复
 # 旧写法：note 里写这个标记。它会一次放行这张图涉及的所有近重复对，2026-10-20 起不再生效，只提示迁移
 NEAR_OK_MARK = "近重复保留："
 # 近重复逐对判定表：<root>/<采集者>/near_dups.csv（也接受 <root>/near_dups.csv）。每对一行，
@@ -209,15 +211,30 @@ def _thumb(gray: Image.Image, width: int = 256) -> Image.Image:
 
 
 def near_duplicate(a: Image.Image, b: Image.Image) -> bool:
-    """两张灰度图是否近重复：宽高比接近，且缩略图上明显不同的像素少于 NEAR_DIFF_FRAC。"""
+    """两张灰度图是否近重复：宽高比接近，缩略图上明显不同的像素少于 NEAR_DIFF_FRAC，
+    并且不同的像素占"有内容的像素"（与背景色明显不同的像素，如终端里的文字）的比例也少于 NEAR_INK_FRAC。
+
+    第二个条件用于大面积纯色背景、小字号的画面（终端、表格）：整张图里文字只占很少像素，
+    不同输出的差异按全图比例算会低于 2%，被误判为近重复（2026-10-20 真实 Terminal 采集时发现）。
+    """
     ra, rb = a.width / a.height, b.width / b.height
     if abs(ra - rb) / max(ra, rb) > 0.03:
         return False
-    ta = _thumb(a)
+    ta = _thumb(a, NEAR_THUMB_W)
     tb = b.resize(ta.size, Image.Resampling.BILINEAR)
     pa, pb = ta.tobytes(), tb.tobytes()
     diff = sum(1 for x, y in zip(pa, pb) if abs(x - y) > NEAR_PIX_DELTA)
-    return diff / len(pa) < NEAR_DIFF_FRAC
+    if diff / len(pa) >= NEAR_DIFF_FRAC:
+        return False
+    bg_a, bg_b = _mode(pa), _mode(pb)
+    ink = sum(1 for x, y in zip(pa, pb) if abs(x - bg_a) > NEAR_PIX_DELTA or abs(y - bg_b) > NEAR_PIX_DELTA)
+    return diff / max(ink, 1) < NEAR_INK_FRAC
+
+
+def _mode(px: bytes) -> int:
+    """最常见的灰度值（按 8 级分桶），近似为背景色。"""
+    c = Counter(v // 8 for v in px)
+    return c.most_common(1)[0][0] * 8 + 4
 
 
 @dataclass
