@@ -31,7 +31,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE / "scenes"))
 from capture_mac import append_log, looks_blank  # noqa: E402
-from capture_real_mac import PY, REPO, neutral_dir, window_by_id, window_titled, windows  # noqa: E402
+from capture_real_mac import PY, neutral_dir, window_by_id, window_titled, windows  # noqa: E402
 
 UV_DIR = Path(shutil.which("uv") or "/Applications/KiroCrew.app/Contents/Resources/backend-dist/"
               "kirocrew-backend-arm64/bin/uv").parent

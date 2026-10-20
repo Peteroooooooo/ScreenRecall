@@ -219,7 +219,7 @@ def _xlsx_inventory(path: Path, s: dict) -> None:
         ws.append(r + [f"=C{k}*E{k}", f'=IF(C{k}<D{k},"REORDER","ok")'])
     n = len(s["rows"]) + 2
     ws.append(["", "Total", f"=SUM(C3:C{n})", "", "", f"=SUM(F3:F{n})", f'=COUNTIF(G3:G{n},"REORDER")&" to reorder"'])
-    ws.conditional_formatting.add(f"C3:C{n}", CellIsRule(operator="lessThan", formula=[f"$D3"],
+    ws.conditional_formatting.add(f"C3:C{n}", CellIsRule(operator="lessThan", formula=["$D3"],
                                                           fill=PatternFill("solid", fgColor="FFC7CE")))
     for c in ws[2]:
         c.font = Font(bold=True)
