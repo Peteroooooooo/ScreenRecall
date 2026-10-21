@@ -204,7 +204,7 @@ def run(plan: dict, out: Path, only: list[str] | None, html_dir: Path, skip_exis
                               file=sys.stderr)
                         failures += 1
                         continue
-                    source = f"公开网站 {fr['url']}"
+                    source = fr.get("source") or f"公开网站 {fr['url']}"
                 zoom = fr.get("zoom", 1.0)
                 if zoom != 1.0:
                     page.evaluate(f"document.documentElement.style.zoom='{zoom}'")
