@@ -7,7 +7,7 @@
 | 项目 | 状态 |
 | --- | --- |
 | 基于 | `feat/lifecycle` @ `1e124b5`（草稿 PR #5）← `feat/evidence-browse`（草稿 PR #4）← `feat/vector-search`（草稿 PR #3）← `feat/capture-cadence`（草稿 PR #2）← `main`（已含 P0，PR #1 于 10-16 合入） |
-| PR | 草稿 [PR #6](https://github.com/Peteroooooooo/ScreenRecall/pull/6)，base `feat/lifecycle`；合并顺序 #2 → #3 → #4 → #5 → 本 PR，详见 [PROGRESS.md](PROGRESS.md) |
+| PR | 草稿 [PR #6](https://github.com/Peteroooooooo/ScreenRecall/pull/6)，base `main`（PR #1–#5 已于 2026-10-21 用 merge commit 合入 `main` @ `effee82`），详见 [PROGRESS.md](PROGRESS.md) |
 | 本分支新增 | 受控数据集的**采集与标注规程**（[datasets/COLLECTION.md](datasets/COLLECTION.md)）、80 个任务的任务表、40 条查询的分配表、清单 / 事实 / 标注模板；工具 `python -m screenrecall.collect`（清单、检查、导入、标注表、事实→相关帧）和 `python -m screenrecall.indexer`（不采集、只跑 OCR 与向量，Mac 上可用）；导入支持逐张的应用、窗口标题和捕获时间 |
 | 测试 | **macOS**：`pytest tests` 176/176（继承 151 + 本分支 25）；其中 1 条用真实 RapidOCR，其余是逻辑测试；命令行全流程用真实 OCR + 真实向量模型跑通 |
 | 数据 | 试采 45 帧（曹贺乔，只在本机、被 git 忽略）：30 张自制 HTML 仿界面（`mock_ui`，只作开发测试样本）、10 张公开网站、5 张真实 Terminal。**都还没有人工标注和复核；没有分类结果或检索结果** |
