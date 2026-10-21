@@ -21,7 +21,8 @@ import streamlit as st
 from PIL import Image, ImageDraw
 
 from screenrecall import (
-    classify, control, db, evidence, importer, lifecycle, models, retrieval, rules, search, storage, timeutil, winapi,
+    classify, control, db, evidence, importer, lifecycle, models, retrieval, retry, rules, search, storage, timeutil,
+    winapi,
 )
 from screenrecall.config import load_config
 
@@ -197,11 +198,41 @@ def control_panel() -> None:
         st.toast("请求已发送，等待后台确认")
 
 
+_STAGE_NAME = {"ocr": "文字识别（OCR）", "text_embed": "语义向量", "image_embed": "全图向量"}
+
+
+@st.fragment
+def failed_panel() -> None:
+    """失败待办的人工重试（方案 3.4）：自动重试用尽后停在失败；这里列出原因并允许一键改回待处理。"""
+    with open_db() as conn:
+        summ = retry.summary(conn)
+        recent = retry.failed_jobs(conn, limit=8)
+    if not summ:
+        st.caption("没有失败的待办。")
+        return
+    for stage, s in summ.items():
+        errs = "、".join(f"{k} ×{v}" for k, v in s["errors"].most_common(3))
+        st.caption(f"{_STAGE_NAME.get(stage, stage)}：可重试 {s['retryable']}，不可重试 {s['not_retryable']}（{errs}）")
+    for j in recent:
+        tag = "" if j.retryable else f"（不可重试：{j.why_not}）"
+        st.caption(f"· {timeutil.fmt_local(j.captured_at_ms)} {md(j.app)} · {_STAGE_NAME.get(j.stage, j.stage)} · "
+                   f"尝试 {j.attempts} 次 · {md(j.last_error[:80])}{tag}")
+    n_ok = sum(s["retryable"] for s in summ.values())
+    if st.button(f"重试全部可重试的（{n_ok}）", key="retry-failed", disabled=not n_ok, width="stretch"):
+        with open_db() as conn:
+            res = retry.retry_failed(conn)
+        skipped = "、".join(f"{k} {v}" for k, v in res.not_retryable.items())
+        st.success(f"已改回待处理 {res.total} 条，后台会自动重新处理。" + (f"未改：{skipped}。" if skipped else ""))
+    st.caption("原图缺失、已到期或已删除的失败不能靠重试恢复，不会被改动。")
+
+
 with st.sidebar:
     st.header("录制")
     status_panel()
     st.divider()
     control_panel()
+    with st.expander("失败的待办"):
+        failed_panel()
     with st.expander("允许 / 排除规则"):
         for line in rules.describe(CFG.rules):
             st.caption(md(line))

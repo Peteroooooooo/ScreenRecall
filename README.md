@@ -9,7 +9,7 @@
 | 基于 | `feat/lifecycle` @ `1e124b5`（草稿 PR #5）← `feat/evidence-browse`（草稿 PR #4）← `feat/vector-search`（草稿 PR #3）← `feat/capture-cadence`（草稿 PR #2）← `main`（已含 P0，PR #1 于 10-16 合入） |
 | PR | 草稿 [PR #6](https://github.com/Peteroooooooo/ScreenRecall/pull/6)，base `main`（PR #1–#5 已于 2026-10-21 用 merge commit 合入 `main` @ `effee82`），详见 [PROGRESS.md](PROGRESS.md) |
 | 本分支新增 | 受控数据集的**采集与标注规程**（[datasets/COLLECTION.md](datasets/COLLECTION.md)）、80 个任务的任务表、40 条查询的分配表、清单 / 事实 / 标注模板；工具 `python -m screenrecall.collect`（清单、检查、导入、标注表、事实→相关帧）和 `python -m screenrecall.indexer`（不采集、只跑 OCR 与向量，Mac 上可用）；导入支持逐张的应用、窗口标题和捕获时间 |
-| 测试 | **macOS**：`pytest tests` 184/184；其中 1 条用真实 RapidOCR，其余是逻辑测试；命令行全流程用真实 OCR + 真实向量模型跑通 |
+| 测试 | **macOS**：`pytest tests` 199/199；其中 1 条用真实 RapidOCR，其余是逻辑测试；命令行全流程用真实 OCR + 真实向量模型跑通 |
 | 数据 | 曹贺乔 1,343 张原始截图（只在本机、被 git 忽略），剔除 281，**人工验收（初标 + 第二人复核、非仿界面）1,033 帧**：code 249 / chat 306 / web 265 / table_doc 213；类别表 2026-10-21 冻结（`datasets/labelset.json`）。任务内近重复 322 对由 kiro-ai 按 OCR 差异判定（非人工，见 PROGRESS 第 13 项）。肖天奕的约 1,000 帧尚未合并。初步分类结果 cao-v0（只用曹的数据）：test Macro F1 1.000、val 0.854，基线 0.113 / 0.573，**偏乐观，不是最终结果**；曹的 20 条查询已起草（草稿，待复核）。**还没有检索实验结果** |
 | Windows 实机 | 本分支新增内容未在 Windows 上运行；`collect` / `indexer` 不依赖窗口 API，预期可用，**待验证** |
 
@@ -29,6 +29,9 @@
 | 近重复报告（10-18） | `check` 输出原始帧、保留、剔除、完全重复组数、任务内 / 跨任务近重复**对数**和待人工判定数，并逐对列出；只有人工写的 `近重复保留：…` 才算判定；`--labels` 一并统计已标注 / 已复核数 | `collect.py` | Mac 测试 + 变异检查 |
 | 类别线索检查（10-18） | 标注表新增 `ocr_task_id_leak`：OCR 在画面里读到任务编号（如地址栏）就标出 | `collect.py` | Mac 测试 |
 | Mac 截图辅助 | `datasets/capture_mac.py`：独立 Chromium 窗口截公开网站，自动关 cookie / iframe 弹窗、等图片加载；`datasets/capture_real_mac.py`：真实 Terminal（分步脚本逐步截图）与 Numbers（虚构表格）；`datasets/pilot_review.py`：生成复核表、网页事实草稿和开发查询草稿 | `datasets/` | 实际截图验证（Terminal 5 张）；Numbers 待人打开文件 |
+| 捕获覆盖实验（10-21，方案 6.3） | `python -m screenrecall.coverage plan / stimulus / analyze`：冻结事件脚本（单字变化 / 被动消息 / A→B→A × 1/3/4/6/10 秒 × 静止 / 光标闪烁 / 大面积动画 / 滚动，随机错开），tkinter 受控测试窗口按脚本播放并记录实际显示时间，按抓拍时间统计每个事件是否被保存、漏掉时有没有中断标记，目标条件给 Wilson 95% 区间；排错脚本按 ≤25 分钟分段 | `screenrecall/coverage.py` | Mac：真实 Recorder + 假窗口 + 注入时钟模拟播放，测试窗口实际打开截图；**Windows 实测未跑** |
+| WebP 编码对照（10-21，方案 5.1） | `python -m screenrecall.codec_compare`：无损来源图分层抽样，q90/q92/q95/无损的大小、编码 P50/P95、PSNR、逐像素一致、真实 OCR 全文与数字串是否变化，并排放大图给人看小字 | `screenrecall/codec_compare.py` | 合成图测试；Mac 16 张 Retina 截图冒烟（不作结论）；**Windows 未跑** |
+| 失败待办人工重试（10-21，方案 3.4） | 侧栏「失败的待办」：按阶段列失败原因，一键把可重试的改回待处理；原图缺失 / 到期 / 已删除、版本已变的不改；命令行 `python -m screenrecall.retry` | `screenrecall/retry.py`、`app.py` | 真实 OcrWorker + 替身引擎、页面 AppTest、变异检查 |
 
 ## 继承自 `feat/lifecycle`（P1 收藏 / 删除 / 到期 / 配额，方案 5.2、5.4，A11、A12）
 

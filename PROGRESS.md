@@ -45,10 +45,60 @@
 | 失败待办人工重试入口（2.4 "允许重试"） | 自动有界重试已有，**人工重试入口未做** | — | — | — |
 | 标注与分组划分工具（6.1） | 完成（`dataset.py`：导出标注清单、校验、按来源组划分） | 通过（合成数据） | 不涉及 | 未用真实数据跑过 |
 | 受控数据采集与标注规程、工具（6.1） | 完成（`datasets/COLLECTION.md`、任务表、查询分配、模板；`collect.py`、`indexer.py`） | 通过（合成图片；近重复阈值未在真实截图上校准） | Mac 上真实 RapidOCR + 向量模型跑通命令行流程（4 张合成图，只验证流程） | `collect` / `indexer` 未在 Windows 运行 |
-| 受控数据、标注、40 条查询真值（6.1） | **未开始采集**：类别表、划分比例、肖天奕的任务表待两人在试采后确认 | — | — | 不需要 Windows 录制（两人都用截图 + 导入）；数据集不能代替捕获覆盖和资源实测 |
-| 五组检索实验 Exp 1–5、Hit@5 / MRR@10（6.2） | 评测脚本完成（`evaluate.py`：五组同候选、逐条结果、按场景 / 语言给命中数 / 查询数、查询设计检查） | 通过（替身编码器） | 未在真实模型和真实查询上跑 | **没有查询真值，没有任何检索实验结果** |
-| 分类器：LR + 多数类 / 进程名规则基线、Macro F1、混淆矩阵（6.4），页面显示标签并可筛选 | 流程完成（`classify.py`、数据库 v6 `frame_labels`、页面标签与主动筛选） | 通过（**合成数据，只验证流程**） | 未在真实 CLIP 向量上训练 | **没有真实标注，没有任何分类结果**；页面标签未实机查看 |
+| 受控数据、标注、40 条查询真值（6.1） | **曹贺乔部分完成**：人工验收 1,033 帧（双人复核），类别表已冻结；曹的 20 条查询已起草（草稿）。肖天奕的约 1,000 帧与 20 条查询未开始 | — | — | 不需要 Windows 录制（两人都用截图 + 导入）；数据集不能代替捕获覆盖和资源实测 |
+| 五组检索实验 Exp 1–5、Hit@5 / MRR@10（6.2） | 评测脚本完成（`evaluate.py`：五组同候选、逐条结果、按场景 / 语言给命中数 / 查询数、查询设计检查） | 通过（替身编码器） | 未在真实模型和真实查询上跑 | **40 条查询未冻结，没有任何检索实验结果** |
+| 分类器：LR + 多数类 / 进程名规则基线、Macro F1、混淆矩阵（6.4），页面显示标签并可筛选 | 流程完成（`classify.py`、数据库 v6 `frame_labels`、页面标签与主动筛选） | 通过（合成数据） | **初步结果 cao-v0**（只用曹的数据，CLIP + LR）：val 0.854、test 1.000，基线 0.113 / 0.573，偏乐观，见下一步 11 | 最终结果待合并两人数据后重新划分、只跑一次 test |
+| 捕获覆盖实验（6.3） | **脚本完成**（2026-10-21，`coverage.py`：冻结事件脚本 → 受控测试窗口 → 统计） | 通过（真实 Recorder + 假窗口 + 注入时钟模拟播放；**不是实测**） | 不涉及；测试窗口已在 Mac 上实际打开截图确认显示正常 | **Windows 实机未跑**，没有覆盖率数字 |
+| WebP 编码对照（5.1、6.3） | **脚本完成**（2026-10-21，`codec_compare.py`） | 通过（合成文字图） | Mac 冒烟：16 张 Retina 截图 + 真实 RapidOCR（只验证流程，不作结论） | **Windows 实机画面未跑**，`webp_quality` 尚未冻结 |
+| 失败待办人工重试（3.4） | **完成**（2026-10-21，`retry.py` + 侧栏「失败的待办」+ 命令行） | 通过（真实 OcrWorker + 替身引擎、页面 AppTest） | 不涉及 | Windows 页面未实机查看 |
 | 报告、Slides、演示视频、运行包（8.3） | 未开始 | — | — | — |
+
+## 2026-10-21 交接给肖天奕：合并数据集、实验与 Windows 测量
+
+分工（10-21 两人商定）：肖天奕在 Windows 上做 ① 采集自己的约 1,000 帧并与曹的数据合并 ② 40 条查询复核与冻结 ③ 五组检索实验 ④ 最终分类结果 ⑤ 资源与性能实测 ⑥ 捕获覆盖实验、编码对照、A13（断网 / 缩放）。曹贺乔在 Mac 上完成的脚本与数据见下。
+
+**代码**：分支 `feat/dataset-collection`（草稿 PR #6，base `main`），以分支最新提交为准。新增 `screenrecall/coverage.py`、`screenrecall/codec_compare.py`、`screenrecall/retry.py`；无新增第三方依赖（测试窗口用 Python 自带的 tkinter，python.org 的 Windows 安装包默认带；先跑 `.\.venv\Scripts\python.exe -c "import tkinter"` 确认）。
+
+**数据包**：`data-dataset-cao-20261021.zip`（约 1.25 GB，曹贺乔通过共享网盘给你）。内含 `data-dataset/` 下的原图 `raw/cao/`、导入副本 `frames/`、数据库 `screenrecall.sqlite3`（一致性快照，`integrity_check` ok）、`labels-cao.csv`（1,062 行，人工标注 + 复核）、`accepted-cao.txt`（1,033 帧）、`review/queries-cao-draft.json`（曹的 20 条草稿查询）、检查报告和 `CHECKSUMS.blake2b.txt`。不含采集用的 venv、备份和作废批次。曹已在 Mac 上从这个 zip 解压出的副本重跑 `collect check`、`dataset accepted`、`evaluate --check-only`，结果与原库一致。
+
+### 0. 准备
+1. `git fetch origin`，`git switch feat/dataset-collection`，`git pull`；`.\.venv\Scripts\python.exe -m pip install -r requirements.txt`；`.\.venv\Scripts\python.exe -m pytest tests --basetemp=data\pytest -q` 全部通过再继续。
+2. 把 zip 解压到仓库根目录，得到 `data-dataset\`（已被 git 忽略）。**不要重建数据库**：标注和查询里的 frame_id 都跟着这份库。每次导入前先整份复制 `data-dataset\screenrecall.sqlite3` 备份。
+
+### 1. 你的约 1,000 帧（按 `datasets/COLLECTION.md`）
+1. 按 `datasets/collection/tasks.csv` 里 `xiao-*` 的 40 个任务采集，截图放 `data-dataset\raw\xiao\<任务编号>\`，事实记在 `data-dataset\raw\xiao\facts.csv`。主题、应用不要和 `cao-*` 重复；表格优先 Excel / PDF（曹的 Numbers 同版式小表画面多样性低）。
+2. 每个任务：`collect manifest data-dataset\raw\xiao\<任务> --device xiao-win`，补 app / language / facts / source_kind。
+3. 全部：`collect check data-dataset\raw`（同时查两人之间的重复与近重复），0 错误后 `collect import data-dataset\raw --data-dir data-dataset`，`indexer --data-dir data-dataset`（OCR + 向量，0 失败再继续；有失败用 `python -m screenrecall.retry --data-dir data-dataset` 重试）。
+4. `collect labels data-dataset\raw --data-dir data-dataset --collector xiao --out data-dataset\labels-xiao.csv`；你标 `label` / `annotator=xiao`，曹复核 `review_label` / `reviewer=cao`（把 `labels-xiao.csv` 和 `raw\xiao\` 发给曹）。**按每张图的主要可见内容标**，不要整任务统一填。
+5. 任务内近重复在 `data-dataset\raw\xiao\near_dups.csv` 逐对判定（keep_both + 具体差异 + 判定人），否则清单里删一张；已导入的删除要同时从库里删、标注行移到 `labels-xiao-dropped.csv`（`dataset accepted --raw` 会检查）。注意：曹那 322 对是 kiro-ai 按 OCR 差异判定的（reviewer=kiro-ai），你复核曹的数据时可以抽查 table-01 / table-10，另外 `cao-web-08-021`–`023` 有大面积 cookie 弹窗、仍被验收，请再判断一次。
+
+### 2. 40 条查询
+1. 你负责 `query_slots.csv` 里 owner=xiao 的 20 条，格式照抄 `review/queries-cao-draft.json`（相关帧只按采集记录和看图定，**不要用检索结果反推**）。
+2. 复核曹的 20 条：逐条打开相关帧原图核对，看 `review_flag_maybe_relevant` 列出的帧是否漏标；曹确认自己的 20 条，你们互相复核后把 `review_status` 改成 `approved`。
+3. 合成 `datasets/v1/queries.json`（40 条），`evaluate --check-only` 不再提示数量不足后冻结：记下文件 blake2b 指纹写进本文件，提交。**盲测查询任何人都不在页面或命令行里搜。**
+
+### 3. 合并、验收、划分与最终分类
+1. `collect labels data-dataset\raw --data-dir data-dataset --out datasets\v1\labels.csv --keep-from data-dataset\labels-cao.csv data-dataset\labels-xiao.csv`
+2. `dataset --data-dir data-dataset accepted --labels datasets\v1\labels.csv --labelset datasets\labelset.json --raw data-dataset\raw --out data-dataset\accepted.txt`
+3. `dataset --data-dir data-dataset split --labels datasets\v1\labels.csv --labelset datasets\labelset.json --fractions 0.6,0.2,0.2 --seed 0 --out datasets\v1\split.json`（已改为按类别分层；80 个任务组）
+4. `classify --data-dir data-dataset train --labels datasets\v1\labels.csv --labelset datasets\labelset.json --split datasets\v1\split.json --out results\classifier\v1 --report results\classifier\v1\report.json`；test 只看这一次，结果原样写进本文件。
+
+### 4. 五组检索实验
+1. 开发：`evaluate --data-dir data-dataset --queries datasets\v1\queries.json --split dev --candidates data-dataset\accepted.txt --out results\retrieval\<日期>-dev`，据此调规则，把冻结的参数写进本文件。
+2. 冻结后只跑一次：`--split blind --out results\retrieval\<日期>-blind`，结果原样提交，不重跑。
+
+### 5. 资源与性能（结果放 `results\windows\<日期>-<机器名>\`）
+用合并后的 `data-dataset`（约 2,000 帧真实数据，不需要再 expand；要更大的库才用 `bench expand`，扩出来的只用于速度测量）：`bench query --data-dir data-dataset --mode text` 和 `--mode image`、录制一段后 `bench readiness --data-dir <录制用数据目录>`、后台和页面都开着时 `bench mem --duration 600`。机器型号、CPU、内存、分辨率、缩放比例一起记下。
+
+### 6. 捕获覆盖、编码对照、A13
+- **捕获覆盖**（用单独的数据目录，例如 `data-coverage`，不要混进数据集库）：
+  1. `coverage plan --mode normal --out results\coverage\<日期>\plan-normal.json`（60 组合 × 2 次，约 45 分钟）；排错模式 `--mode debug` 会自动切成每段 ≤25 分钟（30 分钟会自动退出排错）。
+  2. 用单独的数据目录启动：后台 `.\.venv\Scripts\python.exe -m screenrecall.daemon --data-dir data-coverage`，页面先 `$env:SCREENRECALL_DATA_DIR="data-coverage"` 再启动；然后 `coverage stimulus --plan ...plan-normal.json --log ...\log-normal.jsonl`，倒计时 15 秒内在页面选「ScreenRecall Coverage Stimulus」窗口、开始录制（排错：每段开始前在页面进入排错模式，`--part 0`、`--part 1`……依次播放）。播放期间不要遮挡、移动这个窗口。
+  3. 结束后停止录制、等 OCR 跑完，`coverage analyze --data-dir data-coverage --plan ... --log ... --out results\coverage\<日期>\normal.json`（同名 `.md` 是汇总表）。普通 / 排错各一份，原样提交。
+  - Mac 上用模拟播放验证过口径（不是实测）：普通模式下主体静止、事件 ≥6 秒全部覆盖，1–4 秒事件和大面积动画 / 滚动背景下覆盖明显下降——这符合等稳规则的预期，实机数字以你跑的为准。60/60 的 95% 置信下界约 94%，要声称 ≥95% 需要更多试次（`--reps` 调大）。
+- **编码对照**：先建一个单独的数据目录（例如 `data-codec`），在它自己的 `data-codec\config.toml` 的 `[capture]` 里设 `webp_lossless = true`，用 `--data-dir data-codec` 启动后台录约 30 分钟代表性画面（四类场景都有），再 `codec_compare --images <该目录>\frames --data-dir <该目录> --out results\windows\<日期>-<机器名>\codec --note "Windows 11，<分辨率>，缩放 <x>%"`。看 `summary.md` 和 `crops\` 并排放大图，决定 `webp_quality`（或改无损）并写进本文件。Mac 冒烟参考（16 张 Retina 截图，不作结论）：无损平均 95 KiB、q92 平均 109 KiB——这批截图无损反而更小，但无损编码 P95 约 350 ms、q92 约 125 ms；q90–q95 都有个别图 OCR 数字串变化，需回原图核对是否编码造成。
+- **A13**：断网后搜索、查看原图、导入仍可用；100% / 125% / 150% 缩放下截图与高亮框对齐。
+- **失败重试**：侧栏「失败的待办」能看到失败原因，点「重试全部可重试的」后待办被重新处理；原图缺失的不改动。
 
 ## Windows 交接步骤（给下一位在 Windows 上接手的同学）
 
