@@ -5,4 +5,9 @@ opencv-python==5.0.0.93
 onnxruntime==1.20.1
 rapidocr-onnxruntime==1.4.4
 streamlit==1.65.0
-# P1（双语语义、全图检索、分类）接入时再补：sentence-transformers、torch、scikit-learn
+# P1 双语语义与全图检索（版本为 macOS 开发机实测；Windows 安装待验证）
+torch==2.14.1
+transformers==5.19.0
+sentence-transformers==6.1.0
+huggingface-hub==1.33.0
+scikit-learn==1.9.1

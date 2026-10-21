@@ -7,6 +7,8 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
+from .models import DEFAULT_MODELS, ModelsConfig, ModelSpec
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -45,11 +47,27 @@ class OcrConfig:
 
 
 @dataclass(frozen=True)
+class IndexConfig:
+    ocr_high_water: int = 50
+    embed_max_attempts: int = 3
+    embed_retry_backoff_seconds: float = 10.0
+
+
+@dataclass(frozen=True)
+class SearchConfig:
+    rrf_k: int = 60
+    branch_top: int = 50
+
+
+@dataclass(frozen=True)
 class Config:
     data_dir: Path
     capture: CaptureConfig
     ocr: OcrConfig
     rules: RulesConfig = RulesConfig()
+    models: ModelsConfig = DEFAULT_MODELS
+    index: IndexConfig = IndexConfig()
+    search: SearchConfig = SearchConfig()
 
     @property
     def db_path(self) -> Path:
@@ -114,6 +132,30 @@ def load_config(data_dir_override: str | os.PathLike | None = None) -> Config:
         max_attempts=int(ocr["max_attempts"]),
         retry_backoff_seconds=float(ocr["retry_backoff_seconds"]),
     )
+    m = raw.get("models", {})
+    d = DEFAULT_MODELS
+
+    def spec(prefix: str, default: ModelSpec) -> ModelSpec:
+        return ModelSpec(str(m.get(f"{prefix}_repo", default.repo)), str(m.get(f"{prefix}_revision", default.revision)))
+
+    models = ModelsConfig(
+        text=spec("text", d.text),
+        image=spec("image", d.image),
+        clip_text=spec("clip_text", d.clip_text),
+        threads=int(m.get("threads", d.threads)),
+        batch_size=int(m.get("batch_size", d.batch_size)),
+        local_files_only=bool(m.get("local_files_only", d.local_files_only)),
+        enabled=bool(m.get("enabled", d.enabled)),
+    )
+    ix, sr = raw.get("index", {}), raw.get("search", {})
+    index = IndexConfig(
+        ocr_high_water=int(ix.get("ocr_high_water", 50)),
+        embed_max_attempts=int(ix.get("embed_max_attempts", 3)),
+        embed_retry_backoff_seconds=float(ix.get("embed_retry_backoff_seconds", 10.0)),
+    )
+    search = SearchConfig(rrf_k=int(sr.get("rrf_k", 60)), branch_top=int(sr.get("branch_top", 50)))
+    if models.threads < 1 or models.batch_size < 1 or index.embed_max_attempts < 1:
+        raise ValueError("models.threads、models.batch_size、index.embed_max_attempts 至少为 1")
     if capture.interval_seconds <= 0:
         raise ValueError("capture.interval_seconds 必须大于 0")
     if not 0 <= capture.webp_quality <= 100:
@@ -128,4 +170,7 @@ def load_config(data_dir_override: str | os.PathLike | None = None) -> Config:
         raise ValueError("capture.recent_cache_size 不能为负")
     if ocr_cfg.max_attempts < 1:
         raise ValueError("ocr.max_attempts 至少为 1")
-    return Config(data_dir=data_dir.resolve(), capture=capture, ocr=ocr_cfg, rules=rules)
+    return Config(
+        data_dir=data_dir.resolve(), capture=capture, ocr=ocr_cfg, rules=rules,
+        models=models, index=index, search=search,
+    )
