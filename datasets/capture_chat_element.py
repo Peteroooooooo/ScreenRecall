@@ -221,13 +221,15 @@ def dismiss(page) -> str:
     did = []
     for _ in range(3):
         hit = False
-        for sel in [".mx_Toast_toast button", ".mx_Dialog button", ".mx_AnalyticsToast button"]:
+        # 新功能介绍气泡（如 "Introducing Sections … Ok"）不在 toast/dialog 里，是 role=dialog 的浮层
+        for sel in [".mx_Toast_toast button", ".mx_Dialog button", ".mx_AnalyticsToast button",
+                    "[role=dialog] button", "[role=tooltip] button", ".mx_ReleaseAnnouncement button"]:
             for b in page.locator(sel).all():
                 try:
                     t = (b.inner_text(timeout=500) or "").strip()
                 except Exception:  # noqa: BLE001
                     continue
-                if t in DISMISS or t.lower() in ("dismiss", "later", "not now", "close", "skip"):
+                if t in DISMISS or t.lower() in ("dismiss", "later", "not now", "close", "skip", "ok", "got it"):
                     try:
                         b.click(timeout=1500)
                         did.append(t)
@@ -264,12 +266,12 @@ def next_seq(task_dir: Path) -> int:
     return max(nums, default=0) + 1
 
 
-def run_task(browser, task: str, out: Path) -> int:
+def run_task(browser, task: str, out: Path, retake: bool = False) -> int:
     spec = TASKS[task]
     task_dir = out / task
     task_dir.mkdir(parents=True, exist_ok=True)
     log = task_dir / "capture_log.csv"
-    if log.exists() and "Element" in log.read_text(encoding="utf-8-sig"):
+    if not retake and log.exists() and "Element" in log.read_text(encoding="utf-8-sig"):
         print(f"  {task}: 已有 Element 截图，跳过（要重采请先人工处理）")
         return 0
     s = Sender(task, spec)
@@ -350,6 +352,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
     ap.add_argument("--task", nargs="+", required=True)
+    ap.add_argument("--retake", action="store_true",
+                    help="已有 Element 截图也重采（旧图保留在原处，编号接着往后，旧行在清单里标 drop）")
     a = ap.parse_args()
     out = Path(a.out).resolve()
     api("GET", "/_matrix/client/versions")   # 服务器没起来就直接报错
@@ -359,7 +363,7 @@ def main() -> int:
                                                           "--lang=en-US", "--hide-crash-restore-bubble"])
         for t in a.task:
             try:
-                fails += run_task(browser, t, out)
+                fails += run_task(browser, t, out, a.retake)
             except Exception as exc:  # noqa: BLE001  一个任务出错不影响后面的任务
                 fails += 1
                 print(f"  !! {t}: {exc}", file=sys.stderr)
