@@ -20,6 +20,7 @@ from logging.handlers import RotatingFileHandler
 from . import control, db, envcheck, storage, winapi
 from .capture import Recorder
 from .config import Config, load_config
+from .hotkey import HotkeyListener, parse_hotkey
 from .ocr import OcrWorker, recover_interrupted
 
 CONTROL_POLL_S = 0.3
@@ -52,6 +53,31 @@ def _acquire_single_instance(cfg: Config):
         fh.close()
         return None
     return fh
+
+
+def _start_hotkey(cfg: Config, recorder: Recorder, conn, log: logging.Logger) -> HotkeyListener | None:
+    """按配置准备快捷键补拍监听；未配置或写法有误时只提示，不阻止后台启动。"""
+    spec = cfg.capture.snapshot_hotkey
+    if not spec:
+        control.set_hotkey_status(conn, "未配置快捷键，可在页面点击补拍")
+        return None
+    try:
+        hk = parse_hotkey(spec)
+    except ValueError as exc:
+        log.warning("快捷键配置无效：%s", exc)
+        control.set_hotkey_status(conn, f"快捷键配置无效（{spec}），可在页面点击补拍")
+        return None
+
+    status_conn_path = cfg.db_path
+
+    def on_status(_ok: bool, text: str) -> None:
+        c = db.connect(status_conn_path)  # 回调在热键线程里，使用自己的连接
+        try:
+            control.set_hotkey_status(c, text)
+        finally:
+            c.close()
+
+    return HotkeyListener(hk, lambda: recorder.request_snapshot(None), on_status, log)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -94,6 +120,9 @@ def main(argv: list[str] | None = None) -> int:
         threading.Thread(target=recorder.run, name="capture", daemon=True),
         threading.Thread(target=worker.run, name="ocr", daemon=True),
     ]
+    listener = _start_hotkey(cfg, recorder, conn, log)
+    if listener is not None:
+        threads.append(threading.Thread(target=listener.run, name="hotkey", daemon=True))
     for t in threads:
         t.start()
 
@@ -110,6 +139,8 @@ def main(argv: list[str] | None = None) -> int:
                     recorder.apply_request(conn, ctrl)
                 except Exception:
                     log.exception("应用控制请求失败，稍后重试")
+            if control.snapshot_pending(ctrl):
+                recorder.request_snapshot(int(ctrl["snapshot_seq"]))
             now = time.monotonic()
             if now - last_beat >= HEARTBEAT_S:
                 control.heartbeat(conn)
@@ -120,6 +151,8 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         stop.set()
         wake_ocr.set()
+        if listener is not None:
+            listener.stop()
         try:
             recorder.shutdown(conn)
         except Exception:

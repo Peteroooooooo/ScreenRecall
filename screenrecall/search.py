@@ -75,6 +75,7 @@ class Occurrence:
     observations: int
     app: str | None
     window_title: str | None
+    source_type: str = "live"  # live 自动采样 / manual 补拍
 
 
 @dataclass
@@ -130,7 +131,7 @@ def _qualifying_occurrences(
 ) -> dict[str, list[Occurrence]]:
     sql = (
         "SELECT o.occurrence_id, o.frame_id, o.session_id, o.first_seen_ms, o.last_seen_ms, o.observations, "
-        "o.app, o.window_title FROM occurrences o JOIN frames f ON f.frame_id = o.frame_id "
+        "o.app, o.window_title, o.source_type FROM occurrences o JOIN frames f ON f.frame_id = o.frame_id "
         "WHERE o.frame_id IN (SELECT value FROM json_each(?)) AND f.image_status != 'deleted'"
     )
     params: list = [json.dumps(sorted(frame_ids))]
@@ -149,7 +150,7 @@ def _qualifying_occurrences(
         out.setdefault(r["frame_id"], []).append(
             Occurrence(
                 r["occurrence_id"], r["session_id"], r["first_seen_ms"], r["last_seen_ms"],
-                r["observations"], r["app"], r["window_title"],
+                r["observations"], r["app"], r["window_title"], r["source_type"],
             )
         )
     return out
@@ -326,7 +327,7 @@ def frame_detail(conn: sqlite3.Connection, frame_id: str) -> FrameDetail | None:
     occurrences = [
         Occurrence(
             r["occurrence_id"], r["session_id"], r["first_seen_ms"], r["last_seen_ms"],
-            r["observations"], r["app"], r["window_title"],
+            r["observations"], r["app"], r["window_title"], r["source_type"],
         )
         for r in conn.execute(
             "SELECT * FROM occurrences WHERE frame_id = ? ORDER BY first_seen_ms DESC", (frame_id,)

@@ -11,6 +11,24 @@ recent_cache_size = 4      # 最近已接受画面缓存，用于 A→B→A 精�
 webp_quality = 92          # 初值，待与无损对比后冻结（方案 6.5）
 webp_lossless = false
 webp_method = 4            # 0–6，越大越慢、文件越小
+# 等稳（方案 4.1）：相邻两次观察的变化像素比例低于此值即视为稳定并保存；初值，待事件脚本验证后冻结
+stable_change_ratio = 0.01
+stable_timeout_seconds = 10.0   # 持续变化时从等待起点累计到期，首个到期采样点保存当前帧
+# 排错模式（方案 4.1）
+debug_interval_seconds = 1.0    # 每 1 秒检查
+debug_min_save_gap_seconds = 2.0  # 自动保存至少间隔 2 秒（切窗同样限频）
+debug_max_minutes = 30.0        # 到时自动退回普通模式
+debug_exit_backlog = 50         # OCR 待办达到此值时提前退回普通（方案 4.3 高水位初值）
+# 快捷键补拍：立即捕获并新增出现记录；留空则不注册。格式如 ctrl+alt+s、ctrl+shift+f9
+snapshot_hotkey = "ctrl+alt+s"
+
+[rules]
+# 允许/排除规则（方案 1.1 P1）。进程名不区分大小写，标题关键词按子串、不区分大小写匹配。
+# allowed_processes 为空表示不限制；非空时只允许录制列表中的程序。
+allowed_processes = []
+# 排除优先于允许：命中后不开始录制；录制中命中则记缺口、不截图（快捷键补拍同样受限）。
+excluded_processes = ["KeePass.exe", "KeePassXC.exe", "1Password.exe", "Bitwarden.exe", "LockApp.exe", "CredentialUIBroker.exe"]
+excluded_title_keywords = ["InPrivate", "Incognito", "无痕", "隐身", "Private Browsing"]
 
 [ocr]
 intra_op_threads = 2       # 推理线程数必须明确配置（方案 2.5），初值

@@ -1,0 +1,5 @@
+# 测试依赖（与运行依赖分开，macOS / Windows 均可安装）
+# 单元测试只用到 numpy、Pillow 和 pytest；窗口 API 由 tests/conftest.py 的替身代替
+numpy==2.5.2
+pillow==12.3.0
+pytest==9.1.1

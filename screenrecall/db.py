@@ -14,7 +14,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -158,6 +158,27 @@ INSERT OR IGNORE INTO meta (key, value) VALUES ('index_revision', '0');
 """
 
 
+# 逐版本增量迁移：键为目标版本，值为在同一写事务内执行的 SQL。
+# 新增结构时追加下一个版本号（例如向量表用 3），不要改动已发布的版本。
+_MIGRATIONS: dict[int, str] = {
+    # v2 采集节奏（方案 4.1）：记录模式、排错倒计时、补拍请求与快捷键状态
+    2: """
+ALTER TABLE control ADD COLUMN desired_mode TEXT NOT NULL DEFAULT 'normal'
+    CHECK (desired_mode IN ('normal', 'debug'));
+ALTER TABLE control ADD COLUMN actual_mode TEXT NOT NULL DEFAULT 'normal'
+    CHECK (actual_mode IN ('normal', 'debug'));
+ALTER TABLE control ADD COLUMN mode_until_ms INTEGER;
+ALTER TABLE control ADD COLUMN mode_reason TEXT;
+ALTER TABLE control ADD COLUMN snapshot_seq INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE control ADD COLUMN snapshot_applied_seq INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE control ADD COLUMN snapshot_result TEXT;
+ALTER TABLE control ADD COLUMN snapshot_at_ms INTEGER;
+ALTER TABLE control ADD COLUMN hotkey_status TEXT;
+CREATE INDEX IF NOT EXISTS idx_gaps_session ON gaps (session_id, started_at_ms);
+""",
+}
+
+
 class SchemaError(RuntimeError):
     pass
 
@@ -189,8 +210,22 @@ def init_schema(conn: sqlite3.Connection) -> None:
             raise SchemaError(f"数据库结构版本 {current} 比代码支持的 {SCHEMA_VERSION} 新，请更新代码")
         if current == SCHEMA_VERSION:
             return
+    else:
+        current = 0
+    if current < 1:
+        _run_script(conn, _SCHEMA)
+        current = 1
+    for version in range(current + 1, SCHEMA_VERSION + 1):
+        _run_script(
+            conn,
+            _MIGRATIONS[version]
+            + f"\nUPDATE meta SET value = '{version}' WHERE key = 'schema_version';",
+        )
+
+
+def _run_script(conn: sqlite3.Connection, script: str) -> None:
     try:
-        conn.executescript("BEGIN IMMEDIATE;\n" + _SCHEMA + "\nCOMMIT;")
+        conn.executescript("BEGIN IMMEDIATE;\n" + script + "\nCOMMIT;")
     except BaseException:
         if conn.in_transaction:
             conn.execute("ROLLBACK")

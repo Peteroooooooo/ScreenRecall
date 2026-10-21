@@ -430,3 +430,51 @@ def is_input_desktop_locked() -> bool:
         return buf.value.lower() != "default"
     finally:
         _CloseDesktop(hdesk)
+
+
+# ---------- 全局快捷键（RegisterHotKey + 线程消息循环） ----------
+
+_WM_HOTKEY = 0x0312
+_WM_QUIT = 0x0012
+_PM_NOREMOVE = 0x0000
+
+_RegisterHotKey = _fn(_user32, "RegisterHotKey", _BOOL, _HWND, _INT, _UINT, _UINT)
+_UnregisterHotKey = _fn(_user32, "UnregisterHotKey", _BOOL, _HWND, _INT)
+_GetMessageW = _fn(_user32, "GetMessageW", _BOOL, ctypes.POINTER(wintypes.MSG), _HWND, _UINT, _UINT)
+_PeekMessageW = _fn(_user32, "PeekMessageW", _BOOL, ctypes.POINTER(wintypes.MSG), _HWND, _UINT, _UINT, _UINT)
+_PostThreadMessageW = _fn(_user32, "PostThreadMessageW", _BOOL, _DWORD, _UINT, wintypes.WPARAM, wintypes.LPARAM)
+_GetCurrentThreadId = _fn(_kernel32, "GetCurrentThreadId", _DWORD)
+
+
+def current_thread_id() -> int:
+    return int(_GetCurrentThreadId())
+
+
+def ensure_message_queue() -> None:
+    """线程第一次调用消息函数时系统才创建消息队列；先建好，PostThreadMessage 才不会失败。"""
+    msg = wintypes.MSG()
+    _PeekMessageW(ctypes.byref(msg), None, 0, 0, _PM_NOREMOVE)
+
+
+def register_hotkey(hotkey_id: int, modifiers: int, vk: int) -> bool:
+    """热键注册到调用线程（hwnd=NULL），WM_HOTKEY 投递到该线程的消息队列。"""
+    return bool(_RegisterHotKey(None, hotkey_id, modifiers, vk))
+
+
+def unregister_hotkey(hotkey_id: int) -> None:
+    _UnregisterHotKey(None, hotkey_id)
+
+
+def hotkey_messages():
+    """阻塞读取本线程消息，逐个产出 WM_HOTKEY 的热键 ID；收到 WM_QUIT 或出错时结束。"""
+    msg = wintypes.MSG()
+    while True:
+        ret = _GetMessageW(ctypes.byref(msg), None, 0, 0)
+        if ret == 0 or ret == -1:
+            return
+        if msg.message == _WM_HOTKEY:
+            yield int(msg.wParam)
+
+
+def post_quit(thread_id: int) -> None:
+    _PostThreadMessageW(thread_id, _WM_QUIT, 0, 0)
