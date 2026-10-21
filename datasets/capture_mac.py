@@ -197,7 +197,7 @@ def run(plan: dict, out: Path, only: list[str] | None, html_dir: Path, skip_exis
                     source = f"受控页面 {hp.relative_to(html_dir.parent)}"
                 else:
                     try:
-                        page.goto(fr["url"], wait_until="load", timeout=45000)
+                        page.goto(fr["url"], wait_until=fr.get("wait_until", "load"), timeout=45000)
                     except Exception as exc:  # noqa: BLE001
                         # 没加载完的页面不截：跳过这一帧，整批继续（之前在这里接着 evaluate 会让整批崩掉）
                         print(f"  !! {task_id} #{i} 打不开 {fr['url']}，跳过这一帧: {str(exc).splitlines()[0]}",

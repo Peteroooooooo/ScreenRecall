@@ -68,6 +68,31 @@ FACT_KEYS = {
 }
 SIZES = [(1400, 860), (1240, 820), (1120, 780)]
 
+# 追加对话（--extra）：每任务一个新房间、6 张
+from chat_content_c import EXTRA  # noqa: E402
+
+for _t, _e in EXTRA.items():
+    _fid, _text, _key = _e["fact"]
+    FACTS.append((_fid, _t, "extra", _text, _e["lang"], "合成对话（追加）"))
+    FACT_KEYS[_fid] = _key
+EXTRA_FRAMES = 6
+EXTRA_SIZES = [(1400, 860), (1000, 760), (1280, 800), (1120, 780), (1400, 860), (900, 760)]
+
+
+def extra_spec(task: str) -> dict:
+    e = EXTRA[task]
+    return {"lang": e["lang"], "members": e["members"], "rooms": [e["room"]]}
+
+
+def schedule_extra(spec: dict) -> list[dict]:
+    """6 步：先发 3 条，余下平均分到后 5 步；深浅色交替、窗口大小各不相同，不翻页。"""
+    n = len(spec["rooms"][0]["msgs"])
+    rest = n - 3
+    per = [rest // 5 + (1 if i < rest % 5 else 0) for i in range(5)]
+    sends = [3] + per
+    return [{"room": 0, "send": s, "theme": "dark" if i % 2 else "light", "size": EXTRA_SIZES[i], "scroll": 0,
+             "what": "追加话题房间新消息"} for i, s in enumerate(sends)]
+
 
 # ---------------------------------------------------------------- Matrix 客户端接口（只连本机）
 def api(method: str, path: str, token: str | None = None, body=None, raw: bytes | None = None,
@@ -266,12 +291,12 @@ def next_seq(task_dir: Path) -> int:
     return max(nums, default=0) + 1
 
 
-def run_task(browser, task: str, out: Path, retake: bool = False) -> int:
-    spec = TASKS[task]
+def run_task(browser, task: str, out: Path, retake: bool = False, extra: bool = False) -> int:
+    spec = extra_spec(task) if extra else TASKS[task]
     task_dir = out / task
     task_dir.mkdir(parents=True, exist_ok=True)
     log = task_dir / "capture_log.csv"
-    if not retake and log.exists() and "Element" in log.read_text(encoding="utf-8-sig"):
+    if not (retake or extra) and log.exists() and "Element" in log.read_text(encoding="utf-8-sig"):
         print(f"  {task}: 已有 Element 截图，跳过（要重采请先人工处理）")
         return 0
     s = Sender(task, spec)
@@ -288,7 +313,7 @@ def run_task(browser, task: str, out: Path, retake: bool = False) -> int:
     time.sleep(3)
     dismiss(page)
     theme, fails = None, 0
-    for i, st in enumerate(schedule(spec), 1):
+    for i, st in enumerate((schedule_extra if extra else schedule)(spec), 1):
         w, h = st["size"]
         cdp.send("Browser.setWindowBounds", {"windowId": wid, "bounds": {"left": 20, "top": 40, "width": w, "height": h}})
         if st["theme"] != theme:
@@ -354,6 +379,7 @@ def main() -> int:
     ap.add_argument("--task", nargs="+", required=True)
     ap.add_argument("--retake", action="store_true",
                     help="已有 Element 截图也重采（旧图保留在原处，编号接着往后，旧行在清单里标 drop）")
+    ap.add_argument("--extra", action="store_true", help="追加对话：每任务一个新话题房间，截 6 张（chat_content_c.py）")
     a = ap.parse_args()
     out = Path(a.out).resolve()
     api("GET", "/_matrix/client/versions")   # 服务器没起来就直接报错
@@ -363,7 +389,7 @@ def main() -> int:
                                                           "--lang=en-US", "--hide-crash-restore-bubble"])
         for t in a.task:
             try:
-                fails += run_task(browser, t, out, a.retake)
+                fails += run_task(browser, t, out, a.retake, a.extra)
             except Exception as exc:  # noqa: BLE001  一个任务出错不影响后面的任务
                 fails += 1
                 print(f"  !! {t}: {exc}", file=sys.stderr)

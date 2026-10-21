@@ -428,6 +428,9 @@ python -m pytest tests
       - 新增：table-04/05 预览 PDF（分 3 轮各 12 个打开，`open-batch-3b-{1,2,3}.sh`）；table-06 diagrams.net 只读查看器显示 5 张虚构流程图 × 5 种变化（深浅色 / 半屏 / 缩放，近重复交人工）；table-08 arXiv HTML 版 5 篇论文各 5 张结果表（原定预览，改浏览器）；code-03 本机 Jupyter（127.0.0.1:18888，随机令牌，`datasets/scenes/jupyter_notebooks.py` 真实内核执行，traceback 里有本机路径，采完已停）。
       - table-09 时刻表只剩 8 张候选：FlightAware 苏黎世页超时，SBS 首末班车页已下线（5 张 Page Not Found 已剔除），剩下的 FlightAware 帧主要是地图、KTMB 帧主要是介绍图，**是否算时刻表要人工判断**；需要换时刻表来源补采约 17 张。
       - `cao-code-01-031` 的 OCR 里出现任务编号，标注时判断。
+    - **第 5 批（2026-10-21 11:25）后**：原始 1,343 张，剔除 279，真实来源候选 **1,034** 张（code 250 / chat 306 / web 231 / table 247），人工验收 0。check 0 错误、跨任务 0 对、任务内 322 对待判；OCR/向量 1,064 帧 0 失败。报告 `data-dataset/reports/check-cao-20261021-batch5.txt`。
+      - chat 每任务追加一个新话题房间 6 张（`datasets/scenes/chat_content_c.py`，`capture_chat_element.py --extra`），共 60 张，对话内容全新、不复用原对话；没有把 10-20 被气泡遮挡的旧图加回（它们与重采图是同一脚本同一画面，只多了遮挡）。
+      - table-09 改用 seat61 页面里的真实列车时刻表（马来西亚 / 越南南北行，锚点定位）补 17 张；seat61 的 load 事件常超时，计划里改等 DOMContentLoaded（`wait_until`）。部分帧底部有站内广告条，交人工判断。早先 FlightAware / KTMB 的 8 张是否算时刻表仍待人工判断。
 14. **五组检索实验、资源与存储测量、报告与演示**：方案 6.2、6.3、8.3。**评测脚本已完成**（`dc9a355`，`python -m screenrecall.evaluate`，用法见 `datasets/README.md`）、测量脚本已完成（`0fd523d`）；剩下：40 条查询真值（依赖 13）→ dev 调规则 → 冻结后只跑一次 blind → 报告、Slides、视频。依赖：13。
 
 ## 待团队拍板

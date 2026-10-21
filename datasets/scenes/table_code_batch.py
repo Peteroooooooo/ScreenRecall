@@ -180,4 +180,33 @@ TASKS = {
     "cao-table-09": _five(TIMETABLES, "时刻表"),
     "cao-code-03": _jupyter_frames(),
 }
+
+# table-09 补采（2026-10-21）：SBS 页下线、FlightAware 子页 403/超时，改用 seat61 页面里的真实时刻表，
+# 用锚点直接定位到表格；seq 从 014 起，接在已有 13 张后面。
+S61 = "https://www.seat61.com"
+_TT_REFILL = [
+    ("Malaysia.htm#singapore-to-bangkok-timetable", "新加坡→曼谷北行时刻表", [(0, FULL, 1.0), (600, FULL, 1.0), (0, HALF, 1.0), (300, FULL, 0.8)]),
+    ("Malaysia.htm#bangkok-to-singapore-timetable", "曼谷→新加坡南行时刻表", [(0, FULL, 1.0), (600, FULL, 1.0), (0, HALF, 1.0), (300, FULL, 0.8)]),
+    ("Malaysia.htm#southbound-times", "马来西亚南行车次", [(0, FULL, 1.0), (0, HALF, 1.0)]),
+    ("Vietnam.htm#train-timetable-southbound", "越南统一铁路南行时刻表", [(0, FULL, 1.0), (600, FULL, 1.0), (0, HALF, 1.0)]),
+    ("Vietnam.htm#train-timetable-northbound", "越南统一铁路北行时刻表", [(0, FULL, 1.0), (600, FULL, 1.0), (300, FULL, 0.8), (0, (1120, 780), 1.0)]),
+]
+_refill, _seq = [], 14
+for _path, _what, _vars in _TT_REFILL:
+    for _scroll, _win, _zoom in _vars:
+        _d = dict(url=f"{S61}/{_path}", scroll=_scroll, window=_win, language="en", settle=6.0, source_kind="real_web",
+                  note=NOTE_WEB, seq=_seq, wait_until="domcontentloaded",
+                  variation=f"时刻表 seat61 {_what}：{'半屏' if _win == HALF else '全窗口'}"
+                            + (f"，往下滚 {_scroll}px" if _scroll else "") + (f"，缩小到 {int(_zoom * 100)}%" if _zoom != 1.0 else ""))
+        if _zoom != 1.0:
+            _d["zoom"] = _zoom
+        _refill.append(_d)
+        _seq += 1
+if os.environ.get("CAO_TT_REFILL") == "1":     # 补采时用：只跑 seq 014 起的 seat61 帧
+    TASKS["cao-table-09"] = _refill
+elif os.environ.get("CAO_TT_REFILL") == "2":   # 第一轮里 seq 016-018/024/025 与旧帧编号撞车被跳过，改用 031-035 补
+    _miss = [d for d in _refill if d["seq"] in (16, 17, 18, 24, 25)]
+    for _k, _d in enumerate(_miss):
+        _d["seq"] = 31 + _k
+    TASKS["cao-table-09"] = _miss
 FACTS: list[tuple] = []
