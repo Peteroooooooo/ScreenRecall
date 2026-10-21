@@ -424,7 +424,10 @@ python -m pytest tests
 13. **受控数据采集与标注、40 条查询真值**：规程与工具已完成（2026-10-17，`feat/dataset-collection`）。两人都用系统截图 + `collect import`，不需要 Windows 实时录制。顺序：小批试采（`datasets/COLLECTION.md` 第 8 节，每人每场景 10 张）→ 确认类别表、划分比例和肖天奕的任务表 → 各采约 1,000 有效帧 → 互相复核 → 写并冻结 40 条查询。Mac 与 Windows 都可做；建库统一在一台机器上（当前约定曹贺乔的 Mac，`data-dataset/`）。
     - **曹贺乔进度（2026-10-21，`feat/dataset-collection` @ `8dae7dd` 之后）**：原始 1,144 张，清单剔除 274 张，真实来源**候选** 838 张（code 225 / chat 246 / web 231 / table 136），另有 30 张 mock_ui 只作开发测试。**人工验收 0 张**——候选数不是正式有效帧。`collect check data-dataset/raw` 0 错误，完全重复 0，跨任务近重复 0 对，任务内近重复 296 对待人工逐对判定；候选全部导入 `data-dataset/screenrecall.sqlite3`，OCR / 文字向量 / 画面向量 868 帧 0 失败（含 mock）。报告 `data-dataset/reports/check-cao-20261021-batch3.txt`，标注表 `data-dataset/labels-cao.csv`（类别全空）。
     - chat 用本机 Matrix（Synapse，只监听 127.0.0.1:18008，不联邦）+ 官方 Element Web 1.12.32，内容全部合成。10-20 采的 250 张全被 Element "Introducing Sections" 介绍气泡遮挡，已整批标 drop（原图保留）并于 10-21 关掉气泡后重采；4 张私聊开头画面跨任务近重复按规则各删一张。界面全是同一应用，标注与划分时注意。
-    - 还差：table-04 订单 PDF 11 张、table-05 缴费通知 25 张（预览合并成标签页，需关掉"首选标签页"后运行 `data-dataset/scenes-real/open-batch-3b.sh`）；table-06/08/09、code-03（Jupyter）未采；`cao-code-01-031` 的 OCR 里出现任务编号，标注时判断。
+    - **第 4 批（2026-10-21 10:28）后**：原始 1,268 张，清单剔除 279 张，真实来源候选 **957** 张（code 250 / chat 246 / web 231 / table 230），人工验收 0。check 0 错误、跨任务近重复 0 对、任务内 322 对待判；OCR/向量 987 帧 0 失败。报告 `data-dataset/reports/check-cao-20261021-batch4.txt`。
+      - 新增：table-04/05 预览 PDF（分 3 轮各 12 个打开，`open-batch-3b-{1,2,3}.sh`）；table-06 diagrams.net 只读查看器显示 5 张虚构流程图 × 5 种变化（深浅色 / 半屏 / 缩放，近重复交人工）；table-08 arXiv HTML 版 5 篇论文各 5 张结果表（原定预览，改浏览器）；code-03 本机 Jupyter（127.0.0.1:18888，随机令牌，`datasets/scenes/jupyter_notebooks.py` 真实内核执行，traceback 里有本机路径，采完已停）。
+      - table-09 时刻表只剩 8 张候选：FlightAware 苏黎世页超时，SBS 首末班车页已下线（5 张 Page Not Found 已剔除），剩下的 FlightAware 帧主要是地图、KTMB 帧主要是介绍图，**是否算时刻表要人工判断**；需要换时刻表来源补采约 17 张。
+      - `cao-code-01-031` 的 OCR 里出现任务编号，标注时判断。
 14. **五组检索实验、资源与存储测量、报告与演示**：方案 6.2、6.3、8.3。**评测脚本已完成**（`dc9a355`，`python -m screenrecall.evaluate`，用法见 `datasets/README.md`）、测量脚本已完成（`0fd523d`）；剩下：40 条查询真值（依赖 13）→ dev 调规则 → 冻结后只跑一次 blind → 报告、Slides、视频。依赖：13。
 
 ## 待团队拍板
