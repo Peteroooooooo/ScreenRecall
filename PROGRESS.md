@@ -59,11 +59,11 @@
 
 **代码**：分支 `feat/dataset-collection`（草稿 PR #6，base `main`），以分支最新提交为准。新增 `screenrecall/coverage.py`、`screenrecall/codec_compare.py`、`screenrecall/retry.py`；无新增第三方依赖（测试窗口用 Python 自带的 tkinter，python.org 的 Windows 安装包默认带；先跑 `.\.venv\Scripts\python.exe -c "import tkinter"` 确认）。
 
-**数据包**：`data-dataset-cao-20261021.zip`（约 1.25 GB，曹贺乔通过共享网盘给你）。内含 `data-dataset/` 下的原图 `raw/cao/`、导入副本 `frames/`、数据库 `screenrecall.sqlite3`（一致性快照，`integrity_check` ok）、`labels-cao.csv`（1,062 行，人工标注 + 复核）、`accepted-cao.txt`（1,033 帧）、`review/queries-cao-draft.json`（曹的 20 条草稿查询）、检查报告和 `CHECKSUMS.blake2b.txt`。不含采集用的 venv、备份和作废批次。曹已在 Mac 上从这个 zip 解压出的副本重跑 `collect check`、`dataset accepted`、`evaluate --check-only`，结果与原库一致。
+**数据包**：`data-dataset-cao-20261021-part1of2.zip` 和 `-part2of2.zip`（各约 625 MB，合计约 1.25 GB，曹贺乔用微信发给你，不放 GitHub：仓库是公开的）。两个包都解压到**同一个位置**（仓库根目录），合起来就是完整的 `data-dataset\`；数据库在第 1 包，校验文件在第 2 包。内含 `data-dataset/` 下的原图 `raw/cao/`、导入副本 `frames/`、数据库 `screenrecall.sqlite3`（一致性快照，`integrity_check` ok）、`labels-cao.csv`（1,062 行，人工标注 + 复核）、`accepted-cao.txt`（1,033 帧）、`review/queries-cao-draft.json`（曹的 20 条草稿查询）、检查报告和 `CHECKSUMS.blake2b.txt`。不含采集用的 venv、备份和作废批次。曹已在 Mac 上从这个 zip 解压出的副本重跑 `collect check`、`dataset accepted`、`evaluate --check-only`，结果与原库一致。
 
 ### 0. 准备
 1. `git fetch origin`，`git switch feat/dataset-collection`，`git pull`；`.\.venv\Scripts\python.exe -m pip install -r requirements.txt`；`.\.venv\Scripts\python.exe -m pytest tests --basetemp=data\pytest -q` 全部通过再继续。
-2. 把 zip 解压到仓库根目录，得到 `data-dataset\`（已被 git 忽略）。**不要重建数据库**：标注和查询里的 frame_id 都跟着这份库。每次导入前先整份复制 `data-dataset\screenrecall.sqlite3` 备份。
+2. 把两个 zip 都解压到仓库根目录（第 2 包解压时如提示同名文件夹，选合并），得到 `data-dataset\`（已被 git 忽略）。**不要重建数据库**：标注和查询里的 frame_id 都跟着这份库。每次导入前先整份复制 `data-dataset\screenrecall.sqlite3` 备份。
 
 ### 1. 你的约 1,000 帧（按 `datasets/COLLECTION.md`）
 1. 按 `datasets/collection/tasks.csv` 里 `xiao-*` 的 40 个任务采集，截图放 `data-dataset\raw\xiao\<任务编号>\`，事实记在 `data-dataset\raw\xiao\facts.csv`。主题、应用不要和 `cao-*` 重复；表格优先 Excel / PDF（曹的 Numbers 同版式小表画面多样性低）。
