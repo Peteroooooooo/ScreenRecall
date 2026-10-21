@@ -159,10 +159,10 @@ class ModeResponse(SearchResponse):
     notes: list[str] = field(default_factory=list)
 
 
-def _allowed_frames(conn, parsed: ParsedQuery, filters: Filters, case_sensitive: bool):
+def _allowed_frames(conn, parsed: ParsedQuery, filters: Filters, case_sensitive: bool, relaxed: bool = False):
     occs = search._qualifying_occurrences(conn, None, filters)
     allowed = set(occs)
-    req = search.required_frames(conn, parsed, case_sensitive)
+    req = search.required_frames(conn, parsed, case_sensitive, relaxed=relaxed, within=allowed)
     if req is not None:
         allowed &= req
     return allowed, occs, req
@@ -219,37 +219,50 @@ def run(
     limit: int = 10,
     rrf_k: int = 60,
     branch_top: int = 50,
+    relaxed: bool = False,
 ) -> ModeResponse:
+    """relaxed=True 只在用户点击"放宽匹配"后传入：原串忽略大小写与空白、从基础筛选重新扫描（方案 5.2）。"""
     if parsed.error:
         return ModeResponse(message=parsed.error, mode=mode)
     if parsed.is_empty:
         return ModeResponse(message="请输入要查找的文字或画面描述。", mode=mode)
+    relaxed = relaxed and bool(parsed.quoted)
+    resp = _run(conn, parsed, filters, mode, engines, case_sensitive, limit, rrf_k, branch_top, relaxed)
+    resp.relaxed = relaxed
+    if relaxed:
+        resp.notes.insert(0, search.RELAX_RULE)
+    return resp
 
+
+def _run(conn, parsed, filters, mode, engines, case_sensitive, limit, rrf_k, branch_top, relaxed) -> ModeResponse:
     # 只有引号原串：两种模式都按捕获时间展示，不调用模型（提案 4.3）
     if not parsed.terms:
-        base = search.search(conn, parsed, filters, case_sensitive=case_sensitive, limit=limit)
+        base = search.search(conn, parsed, filters, case_sensitive=case_sensitive, limit=limit, relaxed=relaxed)
         resp = ModeResponse(results=base.results, total=base.total, rank_basis=base.rank_basis,
-                            message=base.message, mode=mode)
+                            message=base.message, mode=mode, can_relax=base.can_relax)
         if mode == IMAGE:
             resp.results = [r for r in resp.results if r.image_status == "ok"]
             resp.notes.append("只有引号原串：按捕获时间展示，画面模式只列原图仍可用的记录。")
         return resp
 
-    allowed, occs, req = _allowed_frames(conn, parsed, filters, case_sensitive)
+    allowed, occs, req = _allowed_frames(conn, parsed, filters, case_sensitive, relaxed)
     if req is not None and not req:
-        return ModeResponse(message="没有画面同时包含全部引号原串。", mode=mode)
+        msg = "放宽匹配后仍没有画面同时包含全部引号原串。" if relaxed else "没有画面同时包含全部引号原串。"
+        return ModeResponse(message=msg, mode=mode, can_relax=not relaxed)
     if not allowed:
         return ModeResponse(message="当前日期、应用或引号条件下没有候选画面。", mode=mode)
     description = " ".join(parsed.terms)
 
     if mode == IMAGE:
         return _run_image(conn, description, allowed, occs, engines, limit, branch_top)
-    return _run_text(conn, parsed, filters, description, allowed, occs, engines, case_sensitive, limit, rrf_k, branch_top)
+    return _run_text(conn, parsed, filters, description, allowed, occs, engines, case_sensitive, limit, rrf_k,
+                     branch_top, relaxed)
 
 
-def _run_text(conn, parsed, filters, description, allowed, occs, engines, case_sensitive, limit, rrf_k, branch_top):
+def _run_text(conn, parsed, filters, description, allowed, occs, engines, case_sensitive, limit, rrf_k, branch_top,
+              relaxed=False):
     notes: list[str] = []
-    lexical = search.search(conn, parsed, filters, case_sensitive=case_sensitive, limit=branch_top)
+    lexical = search.search(conn, parsed, filters, case_sensitive=case_sensitive, limit=branch_top, relaxed=relaxed)
     lex_hits = [r for r in lexical.results if r.matched_terms and r.frame_id in allowed]
     lex_by_id = {r.frame_id: r for r in lex_hits}
     lex_list = [r.frame_id for r in lex_hits]

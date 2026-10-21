@@ -14,11 +14,12 @@ import base64
 import io
 import re
 from contextlib import contextmanager
+from datetime import datetime
 
 import streamlit as st
 from PIL import Image, ImageDraw
 
-from screenrecall import control, db, models, retrieval, rules, search, storage, timeutil, winapi
+from screenrecall import control, db, evidence, importer, models, retrieval, rules, search, storage, timeutil, winapi
 from screenrecall.config import load_config
 
 st.set_page_config(page_title="ScreenRecall", page_icon="🔎", layout="wide")
@@ -195,6 +196,44 @@ st.caption(
 with open_db() as conn:
     apps = search.known_apps(conn)
 
+
+@st.fragment
+def import_panel() -> None:
+    """批量导入（方案 6.8）：逐文件验证后进入与实时截图相同的 OCR / 向量流水线。"""
+    files = st.file_uploader(
+        "选择截图（PNG、JPEG、WebP，可多选）", type=["png", "jpg", "jpeg", "webp"],
+        accept_multiple_files=True, key="import_files",
+    )
+    label = st.text_input("批次名称（可选）", key="import_label")
+    known = st.checkbox("我知道这批截图的捕获时间", key="import_known",
+                        help="不勾选时记导入时间并标注\"时间未知\"；不会用文件修改时间代替捕获时间")
+    captured_ms = None
+    if known:
+        c1, c2 = st.columns(2)
+        d = c1.date_input("捕获日期", key="import_date")
+        t = c2.time_input("捕获时间", key="import_time", step=60)
+        captured_ms = int(datetime.combine(d, t).timestamp() * 1000)
+    if st.button("导入", disabled=not files, key="import_go"):
+        batch = [importer.ImportFile(f.name, f.getvalue()) for f in sorted(files, key=lambda f: f.name)]
+        with open_db() as conn:
+            res = importer.import_batch(conn, CFG, batch, label=label or None, captured_at_ms=captured_ms)
+        st.session_state.import_result = res
+    res = st.session_state.get("import_result")
+    if res:
+        msg = (f"成功 {res.count(importer.OK)}、失败 {res.count(importer.FAILED)}、跳过 {res.count(importer.SKIPPED)}"
+               + ("（同一批次重新提交：已成功的跳过，失败的已重试）" if res.resubmitted else ""))
+        (st.warning if res.count(importer.FAILED) else st.success)(msg)
+        st.dataframe(
+            [{"序号": i.seq + 1, "文件": i.name, "结果": {"ok": "成功", "failed": "失败", "skipped": "跳过"}[i.status],
+              "原因": i.reason or ""} for i in res.items],
+            hide_index=True,
+        )
+        st.caption("按文件名顺序处理。OCR 与向量由后台补算，完成后才能搜到；"
+                   + ("捕获时间为你提供的时间。" if res.time_known else "这批截图标为\"时间未知\"，日期筛选按导入时间计算。"))
+
+
+with st.expander("批量导入截图"):
+    import_panel()
 MODE_LABELS = {retrieval.TEXT: "文字", retrieval.IMAGE: "画面"}
 
 with st.form("search_form"):
@@ -301,7 +340,7 @@ def thumbnail(path: str, _mtime: float) -> bytes:
         return buf.getvalue()
 
 
-def render_detail(conn, sel: dict, parsed: search.ParsedQuery, case_sensitive: bool) -> None:
+def render_detail(conn, sel: dict, parsed: search.ParsedQuery, case_sensitive: bool, relaxed: bool = False) -> None:
     mode = sel.get("mode", retrieval.TEXT)
     sem_lines = set(sel.get("semantic_lines") or [])
     d = search.frame_detail(conn, sel["frame_id"])
@@ -314,16 +353,28 @@ def render_detail(conn, sel: dict, parsed: search.ParsedQuery, case_sensitive: b
     if close.button("关闭", width="stretch"):
         st.session_state.pop("selected", None)
         st.rerun()
-    st.markdown(
-        f"**本次出现**：{timeutil.fmt_local(occ.first_seen_ms)} 至 {timeutil.fmt_local(occ.last_seen_ms)}"
-        f"（采样 {occ.observations} 次）· {md(occ.app)} · {md(occ.window_title)}"
-    )
-    st.caption("首次与最近观察是采样边界，不能证明两次采样之间画面一直不变。")
+    if not importer.is_time_known(d.capture_meta):
+        st.markdown(
+            f"**本次出现**：导入的截图，**捕获时间未知**（导入于 {timeutil.fmt_local(occ.first_seen_ms)}）"
+            f" · 文件 {md(occ.window_title)}"
+        )
+        st.caption("导入时没有提供可信捕获时间，上面是导入时间；文件修改时间不当作捕获时间。")
+    elif occ.source_type == "import":
+        st.markdown(
+            f"**本次出现**：导入的截图，捕获时间 {timeutil.fmt_local(occ.first_seen_ms)}（导入时由用户提供）"
+            f" · 文件 {md(occ.window_title)}"
+        )
+    else:
+        st.markdown(
+            f"**本次出现**：{timeutil.fmt_local(occ.first_seen_ms)} 至 {timeutil.fmt_local(occ.last_seen_ms)}"
+            f"（采样 {occ.observations} 次）· {md(occ.app)} · {md(occ.window_title)}"
+        )
+        st.caption("首次与最近观察是采样边界，不能证明两次采样之间画面一直不变。")
 
     spans = [ln["span"] for ln in d.lines]
     # 画面模式只展示整图，不伪造局部定位（方案 5.2、6.2）
     hit = [] if mode == retrieval.IMAGE else search.match_lines(
-        d.text, d.text_fold, spans, parsed.quoted + parsed.terms, case_sensitive
+        d.text, d.text_fold, spans, parsed.quoted + parsed.terms, case_sensitive, relaxed
     )
     sem_only = sorted(i for i in sem_lines if i not in hit and i < len(d.lines))
     path = storage.resolve(CFG.data_dir, d.image_path)
@@ -361,6 +412,8 @@ def render_detail(conn, sel: dict, parsed: search.ParsedQuery, case_sensitive: b
         )
         st.download_button("下载原图", path.read_bytes(), file_name=f"{d.frame_id}.webp", mime="image/webp")
 
+    render_context(conn, sel, occ.occurrence_id)
+
     st.markdown("**OCR 原文**")
     st.code(d.text or "（识别完成，但没有文字）", language=None, wrap_lines=True, height=260)
     st.markdown("**出现记录**（同一内容被多次观察到）")
@@ -372,13 +425,112 @@ def render_detail(conn, sel: dict, parsed: search.ParsedQuery, case_sensitive: b
                 "采样次数": o.observations,
                 "应用": o.app,
                 "窗口标题": o.window_title,
-                "来源": "补拍" if o.source_type == "manual" else "自动",
+                "来源": SOURCE_LABELS.get(o.source_type, o.source_type),
                 "当前": "◀" if o.occurrence_id == occ.occurrence_id else "",
             }
             for o in d.occurrences
         ],
         hide_index=True,
     )
+    if len(d.occurrences) > 1:
+        ids = [o.occurrence_id for o in d.occurrences]
+        by_id = {o.occurrence_id: o for o in d.occurrences}
+        pick = st.selectbox(
+            "围绕另一次出现前后浏览",
+            ids,
+            index=ids.index(occ.occurrence_id),
+            format_func=lambda i: f"{timeutil.fmt_local(by_id[i].first_seen_ms)} · {by_id[i].app or ''}",
+            key=f"occ-pick-{d.frame_id}",
+        )
+        if pick != occ.occurrence_id:
+            _goto(sel, d.frame_id, pick)
+
+
+def _goto(sel: dict, frame_id: str, occurrence_id: str) -> None:
+    """切换到另一次出现。语义贡献行只属于搜索结果那一帧，换帧后不再沿用。"""
+    origin = sel.get("origin") or {k: sel.get(k) for k in ("frame_id", "occurrence_id", "semantic_lines")}
+    st.session_state.selected = {
+        "frame_id": frame_id,
+        "occurrence_id": occurrence_id,
+        "mode": sel.get("mode", retrieval.TEXT),
+        "semantic_lines": origin["semantic_lines"] if frame_id == origin["frame_id"] else [],
+        "origin": origin,
+    }
+    st.session_state.pop("compare_with", None)
+    st.rerun()
+
+
+SOURCE_LABELS = {"manual": "补拍", "import": "导入", "live": "自动"}
+
+
+def _step_caption(s: evidence.Step) -> str:
+    src = SOURCE_LABELS.get(s.source_type, s.source_type)
+    if s.source_type == "import":
+        return f"{md(s.window_title)} · {src}"
+    return f"{timeutil.fmt_local(s.first_seen_ms)} · {md(s.app)} · {md(s.window_title)} · {src}"
+
+
+def _step_image(col, s: evidence.Step) -> None:
+    path = storage.resolve(CFG.data_dir, s.image_path)
+    if s.image_status == "ok" and path.exists():
+        col.image(thumbnail(str(path), path.stat().st_mtime), width="stretch")
+    else:
+        col.info("原图已过期或缺失，只保留了文字，不生成替代预览。")
+    col.caption(_step_caption(s))
+
+
+def render_context(conn, sel: dict, occurrence_id: str) -> None:
+    """前后浏览与并排（方案 6.1）：只在选中出现所在的录制段内移动，跨缺口与段边界明确提示。"""
+    ctx = evidence.context(conn, occurrence_id)
+    if ctx is None:
+        return
+    s = ctx.timeline.session
+    if s.is_import:
+        st.markdown("**前后浏览**（本次出现所在的导入批次）")
+        st.caption(
+            f"导入批次「{md(s.target_title)}」· 按导入时的文件顺序，第 {ctx.index + 1} / {len(ctx.timeline.steps)} 张。"
+            "这只是文件顺序，不是连续的屏幕历史。"
+        )
+    else:
+        st.markdown("**前后浏览**（本次出现所在的录制段）")
+        end = timeutil.fmt_local(s.ended_at_ms) if s.ended_at_ms else "—"
+        st.caption(
+            f"录制段 {timeutil.fmt_local(s.started_at_ms)} 至 {end}（{s.end_label}）· "
+            f"第 {ctx.index + 1} / {len(ctx.timeline.steps)} 次出现。只显示这一段，不把其他录制段拼成连续录像。"
+        )
+    c_prev, c_back, c_next = st.columns([2, 2, 2])
+    if ctx.prev and c_prev.button("◀ 上一条", key="ctx-prev", width="stretch"):
+        _goto(sel, ctx.prev.frame_id, ctx.prev.occurrence_id)
+    if not ctx.prev:
+        c_prev.caption("已是本录制段的第一条")
+    origin = sel.get("origin")
+    if origin and origin["occurrence_id"] != occurrence_id and c_back.button("回到搜索结果", key="ctx-back", width="stretch"):
+        _goto(sel, origin["frame_id"], origin["occurrence_id"])
+    if ctx.next and c_next.button("下一条 ▶", key="ctx-next", width="stretch"):
+        _goto(sel, ctx.next.frame_id, ctx.next.occurrence_id)
+    if not ctx.next:
+        c_next.caption(f"已是本录制段的最后一条（{s.end_label}）")
+
+    before = evidence.describe_gaps(ctx.gaps_before)
+    after = evidence.describe_gaps(ctx.gaps_after)
+    if before:
+        st.warning(("与上一条之间" if ctx.prev else "录制段开始到这一条之间") + before)
+    if after:
+        st.warning(("与下一条之间" if ctx.next else "这一条到录制段结束之间") + after)
+
+    options = [k for k, v in (("上一条", ctx.prev), ("下一条", ctx.next)) if v]
+    if not options:
+        return
+    choice = st.radio("并排比较", ["不比较"] + options, horizontal=True, key="compare_with")
+    if choice == "不比较":
+        return
+    other = ctx.prev if choice == "上一条" else ctx.next
+    left, right = (other, ctx.current) if choice == "上一条" else (ctx.current, other)
+    c1, c2 = st.columns(2)
+    _step_image(c1, left)
+    _step_image(c2, right)
+    gap_msg = before if choice == "上一条" else after
+    st.caption("并排只放两张原图，不计算文字或表格差异。" + (gap_msg or "两次出现之间没有记录到缺口。"))
 
 
 RANK_BASIS = {
@@ -395,21 +547,34 @@ if query:
     qmode = query.get("mode", retrieval.TEXT)
     # 只有引号原串时不调用模型，也就不必加载
     engines = build_engines(qmode) if parsed.terms and not parsed.error else retrieval.Engines()
+    relaxed = bool(query.get("relaxed"))
     with open_db() as conn:
         resp = retrieval.run(
             conn, parsed, query["filters"], mode=qmode, engines=engines,
             case_sensitive=query["case_sensitive"], limit=query["limit"],
-            rrf_k=CFG.search.rrf_k, branch_top=CFG.search.branch_top,
+            rrf_k=CFG.search.rrf_k, branch_top=CFG.search.branch_top, relaxed=relaxed,
         )
+        unknown_time = importer.time_unknown_frames(conn, [r.frame_id for r in resp.results])
         sel = st.session_state.get("selected")
         if sel:
             with st.container(border=True):
-                render_detail(conn, sel, parsed, query["case_sensitive"])
+                render_detail(conn, sel, parsed, query["case_sensitive"], resp.relaxed)
 
     for note in resp.notes:
         st.warning(note)
+    if resp.relaxed and st.button("恢复严格匹配", key="strict_again"):
+        st.session_state.query = {**query, "relaxed": False}
+        st.session_state.pop("selected", None)
+        st.rerun()
     if resp.message:
         st.info(resp.message)
+        # 只在严格规则下引号原串无匹配时提供，且必须由用户点击（方案 5.2）
+        if resp.can_relax:
+            st.caption(search.RELAX_RULE)
+            if st.button("放宽匹配", key="relax"):
+                st.session_state.query = {**query, "relaxed": True}
+                st.session_state.pop("selected", None)
+                st.rerun()
     else:
         basis = RANK_BASIS.get(resp.rank_basis, resp.rank_basis)
         st.caption(
@@ -424,9 +589,12 @@ if query:
                     c_img.image(thumbnail(str(path), path.stat().st_mtime), width="stretch")
                 else:
                     c_img.caption("原图已不可用")
-                c_info.markdown(
-                    f"**{timeutil.fmt_local(r.latest.last_seen_ms)}** · {md(r.latest.app)} · {md(r.latest.window_title)}"
-                )
+                if r.frame_id in unknown_time:
+                    when = f"捕获时间未知（导入于 {timeutil.fmt_local(r.latest.last_seen_ms)}）"
+                else:
+                    when = timeutil.fmt_local(r.latest.last_seen_ms)
+                src = " · 导入" if r.latest.source_type == "import" else ""
+                c_info.markdown(f"**{when}** · {md(r.latest.app)} · {md(r.latest.window_title)}{src}")
                 if r.occurrences_in_filter > 1:
                     c_info.caption(f"筛选范围内出现 {r.occurrences_in_filter} 次，显示最近一次")
                 tags = []
