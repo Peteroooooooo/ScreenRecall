@@ -17,7 +17,7 @@ import threading
 import time
 from logging.handlers import RotatingFileHandler
 
-from . import control, db, envcheck, storage, winapi
+from . import control, db, envcheck, lifecycle, storage, winapi
 from .capture import Recorder
 from .config import Config, load_config
 from .hotkey import HotkeyListener, parse_hotkey
@@ -81,6 +81,32 @@ def _start_hotkey(cfg: Config, recorder: Recorder, conn, log: logging.Logger) ->
     return HotkeyListener(hk, lambda: recorder.request_snapshot(None), on_status, log)
 
 
+def _maintenance_loop(cfg: Config, recorder: Recorder, stop: threading.Event, log: logging.Logger) -> None:
+    """到期与配额维护（方案 5.2）：启动时一次，之后按间隔执行。空间仍不足时暂停采集并提示。
+
+    预留余量（默认 256 MiB）覆盖两次维护之间的最大写入量，使配额判断发生在磁盘耗尽之前。
+    """
+    conn = db.connect(cfg.db_path)
+    try:
+        swept = lifecycle.sweep_dead_files(conn, cfg.data_dir)
+        if swept:
+            log.info("清除了 %d 个已删除 / 已过期画面的残留图片", swept)
+        while not stop.is_set():
+            try:
+                rep = lifecycle.run_maintenance(conn, cfg.data_dir, cfg.retention)
+                if rep["paused"]:
+                    recorder.storage_pause(conn, rep["reason"])
+                else:
+                    recorder.storage_clear()
+                if rep["images_expired"] or rep["occurrences_removed"] or rep["quota_steps"]:
+                    log.info("维护：%s", rep)
+            except Exception:
+                log.exception("维护失败，稍后重试")
+            stop.wait(cfg.retention.maintenance_interval_seconds)
+    finally:
+        conn.close()
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
@@ -120,6 +146,7 @@ def main(argv: list[str] | None = None) -> int:
     threads = [
         threading.Thread(target=recorder.run, name="capture", daemon=True),
         threading.Thread(target=worker.run, name="ocr", daemon=True),
+        threading.Thread(target=_maintenance_loop, args=(cfg, recorder, stop, log), name="maintenance", daemon=True),
     ]
     if report.models_ready:
         embedder = EmbedWorker(cfg, threading.Event(), stop, log)

@@ -1,0 +1,4 @@
+{
+  "_note": "示例，不是冻结版本。团队在采集前确定类别与标注手册后，复制为 labelset.json 并在 PROGRESS 记录冻结日期。",
+  "labels": ["code", "chat", "web", "table_doc"]
+}

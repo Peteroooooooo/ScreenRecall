@@ -7,6 +7,7 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
+from .lifecycle import GIB, MIB, RetentionConfig
 from .models import DEFAULT_MODELS, ModelsConfig, ModelSpec
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -60,6 +61,11 @@ class SearchConfig:
 
 
 @dataclass(frozen=True)
+class ClassifyConfig:
+    model_dir: str = ""  # 训练产物目录（model.npz + card.json）；空表示不做预测，页面显示"待分类"
+
+
+@dataclass(frozen=True)
 class Config:
     data_dir: Path
     capture: CaptureConfig
@@ -68,6 +74,8 @@ class Config:
     models: ModelsConfig = DEFAULT_MODELS
     index: IndexConfig = IndexConfig()
     search: SearchConfig = SearchConfig()
+    retention: RetentionConfig = RetentionConfig()
+    classify: ClassifyConfig = ClassifyConfig()
 
     @property
     def db_path(self) -> Path:
@@ -101,6 +109,12 @@ def load_config(data_dir_override: str | os.PathLike | None = None) -> Config:
     )
     if not data_dir.is_absolute():
         data_dir = REPO_ROOT / data_dir
+    # 数据目录自带的覆盖（最后合并）：只作用于这一份数据，用于独立的删除 / 配额测试库，不影响正式数据
+    per_dir = data_dir / "config.toml"
+    if per_dir.exists():
+        override = tomllib.loads(per_dir.read_text(encoding="utf-8"))
+        override.pop("storage", None)
+        raw = _merge(raw, override)
 
     cap, ocr = raw["capture"], raw["ocr"]
     capture = CaptureConfig(
@@ -154,6 +168,19 @@ def load_config(data_dir_override: str | os.PathLike | None = None) -> Config:
         embed_retry_backoff_seconds=float(ix.get("embed_retry_backoff_seconds", 10.0)),
     )
     search = SearchConfig(rrf_k=int(sr.get("rrf_k", 60)), branch_top=int(sr.get("branch_top", 50)))
+    rt = raw.get("retention", {})
+    retention = RetentionConfig(
+        image_days=int(rt.get("image_days", 30)),
+        record_days=int(rt.get("record_days", 90)),
+        quota_bytes=int(float(rt.get("quota_gib", 10)) * GIB),
+        min_free_bytes=int(float(rt.get("min_free_gib", 2)) * GIB),
+        reserve_bytes=int(float(rt.get("reserve_mib", 256)) * MIB),
+        maintenance_interval_seconds=float(rt.get("maintenance_interval_seconds", 300)),
+    )
+    if not 0 < retention.image_days <= retention.record_days:
+        raise ValueError("retention.image_days 必须大于 0 且不超过 record_days")
+    if retention.quota_bytes <= 0 or retention.min_free_bytes < 0 or retention.reserve_bytes < 0:
+        raise ValueError("retention.quota_gib 必须大于 0，min_free_gib、reserve_mib 不能为负")
     if models.threads < 1 or models.batch_size < 1 or index.embed_max_attempts < 1:
         raise ValueError("models.threads、models.batch_size、index.embed_max_attempts 至少为 1")
     if capture.interval_seconds <= 0:
@@ -172,5 +199,6 @@ def load_config(data_dir_override: str | os.PathLike | None = None) -> Config:
         raise ValueError("ocr.max_attempts 至少为 1")
     return Config(
         data_dir=data_dir.resolve(), capture=capture, ocr=ocr_cfg, rules=rules,
-        models=models, index=index, search=search,
+        models=models, index=index, search=search, retention=retention,
+        classify=ClassifyConfig(model_dir=str(raw.get("classify", {}).get("model_dir", "")).strip()),
     )
