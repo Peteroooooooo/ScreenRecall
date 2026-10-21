@@ -419,7 +419,10 @@ python -m pytest tests
 8. ~~证据浏览~~ **已完成**（2026-10-15，`feat/evidence-browse`，Mac 逻辑 + AppTest；Windows 待查看，见"待验证"7）：只在选中出现的录制段内前后浏览，跨缺口和段边界提示，不拼接其他录制段；两图并排不算差异；可切到同帧的另一次出现。
 9. ~~"放宽匹配"按钮与 A05–A13 自动化测试~~ **已完成可在 Mac 上做的部分**（2026-10-15，`feat/evidence-browse`）：放宽按钮 + A05–A10。A11、A12 随第 10 项补；A13 见"待验证"9。
 10. ~~收藏 / 删除 / 配额 / 30·90 天到期~~ **已完成**（2026-10-16，`feat/lifecycle`，Mac 逻辑 + AppTest；Windows 待验证，见"待验证"11）。按时间范围删除 10-16 补上（`ce66848`）。
-11. **分类**：~~训练与评测流程~~ **代码完成**（2026-10-16，`94657e1`，合成数据流程测试）：标注清单导出与校验、按来源组划分、LR + 两个基线、Macro F1 / 逐类 / 混淆矩阵、预测写库与页面筛选。**剩下**：真实标注（13）后训练、写报告；标注手册与类别表冻结。依赖：13。
+11. **分类**：~~训练与评测流程~~ **代码完成**（2026-10-16，`94657e1`，合成数据流程测试）：标注清单导出与校验、按来源组划分、LR + 两个基线、Macro F1 / 逐类 / 混淆矩阵、预测写库与页面筛选。依赖：13。
+    - **初步结果 cao-v0（2026-10-21，只有曹贺乔一人的数据，不是最终结果）**：1,033 帧人工验收帧，按 40 个任务分组划分 0.6/0.2/0.2（`datasets/cao-v0/split.json`，种子 0）。原划分算法只按总帧数分配，chat 大组全部落进 train、val/test 缺 chat，已改为按组多数类分层（`dataset.grouped_split`，新增测试）。
+      - CLIP 图像向量 + LR，val 选超参（C=0.1，val Macro F1 0.854）；**test（8 个任务、209 帧）Macro F1 1.000**；基线：多数类 0.113、只看应用名 0.573。报告 `results/classifier/cao-v0/report.json`。
+      - 解读：test 恰好是界面差异大的任务（Numbers/Excel 表格、Terminal、Element 聊天），val 里 web 与 table_doc 混淆 10 张（arXiv 表格页、x-rates 汇率页）。只有一台电脑、一个人、聊天只有 Element 一个应用，**test 1.000 偏乐观，不能当最终结论**；最终结果要等合并肖天奕的 Windows 数据后重新划分，并且只跑一次 test。
 12. ~~批量导入~~ **已完成**（2026-10-15，`feat/evidence-browse`；Windows 待验证，见"待验证"10）：PNG/JPEG/WebP，导入批次来源、时间未知标注、批次幂等。方案 6.8。依赖：3。
 13. **受控数据采集与标注、40 条查询真值**：规程与工具已完成（2026-10-17，`feat/dataset-collection`）。两人都用系统截图 + `collect import`，不需要 Windows 实时录制。顺序：小批试采（`datasets/COLLECTION.md` 第 8 节，每人每场景 10 张）→ 确认类别表、划分比例和肖天奕的任务表 → 各采约 1,000 有效帧 → 互相复核 → 写并冻结 40 条查询。Mac 与 Windows 都可做；建库统一在一台机器上（当前约定曹贺乔的 Mac，`data-dataset/`）。
     - **曹贺乔进度（2026-10-21，`feat/dataset-collection` @ `8dae7dd` 之后）**：原始 1,144 张，清单剔除 274 张，真实来源**候选** 838 张（code 225 / chat 246 / web 231 / table 136），另有 30 张 mock_ui 只作开发测试。**人工验收 0 张**——候选数不是正式有效帧。`collect check data-dataset/raw` 0 错误，完全重复 0，跨任务近重复 0 对，任务内近重复 296 对待人工逐对判定；候选全部导入 `data-dataset/screenrecall.sqlite3`，OCR / 文字向量 / 画面向量 868 帧 0 失败（含 mock）。报告 `data-dataset/reports/check-cao-20261021-batch3.txt`，标注表 `data-dataset/labels-cao.csv`（类别全空）。
@@ -437,6 +440,10 @@ python -m pytest tests
       - `collect check`：原始 1,343，剔除 281，保留 1,062（含 mock_ui 29），0 错误，任务内近重复待判 0 对，跨任务 0 对；报告 `data-dataset/reports/check-cao-20261021-final.txt`。
       - **人工验收（双人复核、非仿界面）1,033 帧**：code 249 / chat 306 / web 265 / table_doc 213（类别是人工标签，不是场景）。名单 `data-dataset/accepted-cao.txt`（`dataset accepted --raw` 生成，已加近重复与剔除门禁）。
       - 下一步：分组划分（建议 0.6/0.2/0.2）→ 分类训练评测；写曹负责的 20 条查询；合并肖天奕的 `xiao/`。
+    - **曹负责的 20 条查询（2026-10-21，草稿，`review_status=draft`）**：`data-dataset/review/queries-cao-draft.json`（被 git 忽略，含 frame_id），槽位与查询文字同步写进 `datasets/collection/query_slots.csv`（status=draft）。由 kiro-ai 代 cao 起草，**需要 cao 确认、肖天奕复核后改成 approved 才能正式出分**。
+      - 相关帧只来自采集记录（清单 facts 标记、每张图打开的文件 / 网址）和看图确认，**没有跑任何检索**；盲测 10 条没有在页面或命令行里搜过。dev 只对应 01-05 号任务，blind 只对应 06-10 号。
+      - 看图补了 3 张采集时漏标的相关帧（code-02-004、code-10-007/008）；每条的 `review_flag_maybe_relevant` 列出 OCR 里含关键字、但看图判定不相关的帧，给复核人核对。
+      - `evaluate --check-only` 格式通过；每侧每场景不足 5 条是因为肖天奕的 20 条还没写。
 14. **五组检索实验、资源与存储测量、报告与演示**：方案 6.2、6.3、8.3。**评测脚本已完成**（`dc9a355`，`python -m screenrecall.evaluate`，用法见 `datasets/README.md`）、测量脚本已完成（`0fd523d`）；剩下：40 条查询真值（依赖 13）→ dev 调规则 → 冻结后只跑一次 blind → 报告、Slides、视频。依赖：13。
 
 ## 待团队拍板

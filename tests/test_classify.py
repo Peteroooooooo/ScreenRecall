@@ -152,6 +152,21 @@ def test_grouped_split_keeps_tasks_and_duplicates_together(lib, h):
         dataset.grouped_split(rep.items, groups, {"train": 0.7, "val": 0.2}, seed=1)
 
 
+def test_grouped_split_stratifies_class_held_in_big_groups():
+    # 4 个 chat 大组（30 帧）+ 12 个其他类小组（20 帧）：只按总帧数分配时 chat 会全进 train
+    items, groups = [], {}
+    for g in range(16):
+        label, n = ("chat", 30) if g < 4 else (("code", "web", "table_doc")[g % 3], 20)
+        for k in range(n):
+            fid = f"f{g:02d}-{k:02d}"
+            items.append(dataset.Labeled(fid, label, f"t{g}", "x", "en", "app", "s"))
+            groups[fid] = f"g{g:02d}"
+    res = dataset.grouped_split(items, groups, {"train": 0.5, "val": 0.25, "test": 0.25}, seed=0)
+    for s in ("train", "val", "test"):
+        assert res.counts[s].get("chat"), (s, res.counts)
+    assert not res.warnings or all("缺" not in w and "没有类别" not in w for w in res.warnings)
+
+
 def test_duplicate_text_merges_groups_across_tasks(lib, h):
     out, labelset, truth, _ = lib
     rep = dataset.read_labels(h.conn, out, dataset.load_labelset(labelset))

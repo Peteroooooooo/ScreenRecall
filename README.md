@@ -9,8 +9,8 @@
 | 基于 | `feat/lifecycle` @ `1e124b5`（草稿 PR #5）← `feat/evidence-browse`（草稿 PR #4）← `feat/vector-search`（草稿 PR #3）← `feat/capture-cadence`（草稿 PR #2）← `main`（已含 P0，PR #1 于 10-16 合入） |
 | PR | 草稿 [PR #6](https://github.com/Peteroooooooo/ScreenRecall/pull/6)，base `main`（PR #1–#5 已于 2026-10-21 用 merge commit 合入 `main` @ `effee82`），详见 [PROGRESS.md](PROGRESS.md) |
 | 本分支新增 | 受控数据集的**采集与标注规程**（[datasets/COLLECTION.md](datasets/COLLECTION.md)）、80 个任务的任务表、40 条查询的分配表、清单 / 事实 / 标注模板；工具 `python -m screenrecall.collect`（清单、检查、导入、标注表、事实→相关帧）和 `python -m screenrecall.indexer`（不采集、只跑 OCR 与向量，Mac 上可用）；导入支持逐张的应用、窗口标题和捕获时间 |
-| 测试 | **macOS**：`pytest tests` 183/183；其中 1 条用真实 RapidOCR，其余是逻辑测试；命令行全流程用真实 OCR + 真实向量模型跑通 |
-| 数据 | 曹贺乔 1,343 张原始截图（只在本机、被 git 忽略），剔除 281，**人工验收（初标 + 第二人复核、非仿界面）1,033 帧**：code 249 / chat 306 / web 265 / table_doc 213；类别表 2026-10-21 冻结（`datasets/labelset.json`）。任务内近重复 322 对由 kiro-ai 按 OCR 差异判定（非人工，见 PROGRESS 第 13 项）。肖天奕的约 1,000 帧尚未合并。**还没有分类结果或检索结果** |
+| 测试 | **macOS**：`pytest tests` 184/184；其中 1 条用真实 RapidOCR，其余是逻辑测试；命令行全流程用真实 OCR + 真实向量模型跑通 |
+| 数据 | 曹贺乔 1,343 张原始截图（只在本机、被 git 忽略），剔除 281，**人工验收（初标 + 第二人复核、非仿界面）1,033 帧**：code 249 / chat 306 / web 265 / table_doc 213；类别表 2026-10-21 冻结（`datasets/labelset.json`）。任务内近重复 322 对由 kiro-ai 按 OCR 差异判定（非人工，见 PROGRESS 第 13 项）。肖天奕的约 1,000 帧尚未合并。初步分类结果 cao-v0（只用曹的数据）：test Macro F1 1.000、val 0.854，基线 0.113 / 0.573，**偏乐观，不是最终结果**；曹的 20 条查询已起草（草稿，待复核）。**还没有检索实验结果** |
 | Windows 实机 | 本分支新增内容未在 Windows 上运行；`collect` / `indexer` 不依赖窗口 API，预期可用，**待验证** |
 
 ## 本分支新增内容（受控数据采集与标注，方案 6.1、6.2、6.4）

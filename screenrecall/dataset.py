@@ -236,24 +236,37 @@ class SplitResult:
 
 def grouped_split(items: list[Labeled], groups: dict[str, str], fractions: dict[str, float],
                   seed: int) -> SplitResult:
-    """按组分配：组按帧数从大到小（同大小按种子打乱）依次放进当前最缺帧的划分。整组同去同留。"""
+    """按组分层分配，整组同去同留。
+
+    每组按其多数类别归类；组按帧数从大到小（同大小按种子打乱）依次放进"该类别在此划分里最缺帧"的划分，
+    并列时看总帧数缺口。只按总帧数分配时，大组集中的类别（如每任务 30 帧的聊天）会全部落进 train，
+    val / test 缺类（2026-10-21 曹贺乔数据首次划分时发现）。
+    """
     if set(fractions) != set(SPLITS) or any(v < 0 for v in fractions.values()) or abs(sum(fractions.values()) - 1) > 1e-6:
         raise DatasetError("划分比例要给 train、val、test 三项，且非负、合计为 1")
     by_group: dict[str, list[Labeled]] = defaultdict(list)
     for it in items:
         by_group[groups[it.frame_id]].append(it)
+    major = {g: Counter(it.label for it in its).most_common(1)[0][0] for g, its in by_group.items()}
+    class_total: Counter = Counter()
+    for g, its in by_group.items():
+        class_total[major[g]] += len(its)
     order = sorted(by_group)
     random.Random(seed).shuffle(order)
     order.sort(key=lambda g: -len(by_group[g]))  # 稳定排序：同大小保持打乱后的顺序
     total = len(items)
     have = {s: 0 for s in SPLITS}
+    have_cls = {s: Counter() for s in SPLITS}
     assign: dict[str, str] = {}
     for g in order:
-        deficit = {s: fractions[s] * total - have[s] for s in SPLITS if fractions[s] > 0}
-        s = max(deficit, key=lambda k: (deficit[k], -SPLITS.index(k)))
+        c = major[g]
+        live = [s for s in SPLITS if fractions[s] > 0]
+        s = max(live, key=lambda k: (fractions[k] * class_total[c] - have_cls[k][c],
+                                      fractions[k] * total - have[k], -SPLITS.index(k)))
         for it in by_group[g]:
             assign[it.frame_id] = s
         have[s] += len(by_group[g])
+        have_cls[s][c] += len(by_group[g])
     counts = {s: dict(Counter(it.label for it in items if assign[it.frame_id] == s)) for s in SPLITS}
     labels = sorted({it.label for it in items})
     warnings = []
