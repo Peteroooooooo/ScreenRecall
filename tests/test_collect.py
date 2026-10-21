@@ -324,6 +324,50 @@ def test_mock_ui_frames_are_excluded_from_formal_dataset(tmp_path, h):
     assert len(dataset.read_labels(h.conn, labels, cats, include_dev_only=True).items) == len(rows)
 
 
+def test_accepted_gate_needs_near_dup_judgements_and_live_manifest(tmp_path, h):
+    root, t1, _, base = _two_tasks(tmp_path)
+    near = base.copy()
+    near[:4, :20] = 0
+    _save(t1 / "a2.png", near)
+    collect.build_manifest(t1)
+    _fill(t1, app="Terminal", language="en")
+    collect.import_root(root, str(h.cfg.data_dir))
+    labels = tmp_path / "labels.csv"
+    collect.build_labels(root, str(h.cfg.data_dir), labels)
+    rows = _rows(labels)
+    for r in rows:
+        r.update(label="code", annotator="cao", review_label="code", reviewer="xiao")
+    collect.write_csv(labels, list(rows[0].keys()), rows)
+    fids = [r["frame_id"] for r in rows]
+    # 近重复没判：拒绝
+    problems = dataset.raw_gate(root, labels, fids)
+    assert len(problems) == 1 and "近重复还有 1 对" in problems[0]
+    ids = {r["file"]: r["image_id"] for r in _rows(t1 / collect.MANIFEST)}
+    _judge(root, [{"image_id_a": ids["a.png"], "image_id_b": ids["a2.png"], "decision": "keep_both",
+                   "reason": "左上角多一条黑边", "reviewer": "xiao"}])
+    assert dataset.raw_gate(root, labels, fids) == []
+    # 清单里剔除了但库和标注表里还在：拒绝
+    _edit(t1, ids["a2.png"], keep="drop", drop_reason="near-dup of a")
+    problems = dataset.raw_gate(root, labels, fids)
+    assert len(problems) == 1 and "keep=drop" in problems[0]
+    # 命令行同样拒绝，不写名单
+    labelset = tmp_path / "labelset.json"
+    labelset.write_text(json.dumps({"labels": ["code", "chat", "web", "table_doc"]}), encoding="utf-8")
+    out = tmp_path / "accepted.txt"
+    rc = dataset.main(["--data-dir", str(h.cfg.data_dir), "accepted", "--labels", str(labels),
+                       "--labelset", str(labelset), "--raw", str(root), "--out", str(out)])
+    assert rc == 1 and not out.exists()
+
+
+def test_task_frame_cap_ignores_mock_ui(tmp_path, monkeypatch):
+    root, t1, *_ = _two_tasks(tmp_path)
+    monkeypatch.setattr(collect, "MAX_TASK_FRAMES", 1)
+    assert any("超过 1" in w for w in collect.check(root, near=False).warnings)
+    first = _rows(t1 / collect.MANIFEST)[0]["image_id"]
+    _edit(t1, first, source_kind="mock_ui")
+    assert not any("超过 1" in w for w in collect.check(root, near=False).warnings)
+
+
 def test_importer_per_file_meta(h):
     buf = io.BytesIO()
     Image.fromarray(_img(1, (64, 48))).save(buf, "PNG")

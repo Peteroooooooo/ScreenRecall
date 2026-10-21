@@ -286,6 +286,31 @@ def read_candidates(path: Path) -> frozenset[str]:
     return out
 
 
+def raw_gate(raw_root: Path, labels_csv: Path, frame_ids: list[str]) -> list[str]:
+    """出正式名单前对原始截图根目录再跑一次 collect check（含近重复）。返回阻断问题，空表示通过。
+
+    阻断：清单有错误；任务内近重复还有没在 near_dups.csv 逐对判定的；名单里的帧在清单里已剔除或找不到。
+    """
+    from . import collect  # collect 在模块级 import 了本模块，这里延迟导入
+
+    res = collect.check(raw_root, near=True)
+    problems = [f"清单检查错误：{e}" for e in res.errors]
+    pending = res.counts.get("near_pending", 0)
+    if pending:
+        problems.append(f"任务内近重复还有 {pending} 对没有在 near_dups.csv 判定（keep_both + 理由 + 判定人），"
+                        "或删掉其中一张；判完再出正式名单")
+    keep = {it.row["image_id"]: it.keep for it in res.items}
+    image_of = {(r.get("frame_id") or "").strip(): (r.get("image_id") or "").strip()
+                for r in csv.DictReader(open(labels_csv, encoding="utf-8-sig", newline=""))}
+    for fid in frame_ids:
+        iid = image_of.get(fid, "")
+        if iid not in keep:
+            problems.append(f"{fid[:8]}（{iid or '无 image_id'}）：原始清单里找不到这张图")
+        elif not keep[iid]:
+            problems.append(f"{fid[:8]}（{iid}）：清单里已 keep=drop，却仍在数据库和标注表中；先从数据集库删掉")
+    return problems
+
+
 # ---------------- CLI ----------------
 
 def _parse_fractions(text: str) -> dict[str, float]:
@@ -311,6 +336,8 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--allow-unreviewed", action="store_true", help="只用于试标阶段；正式划分必须有复核结论")
     sub.choices["accepted"].add_argument("--out", required=True,
                                          help="正式候选帧名单（每行一个 frame_id），给 evaluate --candidates 用")
+    sub.choices["accepted"].add_argument("--raw", required=True,
+                                         help="原始截图根目录（如 data-dataset/raw）；近重复没判完或帧已剔除时拒绝出名单")
     sp = sub.choices["split"]
     sp.add_argument("--fractions", required=True, help="train,val,test，例如 0.6,0.2,0.2")
     sp.add_argument("--seed", type=int, default=0)
@@ -337,6 +364,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "accepted":
             if args.allow_unreviewed:
                 print("错误：正式候选名单只能来自完成双人复核的标注，不能加 --allow-unreviewed", file=sys.stderr)
+                return 1
+            problems = raw_gate(Path(args.raw), Path(args.labels), [i.frame_id for i in rep.items])
+            if problems:
+                for p in problems[:30]:
+                    print("错误：" + p, file=sys.stderr)
+                print(f"错误：共 {len(problems)} 个问题，未写出正式名单", file=sys.stderr)
                 return 1
             write_candidates(Path(args.out), [i.frame_id for i in rep.items], file_hash(Path(args.labels)))
             print(f"正式候选 {len(rep.items)} 帧（已双人复核、非仿界面）写入 {args.out}")

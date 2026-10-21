@@ -93,7 +93,7 @@ ScreenRecall-dataset/
 - 另一个人复核：`review_label`、`reviewer`（不能和 annotator 相同，`dataset check` 会拒绝）；
 - 有分歧时两人商量后写 `final_label`，复核改了类别必须写 `change_reason`。
 
-类别表（试采后冻结；草稿同 `datasets/labelset.example.json`）：`code`、`chat`、`web`、`table_doc`。**类别按画面主要可见内容标，不按场景或应用名标**：
+类别表（**2026-10-21 已冻结**为 `datasets/labelset.json`，曹贺乔、肖天奕确认）：`code`、`chat`、`web`、`table_doc`。**类别按画面主要可见内容标，不按场景或应用名标**：
 
 1. `code`：源代码、终端/命令行输出、报错栈、调试面板、Notebook 代码单元（浏览器里的 GitHub 代码页、Jupyter 也算）。
 2. `chat`：即时通讯界面，以消息列表为主（含网页版聊天、会议聊天）；消息里的代码块不超过消息区一半时仍是 chat。
@@ -138,8 +138,15 @@ R=~/ScreenRecall-dataset          # 共享根目录（按实际路径改）
 # 两人标注、互相复核后合成总表（同一帧两份表填得不一样会报错）
 .venv/bin/python -m screenrecall.collect labels "$R" --data-dir data-dataset --out datasets/v1/labels.csv \
     --keep-from "$R"/labels-cao.csv "$R"/labels-xiao.csv
-.venv/bin/python -m screenrecall.dataset --data-dir data-dataset check --labels datasets/v1/labels.csv --labelset datasets/v1/labelset.json
+.venv/bin/python -m screenrecall.dataset --data-dir data-dataset check --labels datasets/v1/labels.csv --labelset datasets/labelset.json
+# 正式验收名单：会对原始根目录再跑一次 check（含近重复），任务内近重复没在 near_dups.csv 判完、
+# 或名单里的帧已在清单 keep=drop 却还留在库里时拒绝写出
+.venv/bin/python -m screenrecall.dataset --data-dir data-dataset accepted --labels datasets/v1/labels.csv \
+    --labelset datasets/labelset.json --raw "$R" --out data-dataset/accepted.txt
 ```
+
+- 近重复判定后要删的图：在清单里 `keep=drop` 写 `drop_reason`；已导入的再从数据集库删掉（`lifecycle.delete_frame`），标注表里对应行移到 `labels-<人>-dropped.csv`，否则 `accepted` 会拒绝。
+- 每任务 40 帧上限只数正式帧，`mock_ui` 仿界面不计。
 
 - 肖天奕只需把 `xiao/` 文件夹（截图 + manifest + facts.csv）同步到共享根目录，自己在 Windows 上也可以跑 `manifest` 和 `check`（命令相同，用 `.\.venv\Scripts\python.exe`）。
 - `data-dataset/` 在仓库里被 git 忽略。开始标注后**不要重建数据库**（frame_id 跟着这份库走）；每次导入前先备份整个目录。需要在 Windows 上做资源测量或演示时，拷贝整个 `data-dataset/` 过去。

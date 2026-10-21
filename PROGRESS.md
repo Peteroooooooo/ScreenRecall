@@ -431,6 +431,12 @@ python -m pytest tests
     - **第 5 批（2026-10-21 11:25）后**：原始 1,343 张，剔除 279，真实来源候选 **1,034** 张（code 250 / chat 306 / web 231 / table 247），人工验收 0。check 0 错误、跨任务 0 对、任务内 322 对待判；OCR/向量 1,064 帧 0 失败。报告 `data-dataset/reports/check-cao-20261021-batch5.txt`。
       - chat 每任务追加一个新话题房间 6 张（`datasets/scenes/chat_content_c.py`，`capture_chat_element.py --extra`），共 60 张，对话内容全新、不复用原对话；没有把 10-20 被气泡遮挡的旧图加回（它们与重采图是同一脚本同一画面，只多了遮挡）。
       - table-09 改用 seat61 页面里的真实列车时刻表（马来西亚 / 越南南北行，锚点定位）补 17 张；seat61 的 load 事件常超时，计划里改等 DOMContentLoaded（`wait_until`）。部分帧底部有站内广告条，交人工判断。早先 FlightAware / KTMB 的 8 张是否算时刻表仍待人工判断。
+    - **人工标注与验收（2026-10-21 17:00 后）**：曹贺乔初标、肖天奕复核，`labels-cao.csv` 1,064 行全部有 label / review_label / final_label；复核改动 0 处（第一版按任务统一标，10-21 已改为按每张图重标，table-08 现为 table_doc 15 / web 10）。
+      - 类别表冻结为 `datasets/labelset.json`（2026-10-21）。
+      - 任务内近重复 322 对：**由 kiro-ai 判定**（`near_dups.csv` 的 reviewer 写的是 `kiro-ai`，不是人工），依据是逐对比较 OCR 行差异（模糊匹配排除 OCR 噪声）：316 对两张图的 OCR 文字有实际不同（不同报错、日期、数值、文件），写 keep_both + 具体差异；看图确认后剔除 2 张——`cao-code-04-024`（只多 `--tb=long`，输出与 006 完全相同）、`cao-table-01-003`（仿界面，只差选中单元格）。这 2 张已从数据集库删除，标注行移到 `labels-cao-dropped.csv`。备份在 `data-dataset/backups/2026-10-21-before-neardup/`。注意：OCR 不同不等于画面多样，table-01（Numbers 同版式小表）、table-10（x-rates 不同日期汇率）画面高度相似，建议人工抽查。
+      - `collect check`：原始 1,343，剔除 281，保留 1,062（含 mock_ui 29），0 错误，任务内近重复待判 0 对，跨任务 0 对；报告 `data-dataset/reports/check-cao-20261021-final.txt`。
+      - **人工验收（双人复核、非仿界面）1,033 帧**：code 249 / chat 306 / web 265 / table_doc 213（类别是人工标签，不是场景）。名单 `data-dataset/accepted-cao.txt`（`dataset accepted --raw` 生成，已加近重复与剔除门禁）。
+      - 下一步：分组划分（建议 0.6/0.2/0.2）→ 分类训练评测；写曹负责的 20 条查询；合并肖天奕的 `xiao/`。
 14. **五组检索实验、资源与存储测量、报告与演示**：方案 6.2、6.3、8.3。**评测脚本已完成**（`dc9a355`，`python -m screenrecall.evaluate`，用法见 `datasets/README.md`）、测量脚本已完成（`0fd523d`）；剩下：40 条查询真值（依赖 13）→ dev 调规则 → 冻结后只跑一次 blind → 报告、Slides、视频。依赖：13。
 
 ## 待团队拍板
@@ -442,4 +448,4 @@ python -m pytest tests
 3. 页面文案目前是中文，演示视频若需英文需替换。
 4. `unsaved_change` 缺口是否在实机数据后合并短间隔（见"已知问题"）。
 6. **真实聊天界面从哪来（2026-10-18 起；曹贺乔 10-20 定为"模拟即可"，已用本机 Matrix + Element 合成对话采完曹的 250 张，肖天奕那边仍待定）**：正式数据集要真实应用界面，chat 场景目前只有 mock_ui。需要两人定：用哪个真实聊天应用的网页版（如 Slack / Discord 免费工作区），由谁注册测试账号、在 Playwright 独立窗口里登录一次；聊天内容仍是合成的、只在测试工作区里发，不发给任何真人。
-5. **数据集（试采后两人确认）**：类别表 `code / chat / web / table_doc` 与第 5.3 节混合画面规则；分类划分比例（建议 `0.6,0.2,0.2`）；肖天奕的 40 个任务（`tasks.csv` 中 `status=draft`）；共享网盘位置；建库由谁做。
+5. **数据集（试采后两人确认）**：~~类别表~~ **已冻结（2026-10-21，`datasets/labelset.json`）**；第 5.3 节混合画面规则；分类划分比例（建议 `0.6,0.2,0.2`）；肖天奕的 40 个任务（`tasks.csv` 中 `status=draft`）；共享网盘位置；建库由谁做。

@@ -407,7 +407,9 @@ def check(root: Path, *, cache_path: Path | None = None, near: bool = True) -> C
             res.errors.append(f"{where}：尺寸 {info['w']}×{info['h']}，短边小于 {MIN_SHORT_SIDE}，文字多半看不清")
         by_px[info["px"]].append(r["image_id"])
         hashes.append((it, int(info["dh"], 16)))
-        per_task[r["task_id"]] += 1
+        if r.get("source_kind") not in DEV_ONLY_KINDS:
+            # 每任务上限只数正式帧：仿界面开发样本不进划分，不影响任务内多样性（2026-10-21 chat-01 = 31 真实 + 10 仿界面）
+            per_task[r["task_id"]] += 1
 
     cache_path.write_text(json.dumps(cache), encoding="utf-8")
     for iid, n in ids.items():
@@ -418,7 +420,7 @@ def check(root: Path, *, cache_path: Path | None = None, near: bool = True) -> C
             res.errors.append(f"像素完全相同（复制或重复截图）：{group}；只保留一张，其余 keep=drop")
     for t, n in per_task.items():
         if n > MAX_TASK_FRAMES:
-            res.warnings.append(f"任务 {t} 有 {n} 个有效帧，超过 {MAX_TASK_FRAMES}；请拆成多个任务或减少相似帧")
+            res.warnings.append(f"任务 {t} 有 {n} 个正式帧（不含仿界面），超过 {MAX_TASK_FRAMES}；请拆成多个任务或减少相似帧")
 
     judged, problems = near_judgements(root)
     res.judged_pairs = set(judged)
