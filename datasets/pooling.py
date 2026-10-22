@@ -90,16 +90,18 @@ def metrics(ranked: list[str], rel: set[str]) -> tuple[int, float]:
     return int(rank is not None and rank <= 5), (1.0 / rank if rank is not None and rank <= 10 else 0.0)
 
 
-def score(pool_path: Path, out_dir: Path) -> dict:
+def score(pool_path: Path, out_dir: Path, judges: tuple[str, ...] = JUDGES) -> dict:
+    """judges：参与判定的人。两人时一致或定稿才并入；只有一人时（AI 预筛池由一人复核）以其判定为准。"""
     pool = json.loads(pool_path.read_text(encoding="utf-8"))
     pairs = [(it["query_id"], it["frame_id"]) for it in pool["items"]]
-    J = {j: read_judgments(judgments_path(pool_path, j)) for j in JUDGES}
+    J = {j: read_judgments(judgments_path(pool_path, j)) for j in judges}
     resolved = read_resolved(pool_path.parent / "resolved.csv")
-    done = [p for p in pairs if all(p in J[j] for j in JUDGES)]
-    disagree = [p for p in done if J["xiao"][p] != J["cao"][p] and p not in resolved]
+    done = [p for p in pairs if all(p in J[j] for j in judges)]
+    disagree = [p for p in done if len({J[j][p] for j in judges}) > 1 and p not in resolved]
     added = defaultdict(set)
     for p in done:
-        v = resolved.get(p) or (J["xiao"][p] if J["xiao"][p] == J["cao"][p] else None)
+        votes = {J[j][p] for j in judges}
+        v = resolved.get(p) or (votes.pop() if len(votes) == 1 else None)
         if v == "relevant":
             added[p[0]].add(p[1])
     queries = {q["id"]: q for q in json.loads(QUERIES.read_text(encoding="utf-8"))}
@@ -115,12 +117,14 @@ def score(pool_path: Path, out_dir: Path) -> dict:
                       "official": {"hits": sum(h for h, _ in off), "mrr10": sum(m for _, m in off) / len(ids)},
                       "audited": {"hits": sum(h for h, _ in aud), "mrr10": sum(m for _, m in aud) / len(ids)}}
         table[split] = row
-    both = [p for p in pairs if p in J["xiao"] and p in J["cao"]]
+    two = len(judges) == 2
+    both = [p for p in pairs if all(p in J[j] for j in judges)] if two else []
+    a, b = (judges + judges)[:2]
     rep = {
-        "pool": {"depth": pool["depth"], "pairs": len(pairs), "judged_by_both": len(done),
-                 "progress": {j: len(J[j]) for j in JUDGES}},
-        "agreement": {"cohen_kappa": kappa([J["xiao"][p] for p in both], [J["cao"][p] for p in both]),
-                      "raw_agreement": (sum(J["xiao"][p] == J["cao"][p] for p in both) / len(both)) if both else None,
+        "pool": {"depth": pool["depth"], "pairs": len(pairs), "judged_by_all": len(done), "judges": list(judges),
+                 "progress": {j: len(J[j]) for j in judges}, "method": pool.get("method", "")},
+        "agreement": {"cohen_kappa": kappa([J[a][p] for p in both], [J[b][p] for p in both]) if two else None,
+                      "raw_agreement": (sum(J[a][p] == J[b][p] for p in both) / len(both)) if both else None,
                       "unresolved_disagreements": len(disagree)},
         "added_relevant": {q: sorted(v) for q, v in sorted(added.items())},
         "metrics": table,
@@ -134,7 +138,9 @@ def score(pool_path: Path, out_dir: Path) -> dict:
         for q, f in disagree:
             w.writerow([q, f, J["xiao"][(q, f)], J["cao"][(q, f)], "", ""])
     lines = ["# 事后补充判定（pooling）", "",
-             f"池：五组实验前 {pool['depth']} 名中原真值之外的帧，{len(pairs)} 对；两人都已判 {len(done)} 对；"
+             (f"预筛方法：{pool['method']}\n\n" if pool.get("method") else "") +
+             f"池：{len(pairs)} 对（来自五组实验前 {pool['depth']} 名中原真值之外的帧）；判定人 {'、'.join(judges)}，"
+             f"都已判 {len(done)} 对；"
              f"未定稿分歧 {len(disagree)} 对；Cohen's κ = {rep['agreement']['cohen_kappa']}。"
              + ("" if rep["complete"] else " **尚未完成，下表不能写进报告。**"), "",
              "正式 = 冻结真值；复判后 = 冻结真值 + 两人一致（或定稿）判为相关的池内帧。命中数 / 查询数 · MRR@10。", ""]
@@ -157,6 +163,7 @@ def main() -> int:
     s = sub.add_parser("score")
     s.add_argument("--pool", type=Path, required=True)
     s.add_argument("--out", type=Path, required=True)
+    s.add_argument("--judges", default="xiao,cao", help="参与判定的人，逗号分隔；AI 预筛池由一人复核时写 xiao")
     a = ap.parse_args()
     if a.cmd == "build":
         if a.out.exists():
@@ -167,7 +174,7 @@ def main() -> int:
         a.out.write_text(json.dumps(pool, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"池 {pool['n_pairs']} 对 → {a.out}")
         return 0
-    rep = score(a.pool, a.out)
+    rep = score(a.pool, a.out, tuple(x.strip() for x in a.judges.split(",") if x.strip()))
     print(json.dumps({k: rep[k] for k in ("pool", "agreement", "complete")}, ensure_ascii=False))
     return 0
 

@@ -135,6 +135,9 @@ with c2:
     st.caption(f"{ref['app']} · {(ref['window_title'] or '')[:50]}　（共 {len(q['relevant'])} 张原答案）")
     rim = image(ref["image_path"], 800)
     st.image(rim, width="stretch") if rim else st.warning("原图不可用")
+    if it.get("ai_verdict"):
+        st.warning(f"AI 预判（只供参考，以你看图为准）：{VERDICTS.get(it['ai_verdict'], it['ai_verdict'])}\n\n"
+                   f"{it.get('ai_note', '')}")
     prev = mine.get((qid, fid))
     if prev:
         st.caption(f"我之前判的：{VERDICTS.get(prev['verdict'], prev['verdict'])}")
