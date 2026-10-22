@@ -62,6 +62,12 @@
 - **开发演练（合库后，`--rehearsal --split dev`，2,213 帧，不是正式结果）**：产品文字模式 Exp 4 Hit@5 20/30（曹 9/10、肖 11/20）；语义 20/30、词法 10/30、画面 7/30。chat 3/8、code 5/8 最弱，table_doc 7/7。肖的 20 条在只含自己数据的库上是 12/20，合库后 11/20。
 - 全部测试 200/200（Windows 11，`.venv` Python 3.12）。
 
+- **10-22 下午复核完成**（肖天奕转述，两人当面复核）：曹复核肖的 1,151 帧标注，改动 0 处（`reviewer=cao`，`review_label` = 初标）；肖逐条复核曹的 20 条查询，改动 0 处（`review_status=approved`）。复核前的文件备份在 `data-dataset/_backup/`。
+- **正式名单**：`dataset accepted` → `data-dataset/accepted.txt`，**2,184 帧**（曹 1,033 + 肖 1,151；29 张 mock_ui 排除）：chat 593 / code 596 / web 514 / table_doc 481。
+- **正式划分**（`datasets/v1/split.json`，`--fractions 0.6,0.2,0.2 --seed 0`，按类别分层、按来源组）：103 组；train 1,313（曹 413 / 肖 900）、val 435（277 / 158）、test 436（343 / 93）。各划分四类都有；采集者比例不均（test 里肖的帧少），报告写明。
+- **最终分类（test 只跑了这一次）**：`results/classifier/v1/`。val 选出 C=1.0、不加权（val Macro F1 0.914）；train+val 重训后 **test Macro F1 0.868、准确率 87.4%**；基线多数类 0.105、进程名规则 0.377。test 各类 F1：chat 0.976、code 0.863、web 0.838、table_doc 0.796；主要混淆 web → table_doc 18、code → web 10 / table_doc 9。
+- **正式开发集检索**（`results/retrieval/20261022-dev/`，`--candidates` 2,184 帧，30 条）：Exp 4 产品文字模式 Hit@5 20/30、MRR@10 0.44；Exp 2 语义 20/30 · 0.53；Exp 1 词法 10/30；Exp 3 画面 7/30；Exp 5 三路 16/30。chat 3/8、code 5/8 最弱。**盲测还没跑**：等两人决定开发集是否调规则，冻结后只跑一次。
+
 **下一步**：① 曹复核 `labels-xiao.csv`（需要肖的 1,151 张原图，打包发给曹）② 肖复核曹的 20 条查询 → approved，两人都看一眼对方的同类来源有没有漏标的相关帧 ③ `dataset accepted` 出正式名单 → 正式划分 → 分类器 test 只跑一次 ④ 开发集调规则后冻结查询（记 blake2b）→ 盲测只跑一次 ⑤ 第 5、6 节的 Windows 测量照原计划。
 
 ## 2026-10-21 交接给肖天奕：合并数据集、实验与 Windows 测量
