@@ -61,17 +61,24 @@ def test_split_selection_and_missing_models_are_recorded(h):
 def test_protocol_check_and_loader(tmp_path):
     items = []
     for sp in ("dev", "blind"):
-        for sc in ("code", "chat", "web", "table"):
-            for k in range(5):
+        for j, sc in enumerate(("code", "chat", "web", "table_doc")):
+            for k in range(7 + (j + (sp == "blind")) % 2):  # 每侧每场景 7 或 8 条，每侧 30
                 items.append({"id": f"{sp}-{sc}-{k}", "split": sp, "scenario": sc,
                               "language": "zh" if len(items) % 2 == 0 else "en", "query": "x", "relevant": ["f"]})
     path = tmp_path / "q.json"
     path.write_text(json.dumps(items), encoding="utf-8")
     qs = evaluate.load_queries(path)
+    assert len(qs) == evaluate.MAIN_SET == 60
     notes = evaluate.protocol_check(qs)
-    assert notes == []  # 40 条、每侧每场景 5 条、中英各 20
-    bad = evaluate.protocol_check(qs[:-1] + [evaluate.Query("z", "blind", "table", "en", "text", "x", [])])
+    assert notes == []  # 60 条、开发 / 盲测各 30、每侧每场景 ≥7、中英各 30
+    bad = evaluate.protocol_check(qs[:-1] + [evaluate.Query("z", "blind", "table_doc", "en", "text", "x", [])])
     assert any("没有相关帧" in n for n in bad)
+    few = [q for q in qs if not (q.split == "dev" and q.scenario == "code")]
+    notes = evaluate.protocol_check(few)
+    assert any("dev / code 有 0 条" in n for n in notes) and any("主集为 60" in n for n in notes)
+    old = evaluate.protocol_check(qs[:-1] + [evaluate.Query("t", "blind", "table", "en", "text", "x", ["f"])])
+    assert any("'table' 不在" in n for n in old)
+    assert evaluate.protocol_check(qs[:-1] + [evaluate.Query("d", "dev", "code", "en", "text", "x", ["f"])]) != []
 
 
 def test_candidates_restrict_every_branch_before_topk(h):

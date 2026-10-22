@@ -82,8 +82,16 @@ def load_queries(path: Path) -> list[Query]:
     return out
 
 
+# 查询主集设计。方案原为 40 条（每侧每场景 5 条）；2026-10-22 两人数据合库后改为 60 条：
+# 曹贺乔 20 条（按 query_slots.csv）+ 肖天奕 40 条（每侧每场景 5 条），开发 / 盲测各 30，中英各 30，
+# 每侧每场景 7–8 条。改动记录在 PROGRESS。
+MAIN_SET = 60
+MIN_PER_CELL = 7
+SCENARIOS = ("code", "chat", "web", "table_doc")  # 与冻结类别表 datasets/labelset.json 一致
+
+
 def protocol_check(queries: list[Query]) -> list[str]:
-    """对照方案的查询设计（40 条：开发 / 盲测各 20，每侧每场景 5 条，整体中英各半）。只提示，不改查询。"""
+    """对照查询设计（MAIN_SET 条：开发 / 盲测各半，每侧每场景至少 MIN_PER_CELL 条，整体中英各半）。只提示，不改查询。"""
     notes = []
     by = defaultdict(int)
     for q in queries:
@@ -94,16 +102,27 @@ def protocol_check(queries: list[Query]) -> list[str]:
             notes.append(f"{q.id} 的 split 应为 dev 或 blind")
         if q.mode not in (retrieval.TEXT, retrieval.IMAGE):
             notes.append(f"{q.id} 的 mode 应为 text 或 image")
-    if len(queries) != 40:
-        notes.append(f"共 {len(queries)} 条查询，方案主集为 40 条")
-    for (sp, sc), n in sorted(by.items()):
-        if n != 5:
-            notes.append(f"{sp} / {sc} 有 {n} 条，方案为每侧每场景 5 条")
+    if len(queries) != MAIN_SET:
+        notes.append(f"共 {len(queries)} 条查询，主集为 {MAIN_SET} 条")
+    half = MAIN_SET // 2
+    sides = defaultdict(int)
+    for q in queries:
+        if q.scenario not in SCENARIOS:
+            notes.append(f"{q.id} 的 scenario {q.scenario!r} 不在 {SCENARIOS} 中")
+    for key in [(sp, sc) for sp in ("dev", "blind") for sc in SCENARIOS] + sorted(set(by) - {
+            (sp, sc) for sp in ("dev", "blind") for sc in SCENARIOS}):
+        n = by.get(key, 0)
+        sp, sc = key
+        sides[sp] += n
+        if n < MIN_PER_CELL:
+            notes.append(f"{sp} / {sc} 有 {n} 条，每侧每场景至少 {MIN_PER_CELL} 条")
+    if len(queries) == MAIN_SET and (sides.get("dev"), sides.get("blind")) != (half, half):
+        notes.append(f"开发 / 盲测分布 {dict(sides)}，应各 {half} 条")
     langs = defaultdict(int)
     for q in queries:
         langs[q.language] += 1
-    if len(queries) == 40 and (langs.get("zh"), langs.get("en")) != (20, 20):
-        notes.append(f"语言分布 {dict(langs)}，方案为中英各 20 条")
+    if len(queries) == MAIN_SET and (langs.get("zh"), langs.get("en")) != (half, half):
+        notes.append(f"语言分布 {dict(langs)}，应中英各 {half} 条")
     return notes
 
 

@@ -53,6 +53,17 @@
 | 失败待办人工重试（3.4） | **完成**（2026-10-21，`retry.py` + 侧栏「失败的待办」+ 命令行） | 通过（真实 OcrWorker + 替身引擎、页面 AppTest） | 不涉及 | Windows 页面未实机查看 |
 | 报告、Slides、演示视频、运行包（8.3） | 未开始 | — | — | — |
 
+## 2026-10-22 肖天奕：两人数据合库、60 条查询（分支 `feat/merge-datasets`）
+与 10-21 交接计划的差异（两人已知会）：肖天奕的约 1,000 帧**不是截图 + `collect import`**，而是 10-18 / 10-20 在 Windows 上用后台**实时录制**（`daemon`，采样临时设 0.5 秒，已恢复 3 秒）得到的 1,151 帧（微信 339、VS Code 270、WPS 249、Edge 293），按每张图主要可见内容人工标注。
+- **合库**：`python datasets/merge_library.py --src data --dst data-dataset --apply`。保留 frame_id，原样搬运 OCR 文字 / 行 / FTS / 文本块 / 向量（两库 schema v6、OCR 版本、分块 c1/n1、MiniLM 与 CLIP 版本及预处理全部一致，脚本先检查，不一致拒绝）；frame_id、路径、像素指纹、录制段均无重叠。合库后 2,218 帧（原图可用 2,213 = 曹 1,062 + 肖 1,151），`integrity_check` ok、外键 0 违例、每帧都有文字与画面向量、每个文本块都有向量、无待办任务、原图文件 0 缺失。合并前的库备份在 `data-dataset/_backup/screenrecall.pre-merge.sqlite3`；目标库 `meta.merge_log` 记了这次合并。
+- **实时录制帧的验收**：`dataset accepted` 的原始清单门禁对实时录制帧（出现记录全是 `live`）放行（`dataset.live_frames`），导入帧照旧要在 `raw/` 清单里、近重复要判完。新增测试 1 条。
+- **标注**：`python datasets/live_labels.py --data-dir data-dataset --src <本地标注表> --annotator xiao --out data-dataset/labels-xiao.csv` 转成与 `labels-cao.csv` 同列。实时录制帧没有任务编号，task_id 按"应用 + 规范化窗口标题 + 5 分钟段"生成（63 组）；全按标题分组的话微信一组 339 帧、划分无法平衡，代价是同一窗口跨段的帧可能分到不同划分，报告里写明。`datasets/v1/labels.csv` = 曹 1,062 + 肖 1,151 行。**肖的 1,151 行还没有复核（review_label / reviewer 空），需曹复核后才能出正式名单和划分**。试划分（`--allow-unreviewed`，不是正式结果）：103 个来源组，train/val/test 各类别都有（test：chat 121 / code 116 / web 111 / table_doc 88）。
+- **查询改为 60 条**（两人 10-22 商定）：曹 20 条（按 `query_slots.csv`）+ 肖 40 条（每侧每场景 5 条），开发 / 盲测各 30、中英各 30、每侧每场景 7–8 条；`evaluate.protocol_check` 按 60 条检查（`MAIN_SET`、`MIN_PER_CELL=7`），场景名必须是类别表里的四个（曹草稿里的 `table` 已统一成 `table_doc`）。`python datasets/build_queries_v1.py ...` 合成 `datasets/v1/queries.json`，id 加 `cao-` / `xiao-` 前缀，`source_id` 保留原编号。肖的 40 条由 kiro-ai 代起草（`drafted_by: ai`）、xiaotianyi 逐条看图复核（删 2 条后补 2 条）→ `approved`；曹的 20 条仍是 `draft`。
+- **开发演练（合库后，`--rehearsal --split dev`，2,213 帧，不是正式结果）**：产品文字模式 Exp 4 Hit@5 20/30（曹 9/10、肖 11/20）；语义 20/30、词法 10/30、画面 7/30。chat 3/8、code 5/8 最弱，table_doc 7/7。肖的 20 条在只含自己数据的库上是 12/20，合库后 11/20。
+- 全部测试 200/200（Windows 11，`.venv` Python 3.12）。
+
+**下一步**：① 曹复核 `labels-xiao.csv`（需要肖的 1,151 张原图，打包发给曹）② 肖复核曹的 20 条查询 → approved，两人都看一眼对方的同类来源有没有漏标的相关帧 ③ `dataset accepted` 出正式名单 → 正式划分 → 分类器 test 只跑一次 ④ 开发集调规则后冻结查询（记 blake2b）→ 盲测只跑一次 ⑤ 第 5、6 节的 Windows 测量照原计划。
+
 ## 2026-10-21 交接给肖天奕：合并数据集、实验与 Windows 测量
 
 分工（10-21 两人商定）：肖天奕在 Windows 上做 ① 采集自己的约 1,000 帧并与曹的数据合并 ② 40 条查询复核与冻结 ③ 五组检索实验 ④ 最终分类结果 ⑤ 资源与性能实测 ⑥ 捕获覆盖实验、编码对照、A13（断网 / 缩放）。曹贺乔在 Mac 上完成的脚本与数据见下。

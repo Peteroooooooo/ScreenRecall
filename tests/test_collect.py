@@ -11,6 +11,8 @@ from PIL import Image, ImageDraw
 from screenrecall import collect, dataset, importer, indexer
 from screenrecall.importer import FileMeta, ImportFile
 
+from .conftest import make_image
+
 
 def _img(seed: int, size=(640, 520)) -> np.ndarray:
     return np.random.default_rng(seed).integers(0, 255, size=(size[1], size[0], 3), dtype=np.uint8)
@@ -357,6 +359,25 @@ def test_accepted_gate_needs_near_dup_judgements_and_live_manifest(tmp_path, h):
     rc = dataset.main(["--data-dir", str(h.cfg.data_dir), "accepted", "--labels", str(labels),
                        "--labelset", str(labelset), "--raw", str(root), "--out", str(out)])
     assert rc == 1 and not out.exists()
+
+
+def test_accepted_gate_exempts_live_recorded_frames(tmp_path, h):
+    """后台实时录制的帧没有原始截图清单：不因"清单里找不到"被拒；导入的帧照常要在清单里。"""
+    root, t1, _, _ = _two_tasks(tmp_path)
+    collect.import_root(root, str(h.cfg.data_dir))
+    labels = tmp_path / "labels.csv"
+    collect.build_labels(root, str(h.cfg.data_dir), labels)
+    imported = [r["frame_id"] for r in _rows(labels)]
+    h.show(make_image(77))
+    h.start()
+    h.tick()
+    live = dataset.live_frames(h.conn)
+    assert len(live) == 1 and not live & set(imported)
+    fids = imported + sorted(live)
+    assert any("原始清单里找不到" in p for p in dataset.raw_gate(root, labels, fids))
+    assert dataset.raw_gate(root, labels, fids, live=live) == []
+    # 导入的帧不会被当成录制帧放行
+    assert dataset.raw_gate(root, labels, imported + ["nope"], live=live) != []
 
 
 def test_task_frame_cap_ignores_mock_ui(tmp_path, monkeypatch):

@@ -299,10 +299,17 @@ def read_candidates(path: Path) -> frozenset[str]:
     return out
 
 
-def raw_gate(raw_root: Path, labels_csv: Path, frame_ids: list[str]) -> list[str]:
+def live_frames(conn: sqlite3.Connection) -> set[str]:
+    """后台实时录制的帧（所有出现记录都是 live）：没有原始截图清单，来源由录制段本身记录。"""
+    return {r[0] for r in conn.execute(
+        "SELECT frame_id FROM occurrences GROUP BY frame_id HAVING SUM(source_type != 'live') = 0")}
+
+
+def raw_gate(raw_root: Path, labels_csv: Path, frame_ids: list[str], live: set[str] = frozenset()) -> list[str]:
     """出正式名单前对原始截图根目录再跑一次 collect check（含近重复）。返回阻断问题，空表示通过。
 
     阻断：清单有错误；任务内近重复还有没在 near_dups.csv 逐对判定的；名单里的帧在清单里已剔除或找不到。
+    live 里的帧是后台实时录制的（不走截图导入），不要求出现在原始清单里；录制端已按像素去重、等稳后保存。
     """
     from . import collect  # collect 在模块级 import 了本模块，这里延迟导入
 
@@ -316,6 +323,8 @@ def raw_gate(raw_root: Path, labels_csv: Path, frame_ids: list[str]) -> list[str
     image_of = {(r.get("frame_id") or "").strip(): (r.get("image_id") or "").strip()
                 for r in csv.DictReader(open(labels_csv, encoding="utf-8-sig", newline=""))}
     for fid in frame_ids:
+        if fid in live:
+            continue
         iid = image_of.get(fid, "")
         if iid not in keep:
             problems.append(f"{fid[:8]}（{iid or '无 image_id'}）：原始清单里找不到这张图")
@@ -378,7 +387,8 @@ def main(argv: list[str] | None = None) -> int:
             if args.allow_unreviewed:
                 print("错误：正式候选名单只能来自完成双人复核的标注，不能加 --allow-unreviewed", file=sys.stderr)
                 return 1
-            problems = raw_gate(Path(args.raw), Path(args.labels), [i.frame_id for i in rep.items])
+            problems = raw_gate(Path(args.raw), Path(args.labels), [i.frame_id for i in rep.items],
+                                live=live_frames(conn))
             if problems:
                 for p in problems[:30]:
                     print("错误：" + p, file=sys.stderr)
