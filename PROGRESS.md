@@ -68,6 +68,13 @@
 - **最终分类（test 只跑了这一次）**：`results/classifier/v1/`。val 选出 C=1.0、不加权（val Macro F1 0.914）；train+val 重训后 **test Macro F1 0.868、准确率 87.4%**；基线多数类 0.105、进程名规则 0.377。test 各类 F1：chat 0.976、code 0.863、web 0.838、table_doc 0.796；主要混淆 web → table_doc 18、code → web 10 / table_doc 9。
 - **正式开发集检索**（`results/retrieval/20261022-dev/`，`--candidates` 2,184 帧，30 条）：Exp 4 产品文字模式 Hit@5 20/30、MRR@10 0.44；Exp 2 语义 20/30 · 0.53；Exp 1 词法 10/30；Exp 3 画面 7/30；Exp 5 三路 16/30。chat 3/8、code 5/8 最弱。**盲测还没跑**：等两人决定开发集是否调规则，冻结后只跑一次。
 
+- **冻结（10-22，盲测前）**：两人决定开发集阶段**不调整任何检索规则**，全部沿用方案默认值：词法规则（D006：片段全 ≥3 字符用 FTS5 trigram + BM25，含短片段扫描并按命中片段数排序）、文本语义块先 max 到帧再取 Top-50、RRF `k=60` 两路等权、画面模式独立排名、结果 Top-10、无阈值；模型 MiniLM-L12 多语言 `@e8f8c211226b`、CLIP ViT-B/32 `@327ab6726d33`、多语言 CLIP 文本 `@58edf8cada9e`；`config.default.toml` 中 `rrf_k=60`、`branch_top=50`，无本地覆盖。冻结文件 blake2b-128：
+  - `datasets/v1/queries.json`（60 条，全部 approved）`41b537f7bcee3c9a4ca3421cc35da0a1`
+  - `data-dataset/accepted.txt`（2,184 帧，不进 git）`b8892e1e7365905b159fdca5ca508a94`
+  - `datasets/v1/split.json` `f2c95c5fcd118d577fdb0778a600fc38`；`datasets/v1/labels.csv` `d12e1fcc2aa82bc655bb3bd07952385c`
+  - 开发集正式结果 `results/retrieval/20261022-dev/` 用的就是这两份查询与候选文件（指纹一致）。dev 上观察到的失败原因（窗口标签栏 / 菜单等界面文字压过正文、答案只占屏幕一小块）只写进报告的失败分析与后续改进，不在本版修。
+  - 盲测在此提交之后只跑一次：`evaluate --data-dir data-dataset --queries datasets\v1\queries.json --split blind --candidates data-dataset\accepted.txt --out results\retrieval\20261022-blind`，结果原样提交，不重跑。
+
 **下一步**（复核、正式名单、划分、最终分类已完成）：① 决定开发集是否调检索规则；调完冻结 `datasets/v1/queries.json`（记 blake2b 写进本文件）→ 盲测 `--split blind --candidates data-dataset\accepted.txt` 只跑一次、原样提交 ② 第 5、6 节的 Windows 测量（资源与性能、捕获覆盖、编码对照、A13）照原计划 ③ 报告、Slides、演示视频。
 
 ## 2026-10-21 交接给肖天奕：合并数据集、实验与 Windows 测量
