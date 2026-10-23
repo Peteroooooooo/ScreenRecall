@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Check, Info, LoaderCircle, TriangleAlert, X } from "lucide-react";
 import type { Box, Meta, Status } from "./api";
 import { imageUrl, thumbUrl } from "./api";
@@ -157,6 +157,54 @@ export function FramedShot({ fid, width, height, boxes = [], thumb = 640, ratio 
   return (
     <div className={`relative overflow-hidden bg-night-3 ${className}`} style={{ aspectRatio: String(ratio) }}>
       <div className="absolute inset-x-0 top-0" style={{ transform: `translateY(-${shift * 100}%)` }}>
+        <Shot fid={fid} width={width} height={height} boxes={boxes} thumb={thumb} />
+      </div>
+    </div>
+  );
+}
+
+type Rect = { x0: number; y0: number; x1: number; y1: number };
+const rectOf = (b: Box): Rect => {
+  const xs = b.quad.map((p) => p[0]);
+  const ys = b.quad.map((p) => p[1]);
+  return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+};
+
+/** 命中区域的取景框（原图像素）：优先原词命中，其次语义块；放大到约 9 行字高，最多放大 2.4 倍。没有标记时返回 null。 */
+export function hitCrop(W: number, H: number, boxes: Box[], ratio: number) {
+  const lex = boxes.filter((b) => b.kind === "lex");
+  const rs = (lex.length ? lex : boxes).map(rectOf);
+  if (!rs.length) return null;
+  let u: Rect = { x0: Math.min(...rs.map((r) => r.x0)), y0: Math.min(...rs.map((r) => r.y0)),
+    x1: Math.max(...rs.map((r) => r.x1)), y1: Math.max(...rs.map((r) => r.y1)) };
+  if (u.y1 - u.y0 > H * 0.5) u = rs[0]; // 命中分散在整屏：只对准第一处
+  const lineH = rs.map((r) => r.y1 - r.y0).sort((a, b) => a - b)[Math.floor(rs.length / 2)];
+  const w = Math.min(Math.max(Math.max((u.y1 - u.y0) * 1.8, lineH * 9) * ratio, W / 2.4), W, H * ratio);
+  const h = w / ratio;
+  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+  // 命中行比取景框窄就居中，否则从行首开始（长行宁可截掉行尾，也要让开头可读）
+  const x = clamp(u.x1 - u.x0 <= w * 0.92 ? (u.x0 + u.x1) / 2 - w / 2 : u.x0 - w * 0.04, 0, W - w);
+  const y = clamp((u.y0 + u.y1) / 2 - h / 2, 0, Math.max(0, H - h));
+  return { x, y, w, h };
+}
+
+/** 结果卡片的缩略图：有标记时裁到命中区域并放大，没有标记时退回整图取景。 */
+export function HitShot({ fid, width, height, boxes = [], ratio = 16 / 10, className = "" }: {
+  fid: string; width: number; height: number; boxes?: Box[]; ratio?: number; className?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [boxW, setBoxW] = useState(360);
+  useLayoutEffect(() => {
+    if (ref.current) setBoxW(ref.current.getBoundingClientRect().width || 360);
+  }, []);
+  const crop = hitCrop(width, height, boxes, ratio);
+  if (!crop) return <FramedShot fid={fid} width={width} height={height} boxes={boxes} ratio={ratio} className={className} />;
+  const zoom = width / crop.w;
+  // 按放大后的实际显示宽度要缩略图（取 200 的整数倍，便于服务端缓存命中）
+  const thumb = Math.min(1600, Math.max(400, Math.ceil((boxW * zoom * (window.devicePixelRatio || 1)) / 200) * 200));
+  return (
+    <div ref={ref} className={`relative overflow-hidden bg-night-3 ${className}`} style={{ aspectRatio: String(ratio) }}>
+      <div className="absolute" style={{ width: `${zoom * 100}%`, left: `${(-crop.x / crop.w) * 100}%`, top: `${(-crop.y / crop.h) * 100}%` }}>
         <Shot fid={fid} width={width} height={height} boxes={boxes} thumb={thumb} />
       </div>
     </div>

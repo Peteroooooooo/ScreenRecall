@@ -4,7 +4,7 @@ import { ArrowRight, Image as ImageIcon, Quote, ScanText, Search, SlidersHorizon
 import { post, type Result, type SearchResponse } from "./api";
 import { useT, type Key } from "./i18n";
 import { fmtTime, navigate, useLoad } from "./lib";
-import { Banner, Chip, FramedShot, Segmented, Spinner, Unavailable, useLabelName, useMeta, useStatus } from "./ui";
+import { Banner, Chip, HitShot, Segmented, Spinner, Unavailable, useLabelName, useMeta, useStatus } from "./ui";
 
 type Mode = "text" | "image";
 const list = (v: string | null) => (v ? v.split(",").filter(Boolean) : []);
@@ -18,45 +18,48 @@ export function markTerms(line: string, terms: string[], caseSensitive = false):
 }
 
 function Tag({ children, title }: { children: ReactNode; title?: string }) {
-  return <span title={title} className="inline-flex h-6 items-center gap-1 rounded-full border border-rule bg-canvas px-2 text-[11.5px] text-graphite">{children}</span>;
+  return <span title={title} className="inline-flex h-[22px] items-center gap-1 rounded-full border border-rule bg-canvas px-2 text-[11px] text-graphite">{children}</span>;
 }
 
 function ResultCard({ r, rank, mode, terms, caseSensitive, onOpen }: {
   r: Result; rank: number; mode: Mode; terms: string[]; caseSensitive: boolean; onOpen: () => void;
 }) {
   const { t } = useT();
+  const meta = useMeta();
   const labelName = useLabelName();
   const o = r.latest;
   const when = r.time_unknown ? t("result.timeUnknown", { t: fmtTime(o.last_seen_ms) }) : fmtTime(o.last_seen_ms);
+  // 库里一条预测都没有（没跑过分类）时不显示类别，免得满屏"待分类"
+  const label = r.label ? t("result.pred", { l: labelName(r.label.label), s: r.label.score.toFixed(2) })
+    : meta?.labels.length ? t("result.pending") : null;
   return (
     <article className="group sr-card flex flex-col overflow-hidden transition-[box-shadow,border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-rule-strong hover:shadow-lift"
       style={{ animation: `rise 360ms cubic-bezier(.2,.7,.2,1) ${Math.min(rank, 10) * 35}ms both` }}>
       <button onClick={onOpen} className="relative block text-left" aria-label={t("result.open")}>
-        {r.image_ok ? <FramedShot fid={r.frame_id} width={r.width} height={r.height} boxes={r.boxes} />
+        {r.image_ok ? <HitShot fid={r.frame_id} width={r.width} height={r.height} boxes={r.boxes} />
           : <Unavailable text={t("common.imageGone")} />}
-        <span className="sr-num absolute left-3 top-3 rounded-[7px] bg-night/80 px-2 py-0.5 font-mono text-[11px] font-medium text-white backdrop-blur">#{rank}</span>
-        {r.favorited && <span className="absolute right-3 top-3 rounded-full bg-night/80 p-1.5 backdrop-blur"><Star size={12} className="fill-marker text-marker" /></span>}
+        <span className="sr-num absolute left-2.5 top-2.5 rounded-[6px] bg-night/80 px-1.5 py-0.5 font-mono text-[10.5px] font-medium text-white backdrop-blur">#{rank}</span>
+        {r.favorited && <span className="absolute right-2.5 top-2.5 rounded-full bg-night/80 p-1.5 backdrop-blur"><Star size={11} className="fill-marker text-marker" /></span>}
       </button>
-      <div className="flex flex-1 flex-col gap-2.5 p-4">
+      <div className="flex flex-1 flex-col gap-2 px-3.5 pb-3.5 pt-3">
         <div className="min-w-0">
           <div className="flex items-baseline justify-between gap-3">
-            <p className="sr-num truncate text-[13px] font-semibold">{when}</p>
-            <span className="shrink-0 text-xs font-medium text-graphite">{o.app}</span>
+            <p className="sr-num truncate text-[12.5px] font-semibold">{when}</p>
+            <span className="max-w-[45%] shrink-0 truncate text-[11.5px] font-medium text-graphite">{o.app}</span>
           </div>
-          <p className="mt-0.5 truncate text-[13px] text-graphite" title={o.window_title ?? ""}>{o.window_title}</p>
+          <p className="truncate text-[12.5px] text-graphite" title={o.window_title ?? ""}>{o.window_title}</p>
         </div>
         {mode !== "image" && (
-          <div className="relative max-h-[5.6rem] overflow-hidden rounded-[9px] bg-canvas px-3 py-2 font-mono text-[12px] leading-[1.6] text-ink/85 [mask-image:linear-gradient(to_bottom,black_70%,transparent)]">
+          <div className="max-h-[3.6rem] overflow-hidden rounded-[8px] bg-canvas px-2.5 py-1.5 font-mono text-[11.5px] leading-[1.55] text-ink/85 [mask-image:linear-gradient(to_bottom,black_65%,transparent)]">
             {r.snippet.length ? r.snippet.map((ln, i) => <p key={i} className="break-all">{markTerms(ln, terms, caseSensitive)}</p>) : <p className="text-faint">{t("result.noText")}</p>}
           </div>
         )}
-        <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
+        <div className="mt-auto flex flex-wrap items-center gap-1">
           {r.sources.length > 0 && <Tag>{t("result.hits", { s: r.sources.join(" + ") })}</Tag>}
-          <Tag title={t("result.predTip")}>{r.label ? t("result.pred", { l: labelName(r.label.label), s: r.label.score.toFixed(2) }) : t("result.pending")}</Tag>
+          {label && <Tag title={t("result.predTip")}>{label}</Tag>}
           {o.source_type === "import" && <Tag>{t("result.import")}</Tag>}
           {r.occurrences_in_filter > 1 && <Tag>{t("result.occ", { n: r.occurrences_in_filter })}</Tag>}
         </div>
-        {r.matched_terms.length > 0 && <p className="truncate text-xs text-faint">{t("result.terms", { t: r.matched_terms.join("、") })}</p>}
       </div>
     </article>
   );
@@ -128,13 +131,15 @@ function Filters({ form, setForm }: { form: Form; setForm: (f: (x: Form) => Form
         <p className="mb-2 text-xs font-medium text-graphite">{t("search.apps")}</p>
         <div className="flex flex-wrap gap-1.5">{meta?.apps.map((a) => <Chip key={a} on={form.apps.includes(a)} onClick={() => toggle("apps", a)}>{a}</Chip>)}</div>
       </div>
-      <div>
-        <p className="mb-2 text-xs font-medium text-graphite">{t("search.labels")} <span className="font-normal text-faint">· {t("search.labelsNote")}</span></p>
-        <div className="flex flex-wrap gap-1.5">
-          {meta?.labels.length ? meta.labels.map((l) => <Chip key={l} on={form.labels.includes(l)} onClick={() => toggle("labels", l)}>{labelName(l)}</Chip>)
-            : <span className="text-xs text-faint">{t("search.noLabels")}</span>}
+      {/* 库里还没有分类预测时整组不显示 */}
+      {!!meta?.labels.length && (
+        <div>
+          <p className="mb-2 text-xs font-medium text-graphite">{t("search.labels")} <span className="font-normal text-faint">· {t("search.labelsNote")}</span></p>
+          <div className="flex flex-wrap gap-1.5">
+            {meta.labels.map((l) => <Chip key={l} on={form.labels.includes(l)} onClick={() => toggle("labels", l)}>{labelName(l)}</Chip>)}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -257,7 +262,7 @@ export default function SearchPage({ params }: { params: URLSearchParams }) {
                   </div>
                 </div>
                 <p className="-mt-2 text-xs text-faint">{t("search.summaryNote")}</p>
-                <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-4">
                   {data.results.map((r, i) => (
                     <ResultCard key={r.frame_id} r={r} rank={i + 1} mode={data.mode} terms={terms} caseSensitive={cur.case_sensitive} onOpen={() => open(r)} />
                   ))}

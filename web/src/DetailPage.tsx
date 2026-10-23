@@ -6,7 +6,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Columns2, Download, Star, Trash2 
 import { ApiError, downloadUrl, get, post, type Box, type Detail, type FramePlan, type OccurrencePlan, type Step } from "./api";
 import { useT } from "./i18n";
 import { fmtTime, navigate, useLoad } from "./lib";
-import { Banner, Dialog, Segmented, Shot, Spinner, Unavailable, useLabelName, useToast } from "./ui";
+import { Banner, Dialog, Segmented, Shot, Spinner, Unavailable, useLabelName, useMeta, useToast } from "./ui";
 
 type Mode = "text" | "image";
 
@@ -255,6 +255,7 @@ export default function DetailPage({ fid, params }: { fid: string; params: URLSe
   const { t } = useT();
   const toast = useToast();
   const labelName = useLabelName();
+  const meta = useMeta();
   const mode: Mode = params.get("mode") === "image" ? "image" : "text";
   const occ = params.get("occ") ?? undefined;
   const q = params.get("q") ?? "";
@@ -336,9 +337,11 @@ export default function DetailPage({ fid, params }: { fid: string; params: URLSe
             <div className="space-y-5 xl:sticky xl:top-6">
               <Panel title={t("detail.occurrence")}>
                 <div className="text-sm"><OccLine d={d} /></div>
-                <p className="mt-3 border-t border-rule pt-3 text-xs text-graphite">
-                  {d.label ? t("detail.label", { l: labelName(d.label.label), s: d.label.score.toFixed(2) }) : t("detail.labelPending")}
-                </p>
+                {(d.label || !!meta?.labels.length) && (
+                  <p className="mt-3 border-t border-rule pt-3 text-xs text-graphite">
+                    {d.label ? t("detail.label", { l: labelName(d.label.label), s: d.label.score.toFixed(2) }) : t("detail.labelPending")}
+                  </p>
+                )}
               </Panel>
               <Panel title={t("detail.actions")}><Actions d={d} onChanged={det.reload} onDeleted={(msg) => { toast(msg); leave(); }} /></Panel>
               <Panel title={t("detail.ocr")} aside={t("detail.ocrLines", { n: d.lines.length })}>
