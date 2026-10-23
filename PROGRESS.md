@@ -53,6 +53,20 @@
 | 失败待办人工重试（3.4） | **完成**（2026-10-21，`retry.py` + 侧栏「失败的待办」+ 命令行） | 通过（真实 OcrWorker + 替身引擎、页面 AppTest） | 不涉及 | Windows 页面未实机查看 |
 | 报告、Slides、演示视频、运行包（8.3） | 未开始 | — | — | — |
 
+## 2026-10-23 网页界面替换 Streamlit（分支 `feat/merge-datasets`，未提交时以 `git status` 为准）
+Kiro 起头（`screenrecall/webapi.py`、`tests/test_webapi.py`、前端请求封装与样式令牌），额度用完后由 Claude Code 接着做完前端。技术栈按 10-23 与肖天奕商定：后端 Starlette（只调用现有模块，不重写检索 / 生命周期 / 采集控制逻辑）+ 前端 React 19 + Vite + Tailwind 4（`web/`）。
+- 运行：`cd web; npm ci; npm run build`（Node.js 20+，`web/dist`、`web/node_modules` 不进 git），然后 `python -m screenrecall.webapi --data-dir data-dataset` → http://127.0.0.1:8600。旧页面 `app.py` 保留，功能对应关系一致。
+- 页面：左栏录制状态（2 秒轮询）/ 窗口选择 / 开始暂停 / 排错 / 补拍 / 失败待办重试 / 规则；主区四个标签：搜索（文字 / 画面、日期 / 应用 / 预测类别筛选、放宽匹配，结果缩略图上直接叠加琥珀色原词行与蓝色语义块）、收藏、导入、按时间删除；原图核验页（适应宽度 / 原始像素 1:1、OCR 行悬停高亮对应框、前后浏览胶片条、并排比较、出现记录、收藏、两种删除都先看计划再确认）。查询条件在地址里（`#/?q=…`），可刷新、后退、深链接。
+- 安全：只绑 127.0.0.1；核对 Host（防 DNS rebinding）；非 GET 必须带 `X-ScreenRecall: 1` 且 Origin 是本服务；不开 CORS。
+- 改动：`webapi.py` 收藏列表补画面宽高、请求体非 UTF-8 返回 400（原来 500）；`requirements.txt` 显式加 `starlette==1.8.0`、`uvicorn==0.54.0`、`python-multipart==0.0.32`（原先靠 streamlit 间接装上）。
+- 验证（Windows 11）：pytest 210/210（新增 `test_webapi.py` 10 条）；`npm run build` 类型检查通过；在 `data-dataset` 上用内置浏览器实测 dev 查询（"组会改到哪个会议室了"）与画面模式查询、应用筛选、原图核验、前后浏览、收藏 / 导入 / 按时间删除页面渲染，冷启动首次文字查询约 10 秒。**没有在正式库上点收藏、删除、导入**（会改库），这些只由 `test_webapi.py` 在临时库上覆盖；录制控制没有和真实后台联调。盲测查询没有搜。
+- 已知：Claude 桌面版预览器直接拉起服务时首次语义查询会卡住（服务写日志到文件时正常），在普通终端里运行不受影响。
+- **第二轮（同日，肖天奕在 Edge 里试用后反馈"布局乱、不够高级、要中英文切换"）**：
+  - 布局乱的原因：浏览器扩展向页面注入了不分层的 Tailwind 样式（如 `.flex-col{flex-direction:column}`），压过了 Tailwind v4 放在 `@layer` 里的 `lg:flex-row` 等。在内置浏览器里只注入这一条规则就复现了截图。修法：`@import "tailwindcss" important`（工具类带 !important，分层的 important 声明优先于不分层样式），自定义组件类改为 `sr-` 前缀。注入 `.flex-col / .hidden / .btn` 后复测布局不变。
+  - 视觉重做：深色侧栏导航 + 浅色工作区；搜索首页居中大标题 + 命令栏式搜索框；结果改为卡片网格（排名角标、长截图自动把第一处标记移进取景框）；原图核验改为深色看图台 + 右侧检查栏（OCR 行号、等宽字体）+ 深色胶片条；录制控制从左栏移到独立的"录制"页（状态卡、控制、索引进度、存储配额条、失败待办、规则）。字体换成 Inter（可变）+ JetBrains Mono，均随前端打包，不走 CDN；中文用系统字体。
+  - 中英文切换：侧栏底部"中文 / EN"，选择存在浏览器 localStorage。界面文案在 `web/src/i18n.tsx`（英文字典的类型由中文推出，漏翻会编译失败）；后台各模块返回的提示（检索说明、缺口描述、规则、删除结果、录制状态等）由新文件 `screenrecall/i18n.py` 按请求头 `X-Lang: en` 整句对照翻译，只翻指定字段，未收录的句子保持中文，OCR 文字和窗口标题不动。
+  - 测试：pytest 214/214（新增 `tests/test_i18n.py` 3 条、`test_webapi.py` 英文模式 1 条）；内置浏览器在 1600 宽、375 宽（手机）、中英文下看过搜索、结果、原图核验、录制、导入、按时间删除页。仍未在正式库上点收藏 / 删除 / 导入；录制控制未与真实后台联调。
+
 ## 2026-10-22 肖天奕：两人数据合库、60 条查询（分支 `feat/merge-datasets`）
 与 10-21 交接计划的差异（两人已知会）：肖天奕的约 1,000 帧**不是截图 + `collect import`**，而是 10-18 / 10-20 在 Windows 上用后台**实时录制**（`daemon`，采样临时设 0.5 秒，已恢复 3 秒）得到的 1,151 帧（微信 339、VS Code 270、WPS 249、Edge 293），按每张图主要可见内容人工标注。
 - **合库**：`python datasets/merge_library.py --src data --dst data-dataset --apply`。保留 frame_id，原样搬运 OCR 文字 / 行 / FTS / 文本块 / 向量（两库 schema v6、OCR 版本、分块 c1/n1、MiniLM 与 CLIP 版本及预处理全部一致，脚本先检查，不一致拒绝）；frame_id、路径、像素指纹、录制段均无重叠。合库后 2,218 帧（原图可用 2,213 = 曹 1,062 + 肖 1,151），`integrity_check` ok、外键 0 违例、每帧都有文字与画面向量、每个文本块都有向量、无待办任务、原图文件 0 缺失。合并前的库备份在 `data-dataset/_backup/screenrecall.pre-merge.sqlite3`；目标库 `meta.merge_log` 记了这次合并。
