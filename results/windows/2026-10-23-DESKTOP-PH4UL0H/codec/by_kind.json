@@ -1,0 +1,82 @@
+{
+  "chat-mock": {
+    "q92": {
+      "n": 31,
+      "mean_kib": 127.4,
+      "encode_p50_ms": 256.1,
+      "ocr_identical": 0,
+      "digits_changed": 19,
+      "cer_median": 0.0154,
+      "cer_max": 0.0748
+    },
+    "lossless": {
+      "n": 31,
+      "mean_kib": 42.7,
+      "encode_p50_ms": 145.4,
+      "ocr_identical": 31,
+      "digits_changed": 0,
+      "cer_median": 0.0,
+      "cer_max": 0.0
+    }
+  },
+  "code-vscode": {
+    "q92": {
+      "n": 29,
+      "mean_kib": 176.3,
+      "encode_p50_ms": 207.4,
+      "ocr_identical": 0,
+      "digits_changed": 13,
+      "cer_median": 0.0098,
+      "cer_max": 0.1807
+    },
+    "lossless": {
+      "n": 29,
+      "mean_kib": 93.5,
+      "encode_p50_ms": 315.3,
+      "ocr_identical": 29,
+      "digits_changed": 0,
+      "cer_median": 0.0,
+      "cer_max": 0.0
+    }
+  },
+  "doc-wps": {
+    "q92": {
+      "n": 31,
+      "mean_kib": 140.9,
+      "encode_p50_ms": 318.6,
+      "ocr_identical": 0,
+      "digits_changed": 25,
+      "cer_median": 0.031,
+      "cer_max": 0.0517
+    },
+    "lossless": {
+      "n": 31,
+      "mean_kib": 112.6,
+      "encode_p50_ms": 296.5,
+      "ocr_identical": 31,
+      "digits_changed": 0,
+      "cer_median": 0.0,
+      "cer_max": 0.0
+    }
+  },
+  "web-edge": {
+    "q92": {
+      "n": 29,
+      "mean_kib": 213.7,
+      "encode_p50_ms": 218.6,
+      "ocr_identical": 0,
+      "digits_changed": 29,
+      "cer_median": 0.0188,
+      "cer_max": 0.0613
+    },
+    "lossless": {
+      "n": 29,
+      "mean_kib": 106.4,
+      "encode_p50_ms": 283.4,
+      "ocr_identical": 29,
+      "digits_changed": 0,
+      "cer_median": 0.0,
+      "cer_max": 0.0
+    }
+  }
+}

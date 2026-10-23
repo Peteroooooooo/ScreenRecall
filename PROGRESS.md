@@ -71,6 +71,16 @@ Kiro 起头（`screenrecall/webapi.py`、`tests/test_webapi.py`、前端请求�
   - 界面：库里没有任何预测时，结果卡片、原图核验页不显示类别，筛选里不显示"内容类别"。
   - 结果卡片：每行 1280 px 以上 3 张、1800 px 以上 4 张（原来 1536 px 以下只有 2 张）；卡片压缩到约 380 px 高（原 557 px），1440×900 一屏可见 6 张（3 张完整）。缩略图有命中框时裁到命中区域（优先原词命中行，约 9 行字高，最多放大 2.4 倍，长行从行首开始），并按放大后的显示宽度请求更清晰的缩略图；画面模式没有命中框时仍显示整图。终端、聊天截图的命中行在卡片上可直接读出。
 
+## 2026-10-23 Windows 实测（第 5 节：资源与性能）
+结果与机器信息见 `results/windows/2026-10-23-DESKTOP-PH4UL0H/README.md`（i7-13700HX / 16 GB / 2560×1600@150%，交流电）。
+- 查询（`data-dataset` 2,213 帧）：热查询 P95 文字 0.35–0.37 s、画面 0.19 s；后台忙碌（排错 + OCR 积压 15–18）时 0.08 / 0.05 s。达标（≤2 s）。冷启动第一次语义查询加载模型 40–160 s（报告要写）。
+- 实时录制（WPS 文字密集 PDF，`tools/scroll_window.py` 投递滚轮自动翻页，普通模式 15 分钟 125 帧，`data-live2`）：OCR 就绪 P50 4.3 s / P95 7.8 s，语义 / 全图向量 P95 约 9.5 s，达标（15 s / 30 s）；后台 CPU 中位 1.4 核、RSS 2.1 GiB，网页服务空闲 RSS 1.2 GiB。
+- 排错模式在这类页面上 OCR 跟不上（约 3.3 秒一帧，OCR 每页 3–6 s）：就绪 P95 约 200 s，待办最高 33（未到 `debug_exit_backlog = 50`）。
+- **作废的第一轮**：`bench mem` 默认每秒读 USS，Windows 上会遍历 2.4 GB 后台的工作集（约 50 ms/次），把 OCR 拖慢到就绪延迟 550 s。文件改名保留并注明不作结论；`bench mem` 新增 `--no-uss`（`tests/test_bench.py` 覆盖），与就绪延迟同时测必须用。
+- **编码对照**（`results/windows/2026-10-23-DESKTOP-PH4UL0H/codec/`）：`data-codec` 无损录 30 分钟（WPS PDF、VS Code、Edge 公开文档页、`tools/mock_chat_window.py` 模拟聊天，共 172 帧），分层抽 120 张对照：无损平均 88 KiB、q92 164 KiB、q95 188 KiB；无损逐像素一致、OCR 120/120 不变，q92 OCR 0/120 不变、86 张数字串有变化；编码 P95 无损 373 ms、q92 319 ms。**建议把 `[capture] webp_lossless` 改为 `true`（待两人确认后改 `config.default.toml`）**；样本缺大面积照片画面，这一点写进报告的局限。Edge / VS Code 不处理投递的滚轮，实测用临时配置的独立实例 + DevTools 协议滚动（`tools/cdp_scroll.py`）。
+- 顺手修复：`config.py` 读 `config.local.toml` / 数据目录 `config.toml` 改用 `utf-8-sig`——PowerShell 5.1 `Set-Content -Encoding utf8` 会写 BOM，原来直接报 `TOMLDecodeError`（本节"删除和配额只在独立测试库上测"的命令也会踩到），`tests/test_config.py` 补了一条。
+- 还没做：捕获覆盖（计划已冻结在 `results/coverage/2026-10-23/`：普通 49 分钟、排错 31 分钟两段）、A13。`data-live`、`data-live2`、`data-codec`、`data-coverage` 都是独立数据目录，不进 git。
+
 ## 2026-10-22 肖天奕：两人数据合库、60 条查询（分支 `feat/merge-datasets`）
 与 10-21 交接计划的差异（两人已知会）：肖天奕的约 1,000 帧**不是截图 + `collect import`**，而是 10-18 / 10-20 在 Windows 上用后台**实时录制**（`daemon`，采样临时设 0.5 秒，已恢复 3 秒）得到的 1,151 帧（微信 339、VS Code 270、WPS 249、Edge 293），按每张图主要可见内容人工标注。
 - **合库**：`python datasets/merge_library.py --src data --dst data-dataset --apply`。保留 frame_id，原样搬运 OCR 文字 / 行 / FTS / 文本块 / 向量（两库 schema v6、OCR 版本、分块 c1/n1、MiniLM 与 CLIP 版本及预处理全部一致，脚本先检查，不一致拒绝）；frame_id、路径、像素指纹、录制段均无重叠。合库后 2,218 帧（原图可用 2,213 = 曹 1,062 + 肖 1,151），`integrity_check` ok、外键 0 违例、每帧都有文字与画面向量、每个文本块都有向量、无待办任务、原图文件 0 缺失。合并前的库备份在 `data-dataset/_backup/screenrecall.pre-merge.sqlite3`；目标库 `meta.merge_log` 记了这次合并。
