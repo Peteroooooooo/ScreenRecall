@@ -20,3 +20,5 @@ datasets/local-*/
 # 网页前端：依赖与构建产物（npm ci && npm run build 生成）
 web/node_modules/
 web/dist/
+# 编码对照的放大截图只留本机（含屏幕内容），结果数字照常提交
+results/windows/*/codec/crops/
