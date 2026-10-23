@@ -16,3 +16,7 @@ venv/
 *.log
 # 本地标注工具的输出：labels.csv 含窗口标题（可能有真实群名人名），只在本机保留
 datasets/local-*/
+
+# 网页前端：依赖与构建产物（npm ci && npm run build 生成）
+web/node_modules/
+web/dist/

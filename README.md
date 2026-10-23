@@ -96,9 +96,14 @@ python -m screenrecall.models --download   # 联网一次，下载锁定版本�
 # 终端 1（仓库根目录）：后台。只做环境检查可加 --check（"向量模型"一项应为 OK）
 python -m screenrecall.daemon
 
-# 终端 2（仓库根目录）：页面，打开 http://127.0.0.1:8501
-streamlit run app.py
+# 第一次（或 web/ 有改动后）：构建网页前端，需要 Node.js 20+
+cd web; npm ci; npm run build; cd ..
+
+# 终端 2（仓库根目录）：网页界面，打开 http://127.0.0.1:8600
+python -m screenrecall.webapi            # 可加 --data-dir data-dataset
 ```
+
+旧的 Streamlit 页面仍保留（`streamlit run app.py`，8501 端口），功能相同；新界面是 `screenrecall/webapi.py`（JSON API，只绑定 127.0.0.1、核对 Host、改数据的请求要带 `X-ScreenRecall` 头）+ `web/`（React + Vite + Tailwind）。改前端时：先 `python -m screenrecall.webapi --dev-origin http://127.0.0.1:5173`，再在 `web/` 下 `npm run dev`，打开 5173 端口热更新。
 
 后台会在 OCR 之后补算向量。页面里选"文字"或"画面"模式搜索；首次语义或画面查询要加载模型，本机约 1–2 分钟。
 
@@ -125,8 +130,10 @@ python -m screenrecall.indexer --data-dir data-dataset
 ## 代码结构
 
 ```
-app.py                    Streamlit 页面：录制控制、文字 / 画面两种搜索、原图核验、前后浏览与并排
+app.py                    Streamlit 页面（旧界面，保留）：录制控制、文字 / 画面两种搜索、原图核验、前后浏览与并排
+web/                      网页界面前端（React + Vite + Tailwind；npm run build 生成 web/dist，由 webapi 托管）
 screenrecall/
+  webapi.py               网页界面的 JSON API 与静态托管（python -m screenrecall.webapi，端口 8600）
   daemon.py               后台入口：环境检查、单实例锁、恢复、采集/OCR/向量线程与控制循环
   capture.py              采样、等稳/排错节奏、精确复用、出现记录、缺口与中断标记、补拍
   cadence.py              记录节奏（纯逻辑）
