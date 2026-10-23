@@ -80,7 +80,7 @@
 - **盲测后的分析（不改正式结果）**：
   - 配对显著性 `results/retrieval/20261022-significance.md`（`datasets/significance.py`）：语义 vs 词法、文字 RRF vs 词法在 dev、blind、合并上都显著；文字 RRF vs 纯语义无可靠差异（合并 42 vs 41，p=1.0）；三路 vs 文字 RRF：Hit@5 p=0.09，MRR −0.14 [−0.24, −0.05]。
   - 失败归因 `results/retrieval/20261022-failures.md`（`datasets/failure_table.py`，块级相似度对比）：16 条未命中中分栏混排 8、相近内容竞争 6、短块抢分 4、跨语言 / 代码 4、疑似漏标 3、融合拖累 2；**界面文字只占排前错误块的 2/64，之前"界面噪声是主因"的判断不成立**。
-  - 补充判定（pooling）：`datasets/pooling.py` 生成 `results/pooling/pool.json`（五组前 5 名中原真值外的帧，649 对，打乱顺序），两人用 `tools/pool_app.py`（8504）独立盲判 → `pooling.py score` 出 κ 和"复判后"分数，正式分数不改。**待两人判**。
+  - 补充判定（pooling）：`datasets/pooling.py` 生成 `results/pooling/pool.json`（五组前 5 名中原真值外的帧，649 对）。kiro-ai 按判定依据做 OCR 关键词 + 看图预筛出 22 对（`results/pooling/draft/draft_pool.json`，排除理由在 excluded），**肖天奕 10-23 逐对看图复核**（`judgments-xiao.csv`）：14 对相关、8 对不相关。复判后（`results/pooling/draft/audit.md`）：blind Exp 4 22→23/30、Exp 2 21→22、Exp 5 19→20；dev Exp 4 20→21；Exp 1、3 不变。结论不变，正式分数不改。只有一人复核，未算 κ；作业群那 2 对是曹的题，宜由曹确认。
   - 报告检索部分草稿：`report/retrieval_section_draft.md`。
 
 **下一步**（复核、正式名单、划分、最终分类、盲测已完成）：① 报告里写检索结果与失败分析（dev 与 blind 都给分子 / 分母与逐条结果） ② 第 5、6 节的 Windows 测量（资源与性能、捕获覆盖、编码对照、A13）照原计划 ③ 报告、Slides、演示视频。
