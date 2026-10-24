@@ -1,0 +1,11 @@
+{"event": "start_scheduled", "start_ms": 1792815098445, "plan_seed": 0, "mode": "debug", "part": 0, "t_ms": 1792815083445}
+{"event": "phase", "trial": 0, "phase": "base", "t_ms": 1792815098505}
+{"event": "phase", "trial": 0, "phase": "event", "t_ms": 1792815104904}
+{"event": "phase", "trial": 0, "phase": "return", "t_ms": 1792815108926}
+{"event": "phase", "trial": 1, "phase": "base", "t_ms": 1792815112904}
+{"event": "phase", "trial": 1, "phase": "event", "t_ms": 1792815119906}
+{"event": "phase", "trial": 1, "phase": "return", "t_ms": 1792815123907}
+{"event": "phase", "trial": 2, "phase": "base", "t_ms": 1792815127896}
+{"event": "phase", "trial": 2, "phase": "event", "t_ms": 1792815133998}
+{"event": "phase", "trial": 2, "phase": "return", "t_ms": 1792815137994}
+{"event": "phase", "trial": 3, "phase": "base", "t_ms": 1792815141975}

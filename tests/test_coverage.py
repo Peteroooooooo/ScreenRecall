@@ -126,6 +126,19 @@ def test_unplayed_and_mode_mismatch_are_excluded(harness_factory, monkeypatch):
     assert rep["trials_mode_mismatch"] == 1 and rep["overall"]["n"] == 0 and rep["target"]["n"] == 0
 
 
+def test_event_marker_matches_what_the_event_screen_shows():
+    # single_char 的事件画面是"counter = 基线+1"，不显示令牌（2026-10-24 实测：按令牌核对是 0/27、0/38）
+    tr = {"kind": "single_char", "base_counter": 1509, "token": "23186"}
+    m = coverage.event_marker(tr)
+    assert m.search("screen a / counter = 1510 / status: running")
+    assert m.search("screena / counter=1510")              # OCR 吞掉空格
+    assert not m.search("screena / counter = 1509")        # 基线画面
+    assert not m.search("counter = 15100") and not m.search("23186")
+    for kind in ("passive_message", "aba"):
+        m = coverage.event_marker({"kind": kind, "base_counter": 1509, "token": "23186"})
+        assert m.search("new message msg 23186") and not m.search("counter = 1510")
+
+
 def test_wilson_interval():
     assert coverage.wilson(0, 0) is None
     lo, hi = coverage.wilson(60, 60)

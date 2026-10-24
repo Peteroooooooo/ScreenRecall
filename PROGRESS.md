@@ -289,7 +289,10 @@ Kiro 起头（`screenrecall/webapi.py`、`tests/test_webapi.py`、前端请求�
 - **作废的第一轮**：`bench mem` 默认每秒读 USS，Windows 上会遍历 2.4 GB 后台的工作集（约 50 ms/次），把 OCR 拖慢到就绪延迟 550 s。文件改名保留并注明不作结论；`bench mem` 新增 `--no-uss`（`tests/test_bench.py` 覆盖），与就绪延迟同时测必须用。
 - **编码对照**（`results/windows/2026-10-23-DESKTOP-PH4UL0H/codec/`）：`data-codec` 无损录 30 分钟（WPS PDF、VS Code、Edge 公开文档页、`tools/mock_chat_window.py` 模拟聊天，共 172 帧），分层抽 120 张对照：无损平均 88 KiB、q92 164 KiB、q95 188 KiB；无损逐像素一致、OCR 120/120 不变，q92 OCR 0/120 不变、86 张数字串有变化；编码 P95 无损 373 ms、q92 319 ms。**建议把 `[capture] webp_lossless` 改为 `true`（待两人确认后改 `config.default.toml`）**；样本缺大面积照片画面，这一点写进报告的局限。Edge / VS Code 不处理投递的滚轮，实测用临时配置的独立实例 + DevTools 协议滚动（`tools/cdp_scroll.py`）。
 - 顺手修复：`config.py` 读 `config.local.toml` / 数据目录 `config.toml` 改用 `utf-8-sig`——PowerShell 5.1 `Set-Content -Encoding utf8` 会写 BOM，原来直接报 `TOMLDecodeError`（本节"删除和配额只在独立测试库上测"的命令也会踩到），`tests/test_config.py` 补了一条。
-- 还没做：捕获覆盖（计划已冻结在 `results/coverage/2026-10-23/`：普通 49 分钟、排错 31 分钟两段）、A13。`data-live`、`data-live2`、`data-codec`、`data-coverage` 都是独立数据目录，不进 git。
+- **捕获覆盖**（2026-10-24 播放，`results/coverage/2026-10-23/README.md`）：冻结脚本各 120 试次，无人值守、脚本经本机网页接口控制录制。普通模式目标条件（背景静止 / 光标闪烁、事件 ≥6 秒）**24/24**（95% CI 86%–100%），全部 59/120；排错模式目标条件（≥4 秒）**36/36**（CI 90%–100%），全部 113/120，≥3 秒全覆盖、1 秒 17/24；漏掉的事件多数有"未保存"缺口标记（45/61、6/7）。点估计达到 ≥95% 目标，但样本小，置信下界未到 95%，报告照写。OCR 文字核对 59/59、112/113。
+  - 偏差：第一次排错播放因普通段留下的 OCR 积压（65 ≥ `debug_exit_backlog` 50）立刻退回普通，作废（日志改名保留）；无人值守时 CPU 降频（性能约 74%），单帧 OCR 8.5–11.5 s，排错模式会很快触发过载，所以**只在 `data-coverage/config.toml` 把阈值调到 100000**，测"未触发过载"这一目标条件；产品默认不变。
+  - 修了 `coverage analyze` 的文字核对口径：single_char 事件画面显示"counter = 基线+1"而不是令牌，原来这一类核对恒为 0（`coverage.event_marker` + 测试）。
+- 还没做：A13（断网可用、100% / 125% / 150% 缩放对齐，需要人操作系统设置）。`data-live`、`data-live2`、`data-codec`、`data-coverage` 都是独立数据目录，不进 git。
 
 ## 2026-10-22 肖天奕：两人数据合库、60 条查询（分支 `feat/merge-datasets`）
 与 10-21 交接计划的差异（两人已知会）：肖天奕的约 1,000 帧**不是截图 + `collect import`**，而是 10-18 / 10-20 在 Windows 上用后台**实时录制**（`daemon`，采样临时设 0.5 秒，已恢复 3 秒）得到的 1,151 帧（微信 339、VS Code 270、WPS 249、Edge 293），按每张图主要可见内容人工标注。
