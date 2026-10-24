@@ -27,6 +27,7 @@ import argparse
 import json
 import math
 import random
+import re
 import sqlite3
 import sys
 import time
@@ -220,6 +221,15 @@ def _rate(rows: list[dict]) -> dict:
     return {"covered": k, "n": n, "rate": round(k / n, 4) if n else None, "wilson95": wilson(k, n)}
 
 
+def event_marker(tr: dict) -> re.Pattern:
+    """只有事件画面上才有的文字，用于 OCR 核对（在小写的 text_fold 上匹配）。
+    single_char 的事件画面不显示令牌，而是把计数器加一（见 run_stimulus 的 draw），所以核对"counter = 基线+1"；
+    passive_message / aba 的事件画面显示令牌。OCR 有时吞掉等号两边的空格，正则允许。"""
+    if tr["kind"] == "single_char":
+        return re.compile(rf"counter\s*=\s*{tr['base_counter'] + 1}(?!\d)")
+    return re.compile(re.escape(tr["token"].lower()))
+
+
 @dataclass
 class _Frame:
     frame_id: str
@@ -255,14 +265,14 @@ def analyze(conn: sqlite3.Connection, plan: dict, log: dict[int, dict[str, int]]
         base_t = ph.get("base", s)
         inside = [f for f in frames if s <= f.at <= e]
         trial_frames = [f for f in frames if base_t <= f.at <= e]
-        tok = tr["token"]
+        marker = event_marker(tr)
         ocr_known = [f for f in inside if f.text]
         mismatch = [f.mode for f in trial_frames if f.mode and f.mode != plan["mode"]]
         marked = any(r == "unsaved_change" and a <= e and b >= s for a, b, r in gaps)
         rec = {**_key(tr), "status": "played", "event_ms": [s, e], "shown_ms": e - s,
                "covered": int(bool(inside)), "frames_in_event": len(inside),
                "first_save_after_ms": (inside[0].at - s) if inside else None,
-               "ocr_confirmed": (any(tok in f.text for f in ocr_known) if ocr_known else None),
+               "ocr_confirmed": (any(marker.search(f.text) for f in ocr_known) if ocr_known else None),
                "base_saved_before_event": any(base_t <= f.at < s for f in frames),
                "mode_mismatch": sorted(set(mismatch)), "unsaved_change_marked": marked}
         per.append(rec)

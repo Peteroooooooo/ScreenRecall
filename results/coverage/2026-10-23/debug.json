@@ -1,0 +1,3219 @@
+{
+ "mode": "debug",
+ "plan_seed": 0,
+ "interval_s": 1.0,
+ "frames_from_stimulus": 936,
+ "trials_planned": 120,
+ "trials_played": 120,
+ "trials_mode_mismatch": 0,
+ "overall": {
+  "covered": 113,
+  "n": 120,
+  "rate": 0.9417,
+  "wilson95": [
+   0.8845,
+   0.9715
+  ]
+ },
+ "target": {
+  "covered": 36,
+  "n": 36,
+  "rate": 1.0,
+  "wilson95": [
+   0.9036,
+   1.0
+  ],
+  "condition": "背景 ('none', 'cursor_blink')，事件 ≥4 秒，未提前退出排错模式",
+  "goal": 0.95,
+  "meets_goal": true
+ },
+ "by_factor": {
+  "kind": {
+   "aba": {
+    "covered": 37,
+    "n": 40,
+    "rate": 0.925,
+    "wilson95": [
+     0.8014,
+     0.9742
+    ]
+   },
+   "passive_message": {
+    "covered": 38,
+    "n": 40,
+    "rate": 0.95,
+    "wilson95": [
+     0.835,
+     0.9862
+    ]
+   },
+   "single_char": {
+    "covered": 38,
+    "n": 40,
+    "rate": 0.95,
+    "wilson95": [
+     0.835,
+     0.9862
+    ]
+   }
+  },
+  "duration_s": {
+   "1": {
+    "covered": 17,
+    "n": 24,
+    "rate": 0.7083,
+    "wilson95": [
+     0.5083,
+     0.8509
+    ]
+   },
+   "3": {
+    "covered": 24,
+    "n": 24,
+    "rate": 1.0,
+    "wilson95": [
+     0.862,
+     1.0
+    ]
+   },
+   "4": {
+    "covered": 24,
+    "n": 24,
+    "rate": 1.0,
+    "wilson95": [
+     0.862,
+     1.0
+    ]
+   },
+   "6": {
+    "covered": 24,
+    "n": 24,
+    "rate": 1.0,
+    "wilson95": [
+     0.862,
+     1.0
+    ]
+   },
+   "10": {
+    "covered": 24,
+    "n": 24,
+    "rate": 1.0,
+    "wilson95": [
+     0.862,
+     1.0
+    ]
+   }
+  },
+  "background": {
+   "big_animation": {
+    "covered": 28,
+    "n": 30,
+    "rate": 0.9333,
+    "wilson95": [
+     0.7868,
+     0.9815
+    ]
+   },
+   "cursor_blink": {
+    "covered": 30,
+    "n": 30,
+    "rate": 1.0,
+    "wilson95": [
+     0.8865,
+     1.0
+    ]
+   },
+   "none": {
+    "covered": 29,
+    "n": 30,
+    "rate": 0.9667,
+    "wilson95": [
+     0.8333,
+     0.9941
+    ]
+   },
+   "scroll": {
+    "covered": 26,
+    "n": 30,
+    "rate": 0.8667,
+    "wilson95": [
+     0.7032,
+     0.9469
+    ]
+   }
+  }
+ },
+ "cells": {
+  "aba|10s|big_animation": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "aba|10s|cursor_blink": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "aba|10s|none": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "aba|10s|scroll": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "aba|1s|big_animation": {
+   "covered": 1,
+   "n": 2,
+   "rate": 0.5,
+   "wilson95": [
+    0.0945,
+    0.9055
+   ]
+  },
+  "aba|1s|cursor_blink": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "aba|1s|none": {
+   "covered": 1,
+   "n": 2,
+   "rate": 0.5,
+   "wilson95": [
+    0.0945,
+    0.9055
+   ]
+  },
+  "aba|1s|scroll": {
+   "covered": 1,
+   "n": 2,
+   "rate": 0.5,
+   "wilson95": [
+    0.0945,
+    0.9055
+   ]
+  },
+  "aba|3s|big_animation": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "aba|3s|cursor_blink": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "aba|3s|none": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "aba|3s|scroll": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "aba|4s|big_animation": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "aba|4s|cursor_blink": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "aba|4s|none": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "aba|4s|scroll": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "aba|6s|big_animation": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "aba|6s|cursor_blink": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "aba|6s|none": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "aba|6s|scroll": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|10s|big_animation": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|10s|cursor_blink": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|10s|none": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|10s|scroll": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|1s|big_animation": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|1s|cursor_blink": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|1s|none": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|1s|scroll": {
+   "covered": 0,
+   "n": 2,
+   "rate": 0.0,
+   "wilson95": [
+    0.0,
+    0.6576
+   ]
+  },
+  "passive_message|3s|big_animation": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|3s|cursor_blink": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|3s|none": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|3s|scroll": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|4s|big_animation": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|4s|cursor_blink": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|4s|none": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|4s|scroll": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|6s|big_animation": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|6s|cursor_blink": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|6s|none": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "passive_message|6s|scroll": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|10s|big_animation": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|10s|cursor_blink": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|10s|none": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|10s|scroll": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|1s|big_animation": {
+   "covered": 1,
+   "n": 2,
+   "rate": 0.5,
+   "wilson95": [
+    0.0945,
+    0.9055
+   ]
+  },
+  "single_char|1s|cursor_blink": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|1s|none": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|1s|scroll": {
+   "covered": 1,
+   "n": 2,
+   "rate": 0.5,
+   "wilson95": [
+    0.0945,
+    0.9055
+   ]
+  },
+  "single_char|3s|big_animation": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|3s|cursor_blink": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|3s|none": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|3s|scroll": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|4s|big_animation": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|4s|cursor_blink": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|4s|none": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|4s|scroll": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|6s|big_animation": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|6s|cursor_blink": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|6s|none": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  },
+  "single_char|6s|scroll": {
+   "covered": 2,
+   "n": 2,
+   "rate": 1.0,
+   "wilson95": [
+    0.3424,
+    1.0
+   ]
+  }
+ },
+ "missed": {
+  "n": 7,
+  "marked_unsaved_change": 6
+ },
+ "ocr_confirmed": {
+  "checked": 113,
+  "token_found": 112
+ },
+ "base_not_saved_before_event": 1,
+ "per_trial": [
+  {
+   "trial": 0,
+   "kind": "passive_message",
+   "duration_s": 4,
+   "background": "none",
+   "jitter_s": 0.451,
+   "token": "94042",
+   "status": "played",
+   "event_ms": [
+    1792815345936,
+    1792815349955
+   ],
+   "shown_ms": 4019,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 705,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 1,
+   "kind": "aba",
+   "duration_s": 4,
+   "background": "scroll",
+   "jitter_s": 0.996,
+   "token": "56840",
+   "status": "played",
+   "event_ms": [
+    1792815360942,
+    1792815364954
+   ],
+   "shown_ms": 4012,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 1695,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 2,
+   "kind": "aba",
+   "duration_s": 4,
+   "background": "cursor_blink",
+   "jitter_s": 0.082,
+   "token": "25119",
+   "status": "played",
+   "event_ms": [
+    1792815375041,
+    1792815379035
+   ],
+   "shown_ms": 3994,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 594,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 3,
+   "kind": "single_char",
+   "duration_s": 1,
+   "background": "cursor_blink",
+   "jitter_s": 0.486,
+   "token": "53944",
+   "status": "played",
+   "event_ms": [
+    1792815389518,
+    1792815390514
+   ],
+   "shown_ms": 996,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 120,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 4,
+   "kind": "aba",
+   "duration_s": 6,
+   "background": "scroll",
+   "jitter_s": 0.845,
+   "token": "12124",
+   "status": "played",
+   "event_ms": [
+    1792815401363,
+    1792815407385
+   ],
+   "shown_ms": 6022,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 1291,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 5,
+   "kind": "passive_message",
+   "duration_s": 4,
+   "background": "cursor_blink",
+   "jitter_s": 0.731,
+   "token": "38896",
+   "status": "played",
+   "event_ms": [
+    1792815418093,
+    1792815422104
+   ],
+   "shown_ms": 4011,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 557,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 6,
+   "kind": "passive_message",
+   "duration_s": 10,
+   "background": "none",
+   "jitter_s": 0.372,
+   "token": "53586",
+   "status": "played",
+   "event_ms": [
+    1792815432451,
+    1792815442456
+   ],
+   "shown_ms": 10005,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 182,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 7,
+   "kind": "single_char",
+   "duration_s": 4,
+   "background": "scroll",
+   "jitter_s": 0.426,
+   "token": "23186",
+   "status": "played",
+   "event_ms": [
+    1792815452887,
+    1792815456895
+   ],
+   "shown_ms": 4008,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 1761,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 8,
+   "kind": "single_char",
+   "duration_s": 6,
+   "background": "scroll",
+   "jitter_s": 0.783,
+   "token": "38675",
+   "status": "played",
+   "event_ms": [
+    1792815467667,
+    1792815473683
+   ],
+   "shown_ms": 6016,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 2979,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 9,
+   "kind": "single_char",
+   "duration_s": 6,
+   "background": "none",
+   "jitter_s": 0.045,
+   "token": "93126",
+   "status": "played",
+   "event_ms": [
+    1792815483732,
+    1792815489733
+   ],
+   "shown_ms": 6001,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 901,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 10,
+   "kind": "passive_message",
+   "duration_s": 1,
+   "background": "scroll",
+   "jitter_s": 0.91,
+   "token": "88927",
+   "status": "played",
+   "event_ms": [
+    1792815500629,
+    1792815501615
+   ],
+   "shown_ms": 986,
+   "covered": 0,
+   "frames_in_event": 0,
+   "first_save_after_ms": null,
+   "ocr_confirmed": null,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 11,
+   "kind": "passive_message",
+   "duration_s": 6,
+   "background": "big_animation",
+   "jitter_s": 0.681,
+   "token": "26311",
+   "status": "played",
+   "event_ms": [
+    1792815512297,
+    1792815518303
+   ],
+   "shown_ms": 6006,
+   "covered": 1,
+   "frames_in_event": 3,
+   "first_save_after_ms": 332,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 12,
+   "kind": "single_char",
+   "duration_s": 4,
+   "background": "scroll",
+   "jitter_s": 0.635,
+   "token": "85491",
+   "status": "played",
+   "event_ms": [
+    1792815528951,
+    1792815532934
+   ],
+   "shown_ms": 3983,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 1699,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 13,
+   "kind": "passive_message",
+   "duration_s": 6,
+   "background": "cursor_blink",
+   "jitter_s": 0.12,
+   "token": "58514",
+   "status": "played",
+   "event_ms": [
+    1792815543055,
+    1792815549079
+   ],
+   "shown_ms": 6024,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 581,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 14,
+   "kind": "passive_message",
+   "duration_s": 10,
+   "background": "cursor_blink",
+   "jitter_s": 0.834,
+   "token": "14769",
+   "status": "played",
+   "event_ms": [
+    1792815559883,
+    1792815569900
+   ],
+   "shown_ms": 10017,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 769,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 15,
+   "kind": "single_char",
+   "duration_s": 4,
+   "background": "none",
+   "jitter_s": 0.606,
+   "token": "34244",
+   "status": "played",
+   "event_ms": [
+    1792815580497,
+    1792815584517
+   ],
+   "shown_ms": 4020,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 143,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 16,
+   "kind": "aba",
+   "duration_s": 1,
+   "background": "big_animation",
+   "jitter_s": 0.718,
+   "token": "37600",
+   "status": "played",
+   "event_ms": [
+    1792815595226,
+    1792815596221
+   ],
+   "shown_ms": 995,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 407,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 17,
+   "kind": "single_char",
+   "duration_s": 6,
+   "background": "big_animation",
+   "jitter_s": 0.727,
+   "token": "99043",
+   "status": "played",
+   "event_ms": [
+    1792815606960,
+    1792815612939
+   ],
+   "shown_ms": 5979,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 679,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 18,
+   "kind": "single_char",
+   "duration_s": 1,
+   "background": "cursor_blink",
+   "jitter_s": 0.023,
+   "token": "91343",
+   "status": "played",
+   "event_ms": [
+    1792815622965,
+    1792815623963
+   ],
+   "shown_ms": 998,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 666,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 19,
+   "kind": "passive_message",
+   "duration_s": 10,
+   "background": "big_animation",
+   "jitter_s": 0.102,
+   "token": "19175",
+   "status": "played",
+   "event_ms": [
+    1792815634080,
+    1792815644115
+   ],
+   "shown_ms": 10035,
+   "covered": 1,
+   "frames_in_event": 4,
+   "first_save_after_ms": 568,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 20,
+   "kind": "single_char",
+   "duration_s": 3,
+   "background": "none",
+   "jitter_s": 0.221,
+   "token": "49460",
+   "status": "played",
+   "event_ms": [
+    1792815654300,
+    1792815657284
+   ],
+   "shown_ms": 2984,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 326,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 21,
+   "kind": "aba",
+   "duration_s": 6,
+   "background": "cursor_blink",
+   "jitter_s": 0.35,
+   "token": "18000",
+   "status": "played",
+   "event_ms": [
+    1792815667658,
+    1792815673642
+   ],
+   "shown_ms": 5984,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 5984,
+   "ocr_confirmed": false,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 22,
+   "kind": "passive_message",
+   "duration_s": 1,
+   "background": "cursor_blink",
+   "jitter_s": 0.504,
+   "token": "88182",
+   "status": "played",
+   "event_ms": [
+    1792815684141,
+    1792815685168
+   ],
+   "shown_ms": 1027,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 503,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 23,
+   "kind": "aba",
+   "duration_s": 1,
+   "background": "big_animation",
+   "jitter_s": 0.101,
+   "token": "36129",
+   "status": "played",
+   "event_ms": [
+    1792815695248,
+    1792815696255
+   ],
+   "shown_ms": 1007,
+   "covered": 0,
+   "frames_in_event": 0,
+   "first_save_after_ms": null,
+   "ocr_confirmed": null,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 24,
+   "kind": "aba",
+   "duration_s": 4,
+   "background": "cursor_blink",
+   "jitter_s": 0.26,
+   "token": "71632",
+   "status": "played",
+   "event_ms": [
+    1792815706522,
+    1792815710516
+   ],
+   "shown_ms": 3994,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 122,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 25,
+   "kind": "passive_message",
+   "duration_s": 1,
+   "background": "big_animation",
+   "jitter_s": 0.838,
+   "token": "84680",
+   "status": "played",
+   "event_ms": [
+    1792815721341,
+    1792815722343
+   ],
+   "shown_ms": 1002,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 308,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 26,
+   "kind": "passive_message",
+   "duration_s": 1,
+   "background": "scroll",
+   "jitter_s": 0.169,
+   "token": "36661",
+   "status": "played",
+   "event_ms": [
+    1792815732510,
+    1792815733508
+   ],
+   "shown_ms": 998,
+   "covered": 0,
+   "frames_in_event": 0,
+   "first_save_after_ms": null,
+   "ocr_confirmed": null,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 27,
+   "kind": "aba",
+   "duration_s": 10,
+   "background": "cursor_blink",
+   "jitter_s": 0.967,
+   "token": "98631",
+   "status": "played",
+   "event_ms": [
+    1792815744499,
+    1792815754475
+   ],
+   "shown_ms": 9976,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 127,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 28,
+   "kind": "aba",
+   "duration_s": 1,
+   "background": "none",
+   "jitter_s": 0.158,
+   "token": "54867",
+   "status": "played",
+   "event_ms": [
+    1792815764649,
+    1792815765643
+   ],
+   "shown_ms": 994,
+   "covered": 0,
+   "frames_in_event": 0,
+   "first_save_after_ms": null,
+   "ocr_confirmed": null,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 29,
+   "kind": "single_char",
+   "duration_s": 10,
+   "background": "big_animation",
+   "jitter_s": 0.529,
+   "token": "88222",
+   "status": "played",
+   "event_ms": [
+    1792815776165,
+    1792815786189
+   ],
+   "shown_ms": 10024,
+   "covered": 1,
+   "frames_in_event": 4,
+   "first_save_after_ms": 1484,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 30,
+   "kind": "single_char",
+   "duration_s": 3,
+   "background": "cursor_blink",
+   "jitter_s": 0.921,
+   "token": "32913",
+   "status": "played",
+   "event_ms": [
+    1792815797091,
+    1792815800080
+   ],
+   "shown_ms": 2989,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 563,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 31,
+   "kind": "single_char",
+   "duration_s": 6,
+   "background": "none",
+   "jitter_s": 0.013,
+   "token": "63727",
+   "status": "played",
+   "event_ms": [
+    1792815810092,
+    1792815816095
+   ],
+   "shown_ms": 6003,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 552,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 32,
+   "kind": "passive_message",
+   "duration_s": 3,
+   "background": "none",
+   "jitter_s": 0.9,
+   "token": "76663",
+   "status": "played",
+   "event_ms": [
+    1792815826997,
+    1792815830027
+   ],
+   "shown_ms": 3030,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 649,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 33,
+   "kind": "passive_message",
+   "duration_s": 3,
+   "background": "cursor_blink",
+   "jitter_s": 0.918,
+   "token": "56812",
+   "status": "played",
+   "event_ms": [
+    1792815840922,
+    1792815843932
+   ],
+   "shown_ms": 3010,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 707,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 34,
+   "kind": "aba",
+   "duration_s": 6,
+   "background": "none",
+   "jitter_s": 0.389,
+   "token": "42890",
+   "status": "played",
+   "event_ms": [
+    1792815854307,
+    1792815860299
+   ],
+   "shown_ms": 5992,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 334,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 35,
+   "kind": "aba",
+   "duration_s": 3,
+   "background": "big_animation",
+   "jitter_s": 0.153,
+   "token": "11630",
+   "status": "played",
+   "event_ms": [
+    1792815870475,
+    1792815873457
+   ],
+   "shown_ms": 2982,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 2171,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 36,
+   "kind": "single_char",
+   "duration_s": 3,
+   "background": "big_animation",
+   "jitter_s": 0.458,
+   "token": "54029",
+   "status": "played",
+   "event_ms": [
+    1792815883925,
+    1792815886919
+   ],
+   "shown_ms": 2994,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 723,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 37,
+   "kind": "passive_message",
+   "duration_s": 3,
+   "background": "big_animation",
+   "jitter_s": 0.739,
+   "token": "46815",
+   "status": "played",
+   "event_ms": [
+    1792815897648,
+    1792815900650
+   ],
+   "shown_ms": 3002,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 991,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 38,
+   "kind": "single_char",
+   "duration_s": 4,
+   "background": "big_animation",
+   "jitter_s": 0.135,
+   "token": "73154",
+   "status": "played",
+   "event_ms": [
+    1792815910801,
+    1792815914813
+   ],
+   "shown_ms": 4012,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 832,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 39,
+   "kind": "aba",
+   "duration_s": 10,
+   "background": "none",
+   "jitter_s": 0.352,
+   "token": "98264",
+   "status": "played",
+   "event_ms": [
+    1792815925149,
+    1792815935135
+   ],
+   "shown_ms": 9986,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 475,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 40,
+   "kind": "passive_message",
+   "duration_s": 10,
+   "background": "none",
+   "jitter_s": 0.359,
+   "token": "93066",
+   "status": "played",
+   "event_ms": [
+    1792815945507,
+    1792815955495
+   ],
+   "shown_ms": 9988,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 129,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 41,
+   "kind": "aba",
+   "duration_s": 3,
+   "background": "cursor_blink",
+   "jitter_s": 0.854,
+   "token": "50671",
+   "status": "played",
+   "event_ms": [
+    1792815966373,
+    1792815969378
+   ],
+   "shown_ms": 3005,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 271,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 42,
+   "kind": "single_char",
+   "duration_s": 10,
+   "background": "cursor_blink",
+   "jitter_s": 0.388,
+   "token": "95305",
+   "status": "played",
+   "event_ms": [
+    1792815979755,
+    1792815989741
+   ],
+   "shown_ms": 9986,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 882,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 43,
+   "kind": "single_char",
+   "duration_s": 4,
+   "background": "cursor_blink",
+   "jitter_s": 0.081,
+   "token": "35206",
+   "status": "played",
+   "event_ms": [
+    1792815999823,
+    1792816003836
+   ],
+   "shown_ms": 4013,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 825,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 44,
+   "kind": "single_char",
+   "duration_s": 1,
+   "background": "scroll",
+   "jitter_s": 0.699,
+   "token": "41380",
+   "status": "played",
+   "event_ms": [
+    1792816014526,
+    1792816015533
+   ],
+   "shown_ms": 1007,
+   "covered": 0,
+   "frames_in_event": 0,
+   "first_save_after_ms": null,
+   "ocr_confirmed": null,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 45,
+   "kind": "aba",
+   "duration_s": 4,
+   "background": "scroll",
+   "jitter_s": 0.223,
+   "token": "59630",
+   "status": "played",
+   "event_ms": [
+    1792816025758,
+    1792816029751
+   ],
+   "shown_ms": 3993,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 878,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 46,
+   "kind": "aba",
+   "duration_s": 3,
+   "background": "scroll",
+   "jitter_s": 0.71,
+   "token": "84468",
+   "status": "played",
+   "event_ms": [
+    1792816040470,
+    1792816043451
+   ],
+   "shown_ms": 2981,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 172,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 47,
+   "kind": "single_char",
+   "duration_s": 4,
+   "background": "big_animation",
+   "jitter_s": 0.875,
+   "token": "62725",
+   "status": "played",
+   "event_ms": [
+    1792816054347,
+    1792816058323
+   ],
+   "shown_ms": 3976,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 2283,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 48,
+   "kind": "aba",
+   "duration_s": 10,
+   "background": "scroll",
+   "jitter_s": 0.872,
+   "token": "64817",
+   "status": "played",
+   "event_ms": [
+    1792816069224,
+    1792816079205
+   ],
+   "shown_ms": 9981,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 1413,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 49,
+   "kind": "aba",
+   "duration_s": 10,
+   "background": "cursor_blink",
+   "jitter_s": 0.772,
+   "token": "16131",
+   "status": "played",
+   "event_ms": [
+    1792816089978,
+    1792816099970
+   ],
+   "shown_ms": 9992,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 654,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 50,
+   "kind": "single_char",
+   "duration_s": 6,
+   "background": "big_animation",
+   "jitter_s": 0.166,
+   "token": "43977",
+   "status": "played",
+   "event_ms": [
+    1792816110141,
+    1792816116157
+   ],
+   "shown_ms": 6016,
+   "covered": 1,
+   "frames_in_event": 3,
+   "first_save_after_ms": 507,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 51,
+   "kind": "single_char",
+   "duration_s": 10,
+   "background": "cursor_blink",
+   "jitter_s": 0.702,
+   "token": "79150",
+   "status": "played",
+   "event_ms": [
+    1792816126852,
+    1792816136846
+   ],
+   "shown_ms": 9994,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 785,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 52,
+   "kind": "passive_message",
+   "duration_s": 3,
+   "background": "scroll",
+   "jitter_s": 0.885,
+   "token": "83584",
+   "status": "played",
+   "event_ms": [
+    1792816147725,
+    1792816150743
+   ],
+   "shown_ms": 3018,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 2923,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 53,
+   "kind": "aba",
+   "duration_s": 3,
+   "background": "none",
+   "jitter_s": 0.604,
+   "token": "15100",
+   "status": "played",
+   "event_ms": [
+    1792816161342,
+    1792816164344
+   ],
+   "shown_ms": 3002,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 300,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 54,
+   "kind": "aba",
+   "duration_s": 3,
+   "background": "scroll",
+   "jitter_s": 0.495,
+   "token": "71196",
+   "status": "played",
+   "event_ms": [
+    1792816174843,
+    1792816177835
+   ],
+   "shown_ms": 2992,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 1784,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 55,
+   "kind": "single_char",
+   "duration_s": 3,
+   "background": "scroll",
+   "jitter_s": 0.05,
+   "token": "64412",
+   "status": "played",
+   "event_ms": [
+    1792816187895,
+    1792816190900
+   ],
+   "shown_ms": 3005,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 756,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 56,
+   "kind": "single_char",
+   "duration_s": 3,
+   "background": "scroll",
+   "jitter_s": 0.188,
+   "token": "92980",
+   "status": "played",
+   "event_ms": [
+    1792816201063,
+    1792816204066
+   ],
+   "shown_ms": 3003,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 2575,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 57,
+   "kind": "aba",
+   "duration_s": 6,
+   "background": "big_animation",
+   "jitter_s": 0.979,
+   "token": "27107",
+   "status": "played",
+   "event_ms": [
+    1792816215059,
+    1792816221076
+   ],
+   "shown_ms": 6017,
+   "covered": 1,
+   "frames_in_event": 3,
+   "first_save_after_ms": 585,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 58,
+   "kind": "passive_message",
+   "duration_s": 4,
+   "background": "cursor_blink",
+   "jitter_s": 0.987,
+   "token": "98934",
+   "status": "played",
+   "event_ms": [
+    1792816232044,
+    1792816236041
+   ],
+   "shown_ms": 3997,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 602,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 59,
+   "kind": "aba",
+   "duration_s": 1,
+   "background": "cursor_blink",
+   "jitter_s": 0.417,
+   "token": "37987",
+   "status": "played",
+   "event_ms": [
+    1792816246461,
+    1792816247455
+   ],
+   "shown_ms": 994,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 175,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 60,
+   "kind": "single_char",
+   "duration_s": 1,
+   "background": "big_animation",
+   "jitter_s": 0.014,
+   "token": "10309",
+   "status": "played",
+   "event_ms": [
+    1792816257460,
+    1792816258478
+   ],
+   "shown_ms": 1018,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 194,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 61,
+   "kind": "aba",
+   "duration_s": 1,
+   "background": "none",
+   "jitter_s": 0.98,
+   "token": "79251",
+   "status": "played",
+   "event_ms": [
+    1792816269449,
+    1792816270463
+   ],
+   "shown_ms": 1014,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 189,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 62,
+   "kind": "aba",
+   "duration_s": 1,
+   "background": "cursor_blink",
+   "jitter_s": 0.612,
+   "token": "25584",
+   "status": "played",
+   "event_ms": [
+    1792816281064,
+    1792816282076
+   ],
+   "shown_ms": 1012,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 580,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 63,
+   "kind": "passive_message",
+   "duration_s": 1,
+   "background": "none",
+   "jitter_s": 0.608,
+   "token": "49638",
+   "status": "played",
+   "event_ms": [
+    1792816292660,
+    1792816293701
+   ],
+   "shown_ms": 1041,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 989,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 64,
+   "kind": "single_char",
+   "duration_s": 6,
+   "background": "scroll",
+   "jitter_s": 0.28,
+   "token": "23130",
+   "status": "played",
+   "event_ms": [
+    1792816303950,
+    1792816309940
+   ],
+   "shown_ms": 5990,
+   "covered": 1,
+   "frames_in_event": 3,
+   "first_save_after_ms": 689,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 65,
+   "kind": "aba",
+   "duration_s": 1,
+   "background": "scroll",
+   "jitter_s": 0.476,
+   "token": "61995",
+   "status": "played",
+   "event_ms": [
+    1792816320434,
+    1792816321427
+   ],
+   "shown_ms": 993,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 207,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 66,
+   "kind": "passive_message",
+   "duration_s": 4,
+   "background": "scroll",
+   "jitter_s": 0.628,
+   "token": "46007",
+   "status": "played",
+   "event_ms": [
+    1792816332063,
+    1792816336062
+   ],
+   "shown_ms": 3999,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 1574,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 67,
+   "kind": "single_char",
+   "duration_s": 1,
+   "background": "none",
+   "jitter_s": 0.914,
+   "token": "25175",
+   "status": "played",
+   "event_ms": [
+    1792816346963,
+    1792816347976
+   ],
+   "shown_ms": 1013,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 676,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 68,
+   "kind": "aba",
+   "duration_s": 6,
+   "background": "scroll",
+   "jitter_s": 0.861,
+   "token": "95664",
+   "status": "played",
+   "event_ms": [
+    1792816358819,
+    1792816364823
+   ],
+   "shown_ms": 6004,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 827,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 69,
+   "kind": "single_char",
+   "duration_s": 3,
+   "background": "cursor_blink",
+   "jitter_s": 0.521,
+   "token": "94533",
+   "status": "played",
+   "event_ms": [
+    1792816375355,
+    1792816378379
+   ],
+   "shown_ms": 3024,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 1287,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 70,
+   "kind": "single_char",
+   "duration_s": 1,
+   "background": "none",
+   "jitter_s": 0.347,
+   "token": "30242",
+   "status": "played",
+   "event_ms": [
+    1792816388714,
+    1792816389714
+   ],
+   "shown_ms": 1000,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 936,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 71,
+   "kind": "aba",
+   "duration_s": 3,
+   "background": "big_animation",
+   "jitter_s": 0.278,
+   "token": "15544",
+   "status": "played",
+   "event_ms": [
+    1792816399967,
+    1792816402966
+   ],
+   "shown_ms": 2999,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 1693,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 72,
+   "kind": "single_char",
+   "duration_s": 1,
+   "background": "scroll",
+   "jitter_s": 0.041,
+   "token": "44035",
+   "status": "played",
+   "event_ms": [
+    1792816413019,
+    1792816414011
+   ],
+   "shown_ms": 992,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 629,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 73,
+   "kind": "aba",
+   "duration_s": 10,
+   "background": "big_animation",
+   "jitter_s": 0.558,
+   "token": "58089",
+   "status": "played",
+   "event_ms": [
+    1792816424561,
+    1792816434584
+   ],
+   "shown_ms": 10023,
+   "covered": 1,
+   "frames_in_event": 3,
+   "first_save_after_ms": 2090,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 74,
+   "kind": "passive_message",
+   "duration_s": 6,
+   "background": "cursor_blink",
+   "jitter_s": 0.938,
+   "token": "15505",
+   "status": "played",
+   "event_ms": [
+    1792816445502,
+    1792816451509
+   ],
+   "shown_ms": 6007,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 142,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 75,
+   "kind": "passive_message",
+   "duration_s": 4,
+   "background": "none",
+   "jitter_s": 0.846,
+   "token": "89638",
+   "status": "played",
+   "event_ms": [
+    1792816462350,
+    1792816466374
+   ],
+   "shown_ms": 4024,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 302,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 76,
+   "kind": "aba",
+   "duration_s": 10,
+   "background": "scroll",
+   "jitter_s": 0.655,
+   "token": "94429",
+   "status": "played",
+   "event_ms": [
+    1792816477007,
+    1792816487016
+   ],
+   "shown_ms": 10009,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 631,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 77,
+   "kind": "passive_message",
+   "duration_s": 6,
+   "background": "scroll",
+   "jitter_s": 0.903,
+   "token": "67074",
+   "status": "played",
+   "event_ms": [
+    1792816497930,
+    1792816503915
+   ],
+   "shown_ms": 5985,
+   "covered": 1,
+   "frames_in_event": 3,
+   "first_save_after_ms": 1714,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 78,
+   "kind": "single_char",
+   "duration_s": 6,
+   "background": "cursor_blink",
+   "jitter_s": 0.372,
+   "token": "33368",
+   "status": "played",
+   "event_ms": [
+    1792816514280,
+    1792816520293
+   ],
+   "shown_ms": 6013,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 368,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 79,
+   "kind": "passive_message",
+   "duration_s": 10,
+   "background": "scroll",
+   "jitter_s": 0.208,
+   "token": "48146",
+   "status": "played",
+   "event_ms": [
+    1792816530480,
+    1792816540503
+   ],
+   "shown_ms": 10023,
+   "covered": 1,
+   "frames_in_event": 3,
+   "first_save_after_ms": 2167,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 80,
+   "kind": "passive_message",
+   "duration_s": 1,
+   "background": "none",
+   "jitter_s": 0.009,
+   "token": "45569",
+   "status": "played",
+   "event_ms": [
+    1792816550494,
+    1792816551498
+   ],
+   "shown_ms": 1004,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 156,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 81,
+   "kind": "passive_message",
+   "duration_s": 3,
+   "background": "scroll",
+   "jitter_s": 0.333,
+   "token": "58129",
+   "status": "played",
+   "event_ms": [
+    1792816561844,
+    1792816564855
+   ],
+   "shown_ms": 3011,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 1805,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 82,
+   "kind": "aba",
+   "duration_s": 6,
+   "background": "none",
+   "jitter_s": 0.718,
+   "token": "91335",
+   "status": "played",
+   "event_ms": [
+    1792816575565,
+    1792816581550
+   ],
+   "shown_ms": 5985,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 95,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 83,
+   "kind": "aba",
+   "duration_s": 3,
+   "background": "none",
+   "jitter_s": 0.036,
+   "token": "31477",
+   "status": "played",
+   "event_ms": [
+    1792816591587,
+    1792816594595
+   ],
+   "shown_ms": 3008,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 76,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 84,
+   "kind": "passive_message",
+   "duration_s": 6,
+   "background": "scroll",
+   "jitter_s": 0.149,
+   "token": "47949",
+   "status": "played",
+   "event_ms": [
+    1792816604753,
+    1792816610742
+   ],
+   "shown_ms": 5989,
+   "covered": 1,
+   "frames_in_event": 3,
+   "first_save_after_ms": 897,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 85,
+   "kind": "passive_message",
+   "duration_s": 4,
+   "background": "big_animation",
+   "jitter_s": 0.361,
+   "token": "26992",
+   "status": "played",
+   "event_ms": [
+    1792816621099,
+    1792816625096
+   ],
+   "shown_ms": 3997,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 1537,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 86,
+   "kind": "passive_message",
+   "duration_s": 1,
+   "background": "cursor_blink",
+   "jitter_s": 0.293,
+   "token": "41418",
+   "status": "played",
+   "event_ms": [
+    1792816635414,
+    1792816636394
+   ],
+   "shown_ms": 980,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 227,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 87,
+   "kind": "aba",
+   "duration_s": 1,
+   "background": "scroll",
+   "jitter_s": 0.934,
+   "token": "33538",
+   "status": "played",
+   "event_ms": [
+    1792816647337,
+    1792816648331
+   ],
+   "shown_ms": 994,
+   "covered": 0,
+   "frames_in_event": 0,
+   "first_save_after_ms": null,
+   "ocr_confirmed": null,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 88,
+   "kind": "single_char",
+   "duration_s": 3,
+   "background": "none",
+   "jitter_s": 0.857,
+   "token": "19288",
+   "status": "played",
+   "event_ms": [
+    1792816659173,
+    1792816662171
+   ],
+   "shown_ms": 2998,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 462,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 89,
+   "kind": "aba",
+   "duration_s": 10,
+   "background": "big_animation",
+   "jitter_s": 0.303,
+   "token": "53059",
+   "status": "played",
+   "event_ms": [
+    1792816672497,
+    1792816682484
+   ],
+   "shown_ms": 9987,
+   "covered": 1,
+   "frames_in_event": 4,
+   "first_save_after_ms": 144,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 90,
+   "kind": "single_char",
+   "duration_s": 10,
+   "background": "scroll",
+   "jitter_s": 0.299,
+   "token": "23028",
+   "status": "played",
+   "event_ms": [
+    1792816692776,
+    1792816702788
+   ],
+   "shown_ms": 10012,
+   "covered": 1,
+   "frames_in_event": 4,
+   "first_save_after_ms": 868,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 91,
+   "kind": "single_char",
+   "duration_s": 4,
+   "background": "cursor_blink",
+   "jitter_s": 0.561,
+   "token": "72128",
+   "status": "played",
+   "event_ms": [
+    1792816713353,
+    1792816717336
+   ],
+   "shown_ms": 3983,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 303,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 92,
+   "kind": "passive_message",
+   "duration_s": 10,
+   "background": "big_animation",
+   "jitter_s": 0.337,
+   "token": "55043",
+   "status": "played",
+   "event_ms": [
+    1792816727693,
+    1792816737704
+   ],
+   "shown_ms": 10011,
+   "covered": 1,
+   "frames_in_event": 4,
+   "first_save_after_ms": 953,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 93,
+   "kind": "aba",
+   "duration_s": 3,
+   "background": "cursor_blink",
+   "jitter_s": 0.124,
+   "token": "75239",
+   "status": "played",
+   "event_ms": [
+    1792816747806,
+    1792816750818
+   ],
+   "shown_ms": 3012,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 1849,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 94,
+   "kind": "passive_message",
+   "duration_s": 6,
+   "background": "big_animation",
+   "jitter_s": 0.427,
+   "token": "53919",
+   "status": "played",
+   "event_ms": [
+    1792816761242,
+    1792816767235
+   ],
+   "shown_ms": 5993,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 1392,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 95,
+   "kind": "single_char",
+   "duration_s": 10,
+   "background": "none",
+   "jitter_s": 0.735,
+   "token": "30403",
+   "status": "played",
+   "event_ms": [
+    1792816777958,
+    1792816787982
+   ],
+   "shown_ms": 10024,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 678,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 96,
+   "kind": "passive_message",
+   "duration_s": 10,
+   "background": "scroll",
+   "jitter_s": 0.92,
+   "token": "83988",
+   "status": "played",
+   "event_ms": [
+    1792816798882,
+    1792816808897
+   ],
+   "shown_ms": 10015,
+   "covered": 1,
+   "frames_in_event": 4,
+   "first_save_after_ms": 2763,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 97,
+   "kind": "single_char",
+   "duration_s": 3,
+   "background": "big_animation",
+   "jitter_s": 0.376,
+   "token": "93739",
+   "status": "played",
+   "event_ms": [
+    1792816819261,
+    1792816822284
+   ],
+   "shown_ms": 3023,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 374,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 98,
+   "kind": "aba",
+   "duration_s": 4,
+   "background": "none",
+   "jitter_s": 0.087,
+   "token": "21097",
+   "status": "played",
+   "event_ms": [
+    1792816853688,
+    1792816857694
+   ],
+   "shown_ms": 4006,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 899,
+   "ocr_confirmed": true,
+   "base_saved_before_event": false,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 99,
+   "kind": "aba",
+   "duration_s": 4,
+   "background": "big_animation",
+   "jitter_s": 0.198,
+   "token": "18015",
+   "status": "played",
+   "event_ms": [
+    1792816867891,
+    1792816871882
+   ],
+   "shown_ms": 3991,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 1696,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 100,
+   "kind": "single_char",
+   "duration_s": 10,
+   "background": "big_animation",
+   "jitter_s": 0.385,
+   "token": "61617",
+   "status": "played",
+   "event_ms": [
+    1792816882282,
+    1792816892268
+   ],
+   "shown_ms": 9986,
+   "covered": 1,
+   "frames_in_event": 3,
+   "first_save_after_ms": 1300,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 101,
+   "kind": "single_char",
+   "duration_s": 4,
+   "background": "none",
+   "jitter_s": 0.556,
+   "token": "68791",
+   "status": "played",
+   "event_ms": [
+    1792816902828,
+    1792816906831
+   ],
+   "shown_ms": 4003,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 753,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 102,
+   "kind": "passive_message",
+   "duration_s": 6,
+   "background": "none",
+   "jitter_s": 0.92,
+   "token": "86662",
+   "status": "played",
+   "event_ms": [
+    1792816917764,
+    1792816923745
+   ],
+   "shown_ms": 5981,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 813,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 103,
+   "kind": "single_char",
+   "duration_s": 6,
+   "background": "cursor_blink",
+   "jitter_s": 0.714,
+   "token": "65448",
+   "status": "played",
+   "event_ms": [
+    1792816934464,
+    1792816940469
+   ],
+   "shown_ms": 6005,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 112,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 104,
+   "kind": "passive_message",
+   "duration_s": 10,
+   "background": "cursor_blink",
+   "jitter_s": 0.084,
+   "token": "44198",
+   "status": "played",
+   "event_ms": [
+    1792816950558,
+    1792816960545
+   ],
+   "shown_ms": 9987,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 28,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 105,
+   "kind": "passive_message",
+   "duration_s": 1,
+   "background": "big_animation",
+   "jitter_s": 0.585,
+   "token": "66521",
+   "status": "played",
+   "event_ms": [
+    1792816971136,
+    1792816972159
+   ],
+   "shown_ms": 1023,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 451,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 106,
+   "kind": "passive_message",
+   "duration_s": 4,
+   "background": "big_animation",
+   "jitter_s": 0.192,
+   "token": "18369",
+   "status": "played",
+   "event_ms": [
+    1792816982342,
+    1792816986340
+   ],
+   "shown_ms": 3998,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 238,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 107,
+   "kind": "single_char",
+   "duration_s": 10,
+   "background": "scroll",
+   "jitter_s": 0.822,
+   "token": "13620",
+   "status": "played",
+   "event_ms": [
+    1792816997156,
+    1792817007143
+   ],
+   "shown_ms": 9987,
+   "covered": 1,
+   "frames_in_event": 4,
+   "first_save_after_ms": 416,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 108,
+   "kind": "aba",
+   "duration_s": 6,
+   "background": "cursor_blink",
+   "jitter_s": 0.903,
+   "token": "98725",
+   "status": "played",
+   "event_ms": [
+    1792817018077,
+    1792817024062
+   ],
+   "shown_ms": 5985,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 488,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 109,
+   "kind": "aba",
+   "duration_s": 4,
+   "background": "big_animation",
+   "jitter_s": 0.202,
+   "token": "62160",
+   "status": "played",
+   "event_ms": [
+    1792817034259,
+    1792817038253
+   ],
+   "shown_ms": 3994,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 1328,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 110,
+   "kind": "passive_message",
+   "duration_s": 3,
+   "background": "cursor_blink",
+   "jitter_s": 0.256,
+   "token": "15518",
+   "status": "played",
+   "event_ms": [
+    1792817048511,
+    1792817051529
+   ],
+   "shown_ms": 3018,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 58,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 111,
+   "kind": "passive_message",
+   "duration_s": 4,
+   "background": "scroll",
+   "jitter_s": 0.997,
+   "token": "38297",
+   "status": "played",
+   "event_ms": [
+    1792817062529,
+    1792817066516
+   ],
+   "shown_ms": 3987,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 1053,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 112,
+   "kind": "passive_message",
+   "duration_s": 6,
+   "background": "none",
+   "jitter_s": 0.623,
+   "token": "35948",
+   "status": "played",
+   "event_ms": [
+    1792817077136,
+    1792817083129
+   ],
+   "shown_ms": 5993,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 434,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 113,
+   "kind": "single_char",
+   "duration_s": 10,
+   "background": "none",
+   "jitter_s": 0.458,
+   "token": "81616",
+   "status": "played",
+   "event_ms": [
+    1792817093579,
+    1792817103596
+   ],
+   "shown_ms": 10017,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 1006,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 114,
+   "kind": "single_char",
+   "duration_s": 1,
+   "background": "big_animation",
+   "jitter_s": 0.827,
+   "token": "88150",
+   "status": "played",
+   "event_ms": [
+    1792817114405,
+    1792817115438
+   ],
+   "shown_ms": 1033,
+   "covered": 0,
+   "frames_in_event": 0,
+   "first_save_after_ms": null,
+   "ocr_confirmed": null,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 115,
+   "kind": "passive_message",
+   "duration_s": 3,
+   "background": "big_animation",
+   "jitter_s": 0.983,
+   "token": "83912",
+   "status": "played",
+   "event_ms": [
+    1792817126395,
+    1792817129413
+   ],
+   "shown_ms": 3018,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 2187,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  },
+  {
+   "trial": 116,
+   "kind": "aba",
+   "duration_s": 10,
+   "background": "none",
+   "jitter_s": 0.406,
+   "token": "65474",
+   "status": "played",
+   "event_ms": [
+    1792817139794,
+    1792817149804
+   ],
+   "shown_ms": 10010,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 788,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 117,
+   "kind": "aba",
+   "duration_s": 4,
+   "background": "none",
+   "jitter_s": 0.878,
+   "token": "99039",
+   "status": "played",
+   "event_ms": [
+    1792817160684,
+    1792817164682
+   ],
+   "shown_ms": 3998,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 890,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 118,
+   "kind": "passive_message",
+   "duration_s": 3,
+   "background": "none",
+   "jitter_s": 0.917,
+   "token": "75331",
+   "status": "played",
+   "event_ms": [
+    1792817175611,
+    1792817178603
+   ],
+   "shown_ms": 2992,
+   "covered": 1,
+   "frames_in_event": 1,
+   "first_save_after_ms": 960,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": false
+  },
+  {
+   "trial": 119,
+   "kind": "aba",
+   "duration_s": 6,
+   "background": "big_animation",
+   "jitter_s": 0.998,
+   "token": "97827",
+   "status": "played",
+   "event_ms": [
+    1792817189628,
+    1792817195630
+   ],
+   "shown_ms": 6002,
+   "covered": 1,
+   "frames_in_event": 2,
+   "first_save_after_ms": 1952,
+   "ocr_confirmed": true,
+   "base_saved_before_event": true,
+   "mode_mismatch": [],
+   "unsaved_change_marked": true
+  }
+ ]
+}
