@@ -242,6 +242,19 @@ def write_prediction(conn: sqlite3.Connection, clf: LinearClassifier, frame_id: 
     )
 
 
+def frames_needing_prediction(conn: sqlite3.Connection, clf: LinearClassifier, limit: int = 200) -> list[str]:
+    """有当前特征模型的全图向量、但没有本模型预测的画面（老数据、换模型后、分类器后来才配置）。"""
+    return [r[0] for r in conn.execute(
+        "SELECT f.frame_id FROM frames f "
+        "JOIN embeddings e ON e.target_kind = 'frame' AND e.target_id = f.frame_id AND e.branch = 'image' "
+        "AND e.model_id = ? AND e.preprocess_version = ? "
+        "LEFT JOIN frame_labels l ON l.frame_id = f.frame_id "
+        "WHERE f.image_status != 'deleted' AND (l.frame_id IS NULL OR l.model_version != ?) "
+        "ORDER BY f.frame_id LIMIT ?",
+        (clf.card["feature_model_id"], clf.card["feature_preprocess"], clf.version, limit),
+    )]
+
+
 def load_for(cfg) -> LinearClassifier | None:
     """按配置加载分类器；特征模型与当前全图模型不一致时不加载（不能混用不同版本的向量）。"""
     path = getattr(getattr(cfg, "classify", None), "model_dir", "")

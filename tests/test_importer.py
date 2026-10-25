@@ -49,7 +49,7 @@ def test_formats_validated_and_bad_file_does_not_block_others(h):
     frames = h.conn.execute("SELECT * FROM frames").fetchall()
     assert len(frames) == 3
     # 与实时截图同一条流水线：WebP 原子落盘 + OCR 待办
-    assert {f["image_format"] for f in frames} == {"webp-q92"}
+    assert {f["image_format"] for f in frames} == {"webp-lossless"}  # 默认无损（config.default.toml）
     assert h.conn.execute("SELECT COUNT(*) FROM index_jobs WHERE stage = 'ocr' AND status = 'pending'").fetchone()[0] == 3
     for f in frames:
         with Image.open(h.cfg.data_dir / f["image_path"]) as im:

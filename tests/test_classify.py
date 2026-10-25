@@ -251,6 +251,26 @@ def test_embed_worker_writes_prediction_with_matching_feature_model(lib, h, tmp_
     assert h.conn.execute("SELECT COUNT(*) FROM frame_labels WHERE frame_id = ?", (fid2,)).fetchone()[0] == 0
 
 
+def test_embed_worker_backfills_old_frames_when_idle(lib, h, tmp_path):
+    out, labelset, truth, _ = lib  # lib 建库时没有分类器：所有画面都没有预测
+    labels = dataset.load_labelset(labelset)
+    rep = dataset.read_labels(h.conn, out, labels)
+    split = dataset.grouped_split(rep.items, dataset.source_groups(h.conn, rep.items),
+                                  {"train": 0.5, "val": 0.25, "test": 0.25}, seed=3).manifest(labels, "x")
+    clf, _ = classify.train(h.conn, rep.items, split, labels, FakeImage.model_id)
+    assert h.conn.execute("SELECT COUNT(*) FROM frame_labels").fetchone()[0] == 0
+    w = EmbedWorker(h.cfg, threading.Event(), threading.Event(), logging.getLogger("t"),
+                    text_encoder_factory=FakeText, image_encoder_factory=FakeImage, classifier=clf)
+    assert w.run_once(h.conn) is True  # 没有待办：空闲时补写一批
+    assert {r[0] for r in h.conn.execute("SELECT frame_id FROM frame_labels WHERE model_version = ?",
+                                         (clf.version,))} == set(truth)
+    assert w.run_once(h.conn) is False  # 补完后不再重复写
+
+    clf.card["version"] = "newer"  # 换模型后旧预测按新模型重写
+    assert w.run_once(h.conn) is True
+    assert h.conn.execute("SELECT COUNT(*) FROM frame_labels WHERE model_version = 'newer'").fetchone()[0] == len(truth)
+
+
 def test_cli_refuses_training_after_labels_changed(lib, h, tmp_path):
     out, labelset, truth, _ = lib
     split = tmp_path / "split.json"
