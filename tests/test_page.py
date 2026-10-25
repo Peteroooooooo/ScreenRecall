@@ -261,3 +261,29 @@ def test_predicted_label_shown_and_filter_is_opt_in(h, monkeypatch):
     at.button(key="search_submit").click().run()
     keys = {b.key for b in at.button}
     assert f"open-{fa}" in keys and f"open-{fb}" not in keys
+
+
+def test_failed_panel_lists_and_retries(h, monkeypatch):
+    from dataclasses import replace as _replace
+
+    class Boom:
+        version = "fake"
+
+        def recognize(self, image):
+            raise RuntimeError("engine down")
+
+    h.show(A)
+    h.start()
+    h.rec.sample(h.conn)
+    cfg = _replace(h.cfg, ocr=_replace(h.cfg.ocr, max_attempts=1))
+    w = OcrWorker(cfg, Boom(), threading.Event(), threading.Event(), logging.getLogger("t"))
+    w._process(h.conn, w._claim(h.conn))
+    monkeypatch.setenv("SCREENRECALL_DATA_DIR", str(h.cfg.data_dir))
+    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=30)
+    at.run()
+    assert not at.exception
+    assert any("可重试 1" in c.value for c in at.caption)
+    at.button(key="retry-failed").click().run()
+    assert not at.exception
+    assert any("已改回待处理 1 条" in s.value for s in at.success)
+    assert h.conn.execute("SELECT status FROM index_jobs WHERE stage = 'ocr'").fetchone()[0] == "pending"

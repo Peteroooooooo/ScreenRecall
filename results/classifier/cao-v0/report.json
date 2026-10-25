@@ -1,0 +1,475 @@
+{
+  "labels": [
+    "code",
+    "chat",
+    "web",
+    "table_doc"
+  ],
+  "counts": {
+    "train": {
+      "chat": 184,
+      "code": 149,
+      "web": 159,
+      "table_doc": 125
+    },
+    "val": {
+      "chat": 61,
+      "code": 50,
+      "table_doc": 38,
+      "web": 58
+    },
+    "test": {
+      "chat": 61,
+      "code": 50,
+      "table_doc": 50,
+      "web": 48
+    }
+  },
+  "missing_features": 0,
+  "hyperparameter_search_on_val": [
+    {
+      "C": 0.01,
+      "class_weight": null,
+      "val_macro_f1": 0.4832875300583992
+    },
+    {
+      "C": 0.01,
+      "class_weight": "balanced",
+      "val_macro_f1": 0.8276251491942174
+    },
+    {
+      "C": 0.1,
+      "class_weight": null,
+      "val_macro_f1": 0.85374551171141
+    },
+    {
+      "C": 0.1,
+      "class_weight": "balanced",
+      "val_macro_f1": 0.8330434782608696
+    },
+    {
+      "C": 1.0,
+      "class_weight": null,
+      "val_macro_f1": 0.8062615904876187
+    },
+    {
+      "C": 1.0,
+      "class_weight": "balanced",
+      "val_macro_f1": 0.8104431768319439
+    },
+    {
+      "C": 10.0,
+      "class_weight": null,
+      "val_macro_f1": 0.8055829228243021
+    },
+    {
+      "C": 10.0,
+      "class_weight": "balanced",
+      "val_macro_f1": 0.8055829228243021
+    }
+  ],
+  "chosen": {
+    "C": 0.1,
+    "class_weight": null,
+    "val_macro_f1": 0.85374551171141
+  },
+  "model_version": "cde95f5180cfd857",
+  "baselines": {
+    "majority": {
+      "majority_label": "chat"
+    },
+    "app_rule": {
+      "n_apps": 4,
+      "fallback": "chat"
+    }
+  },
+  "val": {
+    "classifier": {
+      "n": 207,
+      "accuracy": 0.9516908212560387,
+      "macro_f1": 0.9437939110070258,
+      "per_class": {
+        "code": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 50
+        },
+        "chat": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 61
+        },
+        "web": {
+          "precision": 0.875,
+          "recall": 0.9655172413793104,
+          "f1": 0.9180327868852458,
+          "support": 58
+        },
+        "table_doc": {
+          "precision": 0.9375,
+          "recall": 0.7894736842105263,
+          "f1": 0.8571428571428572,
+          "support": 38
+        }
+      },
+      "labels": [
+        "code",
+        "chat",
+        "web",
+        "table_doc"
+      ],
+      "confusion_matrix": [
+        [
+          50,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          61,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          56,
+          2
+        ],
+        [
+          0,
+          0,
+          8,
+          30
+        ]
+      ],
+      "zero_division": 0
+    },
+    "majority": {
+      "n": 207,
+      "accuracy": 0.2946859903381642,
+      "macro_f1": 0.11380597014925373,
+      "per_class": {
+        "code": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 50
+        },
+        "chat": {
+          "precision": 0.2946859903381642,
+          "recall": 1.0,
+          "f1": 0.4552238805970149,
+          "support": 61
+        },
+        "web": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 58
+        },
+        "table_doc": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 38
+        }
+      },
+      "labels": [
+        "code",
+        "chat",
+        "web",
+        "table_doc"
+      ],
+      "confusion_matrix": [
+        [
+          0,
+          50,
+          0,
+          0
+        ],
+        [
+          0,
+          61,
+          0,
+          0
+        ],
+        [
+          0,
+          58,
+          0,
+          0
+        ],
+        [
+          0,
+          38,
+          0,
+          0
+        ]
+      ],
+      "zero_division": 0
+    },
+    "app_rule": {
+      "n": 207,
+      "accuracy": 0.5362318840579711,
+      "macro_f1": 0.38990825688073394,
+      "per_class": {
+        "code": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 50
+        },
+        "chat": {
+          "precision": 0.3885350318471338,
+          "recall": 1.0,
+          "f1": 0.5596330275229358,
+          "support": 61
+        },
+        "web": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 58
+        },
+        "table_doc": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 38
+        }
+      },
+      "labels": [
+        "code",
+        "chat",
+        "web",
+        "table_doc"
+      ],
+      "confusion_matrix": [
+        [
+          50,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          61,
+          0,
+          0
+        ],
+        [
+          0,
+          58,
+          0,
+          0
+        ],
+        [
+          0,
+          38,
+          0,
+          0
+        ]
+      ],
+      "zero_division": 0
+    }
+  },
+  "test": {
+    "classifier": {
+      "n": 209,
+      "accuracy": 1.0,
+      "macro_f1": 1.0,
+      "per_class": {
+        "code": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 50
+        },
+        "chat": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 61
+        },
+        "web": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 48
+        },
+        "table_doc": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 50
+        }
+      },
+      "labels": [
+        "code",
+        "chat",
+        "web",
+        "table_doc"
+      ],
+      "confusion_matrix": [
+        [
+          50,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          61,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          48,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          50
+        ]
+      ],
+      "zero_division": 0
+    },
+    "majority": {
+      "n": 209,
+      "accuracy": 0.291866028708134,
+      "macro_f1": 0.11296296296296296,
+      "per_class": {
+        "code": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 50
+        },
+        "chat": {
+          "precision": 0.291866028708134,
+          "recall": 1.0,
+          "f1": 0.45185185185185184,
+          "support": 61
+        },
+        "web": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 48
+        },
+        "table_doc": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 50
+        }
+      },
+      "labels": [
+        "code",
+        "chat",
+        "web",
+        "table_doc"
+      ],
+      "confusion_matrix": [
+        [
+          0,
+          50,
+          0,
+          0
+        ],
+        [
+          0,
+          61,
+          0,
+          0
+        ],
+        [
+          0,
+          48,
+          0,
+          0
+        ],
+        [
+          0,
+          50,
+          0,
+          0
+        ]
+      ],
+      "zero_division": 0
+    },
+    "app_rule": {
+      "n": 209,
+      "accuracy": 0.6507177033492823,
+      "macro_f1": 0.573076923076923,
+      "per_class": {
+        "code": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 50
+        },
+        "chat": {
+          "precision": 0.4552238805970149,
+          "recall": 1.0,
+          "f1": 0.6256410256410255,
+          "support": 61
+        },
+        "web": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 48
+        },
+        "table_doc": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6666666666666666,
+          "support": 50
+        }
+      },
+      "labels": [
+        "code",
+        "chat",
+        "web",
+        "table_doc"
+      ],
+      "confusion_matrix": [
+        [
+          50,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          61,
+          0,
+          0
+        ],
+        [
+          0,
+          48,
+          0,
+          0
+        ],
+        [
+          0,
+          25,
+          0,
+          25
+        ]
+      ],
+      "zero_division": 0
+    }
+  },
+  "note": "val 用于选择超参数（开发集）；test 只评一次。val 指标来自用 train 训练的候选，表中 val 行是用 train+val 重训后的最终模型，只作参考，结论以 test 为准。"
+}

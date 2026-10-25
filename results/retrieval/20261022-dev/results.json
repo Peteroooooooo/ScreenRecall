@@ -1,0 +1,3049 @@
+{
+  "split": "dev",
+  "run_kind": "formal",
+  "candidates_restricted": true,
+  "frames_in_library": 2184,
+  "experiments": {
+    "exp1_lexical": "词法（含短串回退）",
+    "exp2_semantic": "文本语义",
+    "exp3_image": "全图（画面）",
+    "exp4_rrf_text": "词法 + 语义 RRF（产品文字模式）",
+    "exp5_rrf_three": "三路 RRF（仅离线实验）"
+  },
+  "summary": {
+    "dev": {
+      "overall": {
+        "exp1_lexical": {
+          "hits": 10,
+          "n": 30,
+          "hit5": 0.3333333333333333,
+          "mrr10": 0.29444444444444445
+        },
+        "exp2_semantic": {
+          "hits": 20,
+          "n": 30,
+          "hit5": 0.6666666666666666,
+          "mrr10": 0.528611111111111
+        },
+        "exp3_image": {
+          "hits": 7,
+          "n": 30,
+          "hit5": 0.23333333333333334,
+          "mrr10": 0.19444444444444445
+        },
+        "exp4_rrf_text": {
+          "hits": 20,
+          "n": 30,
+          "hit5": 0.6666666666666666,
+          "mrr10": 0.44416666666666665
+        },
+        "exp5_rrf_three": {
+          "hits": 16,
+          "n": 30,
+          "hit5": 0.5333333333333333,
+          "mrr10": 0.34740740740740744
+        }
+      },
+      "scenario:chat": {
+        "exp1_lexical": {
+          "hits": 1,
+          "n": 8,
+          "hit5": 0.125,
+          "mrr10": 0.125
+        },
+        "exp2_semantic": {
+          "hits": 4,
+          "n": 8,
+          "hit5": 0.5,
+          "mrr10": 0.24895833333333334
+        },
+        "exp3_image": {
+          "hits": 0,
+          "n": 8,
+          "hit5": 0.0,
+          "mrr10": 0.0
+        },
+        "exp4_rrf_text": {
+          "hits": 3,
+          "n": 8,
+          "hit5": 0.375,
+          "mrr10": 0.265625
+        },
+        "exp5_rrf_three": {
+          "hits": 2,
+          "n": 8,
+          "hit5": 0.25,
+          "mrr10": 0.1388888888888889
+        }
+      },
+      "scenario:code": {
+        "exp1_lexical": {
+          "hits": 4,
+          "n": 8,
+          "hit5": 0.5,
+          "mrr10": 0.3541666666666667
+        },
+        "exp2_semantic": {
+          "hits": 3,
+          "n": 8,
+          "hit5": 0.375,
+          "mrr10": 0.19166666666666665
+        },
+        "exp3_image": {
+          "hits": 0,
+          "n": 8,
+          "hit5": 0.0,
+          "mrr10": 0.0
+        },
+        "exp4_rrf_text": {
+          "hits": 5,
+          "n": 8,
+          "hit5": 0.625,
+          "mrr10": 0.31666666666666665
+        },
+        "exp5_rrf_three": {
+          "hits": 4,
+          "n": 8,
+          "hit5": 0.5,
+          "mrr10": 0.25
+        }
+      },
+      "scenario:table_doc": {
+        "exp1_lexical": {
+          "hits": 4,
+          "n": 7,
+          "hit5": 0.5714285714285714,
+          "mrr10": 0.5714285714285714
+        },
+        "exp2_semantic": {
+          "hits": 7,
+          "n": 7,
+          "hit5": 1.0,
+          "mrr10": 0.9047619047619048
+        },
+        "exp3_image": {
+          "hits": 3,
+          "n": 7,
+          "hit5": 0.42857142857142855,
+          "mrr10": 0.33333333333333337
+        },
+        "exp4_rrf_text": {
+          "hits": 7,
+          "n": 7,
+          "hit5": 1.0,
+          "mrr10": 0.7023809523809524
+        },
+        "exp5_rrf_three": {
+          "hits": 5,
+          "n": 7,
+          "hit5": 0.7142857142857143,
+          "mrr10": 0.5444444444444444
+        }
+      },
+      "scenario:web": {
+        "exp1_lexical": {
+          "hits": 1,
+          "n": 7,
+          "hit5": 0.14285714285714285,
+          "mrr10": 0.14285714285714285
+        },
+        "exp2_semantic": {
+          "hits": 6,
+          "n": 7,
+          "hit5": 0.8571428571428571,
+          "mrr10": 0.8571428571428571
+        },
+        "exp3_image": {
+          "hits": 4,
+          "n": 7,
+          "hit5": 0.5714285714285714,
+          "mrr10": 0.5
+        },
+        "exp4_rrf_text": {
+          "hits": 5,
+          "n": 7,
+          "hit5": 0.7142857142857143,
+          "mrr10": 0.5357142857142857
+        },
+        "exp5_rrf_three": {
+          "hits": 5,
+          "n": 7,
+          "hit5": 0.7142857142857143,
+          "mrr10": 0.5
+        }
+      },
+      "language:en": {
+        "exp1_lexical": {
+          "hits": 4,
+          "n": 14,
+          "hit5": 0.2857142857142857,
+          "mrr10": 0.25
+        },
+        "exp2_semantic": {
+          "hits": 9,
+          "n": 14,
+          "hit5": 0.6428571428571429,
+          "mrr10": 0.4333333333333333
+        },
+        "exp3_image": {
+          "hits": 2,
+          "n": 14,
+          "hit5": 0.14285714285714285,
+          "mrr10": 0.10714285714285714
+        },
+        "exp4_rrf_text": {
+          "hits": 9,
+          "n": 14,
+          "hit5": 0.6428571428571429,
+          "mrr10": 0.28809523809523807
+        },
+        "exp5_rrf_three": {
+          "hits": 6,
+          "n": 14,
+          "hit5": 0.42857142857142855,
+          "mrr10": 0.1984126984126984
+        }
+      },
+      "language:zh": {
+        "exp1_lexical": {
+          "hits": 6,
+          "n": 16,
+          "hit5": 0.375,
+          "mrr10": 0.3333333333333333
+        },
+        "exp2_semantic": {
+          "hits": 11,
+          "n": 16,
+          "hit5": 0.6875,
+          "mrr10": 0.6119791666666666
+        },
+        "exp3_image": {
+          "hits": 5,
+          "n": 16,
+          "hit5": 0.3125,
+          "mrr10": 0.2708333333333333
+        },
+        "exp4_rrf_text": {
+          "hits": 11,
+          "n": 16,
+          "hit5": 0.6875,
+          "mrr10": 0.5807291666666666
+        },
+        "exp5_rrf_three": {
+          "hits": 10,
+          "n": 16,
+          "hit5": 0.625,
+          "mrr10": 0.4777777777777778
+        }
+      }
+    }
+  },
+  "per_query": [
+    {
+      "id": "cao-dev-chat-en-02",
+      "split": "dev",
+      "scenario": "chat",
+      "language": "en",
+      "mode": "text",
+      "query": "bug report about an empty decode error code",
+      "n_relevant": 18,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "77347d56914b466d912c16ebed3b460b",
+            "16223fc4f9f646a3b72c678ba7cf73a7",
+            "d055ba748847486d8f27b59de47095b8",
+            "d4b5107b1cd342c7a6b18acf805a6dbf",
+            "278c6197151e41069056fd349697888a",
+            "3b950fdfe0b048a5a826b20d7eb73f3c",
+            "5a74d552b0f1431c9e2e415ea3b28a59",
+            "8ea00d822257459d85f8dcfbfc2d7663",
+            "47daf2ff53bd4cb9a93d716fc4a5387c",
+            "398da60f60e04dadb02d60f90fe03eeb"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 5,
+          "hit5": 1,
+          "rr10": 0.2,
+          "top10": [
+            "3193a578fbd647819959e4b69032c4ed",
+            "bfc7f93760d24b46bf497080e4ba8703",
+            "6c28fea48e034c4eafa9db0c67605d8d",
+            "f3150e92a8f34ea19305b0b2de12a41d",
+            "16f991a087e944c3b105e676c75935a2",
+            "3fef097c12b94ae08e2a8ea7fb9edb38",
+            "00d0fbcd45d14dd783e6dd8c7319494d",
+            "ba4e9271697546d581889c6b3bae9635",
+            "242d6fec449445f0a3918cb706990af4",
+            "3b950fdfe0b048a5a826b20d7eb73f3c"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "9e9b56d0936f47899a959b2c86d5793b",
+            "c74bfabd5423483ba10b1ec3029b39ec",
+            "0183f908b6b844b0a9536fbfb09db6e6",
+            "5f034a7c350c462abcf2f1426ede1092",
+            "8428b78e05d441deb901efd9c018fea3",
+            "bb266934af9a4fa28ea93fc1b3fb3081",
+            "8f89313e2d8c423b8efa1f83b24cd893",
+            "4101f8640d4e4e9b93383330ba7f1e5f",
+            "1ef0d550fd994c89b615f1817138bf24",
+            "f58f077f8a154a62b82a7341c4277486"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 2,
+          "hit5": 1,
+          "rr10": 0.5,
+          "top10": [
+            "3193a578fbd647819959e4b69032c4ed",
+            "3b950fdfe0b048a5a826b20d7eb73f3c",
+            "16223fc4f9f646a3b72c678ba7cf73a7",
+            "16f991a087e944c3b105e676c75935a2",
+            "bfc7f93760d24b46bf497080e4ba8703",
+            "47daf2ff53bd4cb9a93d716fc4a5387c",
+            "278c6197151e41069056fd349697888a",
+            "5a74d552b0f1431c9e2e415ea3b28a59",
+            "d055ba748847486d8f27b59de47095b8",
+            "fa96b98769fb4a66b40b505622618cf7"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 2,
+          "hit5": 1,
+          "rr10": 0.5,
+          "top10": [
+            "3193a578fbd647819959e4b69032c4ed",
+            "3b950fdfe0b048a5a826b20d7eb73f3c",
+            "16223fc4f9f646a3b72c678ba7cf73a7",
+            "16f991a087e944c3b105e676c75935a2",
+            "bfc7f93760d24b46bf497080e4ba8703",
+            "47daf2ff53bd4cb9a93d716fc4a5387c",
+            "278c6197151e41069056fd349697888a",
+            "5a74d552b0f1431c9e2e415ea3b28a59",
+            "d055ba748847486d8f27b59de47095b8",
+            "fa96b98769fb4a66b40b505622618cf7"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-chat-en-01",
+      "split": "dev",
+      "scenario": "chat",
+      "language": "en",
+      "mode": "text",
+      "query": "message saying the job coaching service price will go up soon",
+      "n_relevant": 9,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "0b518aab4af74867930f4dddf2be773b",
+            "562f0db20ca645c2817f6536ea100983",
+            "20e7c75a63944adf972861505b564277",
+            "994e8f32ebef4c78b1c8e321dab82e40",
+            "a510ef9a5c414f699f9536ea4bccd088",
+            "ec264395683f48c0bc051ca7a6d576cc",
+            "9153d7ba22354597b63dca87fa29471b",
+            "40f3985ca858425a90c165dbc9768f52",
+            "b790abeae4f246be8398771f787e0645",
+            "7e4519c9f8094f4ea8d2a6388f7784f6"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 3,
+          "hit5": 1,
+          "rr10": 0.3333333333333333,
+          "top10": [
+            "3724323e16e44a7088b4aed366dbf12e",
+            "90c7e60a7477482e8713363b511f3cb8",
+            "f6891e1730534b2893e8225c3454d6e7",
+            "98575b70308e45ca963dac223942d476",
+            "7ad39b65e132491998e2bc17e8d9593e",
+            "8a3cf886d17348169f6a9c38406848dd",
+            "7ba3db6e6309411f9104b6849b9bf0b6",
+            "b61f2a84ba4e493cb88977a5bda4b351",
+            "460e782396d84a30b248c33526e46c50",
+            "2ba39840d0bd4f4bad7bb54d003771d1"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "b680bbd3b71e4a2c88a420c4ce28a181",
+            "62a9394070e2432d835ce0b1e8657516",
+            "fbae0882f3ee44f2af9cd0f0c81cf1fb",
+            "fafd2bb8c13d4b00929c556e9fa115b6",
+            "ba1f0fecd4ea4e4dba420e78a95547c1",
+            "f6b7c055df0440939e2224fa9386c96d",
+            "633ff8ad96584d379f143bb8c123315e",
+            "5522e549e37b45b9ada5347201427006",
+            "535490210ddf44efad89b879b9c69c05",
+            "fc6fbd455c7d4ce2afd3c797f2426fae"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 6,
+          "hit5": 0,
+          "rr10": 0.16666666666666666,
+          "top10": [
+            "0b518aab4af74867930f4dddf2be773b",
+            "3724323e16e44a7088b4aed366dbf12e",
+            "562f0db20ca645c2817f6536ea100983",
+            "90c7e60a7477482e8713363b511f3cb8",
+            "20e7c75a63944adf972861505b564277",
+            "f6891e1730534b2893e8225c3454d6e7",
+            "994e8f32ebef4c78b1c8e321dab82e40",
+            "98575b70308e45ca963dac223942d476",
+            "a510ef9a5c414f699f9536ea4bccd088",
+            "7ad39b65e132491998e2bc17e8d9593e"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "f6b7c055df0440939e2224fa9386c96d",
+            "fbae0882f3ee44f2af9cd0f0c81cf1fb",
+            "5522e549e37b45b9ada5347201427006",
+            "609d1ad2a87b4176b27531db165c7b55",
+            "fafd2bb8c13d4b00929c556e9fa115b6",
+            "ba1f0fecd4ea4e4dba420e78a95547c1",
+            "754ec6fda76249998c75073f6c2438c4",
+            "2cca8ab3e64f45c992d95194bddc7c5d",
+            "78517c8d1c424f9bbf817a35dacfc4aa",
+            "a316cb3619aa4e998fd2da9f8f093467"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-chat-en-02",
+      "split": "dev",
+      "scenario": "chat",
+      "language": "en",
+      "mode": "text",
+      "query": "list of students who recently got job offers",
+      "n_relevant": 8,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "7ced0d272ba24767870ccc05a58e79e9",
+            "04852ab48e1640b1bd5e4bbffa5ae196",
+            "1e01a1c5c3744f8db4cfed2912dce3fa",
+            "ee6eac62b475495a9088930c06a3be3c",
+            "c9e9d1789d424bd8b5f7575a4df4cd9a",
+            "074f2d5c48e345e28bb7fe5db6203554",
+            "9583b23bfc354142a1f98db4ce423d47",
+            "16d9f3d7d52c4712a2e25ff1f2ea21ce",
+            "45634c3a8a2149bb9dadc3b30ecfb665",
+            "79f5fac8eb7347c3860c1173ac3d62b5"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "7873440514124dcfbe84ceca698423a3",
+            "7ced0d272ba24767870ccc05a58e79e9",
+            "6fe5c750a4724ac7b7025abba7448ada",
+            "79f5fac8eb7347c3860c1173ac3d62b5",
+            "13c1300836314c9e9ab5aafa47292f4d",
+            "d9a43d966a2a44eda8236b3124ed33b0",
+            "8c853d044d8e4733b9b2ffbad12a5c85",
+            "65ff055979434c59a2bb8b79cbc8d0bd",
+            "ee8ca40b1c5a45158d9b3e3405c7f5d5",
+            "45634c3a8a2149bb9dadc3b30ecfb665"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "c477e113eb8b446888fbf6094be1fa4c",
+            "2a3ac084f7ae428599c43cf56a7f10d6",
+            "b5eb022274c54e97a533148301b8a455",
+            "33ac017c6b4a4637a1e892b92bc26445",
+            "98b03783643c4b9ab64137b9f6affa00",
+            "9ecfe982e27f4a989a95f53b8f797884",
+            "cc7469292b664145919231335985989a",
+            "280fd9a1f8cf4a62a84bc02434f1fe67",
+            "3cee7805f2d4441e9f1b284c0bf7e9d1",
+            "8171e466e0f8427a83374c932105152e"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "7ced0d272ba24767870ccc05a58e79e9",
+            "79f5fac8eb7347c3860c1173ac3d62b5",
+            "45634c3a8a2149bb9dadc3b30ecfb665",
+            "6fe5c750a4724ac7b7025abba7448ada",
+            "041afae5816443319a6913a607c2ce31",
+            "ba99655db05c446d903cef36b1f35d9e",
+            "18dcc97ab94d45aba3900cae1b0f496f",
+            "7873440514124dcfbe84ceca698423a3",
+            "04852ab48e1640b1bd5e4bbffa5ae196",
+            "1e01a1c5c3744f8db4cfed2912dce3fa"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "7ced0d272ba24767870ccc05a58e79e9",
+            "79f5fac8eb7347c3860c1173ac3d62b5",
+            "45634c3a8a2149bb9dadc3b30ecfb665",
+            "2a3ac084f7ae428599c43cf56a7f10d6",
+            "c477e113eb8b446888fbf6094be1fa4c",
+            "b5eb022274c54e97a533148301b8a455",
+            "33ac017c6b4a4637a1e892b92bc26445",
+            "6fe5c750a4724ac7b7025abba7448ada",
+            "cc7469292b664145919231335985989a",
+            "041afae5816443319a6913a607c2ce31"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cao-dev-chat-zh-01",
+      "split": "dev",
+      "scenario": "chat",
+      "language": "zh",
+      "mode": "text",
+      "query": "同学推荐的川菜馆聚餐地址",
+      "n_relevant": 11,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": []
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 3,
+          "hit5": 1,
+          "rr10": 0.3333333333333333,
+          "top10": [
+            "3a276247dd964e88a5ee80e31eca9ef6",
+            "d28ae58690024190ac2dc523f1bad281",
+            "fdebde21d3454888a02bd568acc6f995",
+            "ac60ea47da5240e288e520b92d22af3d",
+            "add3a93de8dd4a31a999a24981e744cd",
+            "c4f099c29497429c8e1c4148bd998697",
+            "a2765e4123fb4c7384682612b6d955a6",
+            "b64b3c7f5fee48fabecdcd47af00a4b3",
+            "660bf74d1da6427b9e70f4b2b7c42332",
+            "732c31f39404403cbbc2770f689f763e"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "77b725fcac554675ae8837b25138f4ab",
+            "98b03783643c4b9ab64137b9f6affa00",
+            "cd5086c703e14e388cae0210839f518c",
+            "280fd9a1f8cf4a62a84bc02434f1fe67",
+            "9ecfe982e27f4a989a95f53b8f797884",
+            "3cee7805f2d4441e9f1b284c0bf7e9d1",
+            "8a3cf886d17348169f6a9c38406848dd",
+            "35a61e3b168241c6aef31bd463f66a5d",
+            "ac3e0b78f1974642907d28ed1b855e4a",
+            "1742c1a6b6d444b7840c0b3e82a907ee"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 3,
+          "hit5": 1,
+          "rr10": 0.3333333333333333,
+          "top10": [
+            "3a276247dd964e88a5ee80e31eca9ef6",
+            "d28ae58690024190ac2dc523f1bad281",
+            "fdebde21d3454888a02bd568acc6f995",
+            "ac60ea47da5240e288e520b92d22af3d",
+            "add3a93de8dd4a31a999a24981e744cd",
+            "c4f099c29497429c8e1c4148bd998697",
+            "a2765e4123fb4c7384682612b6d955a6",
+            "b64b3c7f5fee48fabecdcd47af00a4b3",
+            "660bf74d1da6427b9e70f4b2b7c42332",
+            "732c31f39404403cbbc2770f689f763e"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 9,
+          "hit5": 0,
+          "rr10": 0.1111111111111111,
+          "top10": [
+            "c4f099c29497429c8e1c4148bd998697",
+            "cd5086c703e14e388cae0210839f518c",
+            "ac3e0b78f1974642907d28ed1b855e4a",
+            "47fcf1a418434aefa2ce763f2843239a",
+            "3a276247dd964e88a5ee80e31eca9ef6",
+            "77b725fcac554675ae8837b25138f4ab",
+            "98b03783643c4b9ab64137b9f6affa00",
+            "d28ae58690024190ac2dc523f1bad281",
+            "fdebde21d3454888a02bd568acc6f995",
+            "280fd9a1f8cf4a62a84bc02434f1fe67"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cao-dev-chat-zh-03",
+      "split": "dev",
+      "scenario": "chat",
+      "language": "zh",
+      "mode": "text",
+      "query": "组会改到哪个会议室了",
+      "n_relevant": 6,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": []
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 8,
+          "hit5": 0,
+          "rr10": 0.125,
+          "top10": [
+            "54e37d9ef0784ae49b14a14f3f8f7bb8",
+            "29414fbc9bd74c24b5838c25331c437e",
+            "e25fd7055fe441a186f260e56c9cb368",
+            "0a6a160f407b4c51abc017140ced2a9f",
+            "fa24f548c7f7400c88476d0e67135d2c",
+            "717ea636e7eb4544a23be19cc53f71b9",
+            "c0879830551448e2846a31009957134e",
+            "e2e6695ebdc74e8aa18febf5a405c0e1",
+            "4a741cbf4e514e538591740a3aa9fad0",
+            "7d230772603f47f98a353f8fbfd210e2"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "9ad7195dff2845b888f3d23570c57b28",
+            "415ae26380de4cc0bbfb9a76eb8ab637",
+            "8c7b84e1f2eb44bcafffae358f38daf4",
+            "09191526bbf547b7af7c34c7dc810444",
+            "f5aaaa29a8b24501a9406e811307939b",
+            "15ec13bdfaf4403fa2a139ed98228045",
+            "dd105a97f5754616a534812f259f6e20",
+            "8118c77402f94e349cf12b34bff39513",
+            "ba3b35b65fb144268b508024c6a59ffc",
+            "d328158c26504ada8de03509d7e4b5d5"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 8,
+          "hit5": 0,
+          "rr10": 0.125,
+          "top10": [
+            "54e37d9ef0784ae49b14a14f3f8f7bb8",
+            "29414fbc9bd74c24b5838c25331c437e",
+            "e25fd7055fe441a186f260e56c9cb368",
+            "0a6a160f407b4c51abc017140ced2a9f",
+            "fa24f548c7f7400c88476d0e67135d2c",
+            "717ea636e7eb4544a23be19cc53f71b9",
+            "c0879830551448e2846a31009957134e",
+            "e2e6695ebdc74e8aa18febf5a405c0e1",
+            "4a741cbf4e514e538591740a3aa9fad0",
+            "7d230772603f47f98a353f8fbfd210e2"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "54e37d9ef0784ae49b14a14f3f8f7bb8",
+            "9ad7195dff2845b888f3d23570c57b28",
+            "29414fbc9bd74c24b5838c25331c437e",
+            "415ae26380de4cc0bbfb9a76eb8ab637",
+            "e25fd7055fe441a186f260e56c9cb368",
+            "8c7b84e1f2eb44bcafffae358f38daf4",
+            "0a6a160f407b4c51abc017140ced2a9f",
+            "09191526bbf547b7af7c34c7dc810444",
+            "fa24f548c7f7400c88476d0e67135d2c",
+            "f5aaaa29a8b24501a9406e811307939b"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-chat-zh-01",
+      "split": "dev",
+      "scenario": "chat",
+      "language": "zh",
+      "mode": "text",
+      "query": "群里转发过的国家开发银行校招报考建议",
+      "n_relevant": 3,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": []
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "067eff937c4347d88ef34a801c6a4dcb",
+            "321f5e0211e7457a8551fd7ff8bfa37e",
+            "6fde324256614f41aee1861680ef7afd",
+            "9d2f7764d75f4bce9006a8242fb1effc",
+            "9d60ef71011d49f4bf6f922f6a9dd82a",
+            "a16b015d51ca4b45aba8c0ffee648963",
+            "cc4666183a784c46b65bb2271a21ca2c",
+            "d455f30e5f3d4735857ba41eb895a4d0",
+            "13c1300836314c9e9ab5aafa47292f4d",
+            "d9a43d966a2a44eda8236b3124ed33b0"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "eec2c40fcc514206ba9ed57a6f21fdd9",
+            "7c9ab571244d4afab375b226c75ac00c",
+            "24fe7247ee05441784f952837d167627",
+            "c06d8718b7dc45e693797b8bab52394c",
+            "14a4d1c583244c58bb27e1b5a8e0bd86",
+            "28bfaa0253794450af88d0fe28f29a0a",
+            "74c308349ab44a49b6ff6bd42fe64d9f",
+            "533e30781c56465d8de8571d78a3e5d0",
+            "45543744143b4ec3b4c8b194dd3bbf23",
+            "673a8928d32f44d599d75d47fe6292fd"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "067eff937c4347d88ef34a801c6a4dcb",
+            "321f5e0211e7457a8551fd7ff8bfa37e",
+            "6fde324256614f41aee1861680ef7afd",
+            "9d2f7764d75f4bce9006a8242fb1effc",
+            "9d60ef71011d49f4bf6f922f6a9dd82a",
+            "a16b015d51ca4b45aba8c0ffee648963",
+            "cc4666183a784c46b65bb2271a21ca2c",
+            "d455f30e5f3d4735857ba41eb895a4d0",
+            "13c1300836314c9e9ab5aafa47292f4d",
+            "d9a43d966a2a44eda8236b3124ed33b0"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "7c9ab571244d4afab375b226c75ac00c",
+            "14a4d1c583244c58bb27e1b5a8e0bd86",
+            "75bdfdc9272a432fa3f9528ca93f0289",
+            "067eff937c4347d88ef34a801c6a4dcb",
+            "eec2c40fcc514206ba9ed57a6f21fdd9",
+            "321f5e0211e7457a8551fd7ff8bfa37e",
+            "6fde324256614f41aee1861680ef7afd",
+            "24fe7247ee05441784f952837d167627",
+            "9d2f7764d75f4bce9006a8242fb1effc",
+            "c06d8718b7dc45e693797b8bab52394c"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-chat-zh-02",
+      "split": "dev",
+      "scenario": "chat",
+      "language": "zh",
+      "mode": "text",
+      "query": "中粮优粮生和普通校招有什么区别",
+      "n_relevant": 2,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": []
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "cbd3d29b53354c59940669c6c7b993cf",
+            "add3a93de8dd4a31a999a24981e744cd",
+            "67a02f1ab85d45bda0eacad7b47b84cd",
+            "153d6daa13614bcbb61c32dc0b9514d8",
+            "205df244c3fb4e5791477ab1c40b6e64",
+            "ce4ddf358bea45a4a5ead37b3dee020f",
+            "ac3e0b78f1974642907d28ed1b855e4a",
+            "0928d7d9e24d4f8caed5410c5f8f6f94",
+            "1112111a1eea43b49c61897b6857fa99",
+            "6263102a4e0c4c1f817a801d95534a8d"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "e2e25ed6a70f46f190c08eaa57188241",
+            "77b725fcac554675ae8837b25138f4ab",
+            "ac3e0b78f1974642907d28ed1b855e4a",
+            "cd5086c703e14e388cae0210839f518c",
+            "74934d07d1b44eeeb225c34de7da3500",
+            "5ff3a0146e844811b308f378c79ecde4",
+            "d36987f5bf534b6f893eb69b5602c380",
+            "47fcf1a418434aefa2ce763f2843239a",
+            "05962e80350e41cdaa93721cafc14892",
+            "add3a93de8dd4a31a999a24981e744cd"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "cbd3d29b53354c59940669c6c7b993cf",
+            "add3a93de8dd4a31a999a24981e744cd",
+            "67a02f1ab85d45bda0eacad7b47b84cd",
+            "153d6daa13614bcbb61c32dc0b9514d8",
+            "205df244c3fb4e5791477ab1c40b6e64",
+            "ce4ddf358bea45a4a5ead37b3dee020f",
+            "ac3e0b78f1974642907d28ed1b855e4a",
+            "0928d7d9e24d4f8caed5410c5f8f6f94",
+            "1112111a1eea43b49c61897b6857fa99",
+            "6263102a4e0c4c1f817a801d95534a8d"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "ac3e0b78f1974642907d28ed1b855e4a",
+            "add3a93de8dd4a31a999a24981e744cd",
+            "cd5086c703e14e388cae0210839f518c",
+            "6263102a4e0c4c1f817a801d95534a8d",
+            "cbd3d29b53354c59940669c6c7b993cf",
+            "e2e25ed6a70f46f190c08eaa57188241",
+            "77b725fcac554675ae8837b25138f4ab",
+            "67a02f1ab85d45bda0eacad7b47b84cd",
+            "153d6daa13614bcbb61c32dc0b9514d8",
+            "74934d07d1b44eeeb225c34de7da3500"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-chat-zh-03",
+      "split": "dev",
+      "scenario": "chat",
+      "language": "zh",
+      "mode": "text",
+      "query": "聊天里发过的杭州、千岛湖、富春、舟山酒店特价",
+      "n_relevant": 8,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": []
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "5e00a2029b794e3ea3bb9171af566615",
+            "908b92e6f5434886b5182f4ac09773d4",
+            "742a4938dbeb48f79ff4b10c1f8bd41d",
+            "e250ce69bda44b97aaa0e0b829c3c57a",
+            "fc05fa6f07c64178872ebb86c7682cee",
+            "660bf74d1da6427b9e70f4b2b7c42332",
+            "3a276247dd964e88a5ee80e31eca9ef6",
+            "a7ccce001afa4208aa2768ee1705d159",
+            "d0da4e864e7b47e792f240ac4ce1927f",
+            "deb163764ac84c8480430946cc1e2637"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "0b14c6e42325480499d88db94fa15a76",
+            "280fd9a1f8cf4a62a84bc02434f1fe67",
+            "98b03783643c4b9ab64137b9f6affa00",
+            "3cee7805f2d4441e9f1b284c0bf7e9d1",
+            "9ecfe982e27f4a989a95f53b8f797884",
+            "35a61e3b168241c6aef31bd463f66a5d",
+            "34f1424a4e8a4f05a74295a76120fc5f",
+            "31d5651864244bffa0093484a56a1a13",
+            "dd8256c51efe4a49b21f12002cbf45c8",
+            "899c6c271dff40059af086c88e3ee9e2"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "5e00a2029b794e3ea3bb9171af566615",
+            "908b92e6f5434886b5182f4ac09773d4",
+            "742a4938dbeb48f79ff4b10c1f8bd41d",
+            "e250ce69bda44b97aaa0e0b829c3c57a",
+            "fc05fa6f07c64178872ebb86c7682cee",
+            "660bf74d1da6427b9e70f4b2b7c42332",
+            "3a276247dd964e88a5ee80e31eca9ef6",
+            "a7ccce001afa4208aa2768ee1705d159",
+            "d0da4e864e7b47e792f240ac4ce1927f",
+            "deb163764ac84c8480430946cc1e2637"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 2,
+          "hit5": 1,
+          "rr10": 0.5,
+          "top10": [
+            "0b14c6e42325480499d88db94fa15a76",
+            "5e00a2029b794e3ea3bb9171af566615",
+            "280fd9a1f8cf4a62a84bc02434f1fe67",
+            "908b92e6f5434886b5182f4ac09773d4",
+            "98b03783643c4b9ab64137b9f6affa00",
+            "742a4938dbeb48f79ff4b10c1f8bd41d",
+            "3cee7805f2d4441e9f1b284c0bf7e9d1",
+            "e250ce69bda44b97aaa0e0b829c3c57a",
+            "9ecfe982e27f4a989a95f53b8f797884",
+            "fc05fa6f07c64178872ebb86c7682cee"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cao-dev-code-en-01",
+      "split": "dev",
+      "scenario": "code",
+      "language": "en",
+      "mode": "text",
+      "query": "tensor shape is invalid for input of size 1920000",
+      "n_relevant": 3,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "a06a3f81d13a4168b4e0f807e97907c6",
+            "55842684610f4af5bea1f2e7a71e0abf",
+            "6863288c76be402a9d35488632d71ec0",
+            "9ff99ea309684de4aaad0931ebbc7d7f",
+            "01b6ffd627b647b0a9f083f07d1e32d5",
+            "f2707ec50ac64aa69974ea3cf1fbdafc",
+            "b7d92377b4aa41e7a5e16f4733d07adb",
+            "dcc08cd322694f56a85c70e3ab5adc27",
+            "c9e9d1789d424bd8b5f7575a4df4cd9a",
+            "4c155d2144354f7c8fac4f4f50e3f898"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 3,
+          "hit5": 1,
+          "rr10": 0.3333333333333333,
+          "top10": [
+            "f2707ec50ac64aa69974ea3cf1fbdafc",
+            "9ff99ea309684de4aaad0931ebbc7d7f",
+            "6863288c76be402a9d35488632d71ec0",
+            "55842684610f4af5bea1f2e7a71e0abf",
+            "01b6ffd627b647b0a9f083f07d1e32d5",
+            "f405e6cadf0e44af9236dd925c65aa7c",
+            "a06a3f81d13a4168b4e0f807e97907c6",
+            "0ee4e42948ba4e50b1a859f41db8fdef",
+            "4b6645ff53964c2bb72e0518de110b93",
+            "b27de67715c84e5bbad279097f6574a4"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "7a6afb12949c426cb8a70a6160bb272c",
+            "01822cb4d5214b57a4d16f69c57d3821",
+            "64aab2f33ef94abe9e10129b38b40485",
+            "32999732ea81437eb6b16c39dde58a35",
+            "8c3058b7ec4b44068704c6f91d521ce1",
+            "39924c676ace469c88f3023193bc11c6",
+            "695517efcf424da2ae6fbede65842e16",
+            "1822d7ac53004e169005cb7e5b2e38b2",
+            "bf87a30df45747baa48f2049d5aa0e1e",
+            "76c2003c125e4e008bf6ec305518ee8a"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 2,
+          "hit5": 1,
+          "rr10": 0.5,
+          "top10": [
+            "9ff99ea309684de4aaad0931ebbc7d7f",
+            "55842684610f4af5bea1f2e7a71e0abf",
+            "6863288c76be402a9d35488632d71ec0",
+            "f2707ec50ac64aa69974ea3cf1fbdafc",
+            "a06a3f81d13a4168b4e0f807e97907c6",
+            "01b6ffd627b647b0a9f083f07d1e32d5",
+            "b7d92377b4aa41e7a5e16f4733d07adb",
+            "0ee4e42948ba4e50b1a859f41db8fdef",
+            "4b6645ff53964c2bb72e0518de110b93",
+            "b27de67715c84e5bbad279097f6574a4"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 2,
+          "hit5": 1,
+          "rr10": 0.5,
+          "top10": [
+            "9ff99ea309684de4aaad0931ebbc7d7f",
+            "55842684610f4af5bea1f2e7a71e0abf",
+            "6863288c76be402a9d35488632d71ec0",
+            "f2707ec50ac64aa69974ea3cf1fbdafc",
+            "a06a3f81d13a4168b4e0f807e97907c6",
+            "01b6ffd627b647b0a9f083f07d1e32d5",
+            "1822d7ac53004e169005cb7e5b2e38b2",
+            "b7d92377b4aa41e7a5e16f4733d07adb",
+            "0ee4e42948ba4e50b1a859f41db8fdef",
+            "4b6645ff53964c2bb72e0518de110b93"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cao-dev-code-en-03",
+      "split": "dev",
+      "scenario": "code",
+      "language": "en",
+      "mode": "text",
+      "query": "YAML config error: mapping values are not allowed here",
+      "n_relevant": 1,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "8ac3485d84fc4dfbb206f3e7bc7110cd",
+            "9b84679402ad4f76ab029ad9254b58d3",
+            "c7f96ab7cc76494cafd1a379aa1252b8",
+            "c86d6e461f744958b3322036dc0ae014",
+            "c5e0bf7e905b49a6b1cb5c9b5ad29ca9",
+            "754c4345821c46d1827dc8d1a0299b33",
+            "cc6b95fac6c44241a77c578c69a5e8b9",
+            "1a50f9ccfb1e4d6f8d61b4634ecbe4e1",
+            "3dea6fc5a7644503bd73b1f34f150893",
+            "584ca2f06dcb45c4814d251e391dd7e3"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 5,
+          "hit5": 1,
+          "rr10": 0.2,
+          "top10": [
+            "9b84679402ad4f76ab029ad9254b58d3",
+            "c7f96ab7cc76494cafd1a379aa1252b8",
+            "f3d183ead1344ae8aef7a4327758efa7",
+            "30cd6f5065224ffa86ffb01140fbf3f5",
+            "8ac3485d84fc4dfbb206f3e7bc7110cd",
+            "7948ef8bd9fd4c9dba1f6ed16cc8e9dc",
+            "09899d6fdfa941af9ad0a3bc4d4daa24",
+            "2e8bb931a09c4cd1a15f0eb654bc42ee",
+            "1a50f9ccfb1e4d6f8d61b4634ecbe4e1",
+            "cfedfcf935b74a5a8c7a5eefb4e3d41e"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "8cdb98222ada458cad774f8da2578461",
+            "3cc65e7b3d2d400e996c8afee06d5cdc",
+            "cf6bb192549440049d5aa7de99d33953",
+            "6b40eeb9b5cd4d7a869a02de2259ea0b",
+            "0a0646904f774dabb04cd5ed3a3d882a",
+            "d87b0bd1fe3b4a64957e58ad43c8f9a9",
+            "c6ec1bc935e047d6bf80d2bc845a0ca9",
+            "52a13d782dfc44d5b398cd863012b13a",
+            "714e50b810184d6abf749ae35099a664",
+            "92d09e0551e14322a077c44068af30da"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 3,
+          "hit5": 1,
+          "rr10": 0.3333333333333333,
+          "top10": [
+            "9b84679402ad4f76ab029ad9254b58d3",
+            "c7f96ab7cc76494cafd1a379aa1252b8",
+            "8ac3485d84fc4dfbb206f3e7bc7110cd",
+            "1a50f9ccfb1e4d6f8d61b4634ecbe4e1",
+            "cc6b95fac6c44241a77c578c69a5e8b9",
+            "754c4345821c46d1827dc8d1a0299b33",
+            "7948ef8bd9fd4c9dba1f6ed16cc8e9dc",
+            "09899d6fdfa941af9ad0a3bc4d4daa24",
+            "7ea8650c1e4541b3a522338ec803b992",
+            "f3d183ead1344ae8aef7a4327758efa7"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 3,
+          "hit5": 1,
+          "rr10": 0.3333333333333333,
+          "top10": [
+            "9b84679402ad4f76ab029ad9254b58d3",
+            "c7f96ab7cc76494cafd1a379aa1252b8",
+            "8ac3485d84fc4dfbb206f3e7bc7110cd",
+            "1a50f9ccfb1e4d6f8d61b4634ecbe4e1",
+            "d87b0bd1fe3b4a64957e58ad43c8f9a9",
+            "cc6b95fac6c44241a77c578c69a5e8b9",
+            "754c4345821c46d1827dc8d1a0299b33",
+            "7948ef8bd9fd4c9dba1f6ed16cc8e9dc",
+            "09899d6fdfa941af9ad0a3bc4d4daa24",
+            "7ea8650c1e4541b3a522338ec803b992"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-code-en-01",
+      "split": "dev",
+      "scenario": "code",
+      "language": "en",
+      "mode": "text",
+      "query": "where the search page defines the cached loaders for the text and image query models",
+      "n_relevant": 12,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": 2,
+          "hit5": 1,
+          "rr10": 0.5,
+          "top10": [
+            "5c54b5862bd04e8396a87fef0c927293",
+            "ec448c3bd5744806957c5b8d7073c028",
+            "8935e555b60a4cb591c9599635a1c3cf",
+            "bfb2e743d40540f0b9d01bdbde604616",
+            "389b820cbc614107bf37ae0177d5e550",
+            "63439747ef6d4868b5f22c44637b84a7",
+            "242d6fec449445f0a3918cb706990af4",
+            "002b5e7f295248a6ac3b2ab16218e836",
+            "3fef097c12b94ae08e2a8ea7fb9edb38",
+            "f3150e92a8f34ea19305b0b2de12a41d"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "8d9819b4856444aeab13ffa199f0779d",
+            "ef3e2ca984c34e80819f84f51443c617",
+            "a6fa1f6336f54df6b9d1af473832e7b4",
+            "020c5faaaef14e059c4d78042334b98c",
+            "415ae26380de4cc0bbfb9a76eb8ab637",
+            "7bf8f5f8db044dfaa219c95eff6a7bb4",
+            "7cb653da05c04bd1a7e74e9352e8f6b7",
+            "9a8abba0fc6b4ad7a3cc5aa0abf1a87f",
+            "bc73511ce89b409dbb50c23762634c76",
+            "e9dd1c7aa98e444db8cbf16f450c9774"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "2ffaa2bb987c4dee839de17d9fe18043",
+            "b9efb2017fa34736a709e57a984ef529",
+            "258b22ebf56c4db28ea13db25e36f1d2",
+            "b8cc3a3caba547e5ac3ee56b65557768",
+            "d87b0bd1fe3b4a64957e58ad43c8f9a9",
+            "6ff5f906e93e4b258345112de320fa53",
+            "b0908d6478b64f9fa9e04c24db1d8bd5",
+            "f3d183ead1344ae8aef7a4327758efa7",
+            "7ba1136698e24404bac671cf2810abe8",
+            "92f15db734474481a67427db456530be"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "ec448c3bd5744806957c5b8d7073c028",
+            "002b5e7f295248a6ac3b2ab16218e836",
+            "8935e555b60a4cb591c9599635a1c3cf",
+            "8bb89a6efdd34015acc3afa3aae3ef97",
+            "020cd83c420f462a8cf7ad278fa536ba",
+            "88ed4d0e8d3344e1a20fac44714d5585",
+            "8fa9d7c937194b19a95bbb3185473561",
+            "e3f18750778e4479993f2e6406916659",
+            "c4e8f8dbd93e423fb43f74abd3c9351d",
+            "5c54b5862bd04e8396a87fef0c927293"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 2,
+          "hit5": 1,
+          "rr10": 0.5,
+          "top10": [
+            "5c54b5862bd04e8396a87fef0c927293",
+            "ec448c3bd5744806957c5b8d7073c028",
+            "002b5e7f295248a6ac3b2ab16218e836",
+            "8935e555b60a4cb591c9599635a1c3cf",
+            "c9e9d1789d424bd8b5f7575a4df4cd9a",
+            "8bb89a6efdd34015acc3afa3aae3ef97",
+            "020cd83c420f462a8cf7ad278fa536ba",
+            "1822d7ac53004e169005cb7e5b2e38b2",
+            "88ed4d0e8d3344e1a20fac44714d5585",
+            "8fa9d7c937194b19a95bbb3185473561"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-code-en-02",
+      "split": "dev",
+      "scenario": "code",
+      "language": "en",
+      "mode": "text",
+      "query": "what the orange and blue highlight boxes mean on the result screenshot",
+      "n_relevant": 29,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "6497b78d5b574a70ab76eca1459ec6c5",
+            "bc3868e9adeb40ba8a5de83d740d3bd7",
+            "c4f68a2656d849ee90d6454d0cb5b1f8",
+            "b8cc3a3caba547e5ac3ee56b65557768",
+            "7a7ff9f35365455fa37981eb3504088f",
+            "36cd3811c59a4c2caebe78a053888ffb",
+            "77571e961f864f9db1282b5990db9e15",
+            "18dcc97ab94d45aba3900cae1b0f496f",
+            "ba99655db05c446d903cef36b1f35d9e",
+            "59249c44340647cf85ea7d81aa223ecf"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "6d0048c64ac846a48e2489c04e29f55a",
+            "ba1406cec38d419d8eea086c367053e4",
+            "c2ae916d41fe459a862fe2cad06f1cfa",
+            "e66736aa9f4442248a385e8e3fa1410a",
+            "f053887374f74f4b946838ccbe7bb56c",
+            "a67ec7e47fa540f69bb39292e0040116",
+            "ac72b384c07e470fa673ecbbe3dfa88d",
+            "126a247949b840bda3508d1b27f6471e",
+            "c4e8f8dbd93e423fb43f74abd3c9351d",
+            "04eadec982ec45099a3de53f06d0aee1"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "804e8726d5444b1ab43858a4e4cfa78c",
+            "a8b2902e1feb40129ea661da35a200f0",
+            "6536a9aad4dd4293b200c6b733d9531f",
+            "6e29cdf1d17a4b51bc710a2d99e68aef",
+            "fdc20c14b5574826816265059eb09682",
+            "90cb46d73fdd4c60b812bee40eb96c9c",
+            "7504121597284660b54db5fa5bfd0eca",
+            "953b1ba183be47d4b2d574a535206675",
+            "f6269455aea743f29164f41854ac4a1a",
+            "93c41ef183fd4c249f10ec09d19c9094"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "126a247949b840bda3508d1b27f6471e",
+            "6d0048c64ac846a48e2489c04e29f55a",
+            "6497b78d5b574a70ab76eca1459ec6c5",
+            "bc3868e9adeb40ba8a5de83d740d3bd7",
+            "ba1406cec38d419d8eea086c367053e4",
+            "c4f68a2656d849ee90d6454d0cb5b1f8",
+            "c2ae916d41fe459a862fe2cad06f1cfa",
+            "b8cc3a3caba547e5ac3ee56b65557768",
+            "e66736aa9f4442248a385e8e3fa1410a",
+            "7a7ff9f35365455fa37981eb3504088f"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "ba1406cec38d419d8eea086c367053e4",
+            "126a247949b840bda3508d1b27f6471e",
+            "804e8726d5444b1ab43858a4e4cfa78c",
+            "6d0048c64ac846a48e2489c04e29f55a",
+            "6497b78d5b574a70ab76eca1459ec6c5",
+            "bc3868e9adeb40ba8a5de83d740d3bd7",
+            "a8b2902e1feb40129ea661da35a200f0",
+            "c4f68a2656d849ee90d6454d0cb5b1f8",
+            "c2ae916d41fe459a862fe2cad06f1cfa",
+            "6536a9aad4dd4293b200c6b733d9531f"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-code-en-03",
+      "split": "dev",
+      "scenario": "code",
+      "language": "en",
+      "mode": "text",
+      "query": "how often the page rechecks whether the models have finished downloading",
+      "n_relevant": 13,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "0e0747dcb28147b499f71c38f7163f76",
+            "9ec0c26a697e4d6393f428a8a7a855c8",
+            "95d552a3cd5045c4be83933d74ec9d85",
+            "dc4453d1ac904d2c8c4f6426d58e9215",
+            "7c9ab571244d4afab375b226c75ac00c",
+            "1c3182ada69d4be589318014198c1367",
+            "eec2c40fcc514206ba9ed57a6f21fdd9",
+            "afc065249cf44800b4f0714df6eae079",
+            "b4d18a97a7df4bf7820d81307be53c86",
+            "7cec4bbcc071468eafdac64ac284459c"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "0559d194d7a9468e968bb051a1585c3e",
+            "ef3e2ca984c34e80819f84f51443c617",
+            "8135f59890c84d7ba90be49da1c72398",
+            "932160e09cd24a7882806c3755098e93",
+            "4bb51f9fb2454dc7b4d5a123e654f6d5",
+            "f1e680a781cf4899abaa37dd24f2b029",
+            "f8f780f712404d05a20bed624ae66395",
+            "936cb0f0f7f1454d8b2cf3591ca73e1b",
+            "8d9819b4856444aeab13ffa199f0779d",
+            "e0af9d065ed84943a403503765a1c179"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "7a6afb12949c426cb8a70a6160bb272c",
+            "64aab2f33ef94abe9e10129b38b40485",
+            "b9efb2017fa34736a709e57a984ef529",
+            "7ba1136698e24404bac671cf2810abe8",
+            "d87b0bd1fe3b4a64957e58ad43c8f9a9",
+            "d5aa71496e864f01a76fabab249ff4ba",
+            "258b22ebf56c4db28ea13db25e36f1d2",
+            "1822d7ac53004e169005cb7e5b2e38b2",
+            "5612b53390264a9dbde5eebb1e859886",
+            "6e676c9e74df4c56966f29e92ec434eb"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 5,
+          "hit5": 1,
+          "rr10": 0.2,
+          "top10": [
+            "0559d194d7a9468e968bb051a1585c3e",
+            "7c9ab571244d4afab375b226c75ac00c",
+            "dc4453d1ac904d2c8c4f6426d58e9215",
+            "eec2c40fcc514206ba9ed57a6f21fdd9",
+            "bfb2e743d40540f0b9d01bdbde604616",
+            "0e0747dcb28147b499f71c38f7163f76",
+            "9ec0c26a697e4d6393f428a8a7a855c8",
+            "ef3e2ca984c34e80819f84f51443c617",
+            "95d552a3cd5045c4be83933d74ec9d85",
+            "8135f59890c84d7ba90be49da1c72398"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 6,
+          "hit5": 0,
+          "rr10": 0.16666666666666666,
+          "top10": [
+            "0559d194d7a9468e968bb051a1585c3e",
+            "7c9ab571244d4afab375b226c75ac00c",
+            "dc4453d1ac904d2c8c4f6426d58e9215",
+            "b4d18a97a7df4bf7820d81307be53c86",
+            "eec2c40fcc514206ba9ed57a6f21fdd9",
+            "bfb2e743d40540f0b9d01bdbde604616",
+            "7bda61688788426d83cb6a4b45c3e447",
+            "b41f76a936cc4853af3b67e065408452",
+            "5c54b5862bd04e8396a87fef0c927293",
+            "7a6afb12949c426cb8a70a6160bb272c"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cao-dev-code-zh-01",
+      "split": "dev",
+      "scenario": "code",
+      "language": "zh",
+      "mode": "text",
+      "query": "flask 和 werkzeug 版本冲突，依赖装不上",
+      "n_relevant": 2,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": 3,
+          "hit5": 1,
+          "rr10": 0.3333333333333333,
+          "top10": [
+            "4217dc4247154da2bbdecff287fed13a",
+            "bd0f1b8268d64bf993baa45f288d667c",
+            "14ac9eea89ed4bc484a0a9cd858cab7e",
+            "6ec4ed347e5a457bb08a66568bd2bb6d",
+            "51388fa5feed4d6ab85ed9a68c617bbc",
+            "5133955ab4554f43bfa30fc7ef8defa1",
+            "a6423c8bce7d4d2f936e7fddda5424af",
+            "8915762997d4494bba86930d4def2c08",
+            "deb163764ac84c8480430946cc1e2637",
+            "a7ccce001afa4208aa2768ee1705d159"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "6ec4ed347e5a457bb08a66568bd2bb6d",
+            "14ac9eea89ed4bc484a0a9cd858cab7e",
+            "4217dc4247154da2bbdecff287fed13a",
+            "8ac3485d84fc4dfbb206f3e7bc7110cd",
+            "51388fa5feed4d6ab85ed9a68c617bbc",
+            "bd0f1b8268d64bf993baa45f288d667c",
+            "1faf5e5c6b39485bbccc34895ec7aa8a",
+            "98b82982f59a403cb8294a51d777f2e9",
+            "c7f96ab7cc76494cafd1a379aa1252b8",
+            "cfedfcf935b74a5a8c7a5eefb4e3d41e"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "4c155d2144354f7c8fac4f4f50e3f898",
+            "caae74ebb863430391e550450225ceb9",
+            "ac3b3c81fa894df196e82c7aecb8aea1",
+            "5cf1eacdeba3436d9daeafae078dc165",
+            "29fbb73c5f1a4dafa5847ab0474d5668",
+            "20575eadbe9c4537bd798a99ea056e47",
+            "dcc08cd322694f56a85c70e3ab5adc27",
+            "cd664ab80e2943eb9448b3f459b21140",
+            "7cee4ba9c4544baf82526b00fd412e26",
+            "873044ba476e4e94a0d4272cefc58249"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 2,
+          "hit5": 1,
+          "rr10": 0.5,
+          "top10": [
+            "4217dc4247154da2bbdecff287fed13a",
+            "6ec4ed347e5a457bb08a66568bd2bb6d",
+            "14ac9eea89ed4bc484a0a9cd858cab7e",
+            "bd0f1b8268d64bf993baa45f288d667c",
+            "51388fa5feed4d6ab85ed9a68c617bbc",
+            "8ac3485d84fc4dfbb206f3e7bc7110cd",
+            "5133955ab4554f43bfa30fc7ef8defa1",
+            "a6423c8bce7d4d2f936e7fddda5424af",
+            "1faf5e5c6b39485bbccc34895ec7aa8a",
+            "8915762997d4494bba86930d4def2c08"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 2,
+          "hit5": 1,
+          "rr10": 0.5,
+          "top10": [
+            "4217dc4247154da2bbdecff287fed13a",
+            "6ec4ed347e5a457bb08a66568bd2bb6d",
+            "14ac9eea89ed4bc484a0a9cd858cab7e",
+            "bd0f1b8268d64bf993baa45f288d667c",
+            "51388fa5feed4d6ab85ed9a68c617bbc",
+            "dabbb1d83dfa43c8ad283d2dde2175d4",
+            "4c155d2144354f7c8fac4f4f50e3f898",
+            "caae74ebb863430391e550450225ceb9",
+            "ac3b3c81fa894df196e82c7aecb8aea1",
+            "5cf1eacdeba3436d9daeafae078dc165"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-code-zh-01",
+      "split": "dev",
+      "scenario": "code",
+      "language": "zh",
+      "mode": "text",
+      "query": "搜索页面有没有做登录鉴权",
+      "n_relevant": 12,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": []
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "8a684dfa6fed4f82babdcb867edcb5db",
+            "415ae26380de4cc0bbfb9a76eb8ab637",
+            "1566cdadc57248b5add36e900d6bd52f",
+            "7bf8f5f8db044dfaa219c95eff6a7bb4",
+            "7cb653da05c04bd1a7e74e9352e8f6b7",
+            "9a8abba0fc6b4ad7a3cc5aa0abf1a87f",
+            "e9dd1c7aa98e444db8cbf16f450c9774",
+            "020c5faaaef14e059c4d78042334b98c",
+            "bc73511ce89b409dbb50c23762634c76",
+            "5cf1eacdeba3436d9daeafae078dc165"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "f6402f3a73cd4507a78b2f38d4891cb8",
+            "c1c466af1dab4a2ba4a2ffd89ee8d56c",
+            "f49ad8bc1d32496d9816ceac13ef8afa",
+            "0255e544fdc24fa7acf9be0520da4a45",
+            "740036f4112d40f0a3f88304eceb4f32",
+            "5173ce606d8e41c9b378a85edea1c276",
+            "6fe5c750a4724ac7b7025abba7448ada",
+            "f19d838548e5477ab4fc381a89a60107",
+            "f737388c8b184a30a012041c7a051f55",
+            "6590b66bded540769aa5f19c7adf081c"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "8a684dfa6fed4f82babdcb867edcb5db",
+            "415ae26380de4cc0bbfb9a76eb8ab637",
+            "1566cdadc57248b5add36e900d6bd52f",
+            "7bf8f5f8db044dfaa219c95eff6a7bb4",
+            "7cb653da05c04bd1a7e74e9352e8f6b7",
+            "9a8abba0fc6b4ad7a3cc5aa0abf1a87f",
+            "e9dd1c7aa98e444db8cbf16f450c9774",
+            "020c5faaaef14e059c4d78042334b98c",
+            "bc73511ce89b409dbb50c23762634c76",
+            "5cf1eacdeba3436d9daeafae078dc165"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "8a684dfa6fed4f82babdcb867edcb5db",
+            "d11924209e294d50bd83b74e8b93afcd",
+            "e2e25ed6a70f46f190c08eaa57188241",
+            "f6402f3a73cd4507a78b2f38d4891cb8",
+            "c1c466af1dab4a2ba4a2ffd89ee8d56c",
+            "415ae26380de4cc0bbfb9a76eb8ab637",
+            "f49ad8bc1d32496d9816ceac13ef8afa",
+            "1566cdadc57248b5add36e900d6bd52f",
+            "7bf8f5f8db044dfaa219c95eff6a7bb4",
+            "0255e544fdc24fa7acf9be0520da4a45"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-code-zh-02",
+      "split": "dev",
+      "scenario": "code",
+      "language": "zh",
+      "mode": "text",
+      "query": "删除记录之前页面会不会提示要删掉什么、保留什么",
+      "n_relevant": 15,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": []
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "09e733a25a164c488551fb4f5519195d",
+            "3d2dc48eeed34d92893a66efd64e2fcc",
+            "fbc8cabedd79490689f1a1eebc7dff4f",
+            "8d9819b4856444aeab13ffa199f0779d",
+            "ef3e2ca984c34e80819f84f51443c617",
+            "748949afa9fa4744a4b935fa27222f8c",
+            "46ff200160a44129b2fca53f892650c8",
+            "7065adab1919492e9771de3401b859ef",
+            "0559d194d7a9468e968bb051a1585c3e",
+            "1c0f62622e834db58a55f93be5b07c9d"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "b745ef9b3b9945e88233e6b1aae0b548",
+            "5bc38b16f7e84cc989bcacbb00a781a5",
+            "f337aaf8846944168e60061168aecef7",
+            "3edabb165d8f4718b196305bed09b1b1",
+            "ca604058e12e4fccb8e616faab51410b",
+            "a6193df470c34cd3b34ad8b76fa3d4b2",
+            "fd689d5088644d468b848602aa6a0808",
+            "f6402f3a73cd4507a78b2f38d4891cb8",
+            "6d6b2f53162c49cc97a0c0b7be92af9c",
+            "740036f4112d40f0a3f88304eceb4f32"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "09e733a25a164c488551fb4f5519195d",
+            "3d2dc48eeed34d92893a66efd64e2fcc",
+            "fbc8cabedd79490689f1a1eebc7dff4f",
+            "8d9819b4856444aeab13ffa199f0779d",
+            "ef3e2ca984c34e80819f84f51443c617",
+            "748949afa9fa4744a4b935fa27222f8c",
+            "46ff200160a44129b2fca53f892650c8",
+            "7065adab1919492e9771de3401b859ef",
+            "0559d194d7a9468e968bb051a1585c3e",
+            "1c0f62622e834db58a55f93be5b07c9d"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "09e733a25a164c488551fb4f5519195d",
+            "b745ef9b3b9945e88233e6b1aae0b548",
+            "3d2dc48eeed34d92893a66efd64e2fcc",
+            "5bc38b16f7e84cc989bcacbb00a781a5",
+            "fbc8cabedd79490689f1a1eebc7dff4f",
+            "f337aaf8846944168e60061168aecef7",
+            "8d9819b4856444aeab13ffa199f0779d",
+            "3edabb165d8f4718b196305bed09b1b1",
+            "ca604058e12e4fccb8e616faab51410b",
+            "ef3e2ca984c34e80819f84f51443c617"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-table_doc-en-01",
+      "split": "dev",
+      "scenario": "table_doc",
+      "language": "en",
+      "mode": "text",
+      "query": "shortest path algorithms and their time complexity",
+      "n_relevant": 15,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "74c308349ab44a49b6ff6bd42fe64d9f",
+            "673a8928d32f44d599d75d47fe6292fd",
+            "d906e6f7a7ea41e2aae38b90ed22be82",
+            "946418438d3b475ea62634c1736735f1",
+            "1d009a3f97cd4369a7041b98c0714163",
+            "9fbd3198e96d478c9f38afc82d05aefd",
+            "a195ec7edd344ed8a6d385d4b71d762b",
+            "1fe27099e2fa42a6b156ead6f915bfa1",
+            "3fc04993406e40139f5c554b80e96689",
+            "2c82dbd5ad9b4fdeb3f791b586209a20"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "f405e6cadf0e44af9236dd925c65aa7c",
+            "8b074d491fad4ca1bbf499d896cc7fd5",
+            "d4753b41fcd24c17911604fd3b2d03b0",
+            "1eaea7b854b845c5ad219787761bdfb0",
+            "43823fe49dc14efcb6da1e8671f5da83",
+            "d91dd1d0813d465191636fdd133c9aaa",
+            "79b3588a8abb4c9eb049ab60538a9bdc",
+            "2705b6399bcd4045bdd64bcaf0e8cae9",
+            "ff202a7408d046aeb92c5629d15a2e11",
+            "9036c34035f34501ab7418a0d6778f23"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "f053887374f74f4b946838ccbe7bb56c",
+            "62973c090e10476c89277f74ffa16101",
+            "55443abed9a74bf2ad2812f2a361135b",
+            "31c751defeac4655b14955805a95b826",
+            "f7bb6ef85101403799e02b0905e850db",
+            "714e50b810184d6abf749ae35099a664",
+            "57fa1dc9f19f4509bba39f6a09773372",
+            "33960afd935d4a44af21f1bdbee4c029",
+            "92d09e0551e14322a077c44068af30da",
+            "6d0048c64ac846a48e2489c04e29f55a"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 4,
+          "hit5": 1,
+          "rr10": 0.25,
+          "top10": [
+            "51448fc0c4c34463baeb68693dfc42fe",
+            "39b367b30f7a403fa8175f9aaa022cc6",
+            "4fcfdec5be73492c8aa35c597a8fbd47",
+            "f405e6cadf0e44af9236dd925c65aa7c",
+            "74c308349ab44a49b6ff6bd42fe64d9f",
+            "8b074d491fad4ca1bbf499d896cc7fd5",
+            "673a8928d32f44d599d75d47fe6292fd",
+            "d4753b41fcd24c17911604fd3b2d03b0",
+            "d906e6f7a7ea41e2aae38b90ed22be82",
+            "1eaea7b854b845c5ad219787761bdfb0"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 6,
+          "hit5": 0,
+          "rr10": 0.16666666666666666,
+          "top10": [
+            "8003d197fbfb4136b851fa0e37027d9f",
+            "51448fc0c4c34463baeb68693dfc42fe",
+            "39b367b30f7a403fa8175f9aaa022cc6",
+            "4fcfdec5be73492c8aa35c597a8fbd47",
+            "f053887374f74f4b946838ccbe7bb56c",
+            "f405e6cadf0e44af9236dd925c65aa7c",
+            "74c308349ab44a49b6ff6bd42fe64d9f",
+            "62973c090e10476c89277f74ffa16101",
+            "8b074d491fad4ca1bbf499d896cc7fd5",
+            "673a8928d32f44d599d75d47fe6292fd"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-table_doc-en-02",
+      "split": "dev",
+      "scenario": "table_doc",
+      "language": "en",
+      "mode": "text",
+      "query": "backtracking as brute-force enumeration over a state space with exponential time",
+      "n_relevant": 13,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "5c54b5862bd04e8396a87fef0c927293",
+            "11f554c670cb47d8993b042c36b2e7af",
+            "3698dbd05c024856901b5129a865b873",
+            "2d0c69ce54ab4c3f8a3a5c92ad195ae7",
+            "26b099da9bf04f46a7798050135ce200",
+            "2da18e477aa54a8b9bc85b606127790c",
+            "c02284a0997545719338286b4d89c994",
+            "0ebf81f8a8e143308e487587affbcce5",
+            "e61554ef75c24a9bb7c4cd9088402a05",
+            "0c10da84e7fc4d65afdb5a6a4bb2e011"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "4daec63a63a84845aee5151778a98a16",
+            "d092ec4eefe9489c882f0fb41b7746cf",
+            "5cd0e12b2584418e9ebdf14cbecfdd95",
+            "370cbfa1c0984ad087ad385f6142dad5",
+            "3d08091379644ae4a727361dc3d4acde",
+            "347646dedc7f4542873428eeb92ccceb",
+            "39b367b30f7a403fa8175f9aaa022cc6",
+            "51448fc0c4c34463baeb68693dfc42fe",
+            "6595ca4626924de7b2fa43763adbabe2",
+            "1c60ece7a28b42d29bcb8ac9d38b3e90"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "1822d7ac53004e169005cb7e5b2e38b2",
+            "1c9a0f7a6c9047c1a647136650622ddd",
+            "cedc74d1203b40f893cbf6840337e9ac",
+            "8003d197fbfb4136b851fa0e37027d9f",
+            "7878cd64b86047c49ef8f403be41ec18",
+            "32999732ea81437eb6b16c39dde58a35",
+            "9969466df50c48dbab9e703bee426f9c",
+            "7a6afb12949c426cb8a70a6160bb272c",
+            "b9efb2017fa34736a709e57a984ef529",
+            "2aab6761ceab4e949af29c689fe8503b"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 3,
+          "hit5": 1,
+          "rr10": 0.3333333333333333,
+          "top10": [
+            "37c658f953ee40d7ac4c46954dffa4e8",
+            "5c54b5862bd04e8396a87fef0c927293",
+            "4daec63a63a84845aee5151778a98a16",
+            "d092ec4eefe9489c882f0fb41b7746cf",
+            "11f554c670cb47d8993b042c36b2e7af",
+            "5cd0e12b2584418e9ebdf14cbecfdd95",
+            "3698dbd05c024856901b5129a865b873",
+            "370cbfa1c0984ad087ad385f6142dad5",
+            "2d0c69ce54ab4c3f8a3a5c92ad195ae7",
+            "3d08091379644ae4a727361dc3d4acde"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 9,
+          "hit5": 0,
+          "rr10": 0.1111111111111111,
+          "top10": [
+            "695517efcf424da2ae6fbede65842e16",
+            "37c658f953ee40d7ac4c46954dffa4e8",
+            "33960afd935d4a44af21f1bdbee4c029",
+            "c766f0fdc122488eaffb47b4ef05b420",
+            "76c2003c125e4e008bf6ec305518ee8a",
+            "55443abed9a74bf2ad2812f2a361135b",
+            "1822d7ac53004e169005cb7e5b2e38b2",
+            "5c54b5862bd04e8396a87fef0c927293",
+            "4daec63a63a84845aee5151778a98a16",
+            "d092ec4eefe9489c882f0fb41b7746cf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cao-dev-table_doc-zh-01",
+      "split": "dev",
+      "scenario": "table_doc",
+      "language": "zh",
+      "mode": "text",
+      "query": "Northwind Books 书店的订单确认单",
+      "n_relevant": 4,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "d55a40fbdf5440aab3dd71de4233df26",
+            "7d1a894c97e24c40a6a28f816c36a2ed",
+            "dd89486d948c4e859cb9e5bf9b95c9e9",
+            "3fd27cbfe9444c95b8c4251e078a7361",
+            "d5f379d6af1a4f6c88656d02ffcaa7dc",
+            "67ce5db0f6bd42518bfaf4b00285994a",
+            "6263102a4e0c4c1f817a801d95534a8d",
+            "26e8054f9d9f4791bc8d843fe357ea03",
+            "eec2c40fcc514206ba9ed57a6f21fdd9",
+            "7c9ab571244d4afab375b226c75ac00c"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "3fd27cbfe9444c95b8c4251e078a7361",
+            "7d1a894c97e24c40a6a28f816c36a2ed",
+            "d55a40fbdf5440aab3dd71de4233df26",
+            "dd89486d948c4e859cb9e5bf9b95c9e9",
+            "6dd9dd3414284254849286879cdd1e14",
+            "5c00f33bcd8a47e0b8e77298d762a1bc",
+            "3c4a8ff9eaa94a5c8ad673775a94ddcf",
+            "64ac78bc398f48bd98e7d5f719ef9c4e",
+            "afc065249cf44800b4f0714df6eae079",
+            "e046e045069f4b45a86d1a1014ab9cc5"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "7d1a894c97e24c40a6a28f816c36a2ed",
+            "d55a40fbdf5440aab3dd71de4233df26",
+            "dd89486d948c4e859cb9e5bf9b95c9e9",
+            "3fd27cbfe9444c95b8c4251e078a7361",
+            "f737388c8b184a30a012041c7a051f55",
+            "2ac32577ada8435f989c688fae4f984f",
+            "b9efb2017fa34736a709e57a984ef529",
+            "61c552b9d7514c77b824707fa1d02f5f",
+            "4b11e539d7c846ac803d3ebd8efe7320",
+            "53118b5181d14ec5942893a9a12a739f"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "d55a40fbdf5440aab3dd71de4233df26",
+            "7d1a894c97e24c40a6a28f816c36a2ed",
+            "3fd27cbfe9444c95b8c4251e078a7361",
+            "dd89486d948c4e859cb9e5bf9b95c9e9",
+            "67ce5db0f6bd42518bfaf4b00285994a",
+            "eec2c40fcc514206ba9ed57a6f21fdd9",
+            "afc065249cf44800b4f0714df6eae079",
+            "3c4a8ff9eaa94a5c8ad673775a94ddcf",
+            "dc4453d1ac904d2c8c4f6426d58e9215",
+            "2e8bb931a09c4cd1a15f0eb654bc42ee"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "7d1a894c97e24c40a6a28f816c36a2ed",
+            "d55a40fbdf5440aab3dd71de4233df26",
+            "3fd27cbfe9444c95b8c4251e078a7361",
+            "dd89486d948c4e859cb9e5bf9b95c9e9",
+            "dc4453d1ac904d2c8c4f6426d58e9215",
+            "eec2c40fcc514206ba9ed57a6f21fdd9",
+            "67ce5db0f6bd42518bfaf4b00285994a",
+            "61c552b9d7514c77b824707fa1d02f5f",
+            "afc065249cf44800b4f0714df6eae079",
+            "d5f379d6af1a4f6c88656d02ffcaa7dc"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cao-dev-table_doc-zh-03",
+      "split": "dev",
+      "scenario": "table_doc",
+      "language": "zh",
+      "mode": "text",
+      "query": "宿舍费缴费通知",
+      "n_relevant": 5,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "98b03783643c4b9ab64137b9f6affa00",
+            "280fd9a1f8cf4a62a84bc02434f1fe67",
+            "3cee7805f2d4441e9f1b284c0bf7e9d1",
+            "9ecfe982e27f4a989a95f53b8f797884",
+            "35a61e3b168241c6aef31bd463f66a5d"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "280fd9a1f8cf4a62a84bc02434f1fe67",
+            "35a61e3b168241c6aef31bd463f66a5d",
+            "3cee7805f2d4441e9f1b284c0bf7e9d1",
+            "98b03783643c4b9ab64137b9f6affa00",
+            "9ecfe982e27f4a989a95f53b8f797884",
+            "2a3ac084f7ae428599c43cf56a7f10d6",
+            "33ac017c6b4a4637a1e892b92bc26445",
+            "b5eb022274c54e97a533148301b8a455",
+            "c477e113eb8b446888fbf6094be1fa4c",
+            "cc7469292b664145919231335985989a"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "280fd9a1f8cf4a62a84bc02434f1fe67",
+            "3cee7805f2d4441e9f1b284c0bf7e9d1",
+            "98b03783643c4b9ab64137b9f6affa00",
+            "9ecfe982e27f4a989a95f53b8f797884",
+            "35a61e3b168241c6aef31bd463f66a5d",
+            "cc7469292b664145919231335985989a",
+            "b5eb022274c54e97a533148301b8a455",
+            "c477e113eb8b446888fbf6094be1fa4c",
+            "33ac017c6b4a4637a1e892b92bc26445",
+            "2a3ac084f7ae428599c43cf56a7f10d6"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "280fd9a1f8cf4a62a84bc02434f1fe67",
+            "98b03783643c4b9ab64137b9f6affa00",
+            "3cee7805f2d4441e9f1b284c0bf7e9d1",
+            "35a61e3b168241c6aef31bd463f66a5d",
+            "9ecfe982e27f4a989a95f53b8f797884",
+            "2a3ac084f7ae428599c43cf56a7f10d6",
+            "33ac017c6b4a4637a1e892b92bc26445",
+            "b5eb022274c54e97a533148301b8a455",
+            "c477e113eb8b446888fbf6094be1fa4c",
+            "cc7469292b664145919231335985989a"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "280fd9a1f8cf4a62a84bc02434f1fe67",
+            "98b03783643c4b9ab64137b9f6affa00",
+            "3cee7805f2d4441e9f1b284c0bf7e9d1",
+            "35a61e3b168241c6aef31bd463f66a5d",
+            "9ecfe982e27f4a989a95f53b8f797884",
+            "b5eb022274c54e97a533148301b8a455",
+            "2a3ac084f7ae428599c43cf56a7f10d6",
+            "cc7469292b664145919231335985989a",
+            "33ac017c6b4a4637a1e892b92bc26445",
+            "c477e113eb8b446888fbf6094be1fa4c"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-table_doc-zh-01",
+      "split": "dev",
+      "scenario": "table_doc",
+      "language": "zh",
+      "mode": "text",
+      "query": "红黑树相比严格平衡的二叉树有什么好处",
+      "n_relevant": 10,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": []
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "72dd28efcf4c40efb046c7f2d0270f53",
+            "475a886f73d44a20806e5091e3a6da67",
+            "98620b99f3e043d88c28e87e7b934b35",
+            "b8939bf5711741958d90520c7393fe33",
+            "c20fce1ff3fa4bb8995f1e43477516d5",
+            "c3e274c674bd48bda2e9ddce7501da90",
+            "0272ef3c1b4c41779048858dab8303c5",
+            "d548c2d6a106432299317242974f5100",
+            "a62ca512dc084d66baa0bb3b54313d70",
+            "b2ac4b3d1ad04d2f88fd6f71e8449971"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": 3,
+          "hit5": 1,
+          "rr10": 0.3333333333333333,
+          "top10": [
+            "584af008be6546c7bd6a74c6a440e942",
+            "251c94d954e745cd9fa81d15a16855aa",
+            "0272ef3c1b4c41779048858dab8303c5",
+            "426d9952ea4c45b5ba00ebb80ea80fc1",
+            "767bfc69e2c940c2ad524f334969f7d3",
+            "fbdec1175bd54087a4533dc10ed0fead",
+            "f1343d4cdc524f78a4a145ba814dafcc",
+            "33960afd935d4a44af21f1bdbee4c029",
+            "8b8641321189437ca9606e27ac4019ea",
+            "cf6bb192549440049d5aa7de99d33953"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "72dd28efcf4c40efb046c7f2d0270f53",
+            "475a886f73d44a20806e5091e3a6da67",
+            "98620b99f3e043d88c28e87e7b934b35",
+            "b8939bf5711741958d90520c7393fe33",
+            "c20fce1ff3fa4bb8995f1e43477516d5",
+            "c3e274c674bd48bda2e9ddce7501da90",
+            "0272ef3c1b4c41779048858dab8303c5",
+            "d548c2d6a106432299317242974f5100",
+            "a62ca512dc084d66baa0bb3b54313d70",
+            "b2ac4b3d1ad04d2f88fd6f71e8449971"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "0272ef3c1b4c41779048858dab8303c5",
+            "475a886f73d44a20806e5091e3a6da67",
+            "b2ac4b3d1ad04d2f88fd6f71e8449971",
+            "d548c2d6a106432299317242974f5100",
+            "a62ca512dc084d66baa0bb3b54313d70",
+            "b8939bf5711741958d90520c7393fe33",
+            "72dd28efcf4c40efb046c7f2d0270f53",
+            "c3e274c674bd48bda2e9ddce7501da90",
+            "651c11da2bf349cdb6dfed1795442bcf",
+            "e38b2102f6c24da1a2610386b7e4ba0d"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-table_doc-zh-02",
+      "split": "dev",
+      "scenario": "table_doc",
+      "language": "zh",
+      "mode": "text",
+      "query": "为什么数据库索引用 B+ 树",
+      "n_relevant": 6,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "f337aaf8846944168e60061168aecef7",
+            "dabf2f0808f04a3194c070b50f78ad8a",
+            "7297777a38cf491387585a4f22a151f7",
+            "b101c15d83914161b655c43eb34a3b24",
+            "94e1e1535bc0451e9fa9a384121666b1",
+            "1309c2d72182410690c7b84a9b239ac0",
+            "450bf66af28c4b71b82684d8973eb448",
+            "246b6a6ff29f42f19292a06cfc6592ad",
+            "60b88d201983419b91439875734bbab4",
+            "97677ee082264f559bbf6ce77c4c6036"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "1309c2d72182410690c7b84a9b239ac0",
+            "246b6a6ff29f42f19292a06cfc6592ad",
+            "450bf66af28c4b71b82684d8973eb448",
+            "60b88d201983419b91439875734bbab4",
+            "94e1e1535bc0451e9fa9a384121666b1",
+            "97677ee082264f559bbf6ce77c4c6036",
+            "6e8d3f524c5a403ebaf12dd665b19456",
+            "dabf2f0808f04a3194c070b50f78ad8a",
+            "83d31885a5b14b85a7096b0bb771959d",
+            "82557ba5e7d945c0abbcc02208cdc373"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "33960afd935d4a44af21f1bdbee4c029",
+            "cf6bb192549440049d5aa7de99d33953",
+            "f053887374f74f4b946838ccbe7bb56c",
+            "92d09e0551e14322a077c44068af30da",
+            "6d0048c64ac846a48e2489c04e29f55a",
+            "55443abed9a74bf2ad2812f2a361135b",
+            "f7bb6ef85101403799e02b0905e850db",
+            "52a13d782dfc44d5b398cd863012b13a",
+            "62973c090e10476c89277f74ffa16101",
+            "1822d7ac53004e169005cb7e5b2e38b2"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "1309c2d72182410690c7b84a9b239ac0",
+            "dabf2f0808f04a3194c070b50f78ad8a",
+            "246b6a6ff29f42f19292a06cfc6592ad",
+            "450bf66af28c4b71b82684d8973eb448",
+            "94e1e1535bc0451e9fa9a384121666b1",
+            "60b88d201983419b91439875734bbab4",
+            "97677ee082264f559bbf6ce77c4c6036",
+            "7297777a38cf491387585a4f22a151f7",
+            "f337aaf8846944168e60061168aecef7",
+            "b101c15d83914161b655c43eb34a3b24"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 5,
+          "hit5": 1,
+          "rr10": 0.2,
+          "top10": [
+            "60b88d201983419b91439875734bbab4",
+            "246b6a6ff29f42f19292a06cfc6592ad",
+            "97677ee082264f559bbf6ce77c4c6036",
+            "82557ba5e7d945c0abbcc02208cdc373",
+            "b101c15d83914161b655c43eb34a3b24",
+            "6536a9aad4dd4293b200c6b733d9531f",
+            "b8939bf5711741958d90520c7393fe33",
+            "1309c2d72182410690c7b84a9b239ac0",
+            "c3e274c674bd48bda2e9ddce7501da90",
+            "dabf2f0808f04a3194c070b50f78ad8a"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-table_doc-zh-03",
+      "split": "dev",
+      "scenario": "table_doc",
+      "language": "zh",
+      "mode": "text",
+      "query": "哪种排序平均是 nlogn 但不稳定",
+      "n_relevant": 8,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "3105fc32edb94882b9daf9ac9a5d7881",
+            "6d6b2f53162c49cc97a0c0b7be92af9c",
+            "2ffaeb760968463db121c59f4962cb64",
+            "3c2cc9952e9d402ea916f1ff1f672ca5",
+            "ccdabe843e4e4e5ea4eb8cdb2055f75c",
+            "9ac40644255c4f58b3a7e29bbd4da255",
+            "ef9ddbefe3574baa864176444dc76b48",
+            "f4f90814d5fb4445a142f916adbce6b5",
+            "502a6c6d0cd44cb99489c4cf6a396df1",
+            "153761d362b94603a09c6b5e0b414bd2"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 3,
+          "hit5": 1,
+          "rr10": 0.3333333333333333,
+          "top10": [
+            "765cad3ce0df4a93a7e7c783be094dd8",
+            "ccdabe843e4e4e5ea4eb8cdb2055f75c",
+            "ef26691ea03e49bc9b8cc7fcc77ca992",
+            "502a6c6d0cd44cb99489c4cf6a396df1",
+            "3c2cc9952e9d402ea916f1ff1f672ca5",
+            "ef9ddbefe3574baa864176444dc76b48",
+            "ed74ddf4515f462d906bdbd0b1856170",
+            "153761d362b94603a09c6b5e0b414bd2",
+            "f4f90814d5fb4445a142f916adbce6b5",
+            "3105fc32edb94882b9daf9ac9a5d7881"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "7a6afb12949c426cb8a70a6160bb272c",
+            "8cdb98222ada458cad774f8da2578461",
+            "64aab2f33ef94abe9e10129b38b40485",
+            "7ba1136698e24404bac671cf2810abe8",
+            "d5aa71496e864f01a76fabab249ff4ba",
+            "6ff5f906e93e4b258345112de320fa53",
+            "d5c218fc2f394dd4a1236fd94971a9ad",
+            "6b89a7673fcc452684cf3cb6c1a10aa5",
+            "1ee04eb46bdd46088f1b9b964ce8b3aa",
+            "584af008be6546c7bd6a74c6a440e942"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 3,
+          "hit5": 1,
+          "rr10": 0.3333333333333333,
+          "top10": [
+            "ccdabe843e4e4e5ea4eb8cdb2055f75c",
+            "3c2cc9952e9d402ea916f1ff1f672ca5",
+            "3105fc32edb94882b9daf9ac9a5d7881",
+            "502a6c6d0cd44cb99489c4cf6a396df1",
+            "ef9ddbefe3574baa864176444dc76b48",
+            "ef26691ea03e49bc9b8cc7fcc77ca992",
+            "f4f90814d5fb4445a142f916adbce6b5",
+            "9ac40644255c4f58b3a7e29bbd4da255",
+            "153761d362b94603a09c6b5e0b414bd2",
+            "2ffaeb760968463db121c59f4962cb64"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 3,
+          "hit5": 1,
+          "rr10": 0.3333333333333333,
+          "top10": [
+            "ccdabe843e4e4e5ea4eb8cdb2055f75c",
+            "3c2cc9952e9d402ea916f1ff1f672ca5",
+            "3105fc32edb94882b9daf9ac9a5d7881",
+            "502a6c6d0cd44cb99489c4cf6a396df1",
+            "ef9ddbefe3574baa864176444dc76b48",
+            "ef26691ea03e49bc9b8cc7fcc77ca992",
+            "f4f90814d5fb4445a142f916adbce6b5",
+            "9ac40644255c4f58b3a7e29bbd4da255",
+            "153761d362b94603a09c6b5e0b414bd2",
+            "2ffaeb760968463db121c59f4962cb64"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cao-dev-web-en-01",
+      "split": "dev",
+      "scenario": "web",
+      "language": "en",
+      "mode": "image",
+      "query": "Chinese home-cooking recipe website with photos of dishes",
+      "n_relevant": 5,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "6263102a4e0c4c1f817a801d95534a8d",
+            "74934d07d1b44eeeb225c34de7da3500",
+            "afc065249cf44800b4f0714df6eae079",
+            "801e2d3c93d04ff599fff0079f2e7a8f",
+            "584af008be6546c7bd6a74c6a440e942",
+            "767bfc69e2c940c2ad524f334969f7d3",
+            "d5f379d6af1a4f6c88656d02ffcaa7dc",
+            "cd664ab80e2943eb9448b3f459b21140",
+            "1b28ddc6d45a46048ce3c8026458356b",
+            "74fa350876a144fb888c8098ef0a1042"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "cd5086c703e14e388cae0210839f518c",
+            "47fcf1a418434aefa2ce763f2843239a",
+            "ac3e0b78f1974642907d28ed1b855e4a",
+            "ac2a0c654205436b9830e072200ef97a",
+            "c4f099c29497429c8e1c4148bd998697",
+            "74934d07d1b44eeeb225c34de7da3500",
+            "f8cebfff0b09488e9afef6f73fb6e6e4",
+            "6797473491b741d4911fc5edc34945a3",
+            "afc065249cf44800b4f0714df6eae079",
+            "dda1baf57abd4fb4a1715cc6c9cfdce6"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": 2,
+          "hit5": 1,
+          "rr10": 0.5,
+          "top10": [
+            "77b725fcac554675ae8837b25138f4ab",
+            "c4f099c29497429c8e1c4148bd998697",
+            "cd5086c703e14e388cae0210839f518c",
+            "ac3e0b78f1974642907d28ed1b855e4a",
+            "8c7dc1efe6e043f8bf233e35116a2dc9",
+            "74934d07d1b44eeeb225c34de7da3500",
+            "dda1baf57abd4fb4a1715cc6c9cfdce6",
+            "6263102a4e0c4c1f817a801d95534a8d",
+            "3ab66851edd14186828908fc9c5d1219",
+            "30d32906590a44be890f5aa8b847f9b0"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 4,
+          "hit5": 1,
+          "rr10": 0.25,
+          "top10": [
+            "74934d07d1b44eeeb225c34de7da3500",
+            "afc065249cf44800b4f0714df6eae079",
+            "6263102a4e0c4c1f817a801d95534a8d",
+            "cd5086c703e14e388cae0210839f518c",
+            "47fcf1a418434aefa2ce763f2843239a",
+            "ac3e0b78f1974642907d28ed1b855e4a",
+            "801e2d3c93d04ff599fff0079f2e7a8f",
+            "ac2a0c654205436b9830e072200ef97a",
+            "584af008be6546c7bd6a74c6a440e942",
+            "c4f099c29497429c8e1c4148bd998697"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 4,
+          "hit5": 1,
+          "rr10": 0.25,
+          "top10": [
+            "74934d07d1b44eeeb225c34de7da3500",
+            "afc065249cf44800b4f0714df6eae079",
+            "6263102a4e0c4c1f817a801d95534a8d",
+            "cd5086c703e14e388cae0210839f518c",
+            "c4f099c29497429c8e1c4148bd998697",
+            "ac3e0b78f1974642907d28ed1b855e4a",
+            "77b725fcac554675ae8837b25138f4ab",
+            "47fcf1a418434aefa2ce763f2843239a",
+            "dda1baf57abd4fb4a1715cc6c9cfdce6",
+            "8c7dc1efe6e043f8bf233e35116a2dc9"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-web-en-01",
+      "split": "dev",
+      "scenario": "web",
+      "language": "en",
+      "mode": "image",
+      "query": "news photo close-up of a smiling older man in a blue plaid shirt",
+      "n_relevant": 2,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "801e2d3c93d04ff599fff0079f2e7a8f",
+            "584af008be6546c7bd6a74c6a440e942",
+            "767bfc69e2c940c2ad524f334969f7d3",
+            "b9efb2017fa34736a709e57a984ef529",
+            "c9e9d1789d424bd8b5f7575a4df4cd9a",
+            "dcc08cd322694f56a85c70e3ab5adc27",
+            "6d76eaaa18684655a0a1c5b13c0b64eb",
+            "7cee4ba9c4544baf82526b00fd412e26",
+            "2fb17efa64184c0d9294996159419de8",
+            "873044ba476e4e94a0d4272cefc58249"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "838bb5bb1d454b998251f5b7d4728459",
+            "43e0500b7271475b95bf553537c67f39",
+            "9b746191a3ec4dbda5fa53d233aa1b91",
+            "ca604058e12e4fccb8e616faab51410b",
+            "f0805e4d0223421386c152a6de74f052",
+            "cf0b69cf22d54f50964319084dc35403",
+            "e5b517f455264b2cb4417463963db115",
+            "5a42875d9e0c44b48f160aac0f7962be",
+            "d3b52c187aff40ae8d32d9dedee74a62",
+            "2931cf3a6ef64013ab2fccfc11d842d9"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "33040748fd41431da4933de09bd7f7b9",
+            "d49f63b9fd29404fb6b654002b78b806",
+            "67a02f1ab85d45bda0eacad7b47b84cd",
+            "2ac76e32b165434f8b2a3903a8a4da86",
+            "43e0500b7271475b95bf553537c67f39",
+            "d4ca5b1586ea4efe94a95aab7b14f509",
+            "908ac4c238dd4a6ab0b16c3c2a9dae35",
+            "8672e08fe8dd427caa4d4057c638a88a",
+            "9b81e0c4a338475b85220ff2ae40aa74",
+            "899c6c271dff40059af086c88e3ee9e2"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "801e2d3c93d04ff599fff0079f2e7a8f",
+            "838bb5bb1d454b998251f5b7d4728459",
+            "584af008be6546c7bd6a74c6a440e942",
+            "43e0500b7271475b95bf553537c67f39",
+            "767bfc69e2c940c2ad524f334969f7d3",
+            "9b746191a3ec4dbda5fa53d233aa1b91",
+            "b9efb2017fa34736a709e57a984ef529",
+            "ca604058e12e4fccb8e616faab51410b",
+            "c9e9d1789d424bd8b5f7575a4df4cd9a",
+            "f0805e4d0223421386c152a6de74f052"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 4,
+          "hit5": 1,
+          "rr10": 0.25,
+          "top10": [
+            "43e0500b7271475b95bf553537c67f39",
+            "67a02f1ab85d45bda0eacad7b47b84cd",
+            "5a42875d9e0c44b48f160aac0f7962be",
+            "33040748fd41431da4933de09bd7f7b9",
+            "e5b517f455264b2cb4417463963db115",
+            "f0805e4d0223421386c152a6de74f052",
+            "60348d4cca604b349af61d1e0d8fc15e",
+            "90c7e60a7477482e8713363b511f3cb8",
+            "1df44df257ad4425aea21ec92ee035cf",
+            "a2ce33526f064ecda309357cadd79f04"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-web-en-02",
+      "split": "dev",
+      "scenario": "web",
+      "language": "en",
+      "mode": "text",
+      "query": "esports player announces a comeback and is looking for a team after a year away",
+      "n_relevant": 4,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "b5baa2ad2c874d7da10fa4a4b87c5ac5",
+            "60348d4cca604b349af61d1e0d8fc15e",
+            "b9efb2017fa34736a709e57a984ef529",
+            "4c155d2144354f7c8fac4f4f50e3f898",
+            "caae74ebb863430391e550450225ceb9",
+            "5cf1eacdeba3436d9daeafae078dc165",
+            "59249c44340647cf85ea7d81aa223ecf",
+            "d4f9baf1231f404280e893f0d7c75849",
+            "44f6eff595da4feb9c3bebdbcf99d221",
+            "86a193379678455f9d976764feb81211"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "7ad39b65e132491998e2bc17e8d9593e",
+            "326c536bd2244a3f8f8c34a1d9f8ffbb",
+            "258156c57c904d758c8d137bcda026b2",
+            "6595ca4626924de7b2fa43763adbabe2",
+            "2ba39840d0bd4f4bad7bb54d003771d1",
+            "14202d5c68ec43c5ae27bbc6092ab0ec",
+            "95f91078ea8f4eb2a87c58f747c15a72",
+            "3b93105430b2453f95f3a571821c3d4a",
+            "7d702920cc2f47e090a911d35ec1a60c",
+            "740036f4112d40f0a3f88304eceb4f32"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "64845596244046178eaad0a40cd14cdc",
+            "6940dd5ac5e24f94a89392064f30664e",
+            "e3a26307f3f94a89877d62f8ec4a66be",
+            "b3a10c89f5664a789a53f65e1893fdf3",
+            "54dac4a55b8f464eb09a693030d2a6e5",
+            "a10cd8172eef4b3cbf69d0ba40431446",
+            "0262acabad4a470886b1ef8a91a21643",
+            "266a76a511d4427aa21296c5811548fe",
+            "ed1d4dde5161452c99b9ceedf54e5bc2",
+            "ea260c5261d64b74bd863206a7c6d0ec"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 6,
+          "hit5": 0,
+          "rr10": 0.16666666666666666,
+          "top10": [
+            "b5baa2ad2c874d7da10fa4a4b87c5ac5",
+            "e046e045069f4b45a86d1a1014ab9cc5",
+            "44f6eff595da4feb9c3bebdbcf99d221",
+            "b629446688264abe95727b14c7ffb312",
+            "6497b78d5b574a70ab76eca1459ec6c5",
+            "7ad39b65e132491998e2bc17e8d9593e",
+            "60348d4cca604b349af61d1e0d8fc15e",
+            "326c536bd2244a3f8f8c34a1d9f8ffbb",
+            "b9efb2017fa34736a709e57a984ef529",
+            "258156c57c904d758c8d137bcda026b2"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "b5baa2ad2c874d7da10fa4a4b87c5ac5",
+            "44f6eff595da4feb9c3bebdbcf99d221",
+            "e3a26307f3f94a89877d62f8ec4a66be",
+            "e046e045069f4b45a86d1a1014ab9cc5",
+            "2f2ece392290415790325d5c9689d547",
+            "5209ae9dc156433fb63a1c9d1df003d1",
+            "266a76a511d4427aa21296c5811548fe",
+            "64845596244046178eaad0a40cd14cdc",
+            "53c5470e73a04345a22888314cc13c11",
+            "b3a10c89f5664a789a53f65e1893fdf3"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-web-en-03",
+      "split": "dev",
+      "scenario": "web",
+      "language": "en",
+      "mode": "text",
+      "query": "Messi's younger son who idolizes Ronaldo",
+      "n_relevant": 2,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "cc482f6a9cd148bfaa6c77c84e9bf499",
+            "a10cd8172eef4b3cbf69d0ba40431446",
+            "5297a4409b1e47938bc0aae06124875b",
+            "e046e045069f4b45a86d1a1014ab9cc5",
+            "3cccd1922df6454d9e44f1bf3c0d8e53",
+            "2035310f8e3543c0b50e044f5ab5ac42",
+            "9583b23bfc354142a1f98db4ce423d47",
+            "074f2d5c48e345e28bb7fe5db6203554",
+            "6795d42992f94bf3a3836e9111d7b058",
+            "5fea34e1ee2a4600a1a4214cae8c9013"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "5f8e85f50ece4b83927072942b83edb1",
+            "4b578dc3b10144d39533e75c4f35c02b",
+            "fe59202c66ee44969f9b21a8bb33598f",
+            "ed1d4dde5161452c99b9ceedf54e5bc2",
+            "cc482f6a9cd148bfaa6c77c84e9bf499",
+            "98e92fd83ed34976a179fc16eb06cb44",
+            "a10cd8172eef4b3cbf69d0ba40431446",
+            "58795801e2d6478c85207465c31d80ee",
+            "6940dd5ac5e24f94a89392064f30664e",
+            "9ad7195dff2845b888f3d23570c57b28"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "3508606c7d5940d19d47410822641460",
+            "2da5d3dabf4b4214824bb68e7edea3f3",
+            "2f2ece392290415790325d5c9689d547",
+            "5209ae9dc156433fb63a1c9d1df003d1",
+            "37944d29c5d34e0aa1a0488a2114835c",
+            "cc482f6a9cd148bfaa6c77c84e9bf499",
+            "6940dd5ac5e24f94a89392064f30664e",
+            "129fc31544134efb9b8aca57b28f9f43",
+            "a10cd8172eef4b3cbf69d0ba40431446",
+            "ea260c5261d64b74bd863206a7c6d0ec"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 3,
+          "hit5": 1,
+          "rr10": 0.3333333333333333,
+          "top10": [
+            "cc482f6a9cd148bfaa6c77c84e9bf499",
+            "a10cd8172eef4b3cbf69d0ba40431446",
+            "5f8e85f50ece4b83927072942b83edb1",
+            "4b578dc3b10144d39533e75c4f35c02b",
+            "5297a4409b1e47938bc0aae06124875b",
+            "fe59202c66ee44969f9b21a8bb33598f",
+            "e046e045069f4b45a86d1a1014ab9cc5",
+            "ed1d4dde5161452c99b9ceedf54e5bc2",
+            "3cccd1922df6454d9e44f1bf3c0d8e53",
+            "2035310f8e3543c0b50e044f5ab5ac42"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "cc482f6a9cd148bfaa6c77c84e9bf499",
+            "a10cd8172eef4b3cbf69d0ba40431446",
+            "2f2ece392290415790325d5c9689d547",
+            "5209ae9dc156433fb63a1c9d1df003d1",
+            "6940dd5ac5e24f94a89392064f30664e",
+            "9ad7195dff2845b888f3d23570c57b28",
+            "4b578dc3b10144d39533e75c4f35c02b",
+            "074f2d5c48e345e28bb7fe5db6203554",
+            "ea260c5261d64b74bd863206a7c6d0ec",
+            "ed1d4dde5161452c99b9ceedf54e5bc2"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cao-dev-web-zh-01",
+      "split": "dev",
+      "scenario": "web",
+      "language": "zh",
+      "mode": "image",
+      "query": "雪山风景的旅游网站页面",
+      "n_relevant": 3,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": []
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "5c00f33bcd8a47e0b8e77298d762a1bc",
+            "0c9f57bae2284475ab4291a562f53c3e",
+            "48c9c0818c9a446baf3db74a703465cd",
+            "c864bc5757ff484dac90fd312c37c6b9",
+            "8b1dfcadc70c4553969a9712e7dbe4d2",
+            "45634c3a8a2149bb9dadc3b30ecfb665",
+            "6fe5c750a4724ac7b7025abba7448ada",
+            "79f5fac8eb7347c3860c1173ac3d62b5",
+            "7b50c6c02d114fbe9f4c140efd36308c",
+            "052baa174b0b49b8914980356416d523"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "61316bced24b48b398dee03e52a089a8",
+            "46c95670e53848b29fb45b004df0adfc",
+            "5c00f33bcd8a47e0b8e77298d762a1bc",
+            "8b1dfcadc70c4553969a9712e7dbe4d2",
+            "8b89728fa3944db4ba25c116bd78cc31",
+            "69445a0c680444c2899e85848ba35d0a",
+            "60348d4cca604b349af61d1e0d8fc15e",
+            "11614609c5f649bd8ad48af563c13665",
+            "27c98590cedd4c9a926be3955dc4db2b",
+            "c504ef9a4eb348a5bd7a8b5e4ca19c8e"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "5c00f33bcd8a47e0b8e77298d762a1bc",
+            "0c9f57bae2284475ab4291a562f53c3e",
+            "48c9c0818c9a446baf3db74a703465cd",
+            "c864bc5757ff484dac90fd312c37c6b9",
+            "8b1dfcadc70c4553969a9712e7dbe4d2",
+            "45634c3a8a2149bb9dadc3b30ecfb665",
+            "6fe5c750a4724ac7b7025abba7448ada",
+            "79f5fac8eb7347c3860c1173ac3d62b5",
+            "7b50c6c02d114fbe9f4c140efd36308c",
+            "052baa174b0b49b8914980356416d523"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "5c00f33bcd8a47e0b8e77298d762a1bc",
+            "8b1dfcadc70c4553969a9712e7dbe4d2",
+            "11614609c5f649bd8ad48af563c13665",
+            "c504ef9a4eb348a5bd7a8b5e4ca19c8e",
+            "7b50c6c02d114fbe9f4c140efd36308c",
+            "73142e104dae41e19fbbffa49b00450d",
+            "61316bced24b48b398dee03e52a089a8",
+            "c9bf84f0e50a41fc989f1e742087f1f0",
+            "3b93105430b2453f95f3a571821c3d4a",
+            "8a70d36f3d944411b9f6dcca1ea1c877"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-web-zh-01",
+      "split": "dev",
+      "scenario": "web",
+      "language": "zh",
+      "mode": "text",
+      "query": "张继科 25 元乒乓课被质疑压价",
+      "n_relevant": 7,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "37944d29c5d34e0aa1a0488a2114835c",
+            "3508606c7d5940d19d47410822641460",
+            "d4f0530d30cc472895ac9e553a138646",
+            "fb52def32f5d4d7091bcad202b5f8054",
+            "9824bc218eb2482fb235869704ede1af",
+            "34a78dae00e4490e9a290118ad035fec",
+            "801e2d3c93d04ff599fff0079f2e7a8f",
+            "426d9952ea4c45b5ba00ebb80ea80fc1",
+            "1a35e5cafab94394876aea00b765f0fe",
+            "6442ce5137a64b17819f32838f77f7a3"
+          ]
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "37944d29c5d34e0aa1a0488a2114835c",
+            "9824bc218eb2482fb235869704ede1af",
+            "3508606c7d5940d19d47410822641460",
+            "d4f0530d30cc472895ac9e553a138646",
+            "fb52def32f5d4d7091bcad202b5f8054",
+            "8dd91412045b4cdf84d5ad8ad9e5316a",
+            "1f2da68b7fc946bc9e06fd37bc54c50a",
+            "46f134f8ffb14217a19686ff6f970505",
+            "5337dd0e151540e6b23cd6fb76a3131f",
+            "daeb933e1131461ba820601ce6a30360"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "37944d29c5d34e0aa1a0488a2114835c",
+            "93c41ef183fd4c249f10ec09d19c9094",
+            "9824bc218eb2482fb235869704ede1af",
+            "0b31b07a2cf6498592c8bc4d66d923b9",
+            "84d28b3de6b34d21a6aa10f798cf5196",
+            "5ac02b6dc43c471cb2f1c1e9f86774ff",
+            "674b0d00907b4f86b6edd0dca696cac9",
+            "db111af52ce6487cb31d3d4b39b41022",
+            "9595996da7034198bc60fe17d771f71a",
+            "0262acabad4a470886b1ef8a91a21643"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "37944d29c5d34e0aa1a0488a2114835c",
+            "3508606c7d5940d19d47410822641460",
+            "9824bc218eb2482fb235869704ede1af",
+            "d4f0530d30cc472895ac9e553a138646",
+            "fb52def32f5d4d7091bcad202b5f8054",
+            "34a78dae00e4490e9a290118ad035fec",
+            "8dd91412045b4cdf84d5ad8ad9e5316a",
+            "801e2d3c93d04ff599fff0079f2e7a8f",
+            "1f2da68b7fc946bc9e06fd37bc54c50a",
+            "426d9952ea4c45b5ba00ebb80ea80fc1"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "37944d29c5d34e0aa1a0488a2114835c",
+            "9824bc218eb2482fb235869704ede1af",
+            "3508606c7d5940d19d47410822641460",
+            "d4f0530d30cc472895ac9e553a138646",
+            "fb52def32f5d4d7091bcad202b5f8054",
+            "1d115e32c3144116ab783db57f184c11",
+            "ed38b892f55a48ccbe8ba777d12114c2",
+            "f0da3ce19b8548bfbe12edb3ac3ffd48",
+            "c26f852e7d42439e8cb421ae8f2775e7",
+            "249d7ea234384107b355cf6f1879bc70"
+          ]
+        }
+      }
+    },
+    {
+      "id": "xiao-dev-web-zh-02",
+      "split": "dev",
+      "scenario": "web",
+      "language": "zh",
+      "mode": "text",
+      "query": "刚转会到法甲就送出绝杀助攻的球员",
+      "n_relevant": 4,
+      "errors": [],
+      "results": {
+        "exp1_lexical": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": []
+        },
+        "exp2_semantic": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "ea260c5261d64b74bd863206a7c6d0ec",
+            "ed1d4dde5161452c99b9ceedf54e5bc2",
+            "259050f4b1de4c35aaaf1ce88199483f",
+            "ce7a30a979f4479caab5049bb44a1c7a",
+            "2f2ece392290415790325d5c9689d547",
+            "5209ae9dc156433fb63a1c9d1df003d1",
+            "95f91078ea8f4eb2a87c58f747c15a72",
+            "d8ac22f606a94115bf2ebbb74989c256",
+            "6940dd5ac5e24f94a89392064f30664e",
+            "b3a10c89f5664a789a53f65e1893fdf3"
+          ]
+        },
+        "exp3_image": {
+          "first_relevant_rank": null,
+          "hit5": 0,
+          "rr10": 0.0,
+          "top10": [
+            "54dac4a55b8f464eb09a693030d2a6e5",
+            "266a76a511d4427aa21296c5811548fe",
+            "3508606c7d5940d19d47410822641460",
+            "c1759a8b5d7f46e09a23b36548d913a4",
+            "1b3c28842695467caf187a2babfc6310",
+            "64845596244046178eaad0a40cd14cdc",
+            "074f2d5c48e345e28bb7fe5db6203554",
+            "93c41ef183fd4c249f10ec09d19c9094",
+            "37944d29c5d34e0aa1a0488a2114835c",
+            "9ad7195dff2845b888f3d23570c57b28"
+          ]
+        },
+        "exp4_rrf_text": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "ea260c5261d64b74bd863206a7c6d0ec",
+            "ed1d4dde5161452c99b9ceedf54e5bc2",
+            "259050f4b1de4c35aaaf1ce88199483f",
+            "ce7a30a979f4479caab5049bb44a1c7a",
+            "2f2ece392290415790325d5c9689d547",
+            "5209ae9dc156433fb63a1c9d1df003d1",
+            "95f91078ea8f4eb2a87c58f747c15a72",
+            "d8ac22f606a94115bf2ebbb74989c256",
+            "6940dd5ac5e24f94a89392064f30664e",
+            "b3a10c89f5664a789a53f65e1893fdf3"
+          ]
+        },
+        "exp5_rrf_three": {
+          "first_relevant_rank": 1,
+          "hit5": 1,
+          "rr10": 1.0,
+          "top10": [
+            "2f2ece392290415790325d5c9689d547",
+            "5209ae9dc156433fb63a1c9d1df003d1",
+            "6940dd5ac5e24f94a89392064f30664e",
+            "ed1d4dde5161452c99b9ceedf54e5bc2",
+            "ea260c5261d64b74bd863206a7c6d0ec",
+            "6fed57f763844162930c1fb99efa7210",
+            "49671d7e4a5145d2a24227624686e609",
+            "9e73780169e34d0299b101fbc3ab9179",
+            "b1416e589dbb48ef9add6e1baf9d786e",
+            "080557518ca54c479e012fe12a6e1896"
+          ]
+        }
+      }
+    }
+  ],
+  "queries_file": "datasets\\v1\\queries.json",
+  "queries_blake2b": "41b537f7bcee3c9a4ca3421cc35da0a1",
+  "unreviewed_queries": 0,
+  "candidates_file": "data-dataset\\accepted.txt",
+  "candidates_blake2b": "b8892e1e7365905b159fdca5ca508a94",
+  "protocol_notes": [],
+  "models": {
+    "text": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2@e8f8c211226b",
+    "image": "sentence-transformers/clip-ViT-B-32@327ab6726d33",
+    "clip_text": "sentence-transformers/clip-ViT-B-32-multilingual-v1@58edf8cada9e"
+  }
+}

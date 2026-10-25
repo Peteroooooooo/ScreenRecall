@@ -1,0 +1,39 @@
+{
+  "ocr": {
+    "latency_s": {
+      "n": 125,
+      "mean": 4.8572560000000005,
+      "p50": 4.322,
+      "p95": 7.802,
+      "max": 10.148
+    },
+    "unfinished": 0,
+    "failed": 0,
+    "cancelled": 0
+  },
+  "text_embed": {
+    "latency_s": {
+      "n": 125,
+      "mean": 6.366631999999999,
+      "p50": 5.792,
+      "p95": 9.517,
+      "max": 23.868
+    },
+    "unfinished": 0,
+    "failed": 0,
+    "cancelled": 0
+  },
+  "image_embed": {
+    "latency_s": {
+      "n": 125,
+      "mean": 6.253872,
+      "p50": 5.776,
+      "p95": 9.368,
+      "max": 21.545
+    },
+    "unfinished": 0,
+    "failed": 0,
+    "cancelled": 0
+  },
+  "note": "导入的截图抓拍时间可能是用户给定的旧时间，统计就绪延迟时应只用实时录制的数据"
+}

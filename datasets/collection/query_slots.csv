@@ -1,0 +1,41 @@
+﻿slot,split,scenario,language,default_mode,owner,reviewer,target_tasks,query_id,query,facts,status
+dev-code-zh-01,dev,code,zh,text,cao,xiao,cao-code-01..05,dev-code-zh-01,flask 和 werkzeug 版本冲突，依赖装不上,cao-code-02#1,draft
+dev-code-zh-02,dev,code,zh,text,xiao,cao,xiao-code-01..05,,,,todo
+dev-code-en-01,dev,code,en,text,cao,xiao,cao-code-01..05,dev-code-en-01,tensor shape is invalid for input of size 1920000,cao-code-01#1,draft
+dev-code-en-02,dev,code,en,text,xiao,cao,xiao-code-01..05,,,,todo
+dev-code-en-03,dev,code,en,text,cao,xiao,cao-code-01..05,dev-code-en-03,YAML config error: mapping values are not allowed here,cao-code-05#1,draft
+blind-code-zh-01,blind,code,zh,text,cao,xiao,cao-code-06..10,blind-code-zh-01,git 推送被拒绝，提示要先 fetch,cao-code-06#2,draft
+blind-code-zh-02,blind,code,zh,text,xiao,cao,xiao-code-06..10,,,,todo
+blind-code-zh-03,blind,code,zh,text,xiao,cao,xiao-code-06..10,,,,todo
+blind-code-en-01,blind,code,en,text,cao,xiao,cao-code-06..10,blind-code-en-01,"billing error: seat limit exceeded, 64 seats on team plan",cao-code-10#1,draft
+blind-code-en-02,blind,code,en,text,xiao,cao,xiao-code-06..10,,,,todo
+dev-chat-zh-01,dev,chat,zh,text,cao,xiao,cao-chat-01..05,dev-chat-zh-01,同学推荐的川菜馆聚餐地址,cao-chat-02#1,draft
+dev-chat-zh-02,dev,chat,zh,text,xiao,cao,xiao-chat-01..05,,,,todo
+dev-chat-zh-03,dev,chat,zh,text,cao,xiao,cao-chat-01..05,dev-chat-zh-03,组会改到哪个会议室了,cao-chat-05#1,draft
+dev-chat-en-01,dev,chat,en,text,xiao,cao,xiao-chat-01..05,,,,todo
+dev-chat-en-02,dev,chat,en,text,cao,xiao,cao-chat-01..05,dev-chat-en-02,bug report about an empty decode error code,cao-chat-04#1,draft
+blind-chat-zh-01,blind,chat,zh,text,cao,xiao,cao-chat-06..10,blind-chat-zh-01,作业二什么时候截止，谁负责建表,cao-chat-09#1,draft
+blind-chat-zh-02,blind,chat,zh,text,xiao,cao,xiao-chat-06..10,,,,todo
+blind-chat-en-01,blind,chat,en,text,cao,xiao,cao-chat-06..10,blind-chat-en-01,flight from Singapore to Zurich in December,cao-chat-06#1,draft
+blind-chat-en-02,blind,chat,en,text,xiao,cao,xiao-chat-06..10,,,,todo
+blind-chat-en-03,blind,chat,en,text,xiao,cao,xiao-chat-06..10,,,,todo
+dev-web-zh-01,dev,web,zh,image,cao,xiao,cao-web-01..05,dev-web-zh-01,雪山风景的旅游网站页面,,draft
+dev-web-zh-02,dev,web,zh,image,xiao,cao,xiao-web-01..05,,,,todo
+dev-web-en-01,dev,web,en,image,cao,xiao,cao-web-01..05,dev-web-en-01,Chinese home-cooking recipe website with photos of dishes,,draft
+dev-web-en-02,dev,web,en,image,xiao,cao,xiao-web-01..05,,,,todo
+dev-web-en-03,dev,web,en,image,xiao,cao,xiao-web-01..05,,,,todo
+blind-web-zh-01,blind,web,zh,image,cao,xiao,cao-web-06..10,blind-web-zh-01,一周天气预报页面,,draft
+blind-web-zh-02,blind,web,zh,image,xiao,cao,xiao-web-06..10,,,,todo
+blind-web-zh-03,blind,web,zh,image,xiao,cao,xiao-web-06..10,,,,todo
+blind-web-en-01,blind,web,en,image,cao,xiao,cao-web-06..10,blind-web-en-01,weather map with wind or rain radar overlay,,draft
+blind-web-en-02,blind,web,en,image,cao,xiao,cao-web-06..10,blind-web-en-02,Formula 1 racing website with race car photos,,draft
+dev-table-zh-01,dev,table,zh,text,cao,xiao,cao-table-01..05,dev-table-zh-01,Northwind Books 书店的订单确认单,,draft
+dev-table-zh-02,dev,table,zh,text,xiao,cao,xiao-table-01..05,,,,todo
+dev-table-zh-03,dev,table,zh,text,cao,xiao,cao-table-01..05,dev-table-zh-03,宿舍费缴费通知,,draft
+dev-table-en-01,dev,table,en,text,xiao,cao,xiao-table-01..05,,,,todo
+dev-table-en-02,dev,table,en,text,xiao,cao,xiao-table-01..05,,,,todo
+blind-table-zh-01,blind,table,zh,text,cao,xiao,cao-table-06..10,blind-table-zh-01,订单退款审批流程图,,draft
+blind-table-zh-02,blind,table,zh,text,xiao,cao,xiao-table-06..10,,,,todo
+blind-table-en-01,blind,table,en,text,cao,xiao,cao-table-06..10,blind-table-en-01,LoRA paper experiment results table,,draft
+blind-table-en-02,blind,table,en,text,xiao,cao,xiao-table-06..10,,,,todo
+blind-table-en-03,blind,table,en,text,cao,xiao,cao-table-06..10,blind-table-en-03,USD historical exchange rates on 31 December 2024,,draft

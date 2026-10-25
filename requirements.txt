@@ -11,5 +11,9 @@ transformers==5.19.0
 sentence-transformers==6.1.0
 huggingface-hub==1.33.0
 scikit-learn==1.9.1
+# 网页界面（python -m screenrecall.webapi；前端在 web/，构建需要 Node.js）
+starlette==1.8.0
+uvicorn==0.54.0
+python-multipart==0.0.32
 # P1 资源测量（python -m screenrecall.bench mem）
 psutil==7.1.3

@@ -15,6 +15,12 @@ def test_data_dir_config_overrides_only_that_data_dir(tmp_path):
     assert r.retention.quota_bytes == 10 * 1024**3 and r.retention.image_days == 30
 
 
+def test_data_dir_config_with_bom_loads(tmp_path):
+    # PowerShell 5.1 的 Set-Content -Encoding utf8 会写 BOM（PROGRESS 里的 Windows 步骤就是这么建测试库配置的）
+    (tmp_path / "config.toml").write_bytes(b"\xef\xbb\xbf[capture]\nwebp_lossless = true\n")
+    assert load_config(tmp_path).capture.webp_lossless is True
+
+
 def test_db_info_cli_reports_version(h, capsys):
     from screenrecall import db
 

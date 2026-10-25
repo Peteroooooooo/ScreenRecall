@@ -71,7 +71,7 @@ def lib(h, tmp_path):
         r.update(label=label, review_label=label, task_id=task, annotator="A", reviewer="B",
                  app=APPS[label], scenario="code" if label == "code" else label, language="zh")
     with open(out, "w", encoding="utf-8-sig", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=dataset.ALL_COLS)
+        w = csv.DictWriter(fh, fieldnames=dataset.ALL_COLS + ["source_kind"])
         w.writeheader()
         w.writerows(rows)
     labelset = tmp_path / "labelset.json"
@@ -83,7 +83,7 @@ def _rewrite(path, fn):
     rows = list(csv.DictReader(open(path, encoding="utf-8-sig")))
     fn(rows)
     with open(path, "w", encoding="utf-8-sig", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=dataset.ALL_COLS)
+        w = csv.DictWriter(fh, fieldnames=dataset.ALL_COLS + ["source_kind"])
         w.writeheader()
         w.writerows(rows)
 
@@ -97,12 +97,46 @@ def test_check_reports_unknown_label_missing_review_and_unexplained_change(lib, 
         rows[0]["review_label"] = "nonsense"
         rows[1]["review_label"] = ""
         rows[2]["review_label"] = "web" if rows[2]["label"] != "web" else "chat"  # 改了却没写理由
-        rows[3]["label"] = rows[3]["review_label"] = ""  # 未标注：跳过，不算错
+        rows[3]["label"] = rows[3]["review_label"] = rows[3]["annotator"] = rows[3]["reviewer"] = ""  # 未标注：跳过
     _rewrite(out, spoil)
     rep = dataset.read_labels(h.conn, out, labels)
     text = " ".join(rep.errors)
-    assert "nonsense" in text and "缺少复核结论" in text and "change_reason" in text
-    assert rep.unlabeled == 1 and rep.changed_by_review >= 1
+    assert "nonsense" in text and "记录不完整" in text and "change_reason" in text
+    assert rep.unlabeled == 1
+
+
+def test_formal_check_rejects_final_label_only_same_person_and_bad_source(lib, h):
+    out, labelset, truth, _ = lib
+    labels = dataset.load_labelset(labelset)
+
+    def spoil(rows):
+        for k in ("label", "annotator", "review_label", "reviewer"):   # 只填 final_label：绕过复核
+            rows[0][k] = ""
+        rows[0]["final_label"] = "code"
+        rows[1]["reviewer"] = rows[1]["annotator"]                      # 自己复核自己
+        rows[2]["source_kind"] = "whatever"                             # 来源不合法
+        rows[3]["review_label"] = "web" if rows[3]["label"] != "web" else "chat"  # 分歧但没定稿
+        rows[3]["change_reason"] = "看错了"
+    _rewrite(out, spoil)
+    rep = dataset.read_labels(h.conn, out, labels)
+    text = " ".join(rep.errors)
+    assert "只填 final_label 不算标注" in text and "不能与标注人" in text and "source_kind" in text
+    assert "要填定稿 final_label" in text
+    assert len(rep.errors) == 4
+
+
+def test_formal_check_requires_source_kind_column(lib, h, tmp_path):
+    out, labelset, truth, _ = lib
+    rows = list(csv.DictReader(open(out, encoding="utf-8-sig")))
+    old = tmp_path / "old.csv"
+    with open(old, "w", encoding="utf-8-sig", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=dataset.ALL_COLS, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(rows)
+    labels = dataset.load_labelset(labelset)
+    with pytest.raises(dataset.DatasetError, match="source_kind"):
+        dataset.read_labels(h.conn, old, labels)
+    assert dataset.read_labels(h.conn, old, labels, require_review=False).ok  # 试标阶段照常读取
 
 
 def test_grouped_split_keeps_tasks_and_duplicates_together(lib, h):
@@ -116,6 +150,21 @@ def test_grouped_split_keeps_tasks_and_duplicates_together(lib, h):
     assert sum(sum(c.values()) for c in res.counts.values()) == len(truth)
     with pytest.raises(dataset.DatasetError):
         dataset.grouped_split(rep.items, groups, {"train": 0.7, "val": 0.2}, seed=1)
+
+
+def test_grouped_split_stratifies_class_held_in_big_groups():
+    # 4 个 chat 大组（30 帧）+ 12 个其他类小组（20 帧）：只按总帧数分配时 chat 会全进 train
+    items, groups = [], {}
+    for g in range(16):
+        label, n = ("chat", 30) if g < 4 else (("code", "web", "table_doc")[g % 3], 20)
+        for k in range(n):
+            fid = f"f{g:02d}-{k:02d}"
+            items.append(dataset.Labeled(fid, label, f"t{g}", "x", "en", "app", "s"))
+            groups[fid] = f"g{g:02d}"
+    res = dataset.grouped_split(items, groups, {"train": 0.5, "val": 0.25, "test": 0.25}, seed=0)
+    for s in ("train", "val", "test"):
+        assert res.counts[s].get("chat"), (s, res.counts)
+    assert not res.warnings or all("缺" not in w and "没有类别" not in w for w in res.warnings)
 
 
 def test_duplicate_text_merges_groups_across_tasks(lib, h):

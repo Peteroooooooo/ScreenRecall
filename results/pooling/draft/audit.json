@@ -1,0 +1,222 @@
+{
+  "pool": {
+    "depth": 5,
+    "pairs": 22,
+    "judged_by_all": 22,
+    "judges": [
+      "xiao"
+    ],
+    "progress": {
+      "xiao": 22
+    },
+    "method": "kiro-ai 预筛（2026-10-22）：对 pool.json 全部 649 对（五组实验前 5 名中原真值之外的帧），按每条查询的判定依据定答案证据关键词，在候选帧 OCR 中检索（36 对命中）；另把同一来源但 OCR 无关键词的候选逐条看 OCR 行（排除 OCR 漏读）；7 条画面题的候选做缩略图拼版逐张看图。命中后再按 rationale 的排除条件（其他日期/币种、别的文章、只看到题目不见报错等）逐条核对，必要时看原图。只把'很可能漏标'和'拿不准'的放进本池，供人工复核；排除的对及理由列在 excluded。AI 预判不计入结果，只有人工判定算数。"
+  },
+  "agreement": {
+    "cohen_kappa": null,
+    "raw_agreement": null,
+    "unresolved_disagreements": 0
+  },
+  "added_relevant": {
+    "cao-blind-chat-en-01": [],
+    "cao-blind-chat-zh-01": [
+      "0f13636fad8440fcb2d5d0c7bb1a0094",
+      "d9eb6672066d4e4086be7274d11f2a64"
+    ],
+    "cao-blind-code-en-01": [],
+    "cao-blind-code-zh-01": [],
+    "cao-blind-table_doc-en-01": [],
+    "cao-blind-table_doc-en-03": [],
+    "cao-blind-table_doc-zh-01": [],
+    "cao-blind-web-en-01": [],
+    "cao-blind-web-en-02": [],
+    "cao-blind-web-zh-01": [],
+    "cao-dev-chat-en-02": [],
+    "cao-dev-chat-zh-01": [],
+    "cao-dev-chat-zh-03": [],
+    "cao-dev-code-en-01": [],
+    "cao-dev-code-en-03": [],
+    "cao-dev-code-zh-01": [],
+    "cao-dev-table_doc-zh-01": [],
+    "cao-dev-table_doc-zh-03": [],
+    "cao-dev-web-en-01": [],
+    "cao-dev-web-zh-01": [
+      "11614609c5f649bd8ad48af563c13665",
+      "7b50c6c02d114fbe9f4c140efd36308c"
+    ],
+    "xiao-blind-chat-en-01": [],
+    "xiao-blind-chat-en-02": [
+      "7a9c4378da3a4a74bf51f64e4faf8c5c"
+    ],
+    "xiao-blind-chat-en-03": [],
+    "xiao-blind-chat-zh-01": [
+      "75e79ba7a32240908cd3ae25da21d3e7"
+    ],
+    "xiao-blind-chat-zh-02": [],
+    "xiao-blind-code-en-01": [],
+    "xiao-blind-code-en-02": [],
+    "xiao-blind-code-zh-01": [
+      "596d5fed15f24191b935a4821656388f",
+      "f12e2c66fd9d4dd48723f48b6138633a"
+    ],
+    "xiao-blind-code-zh-02": [],
+    "xiao-blind-code-zh-03": [],
+    "xiao-blind-table_doc-en-01": [],
+    "xiao-blind-table_doc-en-02": [],
+    "xiao-blind-table_doc-en-03": [
+      "95d552a3cd5045c4be83933d74ec9d85"
+    ],
+    "xiao-blind-table_doc-zh-01": [],
+    "xiao-blind-table_doc-zh-02": [],
+    "xiao-blind-web-en-01": [],
+    "xiao-blind-web-en-02": [
+      "9b81e0c4a338475b85220ff2ae40aa74"
+    ],
+    "xiao-blind-web-zh-01": [],
+    "xiao-blind-web-zh-02": [
+      "2abe14e2c5734556b8658f4ac168c9db"
+    ],
+    "xiao-blind-web-zh-03": [],
+    "xiao-dev-chat-en-01": [
+      "3724323e16e44a7088b4aed366dbf12e",
+      "98575b70308e45ca963dac223942d476"
+    ],
+    "xiao-dev-chat-en-02": [],
+    "xiao-dev-chat-zh-01": [],
+    "xiao-dev-chat-zh-02": [],
+    "xiao-dev-chat-zh-03": [],
+    "xiao-dev-code-en-01": [],
+    "xiao-dev-code-en-02": [],
+    "xiao-dev-code-en-03": [],
+    "xiao-dev-code-zh-01": [],
+    "xiao-dev-code-zh-02": [],
+    "xiao-dev-table_doc-en-01": [],
+    "xiao-dev-table_doc-en-02": [],
+    "xiao-dev-table_doc-zh-01": [],
+    "xiao-dev-table_doc-zh-02": [],
+    "xiao-dev-table_doc-zh-03": [],
+    "xiao-dev-web-en-01": [],
+    "xiao-dev-web-en-02": [
+      "2ba39840d0bd4f4bad7bb54d003771d1"
+    ],
+    "xiao-dev-web-en-03": [],
+    "xiao-dev-web-zh-01": [],
+    "xiao-dev-web-zh-02": []
+  },
+  "metrics": {
+    "dev": {
+      "exp1_lexical": {
+        "n": 30,
+        "official": {
+          "hits": 10,
+          "mrr10": 0.29444444444444445
+        },
+        "audited": {
+          "hits": 10,
+          "mrr10": 0.29444444444444445
+        }
+      },
+      "exp2_semantic": {
+        "n": 30,
+        "official": {
+          "hits": 20,
+          "mrr10": 0.528611111111111
+        },
+        "audited": {
+          "hits": 20,
+          "mrr10": 0.5508333333333333
+        }
+      },
+      "exp3_image": {
+        "n": 30,
+        "official": {
+          "hits": 7,
+          "mrr10": 0.19444444444444445
+        },
+        "audited": {
+          "hits": 7,
+          "mrr10": 0.19444444444444445
+        }
+      },
+      "exp4_rrf_text": {
+        "n": 30,
+        "official": {
+          "hits": 20,
+          "mrr10": 0.44416666666666665
+        },
+        "audited": {
+          "hits": 21,
+          "mrr10": 0.4552777777777778
+        }
+      },
+      "exp5_rrf_three": {
+        "n": 30,
+        "official": {
+          "hits": 16,
+          "mrr10": 0.34740740740740744
+        },
+        "audited": {
+          "hits": 16,
+          "mrr10": 0.34740740740740744
+        }
+      }
+    },
+    "blind": {
+      "exp1_lexical": {
+        "n": 30,
+        "official": {
+          "hits": 8,
+          "mrr10": 0.22833333333333333
+        },
+        "audited": {
+          "hits": 8,
+          "mrr10": 0.22833333333333333
+        }
+      },
+      "exp2_semantic": {
+        "n": 30,
+        "official": {
+          "hits": 21,
+          "mrr10": 0.5870238095238095
+        },
+        "audited": {
+          "hits": 22,
+          "mrr10": 0.6553571428571429
+        }
+      },
+      "exp3_image": {
+        "n": 30,
+        "official": {
+          "hits": 5,
+          "mrr10": 0.15416666666666667
+        },
+        "audited": {
+          "hits": 5,
+          "mrr10": 0.15416666666666667
+        }
+      },
+      "exp4_rrf_text": {
+        "n": 30,
+        "official": {
+          "hits": 22,
+          "mrr10": 0.6073015873015872
+        },
+        "audited": {
+          "hits": 23,
+          "mrr10": 0.6748015873015873
+        }
+      },
+      "exp5_rrf_three": {
+        "n": 30,
+        "official": {
+          "hits": 19,
+          "mrr10": 0.42003968253968255
+        },
+        "audited": {
+          "hits": 20,
+          "mrr10": 0.4589285714285714
+        }
+      }
+    }
+  },
+  "complete": true
+}

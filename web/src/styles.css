@@ -1,0 +1,98 @@
+/* important：所有工具类带 !important。浏览器扩展常往页面注入不分层的 Tailwind v3 样式（如 .flex-col），
+   不分层样式会压过 @layer 里的普通声明，导致布局错乱；!important 的分层声明则优先于它们。
+   自定义组件类一律加 sr- 前缀，避免和注入样式里的 .btn / .card 等同名。 */
+@import "tailwindcss" important;
+
+/* 设计："暗房看片台"——深色导航与看图台，浅色工作区；颜色只留给截图和两种证据标记：
+   marker（琥珀）= 原词命中的 OCR 行，cobalt（钴蓝）= 语义贡献最高的文本块。 */
+@theme {
+  --color-canvas: #f4f5f7;
+  --color-surface: #ffffff;
+  --color-ink: #0f1217;
+  --color-ink-2: #262b33;
+  --color-graphite: #59616e;
+  --color-faint: #8d95a1;
+  --color-rule: #e5e8ed;
+  --color-rule-strong: #d2d7de;
+  --color-well: #f0f2f5;
+  --color-night: #0b0d11;
+  --color-night-2: #14181f;
+  --color-night-3: #1d222b;
+  --color-night-line: #252b35;
+  --color-night-text: #c9ced6;
+  --color-night-faint: #7c8491;
+  --color-marker: #f2b400;
+  --color-marker-ink: #8a5a00;
+  --color-cobalt: #2f5fe0;
+  --color-signal: #17935f;
+  --color-alarm: #c2372b;
+
+  --font-sans: "Inter Variable", "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Mono", ui-monospace, "Microsoft YaHei UI", monospace;
+
+  --radius-card: 14px;
+  --radius-control: 10px;
+
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.05);
+  --shadow-lift: 0 1px 2px rgb(16 24 40 / 0.05), 0 12px 32px -12px rgb(16 24 40 / 0.18);
+  --shadow-bar: 0 1px 2px rgb(16 24 40 / 0.04), 0 8px 24px -10px rgb(16 24 40 / 0.14);
+
+  --animate-rise: rise 360ms cubic-bezier(.2,.7,.2,1) both;
+}
+
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+@layer base {
+  html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+  body { margin: 0; background: var(--color-canvas); }
+  ::selection { background: color-mix(in srgb, var(--color-marker) 40%, transparent); }
+  :focus-visible { outline: 2px solid var(--color-cobalt); outline-offset: 2px; border-radius: 6px; }
+  button, [role="button"], a, label[for], summary { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  input, select, button, textarea { font: inherit; color: inherit; }
+  summary { list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+}
+
+@layer components {
+  .sr-num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum", "cv11"; }
+  .sr-card { background: var(--color-surface); border: 1px solid var(--color-rule); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
+  .sr-field {
+    height: 2.5rem; border: 1px solid var(--color-rule-strong); background: var(--color-surface);
+    border-radius: var(--radius-control); padding: 0 0.75rem; transition: border-color 150ms, box-shadow 150ms;
+  }
+  .sr-field:hover { border-color: var(--color-faint); }
+  .sr-field:focus { outline: none; border-color: var(--color-cobalt); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-cobalt) 18%, transparent); }
+  .sr-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
+    height: 2.5rem; padding: 0 1rem; border-radius: var(--radius-control); font-weight: 500; font-size: 0.9rem;
+    white-space: nowrap; border: 1px solid transparent; transition: background-color 150ms, border-color 150ms, color 150ms, box-shadow 150ms, transform 80ms;
+  }
+  .sr-btn:active:not(:disabled) { transform: translateY(0.5px); }
+  .sr-btn:disabled { opacity: 0.42; }
+  .sr-btn-primary { background: var(--color-ink); color: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.08); }
+  .sr-btn-primary:hover:not(:disabled) { background: var(--color-ink-2); }
+  .sr-btn-line { background: var(--color-surface); border-color: var(--color-rule-strong); color: var(--color-ink); box-shadow: 0 1px 1px rgb(16 24 40 / 0.04); }
+  .sr-btn-line:hover:not(:disabled) { border-color: var(--color-graphite); }
+  .sr-btn-ghost { color: var(--color-graphite); }
+  .sr-btn-ghost:hover:not(:disabled) { color: var(--color-ink); background: var(--color-well); }
+  .sr-btn-danger { background: var(--color-surface); border-color: color-mix(in srgb, var(--color-alarm) 35%, transparent); color: var(--color-alarm); }
+  .sr-btn-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--color-alarm) 6%, white); }
+  .sr-btn-danger-solid { background: var(--color-alarm); color: #fff; }
+  .sr-btn-danger-solid:hover:not(:disabled) { background: color-mix(in srgb, var(--color-alarm) 88%, black); }
+  .sr-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-faint); }
+  mark.sr-lex { background: color-mix(in srgb, var(--color-marker) 38%, transparent); color: inherit; border-radius: 3px; padding: 0 2px; box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--color-marker-ink) 40%, transparent); }
+}
+
+/* 唯一的编排动效：打开证据时，标记像荧光笔一样从左往右刷上去（回应用户的点击）。 */
+@keyframes stroke-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.sr-mark-shape { transform-box: fill-box; transform-origin: left center; animation: stroke-in 300ms cubic-bezier(.2,.7,.2,1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .sr-mark-shape { animation: none; }
+  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
+}
+
+dialog::backdrop { background: rgb(11 13 17 / 0.5); backdrop-filter: blur(2px); }
+
+/* 深色区域的滚动条 */
+.sr-dark-scroll { scrollbar-color: var(--color-night-line) transparent; scrollbar-width: thin; }

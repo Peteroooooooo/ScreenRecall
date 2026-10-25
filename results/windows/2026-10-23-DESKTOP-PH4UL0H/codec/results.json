@@ -1,0 +1,10839 @@
+[
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\0f590c5ce5f441bd8449a0329e87d5e8.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 41888,
+  "variants": {
+   "q90": {
+    "bytes": 117822,
+    "encode_ms": [
+     284.09,
+     258.8,
+     248.34
+    ],
+    "max_diff": 114,
+    "changed_px": 0.851941,
+    "psnr": 36.62,
+    "ocr_cer": 0.00917,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 126046,
+    "encode_ms": [
+     290.04,
+     281.02,
+     250.16
+    ],
+    "max_diff": 116,
+    "changed_px": 0.850867,
+    "psnr": 36.68,
+    "ocr_cer": 0.00917,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 146608,
+    "encode_ms": [
+     260.03,
+     257.42,
+     258.2
+    ],
+    "max_diff": 113,
+    "changed_px": 0.853205,
+    "psnr": 36.77,
+    "ocr_cer": 0.02294,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 41354,
+    "encode_ms": [
+     130.29,
+     136.89,
+     133.78
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 753
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\11aa2ab3101b401cb4082bcca55e7336.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 38066,
+  "variants": {
+   "q90": {
+    "bytes": 123908,
+    "encode_ms": [
+     272.22,
+     257.0,
+     336.21
+    ],
+    "max_diff": 115,
+    "changed_px": 0.828739,
+    "psnr": 36.37,
+    "ocr_cer": 0.03467,
+    "ocr_identical": false,
+    "digits_lost": [
+     "14:34"
+    ],
+    "digits_new": [
+     "1",
+     "1",
+     "3...14:34"
+    ]
+   },
+   "q92": {
+    "bytes": 132666,
+    "encode_ms": [
+     252.53,
+     253.72,
+     256.33
+    ],
+    "max_diff": 120,
+    "changed_px": 0.828403,
+    "psnr": 36.42,
+    "ocr_cer": 0.01526,
+    "ocr_identical": false,
+    "digits_lost": [
+     "14:34"
+    ],
+    "digits_new": [
+     "3...14:34"
+    ]
+   },
+   "q95": {
+    "bytes": 154902,
+    "encode_ms": [
+     267.53,
+     260.15,
+     260.56
+    ],
+    "max_diff": 116,
+    "changed_px": 0.829178,
+    "psnr": 36.51,
+    "ocr_cer": 0.02913,
+    "ocr_identical": false,
+    "digits_lost": [
+     "14:34"
+    ],
+    "digits_new": [
+     "1",
+     "3..14:34"
+    ]
+   },
+   "lossless": {
+    "bytes": 37810,
+    "encode_ms": [
+     133.37,
+     131.63,
+     133.79
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 842
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\12b7b92bccfe47958138ba5859e61588.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 42678,
+  "variants": {
+   "q90": {
+    "bytes": 117120,
+    "encode_ms": [
+     257.69,
+     243.83,
+     243.09
+    ],
+    "max_diff": 111,
+    "changed_px": 0.843801,
+    "psnr": 36.64,
+    "ocr_cer": 0.01541,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "1"
+    ]
+   },
+   "q92": {
+    "bytes": 125442,
+    "encode_ms": [
+     250.13,
+     252.31,
+     252.47
+    ],
+    "max_diff": 109,
+    "changed_px": 0.843814,
+    "psnr": 36.7,
+    "ocr_cer": 0.01541,
+    "ocr_identical": false,
+    "digits_lost": [
+     "15:02"
+    ],
+    "digits_new": [
+     "015:02"
+    ]
+   },
+   "q95": {
+    "bytes": 146626,
+    "encode_ms": [
+     251.48,
+     252.1,
+     257.64
+    ],
+    "max_diff": 112,
+    "changed_px": 0.846538,
+    "psnr": 36.78,
+    "ocr_cer": 0.01387,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 42106,
+    "encode_ms": [
+     137.25,
+     135.93,
+     133.44
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 754
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\1768fad8de0b49558a434c23df3f77c2.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 47878,
+  "variants": {
+   "q90": {
+    "bytes": 131024,
+    "encode_ms": [
+     257.01,
+     247.95,
+     251.44
+    ],
+    "max_diff": 117,
+    "changed_px": 0.861265,
+    "psnr": 35.98,
+    "ocr_cer": 0.00972,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "1"
+    ]
+   },
+   "q92": {
+    "bytes": 140428,
+    "encode_ms": [
+     258.98,
+     254.65,
+     254.79
+    ],
+    "max_diff": 117,
+    "changed_px": 0.860261,
+    "psnr": 36.02,
+    "ocr_cer": 0.01111,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "1",
+     "1"
+    ]
+   },
+   "q95": {
+    "bytes": 163424,
+    "encode_ms": [
+     265.7,
+     266.64,
+     263.9
+    ],
+    "max_diff": 116,
+    "changed_px": 0.861637,
+    "psnr": 36.11,
+    "ocr_cer": 0.03194,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "1",
+     "1"
+    ]
+   },
+   "lossless": {
+    "bytes": 47430,
+    "encode_ms": [
+     145.92,
+     152.04,
+     147.37
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 820
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\1c7aa389db6643d6a6ec20f0ef9e132f.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 44368,
+  "variants": {
+   "q90": {
+    "bytes": 124074,
+    "encode_ms": [
+     254.89,
+     245.31,
+     247.35
+    ],
+    "max_diff": 119,
+    "changed_px": 0.853432,
+    "psnr": 36.15,
+    "ocr_cer": 0.0336,
+    "ocr_identical": false,
+    "digits_lost": [
+     "4,850",
+     "4,850"
+    ],
+    "digits_new": [
+     "1",
+     "4",
+     "4850",
+     "850"
+    ]
+   },
+   "q92": {
+    "bytes": 132996,
+    "encode_ms": [
+     244.89,
+     255.7,
+     251.99
+    ],
+    "max_diff": 113,
+    "changed_px": 0.853814,
+    "psnr": 36.2,
+    "ocr_cer": 0.0096,
+    "ocr_identical": false,
+    "digits_lost": [
+     "4,850",
+     "4,850"
+    ],
+    "digits_new": [
+     "1",
+     "4",
+     "4850",
+     "850"
+    ]
+   },
+   "q95": {
+    "bytes": 154796,
+    "encode_ms": [
+     261.68,
+     257.65,
+     264.74
+    ],
+    "max_diff": 114,
+    "changed_px": 0.857844,
+    "psnr": 36.27,
+    "ocr_cer": 0.0064,
+    "ocr_identical": false,
+    "digits_lost": [
+     "4,850",
+     "4,850"
+    ],
+    "digits_new": [
+     "4",
+     "4850",
+     "850"
+    ]
+   },
+   "lossless": {
+    "bytes": 43902,
+    "encode_ms": [
+     136.3,
+     135.8,
+     133.01
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 710
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\277be0df0fd04790b21d5fa4f2f1ea41.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 43930,
+  "variants": {
+   "q90": {
+    "bytes": 125286,
+    "encode_ms": [
+     258.54,
+     260.37,
+     254.81
+    ],
+    "max_diff": 106,
+    "changed_px": 0.854559,
+    "psnr": 36.37,
+    "ocr_cer": 0.03514,
+    "ocr_identical": false,
+    "digits_lost": [
+     "015:15",
+     "12:52",
+     "15:07"
+    ],
+    "digits_new": [
+     "15:0712:52",
+     "15:15"
+    ]
+   },
+   "q92": {
+    "bytes": 134416,
+    "encode_ms": [
+     249.37,
+     250.02,
+     249.38
+    ],
+    "max_diff": 105,
+    "changed_px": 0.853314,
+    "psnr": 36.43,
+    "ocr_cer": 0.03514,
+    "ocr_identical": false,
+    "digits_lost": [
+     "015:15",
+     "12:52",
+     "15:07"
+    ],
+    "digits_new": [
+     "15:0712:52",
+     "15:15"
+    ]
+   },
+   "q95": {
+    "bytes": 156324,
+    "encode_ms": [
+     262.74,
+     261.03,
+     261.54
+    ],
+    "max_diff": 108,
+    "changed_px": 0.853857,
+    "psnr": 36.52,
+    "ocr_cer": 0.03919,
+    "ocr_identical": false,
+    "digits_lost": [
+     "015:15",
+     "12:52",
+     "15:07"
+    ],
+    "digits_new": [
+     "15:0712:52",
+     "15:15"
+    ]
+   },
+   "lossless": {
+    "bytes": 42980,
+    "encode_ms": [
+     144.94,
+     142.59,
+     140.23
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 860
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\2a29b328b8594d65aaba198d5c73b72b.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 46880,
+  "variants": {
+   "q90": {
+    "bytes": 133978,
+    "encode_ms": [
+     260.77,
+     252.75,
+     259.8
+    ],
+    "max_diff": 111,
+    "changed_px": 0.85972,
+    "psnr": 36.0,
+    "ocr_cer": 0.03924,
+    "ocr_identical": false,
+    "digits_lost": [
+     "12:52",
+     "15:11"
+    ],
+    "digits_new": [
+     "15:1112:52"
+    ]
+   },
+   "q92": {
+    "bytes": 143576,
+    "encode_ms": [
+     248.71,
+     252.45,
+     259.17
+    ],
+    "max_diff": 116,
+    "changed_px": 0.858998,
+    "psnr": 36.06,
+    "ocr_cer": 0.02405,
+    "ocr_identical": false,
+    "digits_lost": [
+     "12:52",
+     "15:11"
+    ],
+    "digits_new": [
+     "0",
+     "15:1112:52"
+    ]
+   },
+   "q95": {
+    "bytes": 166812,
+    "encode_ms": [
+     253.41,
+     250.5,
+     254.74
+    ],
+    "max_diff": 112,
+    "changed_px": 0.859605,
+    "psnr": 36.15,
+    "ocr_cer": 0.05316,
+    "ocr_identical": false,
+    "digits_lost": [
+     "12:52",
+     "15:11"
+    ],
+    "digits_new": [
+     "15:1112:52"
+    ]
+   },
+   "lossless": {
+    "bytes": 46376,
+    "encode_ms": [
+     156.17,
+     149.98,
+     149.41
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 907
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\3698ef4664ee421bbefb651ff0709df7.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 45236,
+  "variants": {
+   "q90": {
+    "bytes": 120066,
+    "encode_ms": [
+     244.62,
+     236.1,
+     250.22
+    ],
+    "max_diff": 113,
+    "changed_px": 0.838128,
+    "psnr": 36.33,
+    "ocr_cer": 0.01075,
+    "ocr_identical": false,
+    "digits_lost": [
+     "72...12:41"
+    ],
+    "digits_new": [
+     "1",
+     "72.12:41"
+    ]
+   },
+   "q92": {
+    "bytes": 128662,
+    "encode_ms": [
+     251.12,
+     252.12,
+     250.93
+    ],
+    "max_diff": 110,
+    "changed_px": 0.837727,
+    "psnr": 36.39,
+    "ocr_cer": 0.00922,
+    "ocr_identical": false,
+    "digits_lost": [
+     "72...12:41"
+    ],
+    "digits_new": [
+     "72.12:41"
+    ]
+   },
+   "q95": {
+    "bytes": 150104,
+    "encode_ms": [
+     259.86,
+     262.09,
+     262.88
+    ],
+    "max_diff": 115,
+    "changed_px": 0.839857,
+    "psnr": 36.46,
+    "ocr_cer": 0.01229,
+    "ocr_identical": false,
+    "digits_lost": [
+     "72...12:41"
+    ],
+    "digits_new": [
+     "72.12:41"
+    ]
+   },
+   "lossless": {
+    "bytes": 44888,
+    "encode_ms": [
+     145.03,
+     145.48,
+     146.26
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 746
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\41632235f0904b4f833f8b7a6bd3d7c4.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 44214,
+  "variants": {
+   "q90": {
+    "bytes": 126208,
+    "encode_ms": [
+     251.9,
+     245.65,
+     243.64
+    ],
+    "max_diff": 106,
+    "changed_px": 0.855997,
+    "psnr": 36.35,
+    "ocr_cer": 0.01589,
+    "ocr_identical": false,
+    "digits_lost": [
+     "015:15",
+     "15:05"
+    ],
+    "digits_new": [
+     "15:15",
+     "5:0"
+    ]
+   },
+   "q92": {
+    "bytes": 135122,
+    "encode_ms": [
+     257.97,
+     255.63,
+     256.06
+    ],
+    "max_diff": 105,
+    "changed_px": 0.854942,
+    "psnr": 36.41,
+    "ocr_cer": 0.01987,
+    "ocr_identical": false,
+    "digits_lost": [
+     "015:15",
+     "15:05"
+    ],
+    "digits_new": [
+     "1",
+     "15:03",
+     "15:15"
+    ]
+   },
+   "q95": {
+    "bytes": 157362,
+    "encode_ms": [
+     269.66,
+     259.54,
+     261.0
+    ],
+    "max_diff": 105,
+    "changed_px": 0.856107,
+    "psnr": 36.51,
+    "ocr_cer": 0.05695,
+    "ocr_identical": false,
+    "digits_lost": [
+     "015:15",
+     "15:05"
+    ],
+    "digits_new": [
+     "15:15"
+    ]
+   },
+   "lossless": {
+    "bytes": 43216,
+    "encode_ms": [
+     143.19,
+     145.71,
+     141.62
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 881
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\4395a944d6684221a1b6693a82d27b4b.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 44706,
+  "variants": {
+   "q90": {
+    "bytes": 124962,
+    "encode_ms": [
+     260.8,
+     256.68,
+     259.21
+    ],
+    "max_diff": 109,
+    "changed_px": 0.85245,
+    "psnr": 36.08,
+    "ocr_cer": 0.01097,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "1"
+    ]
+   },
+   "q92": {
+    "bytes": 133938,
+    "encode_ms": [
+     254.73,
+     253.78,
+     250.96
+    ],
+    "max_diff": 112,
+    "changed_px": 0.853604,
+    "psnr": 36.14,
+    "ocr_cer": 0.00627,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "1"
+    ]
+   },
+   "q95": {
+    "bytes": 156144,
+    "encode_ms": [
+     263.17,
+     268.94,
+     261.1
+    ],
+    "max_diff": 110,
+    "changed_px": 0.857217,
+    "psnr": 36.22,
+    "ocr_cer": 0.00627,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "1"
+    ]
+   },
+   "lossless": {
+    "bytes": 43934,
+    "encode_ms": [
+     141.31,
+     140.19,
+     140.62
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 722
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\4cf4b46e275c421fa0c599d636159494.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 45400,
+  "variants": {
+   "q90": {
+    "bytes": 116282,
+    "encode_ms": [
+     274.62,
+     265.0,
+     255.35
+    ],
+    "max_diff": 115,
+    "changed_px": 0.846296,
+    "psnr": 36.55,
+    "ocr_cer": 0.01794,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 124564,
+    "encode_ms": [
+     268.07,
+     249.42,
+     248.36
+    ],
+    "max_diff": 115,
+    "changed_px": 0.845754,
+    "psnr": 36.61,
+    "ocr_cer": 0.01794,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 144974,
+    "encode_ms": [
+     274.79,
+     261.14,
+     259.68
+    ],
+    "max_diff": 109,
+    "changed_px": 0.849563,
+    "psnr": 36.68,
+    "ocr_cer": 0.00816,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 45078,
+    "encode_ms": [
+     150.17,
+     145.51,
+     142.79
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 698
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\4f5163cc59a6429599689ca4132c4147.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 44898,
+  "variants": {
+   "q90": {
+    "bytes": 121384,
+    "encode_ms": [
+     285.11,
+     262.59,
+     257.37
+    ],
+    "max_diff": 113,
+    "changed_px": 0.838743,
+    "psnr": 36.42,
+    "ocr_cer": 0.01627,
+    "ocr_identical": false,
+    "digits_lost": [
+     "014:25"
+    ],
+    "digits_new": [
+     "14:25"
+    ]
+   },
+   "q92": {
+    "bytes": 129790,
+    "encode_ms": [
+     279.17,
+     263.51,
+     254.05
+    ],
+    "max_diff": 111,
+    "changed_px": 0.839232,
+    "psnr": 36.48,
+    "ocr_cer": 0.01479,
+    "ocr_identical": false,
+    "digits_lost": [
+     "014:25"
+    ],
+    "digits_new": [
+     "14:25"
+    ]
+   },
+   "q95": {
+    "bytes": 151404,
+    "encode_ms": [
+     276.9,
+     266.35,
+     264.37
+    ],
+    "max_diff": 110,
+    "changed_px": 0.839251,
+    "psnr": 36.57,
+    "ocr_cer": 0.01331,
+    "ocr_identical": false,
+    "digits_lost": [
+     "014:25"
+    ],
+    "digits_new": [
+     "14:25"
+    ]
+   },
+   "lossless": {
+    "bytes": 43888,
+    "encode_ms": [
+     162.01,
+     155.55,
+     154.83
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 782
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\51691a50d0c34fbc8397d7910e461f08.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 41186,
+  "variants": {
+   "q90": {
+    "bytes": 123774,
+    "encode_ms": [
+     284.02,
+     266.97,
+     258.4
+    ],
+    "max_diff": 111,
+    "changed_px": 0.845082,
+    "psnr": 36.21,
+    "ocr_cer": 0.02421,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 132730,
+    "encode_ms": [
+     274.25,
+     262.47,
+     252.68
+    ],
+    "max_diff": 112,
+    "changed_px": 0.845538,
+    "psnr": 36.26,
+    "ocr_cer": 0.02421,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 154366,
+    "encode_ms": [
+     268.67,
+     261.35,
+     264.06
+    ],
+    "max_diff": 107,
+    "changed_px": 0.848254,
+    "psnr": 36.34,
+    "ocr_cer": 0.02874,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "1",
+     "1"
+    ]
+   },
+   "lossless": {
+    "bytes": 40808,
+    "encode_ms": [
+     142.5,
+     139.9,
+     138.03
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 762
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\5d7eaed4ba58413eb4f83996eabf4cbb.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 44892,
+  "variants": {
+   "q90": {
+    "bytes": 120632,
+    "encode_ms": [
+     268.4,
+     262.42,
+     255.28
+    ],
+    "max_diff": 116,
+    "changed_px": 0.842563,
+    "psnr": 36.5,
+    "ocr_cer": 0.02635,
+    "ocr_identical": false,
+    "digits_lost": [
+     "014:25"
+    ],
+    "digits_new": [
+     "14:25"
+    ]
+   },
+   "q92": {
+    "bytes": 128922,
+    "encode_ms": [
+     270.35,
+     258.46,
+     245.76
+    ],
+    "max_diff": 115,
+    "changed_px": 0.842924,
+    "psnr": 36.56,
+    "ocr_cer": 0.01025,
+    "ocr_identical": false,
+    "digits_lost": [
+     "014:25",
+     "735108:12"
+    ],
+    "digits_new": [
+     "12",
+     "14:25",
+     "735108"
+    ]
+   },
+   "q95": {
+    "bytes": 150192,
+    "encode_ms": [
+     273.87,
+     259.22,
+     258.21
+    ],
+    "max_diff": 115,
+    "changed_px": 0.844791,
+    "psnr": 36.65,
+    "ocr_cer": 0.02635,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "014:25",
+     "735108:12"
+    ],
+    "digits_new": [
+     "12",
+     "14:25",
+     "735108"
+    ]
+   },
+   "lossless": {
+    "bytes": 44018,
+    "encode_ms": [
+     174.21,
+     168.72,
+     167.17
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 798
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\6485d6cde6fb4368b3eb2e077996a04e.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 44640,
+  "variants": {
+   "q90": {
+    "bytes": 116768,
+    "encode_ms": [
+     270.27,
+     252.62,
+     247.96
+    ],
+    "max_diff": 112,
+    "changed_px": 0.851667,
+    "psnr": 36.66,
+    "ocr_cer": 0.01471,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "1"
+    ]
+   },
+   "q92": {
+    "bytes": 125368,
+    "encode_ms": [
+     266.9,
+     262.2,
+     259.19
+    ],
+    "max_diff": 113,
+    "changed_px": 0.850905,
+    "psnr": 36.71,
+    "ocr_cer": 0.00817,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 145712,
+    "encode_ms": [
+     276.01,
+     259.45,
+     252.71
+    ],
+    "max_diff": 112,
+    "changed_px": 0.854472,
+    "psnr": 36.79,
+    "ocr_cer": 0.01634,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "2:24"
+    ]
+   },
+   "lossless": {
+    "bytes": 44344,
+    "encode_ms": [
+     157.77,
+     157.04,
+     153.9
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 691
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\6b62e9768b494d20b924243d3b1ff590.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 44382,
+  "variants": {
+   "q90": {
+    "bytes": 119582,
+    "encode_ms": [
+     271.53,
+     253.68,
+     255.48
+    ],
+    "max_diff": 113,
+    "changed_px": 0.84502,
+    "psnr": 36.48,
+    "ocr_cer": 0.01264,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "1"
+    ]
+   },
+   "q92": {
+    "bytes": 128206,
+    "encode_ms": [
+     270.93,
+     256.59,
+     260.15
+    ],
+    "max_diff": 115,
+    "changed_px": 0.84448,
+    "psnr": 36.53,
+    "ocr_cer": 0.01264,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 149228,
+    "encode_ms": [
+     304.98,
+     288.37,
+     273.13
+    ],
+    "max_diff": 113,
+    "changed_px": 0.848455,
+    "psnr": 36.61,
+    "ocr_cer": 0.01422,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 44042,
+    "encode_ms": [
+     149.35,
+     144.55,
+     142.45
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 721
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\73bf3fe0f8284532bfa2b88d3993d6f6.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 45432,
+  "variants": {
+   "q90": {
+    "bytes": 116818,
+    "encode_ms": [
+     277.61,
+     260.51,
+     252.89
+    ],
+    "max_diff": 112,
+    "changed_px": 0.847731,
+    "psnr": 36.61,
+    "ocr_cer": 0.04105,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 124942,
+    "encode_ms": [
+     277.94,
+     256.68,
+     247.21
+    ],
+    "max_diff": 112,
+    "changed_px": 0.847802,
+    "psnr": 36.68,
+    "ocr_cer": 0.03941,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 145916,
+    "encode_ms": [
+     266.13,
+     257.46,
+     259.02
+    ],
+    "max_diff": 114,
+    "changed_px": 0.850002,
+    "psnr": 36.76,
+    "ocr_cer": 0.04269,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 44916,
+    "encode_ms": [
+     152.17,
+     145.45,
+     144.48
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 692
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\7b76d55fa04347cdb944371f5aa83771.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 43684,
+  "variants": {
+   "q90": {
+    "bytes": 115310,
+    "encode_ms": [
+     285.94,
+     261.06,
+     246.66
+    ],
+    "max_diff": 117,
+    "changed_px": 0.855017,
+    "psnr": 36.6,
+    "ocr_cer": 0.04288,
+    "ocr_identical": false,
+    "digits_lost": [
+     "22/...14:36"
+    ],
+    "digits_new": [
+     "22/..14:36"
+    ]
+   },
+   "q92": {
+    "bytes": 123242,
+    "encode_ms": [
+     264.37,
+     254.41,
+     254.08
+    ],
+    "max_diff": 114,
+    "changed_px": 0.855356,
+    "psnr": 36.66,
+    "ocr_cer": 0.03602,
+    "ocr_identical": false,
+    "digits_lost": [
+     "22/...14:36"
+    ],
+    "digits_new": [
+     "22/..14:36"
+    ]
+   },
+   "q95": {
+    "bytes": 143690,
+    "encode_ms": [
+     275.61,
+     257.94,
+     249.94
+    ],
+    "max_diff": 117,
+    "changed_px": 0.858148,
+    "psnr": 36.74,
+    "ocr_cer": 0.05489,
+    "ocr_identical": false,
+    "digits_lost": [
+     "22/...14:36"
+    ],
+    "digits_new": [
+     "22/..14:36"
+    ]
+   },
+   "lossless": {
+    "bytes": 43376,
+    "encode_ms": [
+     145.09,
+     138.03,
+     137.95
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 656
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\85bf000ca0f644ea9478c8bbb55a6f98.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 44552,
+  "variants": {
+   "q90": {
+    "bytes": 120590,
+    "encode_ms": [
+     265.47,
+     254.5,
+     255.95
+    ],
+    "max_diff": 114,
+    "changed_px": 0.847053,
+    "psnr": 36.52,
+    "ocr_cer": 0.00871,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 129282,
+    "encode_ms": [
+     270.58,
+     259.04,
+     249.28
+    ],
+    "max_diff": 113,
+    "changed_px": 0.845909,
+    "psnr": 36.58,
+    "ocr_cer": 0.01016,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 151248,
+    "encode_ms": [
+     275.86,
+     263.5,
+     264.49
+    ],
+    "max_diff": 110,
+    "changed_px": 0.846717,
+    "psnr": 36.67,
+    "ocr_cer": 0.01016,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 44270,
+    "encode_ms": [
+     158.5,
+     157.85,
+     156.07
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 802
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\91203b342fdd43c3abb8ee359f5f8113.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 44610,
+  "variants": {
+   "q90": {
+    "bytes": 121216,
+    "encode_ms": [
+     281.61,
+     260.34,
+     256.27
+    ],
+    "max_diff": 114,
+    "changed_px": 0.845882,
+    "psnr": 36.5,
+    "ocr_cer": 0.00724,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 129836,
+    "encode_ms": [
+     277.5,
+     257.85,
+     246.91
+    ],
+    "max_diff": 116,
+    "changed_px": 0.845127,
+    "psnr": 36.57,
+    "ocr_cer": 0.00724,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 152066,
+    "encode_ms": [
+     271.96,
+     259.47,
+     263.8
+    ],
+    "max_diff": 115,
+    "changed_px": 0.846,
+    "psnr": 36.66,
+    "ocr_cer": 0.01447,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 44128,
+    "encode_ms": [
+     135.3,
+     131.8,
+     128.07
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 796
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\93bad55b63e64d1e9b46f8c7c5c5c50d.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 45050,
+  "variants": {
+   "q90": {
+    "bytes": 123848,
+    "encode_ms": [
+     262.34,
+     254.5,
+     254.61
+    ],
+    "max_diff": 115,
+    "changed_px": 0.837519,
+    "psnr": 36.38,
+    "ocr_cer": 0.05007,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 132418,
+    "encode_ms": [
+     268.9,
+     255.0,
+     250.97
+    ],
+    "max_diff": 113,
+    "changed_px": 0.837424,
+    "psnr": 36.44,
+    "ocr_cer": 0.04729,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 153628,
+    "encode_ms": [
+     283.13,
+     271.95,
+     261.08
+    ],
+    "max_diff": 115,
+    "changed_px": 0.83863,
+    "psnr": 36.52,
+    "ocr_cer": 0.0459,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 44366,
+    "encode_ms": [
+     179.73,
+     173.34,
+     173.61
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 842
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\a138f6729f2c4287b8c1db7168581b37.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 44384,
+  "variants": {
+   "q90": {
+    "bytes": 125468,
+    "encode_ms": [
+     283.96,
+     264.12,
+     251.64
+    ],
+    "max_diff": 112,
+    "changed_px": 0.854102,
+    "psnr": 36.36,
+    "ocr_cer": 0.02285,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "12:52",
+     "15:12"
+    ],
+    "digits_new": [
+     "15:1212:52"
+    ]
+   },
+   "q92": {
+    "bytes": 134540,
+    "encode_ms": [
+     259.09,
+     249.64,
+     255.59
+    ],
+    "max_diff": 113,
+    "changed_px": 0.852859,
+    "psnr": 36.41,
+    "ocr_cer": 0.03495,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "12:52",
+     "15:12"
+    ],
+    "digits_new": [
+     "15:1212:52"
+    ]
+   },
+   "q95": {
+    "bytes": 156764,
+    "encode_ms": [
+     281.23,
+     266.66,
+     264.28
+    ],
+    "max_diff": 108,
+    "changed_px": 0.854138,
+    "psnr": 36.5,
+    "ocr_cer": 0.02285,
+    "ocr_identical": false,
+    "digits_lost": [
+     "12:52",
+     "15:12"
+    ],
+    "digits_new": [
+     "15:1212:52"
+    ]
+   },
+   "lossless": {
+    "bytes": 43052,
+    "encode_ms": [
+     158.15,
+     156.71,
+     152.68
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 866
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\a3db651c07d141f6a3eb9b5156e581cf.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 44530,
+  "variants": {
+   "q90": {
+    "bytes": 116890,
+    "encode_ms": [
+     271.26,
+     257.14,
+     250.75
+    ],
+    "max_diff": 116,
+    "changed_px": 0.847469,
+    "psnr": 36.63,
+    "ocr_cer": 0.03011,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 125500,
+    "encode_ms": [
+     265.92,
+     256.69,
+     252.66
+    ],
+    "max_diff": 111,
+    "changed_px": 0.847044,
+    "psnr": 36.69,
+    "ocr_cer": 0.03011,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 146162,
+    "encode_ms": [
+     275.69,
+     264.17,
+     260.02
+    ],
+    "max_diff": 115,
+    "changed_px": 0.848788,
+    "psnr": 36.77,
+    "ocr_cer": 0.01268,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 44386,
+    "encode_ms": [
+     155.27,
+     149.47,
+     148.83
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 720
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\b5af56051c0a4c178816eb90ffd15b07.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 42134,
+  "variants": {
+   "q90": {
+    "bytes": 119146,
+    "encode_ms": [
+     275.38,
+     258.26,
+     254.07
+    ],
+    "max_diff": 115,
+    "changed_px": 0.836709,
+    "psnr": 36.55,
+    "ocr_cer": 0.01051,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 127504,
+    "encode_ms": [
+     283.39,
+     268.33,
+     257.89
+    ],
+    "max_diff": 114,
+    "changed_px": 0.836829,
+    "psnr": 36.61,
+    "ocr_cer": 0.01051,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 149000,
+    "encode_ms": [
+     282.88,
+     270.4,
+     269.24
+    ],
+    "max_diff": 111,
+    "changed_px": 0.837316,
+    "psnr": 36.7,
+    "ocr_cer": 0.01051,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 41752,
+    "encode_ms": [
+     149.2,
+     140.37,
+     135.58
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 776
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\b8207d00e26b460a96d364d5db381898.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 44482,
+  "variants": {
+   "q90": {
+    "bytes": 123826,
+    "encode_ms": [
+     282.46,
+     259.26,
+     245.77
+    ],
+    "max_diff": 117,
+    "changed_px": 0.849627,
+    "psnr": 36.14,
+    "ocr_cer": 0.0352,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "0",
+     "1",
+     "1"
+    ]
+   },
+   "q92": {
+    "bytes": 132656,
+    "encode_ms": [
+     258.94,
+     246.96,
+     251.48
+    ],
+    "max_diff": 117,
+    "changed_px": 0.849666,
+    "psnr": 36.19,
+    "ocr_cer": 0.0112,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "0",
+     "1"
+    ]
+   },
+   "q95": {
+    "bytes": 154748,
+    "encode_ms": [
+     276.48,
+     265.62,
+     266.49
+    ],
+    "max_diff": 116,
+    "changed_px": 0.850448,
+    "psnr": 36.27,
+    "ocr_cer": 0.0304,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "0",
+     "1"
+    ]
+   },
+   "lossless": {
+    "bytes": 44124,
+    "encode_ms": [
+     153.97,
+     148.13,
+     144.46
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 712
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\c57a18256f724b9da82eb10332163649.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 44992,
+  "variants": {
+   "q90": {
+    "bytes": 123512,
+    "encode_ms": [
+     280.92,
+     264.08,
+     253.79
+    ],
+    "max_diff": 111,
+    "changed_px": 0.853793,
+    "psnr": 36.41,
+    "ocr_cer": 0.05028,
+    "ocr_identical": false,
+    "digits_lost": [
+     "12:52",
+     "15:17"
+    ],
+    "digits_new": [
+     "15:1712:52"
+    ]
+   },
+   "q92": {
+    "bytes": 132690,
+    "encode_ms": [
+     273.92,
+     257.84,
+     258.01
+    ],
+    "max_diff": 109,
+    "changed_px": 0.852616,
+    "psnr": 36.47,
+    "ocr_cer": 0.03631,
+    "ocr_identical": false,
+    "digits_lost": [
+     "12:52",
+     "15:17"
+    ],
+    "digits_new": [
+     "15:1712:52"
+    ]
+   },
+   "q95": {
+    "bytes": 153424,
+    "encode_ms": [
+     270.74,
+     260.77,
+     259.91
+    ],
+    "max_diff": 112,
+    "changed_px": 0.855036,
+    "psnr": 36.56,
+    "ocr_cer": 0.05168,
+    "ocr_identical": false,
+    "digits_lost": [
+     "12:52",
+     "15:17"
+    ],
+    "digits_new": [
+     "15:1712:52"
+    ]
+   },
+   "lossless": {
+    "bytes": 43578,
+    "encode_ms": [
+     137.96,
+     130.86,
+     128.19
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 830
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\c58b58e044274f50900580b2c5db965b.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 43718,
+  "variants": {
+   "q90": {
+    "bytes": 116346,
+    "encode_ms": [
+     270.55,
+     261.24,
+     260.26
+    ],
+    "max_diff": 116,
+    "changed_px": 0.851728,
+    "psnr": 36.59,
+    "ocr_cer": 0.05217,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 124552,
+    "encode_ms": [
+     278.51,
+     262.56,
+     251.92
+    ],
+    "max_diff": 111,
+    "changed_px": 0.85171,
+    "psnr": 36.65,
+    "ocr_cer": 0.07478,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 145768,
+    "encode_ms": [
+     270.27,
+     263.23,
+     260.12
+    ],
+    "max_diff": 114,
+    "changed_px": 0.852865,
+    "psnr": 36.74,
+    "ocr_cer": 0.05391,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 43544,
+    "encode_ms": [
+     135.05,
+     131.05,
+     131.39
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 648
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\cf3f960f0d6346c58d79a24adbbd65f3.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 44838,
+  "variants": {
+   "q90": {
+    "bytes": 119888,
+    "encode_ms": [
+     270.02,
+     261.62,
+     258.48
+    ],
+    "max_diff": 113,
+    "changed_px": 0.842477,
+    "psnr": 36.52,
+    "ocr_cer": 0.02999,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "014:14"
+    ],
+    "digits_new": [
+     "14:14"
+    ]
+   },
+   "q92": {
+    "bytes": 128232,
+    "encode_ms": [
+     268.84,
+     254.54,
+     252.25
+    ],
+    "max_diff": 117,
+    "changed_px": 0.841827,
+    "psnr": 36.58,
+    "ocr_cer": 0.01199,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "014:14"
+    ],
+    "digits_new": [
+     "14:14"
+    ]
+   },
+   "q95": {
+    "bytes": 149258,
+    "encode_ms": [
+     278.91,
+     265.39,
+     266.17
+    ],
+    "max_diff": 111,
+    "changed_px": 0.843761,
+    "psnr": 36.66,
+    "ocr_cer": 0.01349,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "014:14"
+    ],
+    "digits_new": [
+     "14:14"
+    ]
+   },
+   "lossless": {
+    "bytes": 44428,
+    "encode_ms": [
+     160.32,
+     154.33,
+     150.24
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 781
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\d212d3f1f7c6494084d61dc5ee511b78.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 44990,
+  "variants": {
+   "q90": {
+    "bytes": 123930,
+    "encode_ms": [
+     278.44,
+     258.58,
+     253.25
+    ],
+    "max_diff": 113,
+    "changed_px": 0.853581,
+    "psnr": 36.36,
+    "ocr_cer": 0.02,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "12:52",
+     "15:10"
+    ],
+    "digits_new": [
+     "15:1012:52"
+    ]
+   },
+   "q92": {
+    "bytes": 132890,
+    "encode_ms": [
+     273.06,
+     263.69,
+     257.69
+    ],
+    "max_diff": 116,
+    "changed_px": 0.852101,
+    "psnr": 36.43,
+    "ocr_cer": 0.02267,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "12:52",
+     "15:10",
+     "9:00"
+    ],
+    "digits_new": [
+     "00",
+     "15:1012:52",
+     "9"
+    ]
+   },
+   "q95": {
+    "bytes": 154630,
+    "encode_ms": [
+     273.84,
+     264.85,
+     263.64
+    ],
+    "max_diff": 113,
+    "changed_px": 0.854697,
+    "psnr": 36.51,
+    "ocr_cer": 0.05733,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "12:52",
+     "15:10"
+    ],
+    "digits_new": [
+     "15:1012:52"
+    ]
+   },
+   "lossless": {
+    "bytes": 43500,
+    "encode_ms": [
+     153.27,
+     147.26,
+     143.74
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 871
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\ea1a2f9723094897822d3032d5e6e9f5.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 45394,
+  "variants": {
+   "q90": {
+    "bytes": 123912,
+    "encode_ms": [
+     270.28,
+     259.32,
+     259.0
+    ],
+    "max_diff": 112,
+    "changed_px": 0.840135,
+    "psnr": 36.33,
+    "ocr_cer": 0.03947,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": [
+     "1"
+    ]
+   },
+   "q92": {
+    "bytes": 132538,
+    "encode_ms": [
+     279.49,
+     261.63,
+     254.94
+    ],
+    "max_diff": 111,
+    "changed_px": 0.839136,
+    "psnr": 36.38,
+    "ocr_cer": 0.01754,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 153988,
+    "encode_ms": [
+     269.61,
+     261.76,
+     266.27
+    ],
+    "max_diff": 110,
+    "changed_px": 0.840244,
+    "psnr": 36.46,
+    "ocr_cer": 0.03216,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 44864,
+    "encode_ms": [
+     138.97,
+     138.47,
+     132.39
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 787
+ },
+ {
+  "image": "data-codec\\_by_app\\chat-mock\\f3fb287f26114506acfdcf721e32e6e1.webp",
+  "width": 2251,
+  "height": 1470,
+  "raw_bytes": 9926910,
+  "source_bytes": 44440,
+  "variants": {
+   "q90": {
+    "bytes": 122842,
+    "encode_ms": [
+     283.84,
+     270.86,
+     261.8
+    ],
+    "max_diff": 115,
+    "changed_px": 0.837526,
+    "psnr": 36.4,
+    "ocr_cer": 0.04469,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 131360,
+    "encode_ms": [
+     269.94,
+     250.76,
+     246.75
+    ],
+    "max_diff": 113,
+    "changed_px": 0.837424,
+    "psnr": 36.47,
+    "ocr_cer": 0.0433,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 152384,
+    "encode_ms": [
+     266.34,
+     262.74,
+     257.85
+    ],
+    "max_diff": 115,
+    "changed_px": 0.839113,
+    "psnr": 36.55,
+    "ocr_cer": 0.04888,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 43766,
+    "encode_ms": [
+     173.77,
+     164.01,
+     165.03
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 843
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\00c41d722aeb4faa8538b2158124ba6a.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 109474,
+  "variants": {
+   "q90": {
+    "bytes": 172378,
+    "encode_ms": [
+     208.69,
+     201.37,
+     200.21
+    ],
+    "max_diff": 153,
+    "changed_px": 0.997067,
+    "psnr": 33.63,
+    "ocr_cer": 0.00543,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 185792,
+    "encode_ms": [
+     212.51,
+     205.58,
+     203.36
+    ],
+    "max_diff": 153,
+    "changed_px": 0.997009,
+    "psnr": 33.7,
+    "ocr_cer": 0.00543,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 213802,
+    "encode_ms": [
+     209.87,
+     203.96,
+     204.37
+    ],
+    "max_diff": 151,
+    "changed_px": 0.996936,
+    "psnr": 33.81,
+    "ocr_cer": 0.00109,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 106900,
+    "encode_ms": [
+     387.28,
+     366.97,
+     357.98
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1077
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\0d4d98d6cfc5488c9d74f7842d084247.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 93154,
+  "variants": {
+   "q90": {
+    "bytes": 158550,
+    "encode_ms": [
+     218.98,
+     210.76,
+     205.42
+    ],
+    "max_diff": 139,
+    "changed_px": 0.997069,
+    "psnr": 34.66,
+    "ocr_cer": 0.00929,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "2"
+    ],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 174276,
+    "encode_ms": [
+     208.04,
+     201.1,
+     201.93
+    ],
+    "max_diff": 140,
+    "changed_px": 0.996986,
+    "psnr": 34.79,
+    "ocr_cer": 0.01301,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0,0",
+     "1",
+     "2"
+    ],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 198080,
+    "encode_ms": [
+     218.91,
+     215.08,
+     215.23
+    ],
+    "max_diff": 140,
+    "changed_px": 0.996923,
+    "psnr": 34.87,
+    "ocr_cer": 0.00743,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "2"
+    ],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 91644,
+    "encode_ms": [
+     272.88,
+     263.33,
+     253.28
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1256
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\1ba945f9b38e4c64a70345ea81950b8d.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 90518,
+  "variants": {
+   "q90": {
+    "bytes": 155436,
+    "encode_ms": [
+     221.13,
+     209.62,
+     204.13
+    ],
+    "max_diff": 138,
+    "changed_px": 0.997075,
+    "psnr": 34.73,
+    "ocr_cer": 0.00837,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 170616,
+    "encode_ms": [
+     209.53,
+     208.75,
+     212.61
+    ],
+    "max_diff": 141,
+    "changed_px": 0.996987,
+    "psnr": 34.86,
+    "ocr_cer": 0.0093,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 193692,
+    "encode_ms": [
+     223.33,
+     217.2,
+     211.78
+    ],
+    "max_diff": 138,
+    "changed_px": 0.996932,
+    "psnr": 34.94,
+    "ocr_cer": 0.00651,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 88002,
+    "encode_ms": [
+     344.9,
+     315.3,
+     309.21
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1254
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\24202b61462c449cbfcce26d69cf05f9.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 116490,
+  "variants": {
+   "q90": {
+    "bytes": 198098,
+    "encode_ms": [
+     217.19,
+     215.94,
+     206.16
+    ],
+    "max_diff": 156,
+    "changed_px": 0.997068,
+    "psnr": 32.1,
+    "ocr_cer": 0.01535,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "2",
+     "23",
+     "3.6131415",
+     "50"
+    ],
+    "digits_new": [
+     "123",
+     "131415",
+     "3.6",
+     "5"
+    ]
+   },
+   "q92": {
+    "bytes": 214062,
+    "encode_ms": [
+     222.79,
+     211.35,
+     204.18
+    ],
+    "max_diff": 155,
+    "changed_px": 0.996998,
+    "psnr": 32.14,
+    "ocr_cer": 0.01433,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "2",
+     "23",
+     "50"
+    ],
+    "digits_new": [
+     "123",
+     "5"
+    ]
+   },
+   "q95": {
+    "bytes": 243738,
+    "encode_ms": [
+     231.24,
+     222.51,
+     226.08
+    ],
+    "max_diff": 152,
+    "changed_px": 0.9969,
+    "psnr": 32.21,
+    "ocr_cer": 0.01228,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "2",
+     "23",
+     "3.6131415",
+     "50"
+    ],
+    "digits_new": [
+     "123",
+     "131415",
+     "3.6",
+     "5"
+    ]
+   },
+   "lossless": {
+    "bytes": 114640,
+    "encode_ms": [
+     439.09,
+     422.4,
+     394.44
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1120
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\25ad9273b34f405f91136df32ddb025e.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 100214,
+  "variants": {
+   "q90": {
+    "bytes": 177092,
+    "encode_ms": [
+     225.0,
+     216.88,
+     208.32
+    ],
+    "max_diff": 142,
+    "changed_px": 0.997067,
+    "psnr": 33.78,
+    "ocr_cer": 0.00644,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 194568,
+    "encode_ms": [
+     216.27,
+     211.13,
+     209.12
+    ],
+    "max_diff": 143,
+    "changed_px": 0.996997,
+    "psnr": 33.9,
+    "ocr_cer": 0.04831,
+    "ocr_identical": false,
+    "digits_lost": [
+     "56",
+     "57"
+    ],
+    "digits_new": [
+     "5657"
+    ]
+   },
+   "q95": {
+    "bytes": 220634,
+    "encode_ms": [
+     231.94,
+     220.37,
+     219.15
+    ],
+    "max_diff": 141,
+    "changed_px": 0.996927,
+    "psnr": 33.98,
+    "ocr_cer": 0.00644,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 97414,
+    "encode_ms": [
+     310.63,
+     305.1,
+     288.86
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1440
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\28d1ad2ab6b94693a6647f4c555058eb.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 98304,
+  "variants": {
+   "q90": {
+    "bytes": 163990,
+    "encode_ms": [
+     224.35,
+     214.31,
+     208.06
+    ],
+    "max_diff": 143,
+    "changed_px": 0.99706,
+    "psnr": 34.02,
+    "ocr_cer": 0.00878,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 176916,
+    "encode_ms": [
+     222.25,
+     211.15,
+     210.2
+    ],
+    "max_diff": 139,
+    "changed_px": 0.997007,
+    "psnr": 34.1,
+    "ocr_cer": 0.00976,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 203726,
+    "encode_ms": [
+     223.36,
+     230.47,
+     232.46
+    ],
+    "max_diff": 138,
+    "changed_px": 0.996914,
+    "psnr": 34.2,
+    "ocr_cer": 0.00878,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 96782,
+    "encode_ms": [
+     275.11,
+     271.33,
+     264.28
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1194
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\296905f36427497e95e1db54f147477f.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 91134,
+  "variants": {
+   "q90": {
+    "bytes": 156760,
+    "encode_ms": [
+     228.27,
+     211.11,
+     207.78
+    ],
+    "max_diff": 156,
+    "changed_px": 0.997079,
+    "psnr": 34.51,
+    "ocr_cer": 0.00597,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 169302,
+    "encode_ms": [
+     226.51,
+     217.52,
+     218.88
+    ],
+    "max_diff": 154,
+    "changed_px": 0.99702,
+    "psnr": 34.6,
+    "ocr_cer": 0.00498,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 195046,
+    "encode_ms": [
+     228.22,
+     222.14,
+     222.15
+    ],
+    "max_diff": 151,
+    "changed_px": 0.996937,
+    "psnr": 34.71,
+    "ocr_cer": 0.00498,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 88534,
+    "encode_ms": [
+     405.09,
+     393.33,
+     397.47
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1178
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\35c2560438ff4f68b71db5528d47d560.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 90518,
+  "variants": {
+   "q90": {
+    "bytes": 155436,
+    "encode_ms": [
+     226.3,
+     211.59,
+     203.4
+    ],
+    "max_diff": 138,
+    "changed_px": 0.997075,
+    "psnr": 34.73,
+    "ocr_cer": 0.00837,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 170616,
+    "encode_ms": [
+     211.89,
+     201.14,
+     201.58
+    ],
+    "max_diff": 141,
+    "changed_px": 0.996987,
+    "psnr": 34.86,
+    "ocr_cer": 0.0093,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 193692,
+    "encode_ms": [
+     226.13,
+     218.96,
+     216.46
+    ],
+    "max_diff": 138,
+    "changed_px": 0.996932,
+    "psnr": 34.94,
+    "ocr_cer": 0.00651,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 88002,
+    "encode_ms": [
+     323.79,
+     323.53,
+     321.48
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1254
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\4cea546574954f48bcf88a90e4b90a80.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 90518,
+  "variants": {
+   "q90": {
+    "bytes": 155436,
+    "encode_ms": [
+     223.13,
+     214.02,
+     206.41
+    ],
+    "max_diff": 138,
+    "changed_px": 0.997075,
+    "psnr": 34.73,
+    "ocr_cer": 0.00837,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 170616,
+    "encode_ms": [
+     209.86,
+     199.49,
+     203.67
+    ],
+    "max_diff": 141,
+    "changed_px": 0.996987,
+    "psnr": 34.86,
+    "ocr_cer": 0.0093,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 193692,
+    "encode_ms": [
+     224.16,
+     220.0,
+     217.75
+    ],
+    "max_diff": 138,
+    "changed_px": 0.996932,
+    "psnr": 34.94,
+    "ocr_cer": 0.00651,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 88002,
+    "encode_ms": [
+     327.93,
+     319.27,
+     312.4
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1254
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\6515f1cf47b94d038049177adb04f120.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 97840,
+  "variants": {
+   "q90": {
+    "bytes": 169290,
+    "encode_ms": [
+     217.31,
+     208.41,
+     211.05
+    ],
+    "max_diff": 144,
+    "changed_px": 0.997063,
+    "psnr": 33.93,
+    "ocr_cer": 0.05852,
+    "ocr_identical": false,
+    "digits_lost": [
+     "56",
+     "57"
+    ],
+    "digits_new": [
+     "5657"
+    ]
+   },
+   "q92": {
+    "bytes": 185688,
+    "encode_ms": [
+     216.25,
+     208.82,
+     209.33
+    ],
+    "max_diff": 136,
+    "changed_px": 0.996987,
+    "psnr": 34.04,
+    "ocr_cer": 0.10093,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "56",
+     "57",
+     "64"
+    ],
+    "digits_new": [
+     "5657"
+    ]
+   },
+   "q95": {
+    "bytes": 209964,
+    "encode_ms": [
+     226.55,
+     213.77,
+     214.93
+    ],
+    "max_diff": 138,
+    "changed_px": 0.996934,
+    "psnr": 34.12,
+    "ocr_cer": 0.05513,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "64"
+    ],
+    "digits_new": [
+     "9"
+    ]
+   },
+   "lossless": {
+    "bytes": 95282,
+    "encode_ms": [
+     385.56,
+     373.38,
+     387.49
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1370
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\6584cee2ff3c41baa69cc35e213b0b80.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 109474,
+  "variants": {
+   "q90": {
+    "bytes": 172378,
+    "encode_ms": [
+     216.89,
+     211.67,
+     203.06
+    ],
+    "max_diff": 153,
+    "changed_px": 0.997067,
+    "psnr": 33.63,
+    "ocr_cer": 0.00543,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 185792,
+    "encode_ms": [
+     220.33,
+     211.09,
+     204.76
+    ],
+    "max_diff": 153,
+    "changed_px": 0.997009,
+    "psnr": 33.7,
+    "ocr_cer": 0.00543,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 213802,
+    "encode_ms": [
+     222.35,
+     223.75,
+     209.46
+    ],
+    "max_diff": 151,
+    "changed_px": 0.996936,
+    "psnr": 33.81,
+    "ocr_cer": 0.00109,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 106900,
+    "encode_ms": [
+     381.86,
+     368.26,
+     384.85
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1077
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\6adf736c26044c1587e29903077b1d0a.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 90518,
+  "variants": {
+   "q90": {
+    "bytes": 155436,
+    "encode_ms": [
+     223.9,
+     210.15,
+     202.37
+    ],
+    "max_diff": 138,
+    "changed_px": 0.997075,
+    "psnr": 34.73,
+    "ocr_cer": 0.00837,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 170616,
+    "encode_ms": [
+     218.75,
+     214.08,
+     201.25
+    ],
+    "max_diff": 141,
+    "changed_px": 0.996987,
+    "psnr": 34.86,
+    "ocr_cer": 0.0093,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 193692,
+    "encode_ms": [
+     226.85,
+     220.98,
+     212.06
+    ],
+    "max_diff": 138,
+    "changed_px": 0.996932,
+    "psnr": 34.94,
+    "ocr_cer": 0.00651,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 88002,
+    "encode_ms": [
+     327.66,
+     318.04,
+     319.46
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1254
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\714e1a0b73ea48d48d3ad4eacc26eab8.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 97988,
+  "variants": {
+   "q90": {
+    "bytes": 174118,
+    "encode_ms": [
+     230.39,
+     220.51,
+     211.46
+    ],
+    "max_diff": 143,
+    "changed_px": 0.997064,
+    "psnr": 33.79,
+    "ocr_cer": 0.18258,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "555657",
+     "64"
+    ],
+    "digits_new": [
+     "55",
+     "56",
+     "57"
+    ]
+   },
+   "q92": {
+    "bytes": 188018,
+    "encode_ms": [
+     220.96,
+     213.89,
+     211.72
+    ],
+    "max_diff": 142,
+    "changed_px": 0.99699,
+    "psnr": 33.87,
+    "ocr_cer": 0.18072,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "555657",
+     "64"
+    ],
+    "digits_new": [
+     "55",
+     "56",
+     "57"
+    ]
+   },
+   "q95": {
+    "bytes": 216568,
+    "encode_ms": [
+     228.45,
+     224.66,
+     216.41
+    ],
+    "max_diff": 140,
+    "changed_px": 0.99693,
+    "psnr": 33.98,
+    "ocr_cer": 0.18072,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "555657",
+     "64"
+    ],
+    "digits_new": [
+     "55",
+     "56",
+     "57"
+    ]
+   },
+   "lossless": {
+    "bytes": 95546,
+    "encode_ms": [
+     283.45,
+     272.55,
+     269.46
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1251
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\769c0dc78ca748c6a76f7a699408a42f.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 116490,
+  "variants": {
+   "q90": {
+    "bytes": 198098,
+    "encode_ms": [
+     242.63,
+     219.89,
+     211.35
+    ],
+    "max_diff": 156,
+    "changed_px": 0.997068,
+    "psnr": 32.1,
+    "ocr_cer": 0.01535,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "2",
+     "23",
+     "3.6131415",
+     "50"
+    ],
+    "digits_new": [
+     "123",
+     "131415",
+     "3.6",
+     "5"
+    ]
+   },
+   "q92": {
+    "bytes": 214062,
+    "encode_ms": [
+     223.75,
+     215.37,
+     206.96
+    ],
+    "max_diff": 155,
+    "changed_px": 0.996998,
+    "psnr": 32.14,
+    "ocr_cer": 0.01433,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "2",
+     "23",
+     "50"
+    ],
+    "digits_new": [
+     "123",
+     "5"
+    ]
+   },
+   "q95": {
+    "bytes": 243738,
+    "encode_ms": [
+     223.54,
+     215.46,
+     211.9
+    ],
+    "max_diff": 152,
+    "changed_px": 0.9969,
+    "psnr": 32.21,
+    "ocr_cer": 0.01228,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "2",
+     "23",
+     "3.6131415",
+     "50"
+    ],
+    "digits_new": [
+     "123",
+     "131415",
+     "3.6",
+     "5"
+    ]
+   },
+   "lossless": {
+    "bytes": 114640,
+    "encode_ms": [
+     413.06,
+     396.74,
+     397.41
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1120
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\7b87b66c12d5431a81d2c0bd10e614d9.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 98304,
+  "variants": {
+   "q90": {
+    "bytes": 163990,
+    "encode_ms": [
+     226.22,
+     214.72,
+     203.7
+    ],
+    "max_diff": 143,
+    "changed_px": 0.99706,
+    "psnr": 34.02,
+    "ocr_cer": 0.00878,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 176916,
+    "encode_ms": [
+     215.98,
+     207.43,
+     202.14
+    ],
+    "max_diff": 139,
+    "changed_px": 0.997007,
+    "psnr": 34.1,
+    "ocr_cer": 0.00976,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 203726,
+    "encode_ms": [
+     220.41,
+     210.04,
+     205.03
+    ],
+    "max_diff": 138,
+    "changed_px": 0.996914,
+    "psnr": 34.2,
+    "ocr_cer": 0.00878,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 96782,
+    "encode_ms": [
+     269.84,
+     263.77,
+     254.55
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1194
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\7ecb4f08818d4fb59f7a1ad56581ee66.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 86650,
+  "variants": {
+   "q90": {
+    "bytes": 150268,
+    "encode_ms": [
+     212.21,
+     205.7,
+     204.52
+    ],
+    "max_diff": 143,
+    "changed_px": 0.997076,
+    "psnr": 34.86,
+    "ocr_cer": 0.00386,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 162404,
+    "encode_ms": [
+     209.49,
+     202.11,
+     198.71
+    ],
+    "max_diff": 139,
+    "changed_px": 0.997014,
+    "psnr": 34.94,
+    "ocr_cer": 0.00289,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 187810,
+    "encode_ms": [
+     220.18,
+     205.72,
+     201.19
+    ],
+    "max_diff": 140,
+    "changed_px": 0.996929,
+    "psnr": 35.07,
+    "ocr_cer": 0.00289,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 84934,
+    "encode_ms": [
+     281.8,
+     272.54,
+     270.49
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1212
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\82f389f3532c4fe7a8d958a5345dea2b.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 111286,
+  "variants": {
+   "q90": {
+    "bytes": 192440,
+    "encode_ms": [
+     223.03,
+     208.99,
+     206.36
+    ],
+    "max_diff": 145,
+    "changed_px": 0.997065,
+    "psnr": 32.35,
+    "ocr_cer": 0.01526,
+    "ocr_identical": false,
+    "digits_lost": [
+     "6"
+    ],
+    "digits_new": [
+     "9"
+    ]
+   },
+   "q92": {
+    "bytes": 207460,
+    "encode_ms": [
+     217.45,
+     206.21,
+     205.16
+    ],
+    "max_diff": 142,
+    "changed_px": 0.996991,
+    "psnr": 32.39,
+    "ocr_cer": 0.01221,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 236934,
+    "encode_ms": [
+     230.36,
+     223.56,
+     222.63
+    ],
+    "max_diff": 142,
+    "changed_px": 0.996883,
+    "psnr": 32.45,
+    "ocr_cer": 0.01322,
+    "ocr_identical": false,
+    "digits_lost": [
+     "6",
+     "6"
+    ],
+    "digits_new": [
+     "60",
+     "9"
+    ]
+   },
+   "lossless": {
+    "bytes": 109936,
+    "encode_ms": [
+     313.7,
+     298.67,
+     287.87
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1131
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\8aa51e97553d463aaba83a77b457d4c3.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 111286,
+  "variants": {
+   "q90": {
+    "bytes": 192440,
+    "encode_ms": [
+     227.58,
+     213.13,
+     205.57
+    ],
+    "max_diff": 145,
+    "changed_px": 0.997065,
+    "psnr": 32.35,
+    "ocr_cer": 0.01526,
+    "ocr_identical": false,
+    "digits_lost": [
+     "6"
+    ],
+    "digits_new": [
+     "9"
+    ]
+   },
+   "q92": {
+    "bytes": 207460,
+    "encode_ms": [
+     210.52,
+     202.41,
+     201.64
+    ],
+    "max_diff": 142,
+    "changed_px": 0.996991,
+    "psnr": 32.39,
+    "ocr_cer": 0.01221,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 236934,
+    "encode_ms": [
+     231.31,
+     223.65,
+     223.91
+    ],
+    "max_diff": 142,
+    "changed_px": 0.996883,
+    "psnr": 32.45,
+    "ocr_cer": 0.01322,
+    "ocr_identical": false,
+    "digits_lost": [
+     "6",
+     "6"
+    ],
+    "digits_new": [
+     "60",
+     "9"
+    ]
+   },
+   "lossless": {
+    "bytes": 109936,
+    "encode_ms": [
+     296.92,
+     291.54,
+     287.62
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1131
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\a98804d7759b494f85c2946f32c886d3.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 93154,
+  "variants": {
+   "q90": {
+    "bytes": 158550,
+    "encode_ms": [
+     217.38,
+     207.83,
+     203.51
+    ],
+    "max_diff": 139,
+    "changed_px": 0.997069,
+    "psnr": 34.66,
+    "ocr_cer": 0.00929,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "2"
+    ],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 174276,
+    "encode_ms": [
+     217.95,
+     210.86,
+     204.58
+    ],
+    "max_diff": 140,
+    "changed_px": 0.996986,
+    "psnr": 34.79,
+    "ocr_cer": 0.01301,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0,0",
+     "1",
+     "2"
+    ],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 198080,
+    "encode_ms": [
+     228.44,
+     219.03,
+     212.35
+    ],
+    "max_diff": 140,
+    "changed_px": 0.996923,
+    "psnr": 34.87,
+    "ocr_cer": 0.00743,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "2"
+    ],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 91644,
+    "encode_ms": [
+     262.54,
+     252.65,
+     256.96
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1256
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\af6a7ed3156c4595ab48e187124abd25.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 97078,
+  "variants": {
+   "q90": {
+    "bytes": 167026,
+    "encode_ms": [
+     213.28,
+     201.26,
+     195.58
+    ],
+    "max_diff": 142,
+    "changed_px": 0.997074,
+    "psnr": 34.14,
+    "ocr_cer": 0.1177,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "64"
+    ],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 180256,
+    "encode_ms": [
+     213.34,
+     207.08,
+     203.44
+    ],
+    "max_diff": 141,
+    "changed_px": 0.997004,
+    "psnr": 34.22,
+    "ocr_cer": 0.07131,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 207598,
+    "encode_ms": [
+     220.39,
+     217.83,
+     212.33
+    ],
+    "max_diff": 138,
+    "changed_px": 0.996926,
+    "psnr": 34.33,
+    "ocr_cer": 0.11512,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "64"
+    ],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 94798,
+    "encode_ms": [
+     337.02,
+     326.01,
+     321.54
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1362
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\c259fca7fd294182a1a973f8e15ec869.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 91134,
+  "variants": {
+   "q90": {
+    "bytes": 156760,
+    "encode_ms": [
+     229.18,
+     214.72,
+     209.33
+    ],
+    "max_diff": 156,
+    "changed_px": 0.997079,
+    "psnr": 34.51,
+    "ocr_cer": 0.00597,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 169302,
+    "encode_ms": [
+     240.54,
+     233.59,
+     219.54
+    ],
+    "max_diff": 154,
+    "changed_px": 0.99702,
+    "psnr": 34.6,
+    "ocr_cer": 0.00498,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 195046,
+    "encode_ms": [
+     230.28,
+     217.84,
+     214.79
+    ],
+    "max_diff": 151,
+    "changed_px": 0.996937,
+    "psnr": 34.71,
+    "ocr_cer": 0.00498,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 88534,
+    "encode_ms": [
+     393.25,
+     370.92,
+     367.72
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1178
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\c616d07b473b4d71a9e684b0f921f817.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 86650,
+  "variants": {
+   "q90": {
+    "bytes": 150268,
+    "encode_ms": [
+     220.49,
+     214.53,
+     201.12
+    ],
+    "max_diff": 143,
+    "changed_px": 0.997076,
+    "psnr": 34.86,
+    "ocr_cer": 0.00386,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 162404,
+    "encode_ms": [
+     209.66,
+     205.21,
+     203.51
+    ],
+    "max_diff": 139,
+    "changed_px": 0.997014,
+    "psnr": 34.94,
+    "ocr_cer": 0.00289,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 187810,
+    "encode_ms": [
+     219.73,
+     213.18,
+     207.84
+    ],
+    "max_diff": 140,
+    "changed_px": 0.996929,
+    "psnr": 35.07,
+    "ocr_cer": 0.00289,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 84934,
+    "encode_ms": [
+     285.58,
+     269.6,
+     260.08
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1212
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\ca2522464c9047ac9b77bf7373ff996e.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 93154,
+  "variants": {
+   "q90": {
+    "bytes": 158550,
+    "encode_ms": [
+     221.15,
+     208.6,
+     204.56
+    ],
+    "max_diff": 139,
+    "changed_px": 0.997069,
+    "psnr": 34.66,
+    "ocr_cer": 0.00929,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "2"
+    ],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 174276,
+    "encode_ms": [
+     214.9,
+     208.21,
+     204.71
+    ],
+    "max_diff": 140,
+    "changed_px": 0.996986,
+    "psnr": 34.79,
+    "ocr_cer": 0.01301,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0,0",
+     "1",
+     "2"
+    ],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 198080,
+    "encode_ms": [
+     230.99,
+     220.17,
+     210.45
+    ],
+    "max_diff": 140,
+    "changed_px": 0.996923,
+    "psnr": 34.87,
+    "ocr_cer": 0.00743,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "2"
+    ],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 91644,
+    "encode_ms": [
+     274.09,
+     262.64,
+     259.44
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1256
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\d042db491c27458082ea05ce5a9f7571.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 97078,
+  "variants": {
+   "q90": {
+    "bytes": 167026,
+    "encode_ms": [
+     219.02,
+     206.23,
+     203.0
+    ],
+    "max_diff": 142,
+    "changed_px": 0.997074,
+    "psnr": 34.14,
+    "ocr_cer": 0.1177,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "64"
+    ],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 180256,
+    "encode_ms": [
+     208.09,
+     200.4,
+     197.07
+    ],
+    "max_diff": 141,
+    "changed_px": 0.997004,
+    "psnr": 34.22,
+    "ocr_cer": 0.07131,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 207598,
+    "encode_ms": [
+     221.5,
+     216.4,
+     211.71
+    ],
+    "max_diff": 138,
+    "changed_px": 0.996926,
+    "psnr": 34.33,
+    "ocr_cer": 0.11512,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "64"
+    ],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 94798,
+    "encode_ms": [
+     332.05,
+     322.3,
+     323.61
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1362
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\d518186de55948dd8d236133f779b20d.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 98304,
+  "variants": {
+   "q90": {
+    "bytes": 163990,
+    "encode_ms": [
+     220.49,
+     209.11,
+     204.92
+    ],
+    "max_diff": 143,
+    "changed_px": 0.99706,
+    "psnr": 34.02,
+    "ocr_cer": 0.00878,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 176916,
+    "encode_ms": [
+     207.74,
+     199.48,
+     201.81
+    ],
+    "max_diff": 139,
+    "changed_px": 0.997007,
+    "psnr": 34.1,
+    "ocr_cer": 0.00976,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 203726,
+    "encode_ms": [
+     225.69,
+     216.73,
+     215.8
+    ],
+    "max_diff": 138,
+    "changed_px": 0.996914,
+    "psnr": 34.2,
+    "ocr_cer": 0.00878,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 96782,
+    "encode_ms": [
+     274.17,
+     264.22,
+     260.06
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1194
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\deb272cc0ec742ce826decf08b13ed7b.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 93154,
+  "variants": {
+   "q90": {
+    "bytes": 158550,
+    "encode_ms": [
+     218.34,
+     210.43,
+     203.94
+    ],
+    "max_diff": 139,
+    "changed_px": 0.997069,
+    "psnr": 34.66,
+    "ocr_cer": 0.00929,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "2"
+    ],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 174276,
+    "encode_ms": [
+     207.61,
+     200.94,
+     203.69
+    ],
+    "max_diff": 140,
+    "changed_px": 0.996986,
+    "psnr": 34.79,
+    "ocr_cer": 0.01301,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0,0",
+     "1",
+     "2"
+    ],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 198080,
+    "encode_ms": [
+     221.43,
+     212.27,
+     215.44
+    ],
+    "max_diff": 140,
+    "changed_px": 0.996923,
+    "psnr": 34.87,
+    "ocr_cer": 0.00743,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "2"
+    ],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 91644,
+    "encode_ms": [
+     271.03,
+     264.2,
+     265.33
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1256
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\fc0f44de82584d35817baf7a6173a012.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 91134,
+  "variants": {
+   "q90": {
+    "bytes": 156760,
+    "encode_ms": [
+     224.46,
+     216.85,
+     211.47
+    ],
+    "max_diff": 156,
+    "changed_px": 0.997079,
+    "psnr": 34.51,
+    "ocr_cer": 0.00597,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 169302,
+    "encode_ms": [
+     229.63,
+     216.94,
+     209.59
+    ],
+    "max_diff": 154,
+    "changed_px": 0.99702,
+    "psnr": 34.6,
+    "ocr_cer": 0.00498,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 195046,
+    "encode_ms": [
+     216.28,
+     218.59,
+     210.57
+    ],
+    "max_diff": 151,
+    "changed_px": 0.996937,
+    "psnr": 34.71,
+    "ocr_cer": 0.00498,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 88534,
+    "encode_ms": [
+     396.95,
+     381.25,
+     378.06
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1178
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\fc27f76b25074139863d5b2e55a0b809.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 86650,
+  "variants": {
+   "q90": {
+    "bytes": 150268,
+    "encode_ms": [
+     221.21,
+     205.11,
+     200.92
+    ],
+    "max_diff": 143,
+    "changed_px": 0.997076,
+    "psnr": 34.86,
+    "ocr_cer": 0.00386,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 162404,
+    "encode_ms": [
+     213.83,
+     206.9,
+     204.19
+    ],
+    "max_diff": 139,
+    "changed_px": 0.997014,
+    "psnr": 34.94,
+    "ocr_cer": 0.00289,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 187810,
+    "encode_ms": [
+     215.57,
+     202.51,
+     204.9
+    ],
+    "max_diff": 140,
+    "changed_px": 0.996929,
+    "psnr": 35.07,
+    "ocr_cer": 0.00289,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 84934,
+    "encode_ms": [
+     282.77,
+     270.36,
+     268.32
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1212
+ },
+ {
+  "image": "data-codec\\_by_app\\code-vscode\\fd68abeb3e944865aafbfdc34b6e2d3f.webp",
+  "width": 1810,
+  "height": 1206,
+  "raw_bytes": 6548580,
+  "source_bytes": 109474,
+  "variants": {
+   "q90": {
+    "bytes": 172378,
+    "encode_ms": [
+     224.61,
+     211.68,
+     203.72
+    ],
+    "max_diff": 153,
+    "changed_px": 0.997067,
+    "psnr": 33.63,
+    "ocr_cer": 0.00543,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 185792,
+    "encode_ms": [
+     215.74,
+     205.12,
+     202.29
+    ],
+    "max_diff": 153,
+    "changed_px": 0.997009,
+    "psnr": 33.7,
+    "ocr_cer": 0.00543,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 213802,
+    "encode_ms": [
+     219.59,
+     215.71,
+     211.6
+    ],
+    "max_diff": 151,
+    "changed_px": 0.996936,
+    "psnr": 33.81,
+    "ocr_cer": 0.00109,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 106900,
+    "encode_ms": [
+     363.27,
+     360.72,
+     363.38
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1077
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\0cd2f36cc8cd46b998d6ef10c1b5fca8.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 99128,
+  "variants": {
+   "q90": {
+    "bytes": 123180,
+    "encode_ms": [
+     334.49,
+     310.88,
+     306.82
+    ],
+    "max_diff": 132,
+    "changed_px": 0.801587,
+    "psnr": 37.71,
+    "ocr_cer": 0.03439,
+    "ocr_identical": false,
+    "digits_lost": [
+     "127",
+     "14",
+     "2",
+     "24",
+     "2526",
+     "33",
+     "3435",
+     "5",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "11",
+     "12",
+     "20",
+     "35"
+    ]
+   },
+   "q92": {
+    "bytes": 132290,
+    "encode_ms": [
+     343.67,
+     321.12,
+     308.87
+    ],
+    "max_diff": 127,
+    "changed_px": 0.799941,
+    "psnr": 37.75,
+    "ocr_cer": 0.03567,
+    "ocr_identical": false,
+    "digits_lost": [
+     "127",
+     "14",
+     "2",
+     "24",
+     "2526",
+     "33",
+     "3435",
+     "5",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "1",
+     "1",
+     "12",
+     "20",
+     "35"
+    ]
+   },
+   "q95": {
+    "bytes": 157598,
+    "encode_ms": [
+     340.04,
+     314.6,
+     318.49
+    ],
+    "max_diff": 126,
+    "changed_px": 0.798007,
+    "psnr": 37.79,
+    "ocr_cer": 0.03057,
+    "ocr_identical": false,
+    "digits_lost": [
+     "127",
+     "2",
+     "24",
+     "2526",
+     "33",
+     "3435",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "1",
+     "12",
+     "20",
+     "35",
+     "8"
+    ]
+   },
+   "lossless": {
+    "bytes": 98052,
+    "encode_ms": [
+     309.44,
+     290.29,
+     286.42
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 950
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\1d6c3c3a6fb9490a8669cf05379f9d7f.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 154970,
+  "variants": {
+   "q90": {
+    "bytes": 167728,
+    "encode_ms": [
+     337.61,
+     316.05,
+     321.44
+    ],
+    "max_diff": 132,
+    "changed_px": 0.812753,
+    "psnr": 36.08,
+    "ocr_cer": 0.02146,
+    "ocr_identical": false,
+    "digits_lost": [
+     "5"
+    ],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 180564,
+    "encode_ms": [
+     339.98,
+     318.58,
+     309.51
+    ],
+    "max_diff": 127,
+    "changed_px": 0.811612,
+    "psnr": 36.12,
+    "ocr_cer": 0.01824,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 212242,
+    "encode_ms": [
+     338.6,
+     323.23,
+     327.77
+    ],
+    "max_diff": 127,
+    "changed_px": 0.811487,
+    "psnr": 36.16,
+    "ocr_cer": 0.02039,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 153986,
+    "encode_ms": [
+     291.73,
+     283.75,
+     281.05
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1058
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\21d24b581bc04a178fddcfae5d64ce6b.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 99250,
+  "variants": {
+   "q90": {
+    "bytes": 123156,
+    "encode_ms": [
+     333.6,
+     319.33,
+     309.16
+    ],
+    "max_diff": 132,
+    "changed_px": 0.801575,
+    "psnr": 37.71,
+    "ocr_cer": 0.02803,
+    "ocr_identical": false,
+    "digits_lost": [
+     "127",
+     "2",
+     "24",
+     "2526",
+     "33",
+     "3435",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "1",
+     "12",
+     "20",
+     "35"
+    ]
+   },
+   "q92": {
+    "bytes": 132314,
+    "encode_ms": [
+     323.03,
+     306.41,
+     309.64
+    ],
+    "max_diff": 127,
+    "changed_px": 0.79996,
+    "psnr": 37.75,
+    "ocr_cer": 0.03439,
+    "ocr_identical": false,
+    "digits_lost": [
+     "127",
+     "14",
+     "2",
+     "24",
+     "2526",
+     "33",
+     "3435",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "1",
+     "12",
+     "20",
+     "35"
+    ]
+   },
+   "q95": {
+    "bytes": 157632,
+    "encode_ms": [
+     344.85,
+     325.87,
+     315.11
+    ],
+    "max_diff": 126,
+    "changed_px": 0.798032,
+    "psnr": 37.79,
+    "ocr_cer": 0.03057,
+    "ocr_identical": false,
+    "digits_lost": [
+     "127",
+     "2",
+     "24",
+     "2526",
+     "33",
+     "3435",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "1",
+     "12",
+     "20",
+     "35",
+     "8"
+    ]
+   },
+   "lossless": {
+    "bytes": 98108,
+    "encode_ms": [
+     310.98,
+     297.66,
+     296.98
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 950
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\2b78c0cc097b4695bd276e97d2c703b0.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 117118,
+  "variants": {
+   "q90": {
+    "bytes": 125546,
+    "encode_ms": [
+     341.41,
+     316.03,
+     316.16
+    ],
+    "max_diff": 132,
+    "changed_px": 0.811008,
+    "psnr": 37.62,
+    "ocr_cer": 0.05029,
+    "ocr_identical": false,
+    "digits_lost": [
+     "22891",
+     "317",
+     "33",
+     "3435",
+     "37",
+     "7"
+    ],
+    "digits_new": [
+     "1-11",
+     "289",
+     "31",
+     "34",
+     "3467",
+     "35"
+    ]
+   },
+   "q92": {
+    "bytes": 135126,
+    "encode_ms": [
+     336.17,
+     317.24,
+     314.34
+    ],
+    "max_diff": 127,
+    "changed_px": 0.810119,
+    "psnr": 37.66,
+    "ocr_cer": 0.05172,
+    "ocr_identical": false,
+    "digits_lost": [
+     "22891",
+     "317",
+     "32",
+     "33",
+     "3435",
+     "7"
+    ],
+    "digits_new": [
+     "1-1",
+     "2",
+     "289",
+     "31",
+     "34",
+     "3467",
+     "35"
+    ]
+   },
+   "q95": {
+    "bytes": 160260,
+    "encode_ms": [
+     352.45,
+     336.15,
+     331.42
+    ],
+    "max_diff": 127,
+    "changed_px": 0.810202,
+    "psnr": 37.7,
+    "ocr_cer": 0.04741,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "22891",
+     "24",
+     "317",
+     "33",
+     "3435",
+     "37"
+    ],
+    "digits_new": [
+     "1-1",
+     "289",
+     "31",
+     "34",
+     "3467",
+     "35"
+    ]
+   },
+   "lossless": {
+    "bytes": 116084,
+    "encode_ms": [
+     300.74,
+     291.59,
+     284.58
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 849
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\309459e9dd0949e4bcea2bdcbf491490.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 121732,
+  "variants": {
+   "q90": {
+    "bytes": 138562,
+    "encode_ms": [
+     329.31,
+     316.25,
+     313.81
+    ],
+    "max_diff": 132,
+    "changed_px": 0.81261,
+    "psnr": 37.34,
+    "ocr_cer": 0.02439,
+    "ocr_identical": false,
+    "digits_lost": [
+     "2",
+     "291",
+     "2938313233",
+     "371",
+     "7",
+     "7",
+     "89"
+    ],
+    "digits_new": [
+     "29",
+     "2930313233",
+     "37",
+     "87"
+    ]
+   },
+   "q92": {
+    "bytes": 148940,
+    "encode_ms": [
+     331.1,
+     313.97,
+     316.38
+    ],
+    "max_diff": 127,
+    "changed_px": 0.811124,
+    "psnr": 37.39,
+    "ocr_cer": 0.03326,
+    "ocr_identical": false,
+    "digits_lost": [
+     "12137",
+     "2",
+     "291",
+     "371",
+     "6",
+     "7",
+     "89"
+    ],
+    "digits_new": [
+     "1213",
+     "289",
+     "37"
+    ]
+   },
+   "q95": {
+    "bytes": 177156,
+    "encode_ms": [
+     327.92,
+     317.89,
+     322.55
+    ],
+    "max_diff": 127,
+    "changed_px": 0.811931,
+    "psnr": 37.43,
+    "ocr_cer": 0.02106,
+    "ocr_identical": false,
+    "digits_lost": [
+     "291",
+     "371",
+     "6",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "29",
+     "37"
+    ]
+   },
+   "lossless": {
+    "bytes": 121036,
+    "encode_ms": [
+     307.13,
+     295.42,
+     291.32
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1088
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\3482a2aff8f94a7289b452f68ece7618.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 116924,
+  "variants": {
+   "q90": {
+    "bytes": 125510,
+    "encode_ms": [
+     342.75,
+     323.22,
+     320.04
+    ],
+    "max_diff": 132,
+    "changed_px": 0.811058,
+    "psnr": 37.62,
+    "ocr_cer": 0.05172,
+    "ocr_identical": false,
+    "digits_lost": [
+     "22891",
+     "317",
+     "33",
+     "3435",
+     "37",
+     "7"
+    ],
+    "digits_new": [
+     "1-11",
+     "289",
+     "31",
+     "34",
+     "3467",
+     "35"
+    ]
+   },
+   "q92": {
+    "bytes": 135028,
+    "encode_ms": [
+     327.26,
+     308.97,
+     307.63
+    ],
+    "max_diff": 127,
+    "changed_px": 0.810084,
+    "psnr": 37.66,
+    "ocr_cer": 0.04885,
+    "ocr_identical": false,
+    "digits_lost": [
+     "22891",
+     "3",
+     "317",
+     "33",
+     "3435"
+    ],
+    "digits_new": [
+     "1-1",
+     "289",
+     "31",
+     "34",
+     "3467",
+     "35"
+    ]
+   },
+   "q95": {
+    "bytes": 160136,
+    "encode_ms": [
+     336.7,
+     323.98,
+     322.78
+    ],
+    "max_diff": 127,
+    "changed_px": 0.810065,
+    "psnr": 37.7,
+    "ocr_cer": 0.05029,
+    "ocr_identical": false,
+    "digits_lost": [
+     "22891",
+     "24",
+     "317",
+     "33",
+     "3435",
+     "37",
+     "7"
+    ],
+    "digits_new": [
+     "1-1",
+     "289",
+     "31",
+     "34",
+     "3467",
+     "35"
+    ]
+   },
+   "lossless": {
+    "bytes": 115976,
+    "encode_ms": [
+     316.63,
+     301.34,
+     296.03
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 849
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\3e26aa07ceb349208b10d7c4c3cc1ea5.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 122042,
+  "variants": {
+   "q90": {
+    "bytes": 138544,
+    "encode_ms": [
+     344.57,
+     328.54,
+     312.51
+    ],
+    "max_diff": 132,
+    "changed_px": 0.812526,
+    "psnr": 37.34,
+    "ocr_cer": 0.0255,
+    "ocr_identical": false,
+    "digits_lost": [
+     "2",
+     "291",
+     "2938313233",
+     "371",
+     "7",
+     "7",
+     "89"
+    ],
+    "digits_new": [
+     "29",
+     "2930313233",
+     "37",
+     "87"
+    ]
+   },
+   "q92": {
+    "bytes": 148976,
+    "encode_ms": [
+     333.09,
+     320.09,
+     316.63
+    ],
+    "max_diff": 127,
+    "changed_px": 0.811184,
+    "psnr": 37.39,
+    "ocr_cer": 0.03104,
+    "ocr_identical": false,
+    "digits_lost": [
+     "10",
+     "12137",
+     "2",
+     "2.1.5",
+     "291",
+     "371",
+     "6",
+     "7",
+     "89"
+    ],
+    "digits_new": [
+     "102.1.5",
+     "1213",
+     "289",
+     "37"
+    ]
+   },
+   "q95": {
+    "bytes": 177256,
+    "encode_ms": [
+     324.9,
+     317.53,
+     323.67
+    ],
+    "max_diff": 127,
+    "changed_px": 0.812114,
+    "psnr": 37.43,
+    "ocr_cer": 0.02217,
+    "ocr_identical": false,
+    "digits_lost": [
+     "12137",
+     "291",
+     "371",
+     "6",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1213",
+     "29",
+     "37"
+    ]
+   },
+   "lossless": {
+    "bytes": 120926,
+    "encode_ms": [
+     280.04,
+     264.28,
+     258.6
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1088
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\400bb8087aac46a0bd2a4529af21f500.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 117606,
+  "variants": {
+   "q90": {
+    "bytes": 146888,
+    "encode_ms": [
+     335.22,
+     318.1,
+     316.69
+    ],
+    "max_diff": 132,
+    "changed_px": 0.805151,
+    "psnr": 36.39,
+    "ocr_cer": 0.03556,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 157302,
+    "encode_ms": [
+     333.12,
+     322.19,
+     314.44
+    ],
+    "max_diff": 129,
+    "changed_px": 0.804808,
+    "psnr": 36.43,
+    "ocr_cer": 0.03407,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 184610,
+    "encode_ms": [
+     329.5,
+     324.89,
+     322.58
+    ],
+    "max_diff": 126,
+    "changed_px": 0.804736,
+    "psnr": 36.47,
+    "ocr_cer": 0.03704,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 116788,
+    "encode_ms": [
+     287.01,
+     275.6,
+     264.21
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 763
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\43bf4d7181d041169c8fac0641fd7eff.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 117432,
+  "variants": {
+   "q90": {
+    "bytes": 126206,
+    "encode_ms": [
+     346.74,
+     321.0,
+     312.68
+    ],
+    "max_diff": 132,
+    "changed_px": 0.811233,
+    "psnr": 37.62,
+    "ocr_cer": 0.05278,
+    "ocr_identical": false,
+    "digits_lost": [
+     "22891",
+     "3",
+     "317",
+     "33",
+     "3435",
+     "7"
+    ],
+    "digits_new": [
+     "1-11",
+     "289",
+     "31",
+     "34",
+     "3467",
+     "35",
+     "8"
+    ]
+   },
+   "q92": {
+    "bytes": 135760,
+    "encode_ms": [
+     337.21,
+     322.59,
+     315.34
+    ],
+    "max_diff": 127,
+    "changed_px": 0.810234,
+    "psnr": 37.66,
+    "ocr_cer": 0.0485,
+    "ocr_identical": false,
+    "digits_lost": [
+     "22891",
+     "3",
+     "317",
+     "33",
+     "3435"
+    ],
+    "digits_new": [
+     "1-1",
+     "289",
+     "31",
+     "34",
+     "3467",
+     "35"
+    ]
+   },
+   "q95": {
+    "bytes": 161002,
+    "encode_ms": [
+     332.7,
+     322.81,
+     323.11
+    ],
+    "max_diff": 127,
+    "changed_px": 0.810163,
+    "psnr": 37.7,
+    "ocr_cer": 0.0485,
+    "ocr_identical": false,
+    "digits_lost": [
+     "22891",
+     "24",
+     "317",
+     "33",
+     "3435",
+     "37",
+     "7"
+    ],
+    "digits_new": [
+     "1-1",
+     "289",
+     "31",
+     "34",
+     "3467",
+     "35"
+    ]
+   },
+   "lossless": {
+    "bytes": 116412,
+    "encode_ms": [
+     278.32,
+     257.07,
+     253.33
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 855
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\46e4771a6572488d8f486fb9b1d62e19.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 124734,
+  "variants": {
+   "q90": {
+    "bytes": 142040,
+    "encode_ms": [
+     332.52,
+     309.39,
+     309.74
+    ],
+    "max_diff": 132,
+    "changed_px": 0.813383,
+    "psnr": 36.58,
+    "ocr_cer": 0.01704,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 152288,
+    "encode_ms": [
+     323.39,
+     311.76,
+     314.87
+    ],
+    "max_diff": 127,
+    "changed_px": 0.811547,
+    "psnr": 36.62,
+    "ocr_cer": 0.02044,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 178900,
+    "encode_ms": [
+     338.05,
+     315.82,
+     315.66
+    ],
+    "max_diff": 127,
+    "changed_px": 0.811685,
+    "psnr": 36.65,
+    "ocr_cer": 0.02215,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 123722,
+    "encode_ms": [
+     316.28,
+     304.84,
+     294.33
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 677
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\56c19c41613f420a8691a49f0129b561.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 132766,
+  "variants": {
+   "q90": {
+    "bytes": 145942,
+    "encode_ms": [
+     338.7,
+     323.38,
+     317.3
+    ],
+    "max_diff": 132,
+    "changed_px": 0.812131,
+    "psnr": 36.79,
+    "ocr_cer": 0.02123,
+    "ocr_identical": false,
+    "digits_lost": [
+     "26277",
+     "38",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "2627",
+     "30",
+     "8"
+    ]
+   },
+   "q92": {
+    "bytes": 157062,
+    "encode_ms": [
+     345.34,
+     328.57,
+     321.15
+    ],
+    "max_diff": 129,
+    "changed_px": 0.811217,
+    "psnr": 36.83,
+    "ocr_cer": 0.02005,
+    "ocr_identical": false,
+    "digits_lost": [
+     "26277",
+     "38",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "2627",
+     "30",
+     "8"
+    ]
+   },
+   "q95": {
+    "bytes": 185292,
+    "encode_ms": [
+     343.21,
+     326.75,
+     324.53
+    ],
+    "max_diff": 127,
+    "changed_px": 0.810537,
+    "psnr": 36.87,
+    "ocr_cer": 0.01887,
+    "ocr_identical": false,
+    "digits_lost": [
+     "26277",
+     "38",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "2627",
+     "30"
+    ]
+   },
+   "lossless": {
+    "bytes": 131770,
+    "encode_ms": [
+     330.8,
+     316.19,
+     316.28
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 986
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\6710e5e5611340c4ab62c1e1a27b2379.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 117818,
+  "variants": {
+   "q90": {
+    "bytes": 147234,
+    "encode_ms": [
+     346.11,
+     321.94,
+     309.57
+    ],
+    "max_diff": 132,
+    "changed_px": 0.805397,
+    "psnr": 36.39,
+    "ocr_cer": 0.0325,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 157436,
+    "encode_ms": [
+     334.95,
+     321.03,
+     323.02
+    ],
+    "max_diff": 127,
+    "changed_px": 0.804873,
+    "psnr": 36.43,
+    "ocr_cer": 0.03102,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 185008,
+    "encode_ms": [
+     343.22,
+     321.71,
+     314.11
+    ],
+    "max_diff": 126,
+    "changed_px": 0.804954,
+    "psnr": 36.47,
+    "ocr_cer": 0.03397,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 116718,
+    "encode_ms": [
+     305.92,
+     293.65,
+     297.91
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 767
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\6a3eb4749e3046759bf0fdc2577d25f0.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 104402,
+  "variants": {
+   "q90": {
+    "bytes": 121602,
+    "encode_ms": [
+     344.98,
+     315.74,
+     312.23
+    ],
+    "max_diff": 132,
+    "changed_px": 0.813091,
+    "psnr": 37.69,
+    "ocr_cer": 0.02928,
+    "ocr_identical": false,
+    "digits_lost": [
+     "12137",
+     "181928",
+     "2938313233"
+    ],
+    "digits_new": [
+     "1213",
+     "181920",
+     "2930313233",
+     "8"
+    ]
+   },
+   "q92": {
+    "bytes": 130342,
+    "encode_ms": [
+     346.42,
+     355.3,
+     330.69
+    ],
+    "max_diff": 127,
+    "changed_px": 0.81315,
+    "psnr": 37.73,
+    "ocr_cer": 0.02782,
+    "ocr_identical": false,
+    "digits_lost": [
+     "181928",
+     "2938313233"
+    ],
+    "digits_new": [
+     "181920",
+     "2930313233",
+     "8"
+    ]
+   },
+   "q95": {
+    "bytes": 155020,
+    "encode_ms": [
+     348.41,
+     324.64,
+     316.09
+    ],
+    "max_diff": 127,
+    "changed_px": 0.811554,
+    "psnr": 37.77,
+    "ocr_cer": 0.03075,
+    "ocr_identical": false,
+    "digits_lost": [
+     "181928",
+     "2938313233"
+    ],
+    "digits_new": [
+     "181920",
+     "29303132337"
+    ]
+   },
+   "lossless": {
+    "bytes": 103710,
+    "encode_ms": [
+     309.22,
+     296.48,
+     290.46
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 828
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\740bf4b5149949288916f35959cc8ea6.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 122014,
+  "variants": {
+   "q90": {
+    "bytes": 138620,
+    "encode_ms": [
+     349.23,
+     327.14,
+     314.98
+    ],
+    "max_diff": 132,
+    "changed_px": 0.812702,
+    "psnr": 37.34,
+    "ocr_cer": 0.0255,
+    "ocr_identical": false,
+    "digits_lost": [
+     "2",
+     "291",
+     "2938313233",
+     "371",
+     "7",
+     "7",
+     "89"
+    ],
+    "digits_new": [
+     "29",
+     "2930313233",
+     "37",
+     "87"
+    ]
+   },
+   "q92": {
+    "bytes": 148912,
+    "encode_ms": [
+     334.62,
+     319.98,
+     314.32
+    ],
+    "max_diff": 127,
+    "changed_px": 0.81114,
+    "psnr": 37.39,
+    "ocr_cer": 0.03326,
+    "ocr_identical": false,
+    "digits_lost": [
+     "12137",
+     "2",
+     "291",
+     "371",
+     "6",
+     "7",
+     "89"
+    ],
+    "digits_new": [
+     "1213",
+     "289",
+     "37"
+    ]
+   },
+   "q95": {
+    "bytes": 177182,
+    "encode_ms": [
+     345.35,
+     327.98,
+     324.27
+    ],
+    "max_diff": 127,
+    "changed_px": 0.812139,
+    "psnr": 37.43,
+    "ocr_cer": 0.02106,
+    "ocr_identical": false,
+    "digits_lost": [
+     "291",
+     "371",
+     "6",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "29",
+     "37"
+    ]
+   },
+   "lossless": {
+    "bytes": 120902,
+    "encode_ms": [
+     274.71,
+     252.44,
+     267.57
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1088
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\7a6958eea95d437db439ba737f27137f.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 117888,
+  "variants": {
+   "q90": {
+    "bytes": 147300,
+    "encode_ms": [
+     328.11,
+     312.83,
+     314.7
+    ],
+    "max_diff": 132,
+    "changed_px": 0.805431,
+    "psnr": 36.39,
+    "ocr_cer": 0.03397,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 157684,
+    "encode_ms": [
+     344.52,
+     318.48,
+     310.24
+    ],
+    "max_diff": 129,
+    "changed_px": 0.804917,
+    "psnr": 36.43,
+    "ocr_cer": 0.03102,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 185038,
+    "encode_ms": [
+     336.35,
+     323.91,
+     325.35
+    ],
+    "max_diff": 126,
+    "changed_px": 0.804809,
+    "psnr": 36.47,
+    "ocr_cer": 0.03397,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 116752,
+    "encode_ms": [
+     310.64,
+     300.75,
+     282.29
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 767
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\80e3c72298034318a3b2e061abec6fda.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 99250,
+  "variants": {
+   "q90": {
+    "bytes": 123156,
+    "encode_ms": [
+     354.56,
+     324.98,
+     311.45
+    ],
+    "max_diff": 132,
+    "changed_px": 0.801575,
+    "psnr": 37.71,
+    "ocr_cer": 0.02803,
+    "ocr_identical": false,
+    "digits_lost": [
+     "127",
+     "2",
+     "24",
+     "2526",
+     "33",
+     "3435",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "1",
+     "12",
+     "20",
+     "35"
+    ]
+   },
+   "q92": {
+    "bytes": 132314,
+    "encode_ms": [
+     332.69,
+     314.21,
+     311.19
+    ],
+    "max_diff": 127,
+    "changed_px": 0.79996,
+    "psnr": 37.75,
+    "ocr_cer": 0.03439,
+    "ocr_identical": false,
+    "digits_lost": [
+     "127",
+     "14",
+     "2",
+     "24",
+     "2526",
+     "33",
+     "3435",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "1",
+     "12",
+     "20",
+     "35"
+    ]
+   },
+   "q95": {
+    "bytes": 157632,
+    "encode_ms": [
+     332.29,
+     316.5,
+     308.26
+    ],
+    "max_diff": 126,
+    "changed_px": 0.798032,
+    "psnr": 37.79,
+    "ocr_cer": 0.03057,
+    "ocr_identical": false,
+    "digits_lost": [
+     "127",
+     "2",
+     "24",
+     "2526",
+     "33",
+     "3435",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "1",
+     "12",
+     "20",
+     "35",
+     "8"
+    ]
+   },
+   "lossless": {
+    "bytes": 98108,
+    "encode_ms": [
+     311.14,
+     296.85,
+     294.86
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 950
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\813d6516901445aaaece84aa9b5d010b.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 117212,
+  "variants": {
+   "q90": {
+    "bytes": 125910,
+    "encode_ms": [
+     343.68,
+     317.69,
+     310.57
+    ],
+    "max_diff": 132,
+    "changed_px": 0.811488,
+    "psnr": 37.62,
+    "ocr_cer": 0.05158,
+    "ocr_identical": false,
+    "digits_lost": [
+     "22891",
+     "317",
+     "33",
+     "3435",
+     "37",
+     "7"
+    ],
+    "digits_new": [
+     "1-11",
+     "289",
+     "31",
+     "34",
+     "3467",
+     "35",
+     "8"
+    ]
+   },
+   "q92": {
+    "bytes": 135444,
+    "encode_ms": [
+     329.95,
+     314.25,
+     313.86
+    ],
+    "max_diff": 127,
+    "changed_px": 0.810211,
+    "psnr": 37.66,
+    "ocr_cer": 0.04728,
+    "ocr_identical": false,
+    "digits_lost": [
+     "22891",
+     "3",
+     "317",
+     "33",
+     "3435"
+    ],
+    "digits_new": [
+     "1-1",
+     "289",
+     "31",
+     "34",
+     "3467",
+     "35"
+    ]
+   },
+   "q95": {
+    "bytes": 160562,
+    "encode_ms": [
+     328.79,
+     313.09,
+     318.98
+    ],
+    "max_diff": 127,
+    "changed_px": 0.810118,
+    "psnr": 37.7,
+    "ocr_cer": 0.04871,
+    "ocr_identical": false,
+    "digits_lost": [
+     "22891",
+     "24",
+     "317",
+     "33",
+     "3435",
+     "37",
+     "7"
+    ],
+    "digits_new": [
+     "1-1",
+     "289",
+     "31",
+     "34",
+     "3467",
+     "35"
+    ]
+   },
+   "lossless": {
+    "bytes": 116342,
+    "encode_ms": [
+     264.86,
+     256.27,
+     254.39
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 851
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\87c83b467a2c4c3499a0ba1d06b10c95.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 104358,
+  "variants": {
+   "q90": {
+    "bytes": 121550,
+    "encode_ms": [
+     336.63,
+     315.79,
+     311.77
+    ],
+    "max_diff": 132,
+    "changed_px": 0.813256,
+    "psnr": 37.69,
+    "ocr_cer": 0.03226,
+    "ocr_identical": false,
+    "digits_lost": [
+     "12137",
+     "181928",
+     "2938313233"
+    ],
+    "digits_new": [
+     "1213",
+     "181920",
+     "2930313233",
+     "8"
+    ]
+   },
+   "q92": {
+    "bytes": 130238,
+    "encode_ms": [
+     332.64,
+     312.64,
+     307.97
+    ],
+    "max_diff": 127,
+    "changed_px": 0.81311,
+    "psnr": 37.73,
+    "ocr_cer": 0.02639,
+    "ocr_identical": false,
+    "digits_lost": [
+     "181928",
+     "2938313233"
+    ],
+    "digits_new": [
+     "181920",
+     "2930313233",
+     "8"
+    ]
+   },
+   "q95": {
+    "bytes": 154964,
+    "encode_ms": [
+     338.34,
+     321.54,
+     311.23
+    ],
+    "max_diff": 127,
+    "changed_px": 0.811475,
+    "psnr": 37.77,
+    "ocr_cer": 0.02933,
+    "ocr_identical": false,
+    "digits_lost": [
+     "181928",
+     "2938313233"
+    ],
+    "digits_new": [
+     "181920",
+     "29303132337"
+    ]
+   },
+   "lossless": {
+    "bytes": 103482,
+    "encode_ms": [
+     306.56,
+     295.5,
+     290.5
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 827
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\8fb87be92efd48a7a4db6ee267d5d440.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 132700,
+  "variants": {
+   "q90": {
+    "bytes": 145506,
+    "encode_ms": [
+     344.41,
+     325.75,
+     316.39
+    ],
+    "max_diff": 132,
+    "changed_px": 0.811964,
+    "psnr": 36.79,
+    "ocr_cer": 0.0237,
+    "ocr_identical": false,
+    "digits_lost": [
+     "26277",
+     "38",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "2627",
+     "30",
+     "8"
+    ]
+   },
+   "q92": {
+    "bytes": 156626,
+    "encode_ms": [
+     334.48,
+     327.96,
+     320.88
+    ],
+    "max_diff": 129,
+    "changed_px": 0.811075,
+    "psnr": 36.83,
+    "ocr_cer": 0.02251,
+    "ocr_identical": false,
+    "digits_lost": [
+     "26277",
+     "38",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "2627",
+     "30",
+     "8"
+    ]
+   },
+   "q95": {
+    "bytes": 184760,
+    "encode_ms": [
+     343.47,
+     332.16,
+     323.84
+    ],
+    "max_diff": 127,
+    "changed_px": 0.810249,
+    "psnr": 36.87,
+    "ocr_cer": 0.02133,
+    "ocr_identical": false,
+    "digits_lost": [
+     "26277",
+     "38",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "2627",
+     "30"
+    ]
+   },
+   "lossless": {
+    "bytes": 131774,
+    "encode_ms": [
+     370.31,
+     355.37,
+     356.96
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 978
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\92b9bc363c9749b69f7e3b9028a045da.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 136390,
+  "variants": {
+   "q90": {
+    "bytes": 157880,
+    "encode_ms": [
+     331.08,
+     322.82,
+     321.08
+    ],
+    "max_diff": 132,
+    "changed_px": 0.801593,
+    "psnr": 36.2,
+    "ocr_cer": 0.01939,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q92": {
+    "bytes": 168954,
+    "encode_ms": [
+     330.63,
+     313.11,
+     320.64
+    ],
+    "max_diff": 127,
+    "changed_px": 0.80028,
+    "psnr": 36.23,
+    "ocr_cer": 0.01801,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": []
+   },
+   "q95": {
+    "bytes": 198370,
+    "encode_ms": [
+     346.24,
+     321.52,
+     327.03
+    ],
+    "max_diff": 127,
+    "changed_px": 0.799559,
+    "psnr": 36.27,
+    "ocr_cer": 0.02632,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": []
+   },
+   "lossless": {
+    "bytes": 135382,
+    "encode_ms": [
+     321.16,
+     313.65,
+     313.28
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 814
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\995c55602d1841f8afaa435e2196b088.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 115474,
+  "variants": {
+   "q90": {
+    "bytes": 137900,
+    "encode_ms": [
+     339.41,
+     320.4,
+     314.91
+    ],
+    "max_diff": 132,
+    "changed_px": 0.813348,
+    "psnr": 37.39,
+    "ocr_cer": 0.01929,
+    "ocr_identical": false,
+    "digits_lost": [
+     "157",
+     "2223",
+     "26277",
+     "3831"
+    ],
+    "digits_new": [
+     "1",
+     "1",
+     "15",
+     "2228",
+     "2627",
+     "3031",
+     "34",
+     "9"
+    ]
+   },
+   "q92": {
+    "bytes": 148334,
+    "encode_ms": [
+     333.83,
+     321.12,
+     319.2
+    ],
+    "max_diff": 127,
+    "changed_px": 0.811767,
+    "psnr": 37.44,
+    "ocr_cer": 0.0203,
+    "ocr_identical": false,
+    "digits_lost": [
+     "157",
+     "26277",
+     "327",
+     "3831"
+    ],
+    "digits_new": [
+     "1",
+     "1",
+     "15",
+     "2627",
+     "3",
+     "3031",
+     "32",
+     "34"
+    ]
+   },
+   "q95": {
+    "bytes": 176378,
+    "encode_ms": [
+     334.91,
+     330.9,
+     327.5
+    ],
+    "max_diff": 127,
+    "changed_px": 0.812399,
+    "psnr": 37.49,
+    "ocr_cer": 0.02132,
+    "ocr_identical": false,
+    "digits_lost": [
+     "157",
+     "26277",
+     "327"
+    ],
+    "digits_new": [
+     "1",
+     "1",
+     "15",
+     "2627",
+     "32",
+     "34",
+     "9"
+    ]
+   },
+   "lossless": {
+    "bytes": 114410,
+    "encode_ms": [
+     356.85,
+     345.9,
+     339.38
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1170
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\b05f8a0fede942a38e7c733512ef11ef.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 121976,
+  "variants": {
+   "q90": {
+    "bytes": 138556,
+    "encode_ms": [
+     342.51,
+     317.76,
+     314.02
+    ],
+    "max_diff": 132,
+    "changed_px": 0.812753,
+    "psnr": 37.34,
+    "ocr_cer": 0.0255,
+    "ocr_identical": false,
+    "digits_lost": [
+     "2",
+     "291",
+     "2938313233",
+     "371",
+     "7",
+     "7",
+     "89"
+    ],
+    "digits_new": [
+     "29",
+     "2930313233",
+     "37",
+     "87"
+    ]
+   },
+   "q92": {
+    "bytes": 148840,
+    "encode_ms": [
+     335.83,
+     325.47,
+     320.5
+    ],
+    "max_diff": 127,
+    "changed_px": 0.811117,
+    "psnr": 37.39,
+    "ocr_cer": 0.03215,
+    "ocr_identical": false,
+    "digits_lost": [
+     "12137",
+     "2",
+     "291",
+     "371",
+     "6",
+     "7",
+     "89"
+    ],
+    "digits_new": [
+     "1213",
+     "289",
+     "37"
+    ]
+   },
+   "q95": {
+    "bytes": 177192,
+    "encode_ms": [
+     328.49,
+     321.3,
+     325.23
+    ],
+    "max_diff": 127,
+    "changed_px": 0.81214,
+    "psnr": 37.43,
+    "ocr_cer": 0.02106,
+    "ocr_identical": false,
+    "digits_lost": [
+     "291",
+     "371",
+     "6",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "29",
+     "37"
+    ]
+   },
+   "lossless": {
+    "bytes": 121042,
+    "encode_ms": [
+     294.4,
+     280.41,
+     284.47
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1088
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\c0289c8233214a8882df7e4ee2abd23d.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 99122,
+  "variants": {
+   "q90": {
+    "bytes": 123194,
+    "encode_ms": [
+     329.67,
+     314.06,
+     312.39
+    ],
+    "max_diff": 132,
+    "changed_px": 0.801588,
+    "psnr": 37.71,
+    "ocr_cer": 0.02803,
+    "ocr_identical": false,
+    "digits_lost": [
+     "127",
+     "2",
+     "24",
+     "2526",
+     "33",
+     "3435",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "1",
+     "12",
+     "20",
+     "35"
+    ]
+   },
+   "q92": {
+    "bytes": 132320,
+    "encode_ms": [
+     330.73,
+     306.17,
+     304.29
+    ],
+    "max_diff": 127,
+    "changed_px": 0.800013,
+    "psnr": 37.75,
+    "ocr_cer": 0.03312,
+    "ocr_identical": false,
+    "digits_lost": [
+     "127",
+     "14",
+     "2",
+     "24",
+     "2526",
+     "33",
+     "3435",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "1",
+     "1",
+     "12",
+     "20",
+     "35"
+    ]
+   },
+   "q95": {
+    "bytes": 157668,
+    "encode_ms": [
+     335.34,
+     321.92,
+     321.16
+    ],
+    "max_diff": 126,
+    "changed_px": 0.798149,
+    "psnr": 37.79,
+    "ocr_cer": 0.03057,
+    "ocr_identical": false,
+    "digits_lost": [
+     "127",
+     "2",
+     "24",
+     "2526",
+     "33",
+     "3435",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "1",
+     "12",
+     "20",
+     "35",
+     "8"
+    ]
+   },
+   "lossless": {
+    "bytes": 98210,
+    "encode_ms": [
+     307.98,
+     297.77,
+     295.19
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 950
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\d299deb00f094514a492d0ab2be71159.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 122020,
+  "variants": {
+   "q90": {
+    "bytes": 138672,
+    "encode_ms": [
+     346.72,
+     314.94,
+     312.2
+    ],
+    "max_diff": 132,
+    "changed_px": 0.81265,
+    "psnr": 37.34,
+    "ocr_cer": 0.02658,
+    "ocr_identical": false,
+    "digits_lost": [
+     "2",
+     "291",
+     "2938313233",
+     "371",
+     "7",
+     "7",
+     "89"
+    ],
+    "digits_new": [
+     "0",
+     "29",
+     "2930313233",
+     "37",
+     "87"
+    ]
+   },
+   "q92": {
+    "bytes": 148952,
+    "encode_ms": [
+     335.39,
+     313.45,
+     311.02
+    ],
+    "max_diff": 127,
+    "changed_px": 0.811299,
+    "psnr": 37.39,
+    "ocr_cer": 0.03322,
+    "ocr_identical": false,
+    "digits_lost": [
+     "2",
+     "291",
+     "371",
+     "6",
+     "7",
+     "89"
+    ],
+    "digits_new": [
+     "289",
+     "37"
+    ]
+   },
+   "q95": {
+    "bytes": 177266,
+    "encode_ms": [
+     345.47,
+     328.74,
+     316.93
+    ],
+    "max_diff": 127,
+    "changed_px": 0.81215,
+    "psnr": 37.43,
+    "ocr_cer": 0.02215,
+    "ocr_identical": false,
+    "digits_lost": [
+     "291",
+     "371",
+     "6",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "29",
+     "37"
+    ]
+   },
+   "lossless": {
+    "bytes": 121084,
+    "encode_ms": [
+     304.37,
+     287.17,
+     287.13
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1085
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\d352299c4c3e40e9a66f2df7ba4ff958.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 115808,
+  "variants": {
+   "q90": {
+    "bytes": 132354,
+    "encode_ms": [
+     344.47,
+     316.65,
+     308.82
+    ],
+    "max_diff": 132,
+    "changed_px": 0.813383,
+    "psnr": 37.43,
+    "ocr_cer": 0.0404,
+    "ocr_identical": false,
+    "digits_lost": [
+     "10",
+     "5",
+     "6"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "1",
+     "11",
+     "87"
+    ]
+   },
+   "q92": {
+    "bytes": 142202,
+    "encode_ms": [
+     329.36,
+     323.03,
+     318.39
+    ],
+    "max_diff": 127,
+    "changed_px": 0.812597,
+    "psnr": 37.47,
+    "ocr_cer": 0.01908,
+    "ocr_identical": false,
+    "digits_lost": [
+     "5",
+     "8"
+    ],
+    "digits_new": [
+     "1",
+     "1",
+     "11",
+     "7"
+    ]
+   },
+   "q95": {
+    "bytes": 169132,
+    "encode_ms": [
+     330.97,
+     328.31,
+     325.0
+    ],
+    "max_diff": 127,
+    "changed_px": 0.811892,
+    "psnr": 37.51,
+    "ocr_cer": 0.02245,
+    "ocr_identical": false,
+    "digits_lost": [
+     "5",
+     "8"
+    ],
+    "digits_new": [
+     "1",
+     "1",
+     "11",
+     "7"
+    ]
+   },
+   "lossless": {
+    "bytes": 115116,
+    "encode_ms": [
+     330.94,
+     317.85,
+     311.8
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1056
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\ea00b4316d134dc79c88438ec297a2e1.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 121900,
+  "variants": {
+   "q90": {
+    "bytes": 138500,
+    "encode_ms": [
+     344.95,
+     313.87,
+     313.91
+    ],
+    "max_diff": 132,
+    "changed_px": 0.812717,
+    "psnr": 37.34,
+    "ocr_cer": 0.0255,
+    "ocr_identical": false,
+    "digits_lost": [
+     "2",
+     "291",
+     "2938313233",
+     "371",
+     "7",
+     "7",
+     "89"
+    ],
+    "digits_new": [
+     "29",
+     "2930313233",
+     "37",
+     "87"
+    ]
+   },
+   "q92": {
+    "bytes": 148898,
+    "encode_ms": [
+     331.91,
+     322.47,
+     326.92
+    ],
+    "max_diff": 126,
+    "changed_px": 0.811116,
+    "psnr": 37.39,
+    "ocr_cer": 0.03437,
+    "ocr_identical": false,
+    "digits_lost": [
+     "10",
+     "12137",
+     "2",
+     "2.1.5",
+     "291",
+     "371",
+     "6",
+     "7",
+     "89"
+    ],
+    "digits_new": [
+     "102.1.5",
+     "1213",
+     "289",
+     "37"
+    ]
+   },
+   "q95": {
+    "bytes": 177062,
+    "encode_ms": [
+     340.31,
+     324.09,
+     326.93
+    ],
+    "max_diff": 127,
+    "changed_px": 0.81178,
+    "psnr": 37.43,
+    "ocr_cer": 0.02217,
+    "ocr_identical": false,
+    "digits_lost": [
+     "12137",
+     "291",
+     "371",
+     "6",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1213",
+     "29",
+     "37"
+    ]
+   },
+   "lossless": {
+    "bytes": 121062,
+    "encode_ms": [
+     300.13,
+     288.32,
+     287.87
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1088
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\ea6c551437974c058974493eebeab0f5.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 104358,
+  "variants": {
+   "q90": {
+    "bytes": 121550,
+    "encode_ms": [
+     340.57,
+     315.56,
+     305.55
+    ],
+    "max_diff": 132,
+    "changed_px": 0.813256,
+    "psnr": 37.69,
+    "ocr_cer": 0.03226,
+    "ocr_identical": false,
+    "digits_lost": [
+     "12137",
+     "181928",
+     "2938313233"
+    ],
+    "digits_new": [
+     "1213",
+     "181920",
+     "2930313233",
+     "8"
+    ]
+   },
+   "q92": {
+    "bytes": 130238,
+    "encode_ms": [
+     319.89,
+     316.72,
+     317.02
+    ],
+    "max_diff": 127,
+    "changed_px": 0.81311,
+    "psnr": 37.73,
+    "ocr_cer": 0.02639,
+    "ocr_identical": false,
+    "digits_lost": [
+     "181928",
+     "2938313233"
+    ],
+    "digits_new": [
+     "181920",
+     "2930313233",
+     "8"
+    ]
+   },
+   "q95": {
+    "bytes": 154964,
+    "encode_ms": [
+     342.35,
+     326.63,
+     314.81
+    ],
+    "max_diff": 127,
+    "changed_px": 0.811475,
+    "psnr": 37.77,
+    "ocr_cer": 0.02933,
+    "ocr_identical": false,
+    "digits_lost": [
+     "181928",
+     "2938313233"
+    ],
+    "digits_new": [
+     "181920",
+     "29303132337"
+    ]
+   },
+   "lossless": {
+    "bytes": 103482,
+    "encode_ms": [
+     310.82,
+     296.15,
+     291.66
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 827
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\eaa0bb4699a64b69bba7409899c9f6e3.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 103908,
+  "variants": {
+   "q90": {
+    "bytes": 119080,
+    "encode_ms": [
+     347.11,
+     323.63,
+     311.63
+    ],
+    "max_diff": 132,
+    "changed_px": 0.802422,
+    "psnr": 37.8,
+    "ocr_cer": 0.01818,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": [
+     "1",
+     "8"
+    ]
+   },
+   "q92": {
+    "bytes": 127740,
+    "encode_ms": [
+     320.78,
+     314.46,
+     310.6
+    ],
+    "max_diff": 127,
+    "changed_px": 0.801885,
+    "psnr": 37.84,
+    "ocr_cer": 0.02098,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "1",
+     "8"
+    ]
+   },
+   "q95": {
+    "bytes": 151942,
+    "encode_ms": [
+     327.07,
+     310.88,
+     313.93
+    ],
+    "max_diff": 126,
+    "changed_px": 0.800477,
+    "psnr": 37.88,
+    "ocr_cer": 0.01818,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": [
+     "1",
+     "5"
+    ]
+   },
+   "lossless": {
+    "bytes": 103076,
+    "encode_ms": [
+     314.82,
+     296.9,
+     284.21
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 857
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\ee78a625757742f292f3b58c4fecd15d.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 104208,
+  "variants": {
+   "q90": {
+    "bytes": 121176,
+    "encode_ms": [
+     335.19,
+     314.09,
+     312.57
+    ],
+    "max_diff": 132,
+    "changed_px": 0.81294,
+    "psnr": 37.69,
+    "ocr_cer": 0.02941,
+    "ocr_identical": false,
+    "digits_lost": [
+     "12137",
+     "181928",
+     "2938313233"
+    ],
+    "digits_new": [
+     "1213",
+     "181920",
+     "2930313233",
+     "8"
+    ]
+   },
+   "q92": {
+    "bytes": 129900,
+    "encode_ms": [
+     318.18,
+     308.85,
+     308.09
+    ],
+    "max_diff": 127,
+    "changed_px": 0.812964,
+    "psnr": 37.73,
+    "ocr_cer": 0.02941,
+    "ocr_identical": false,
+    "digits_lost": [
+     "181928",
+     "2938313233"
+    ],
+    "digits_new": [
+     "181920",
+     "2930313233",
+     "8"
+    ]
+   },
+   "q95": {
+    "bytes": 154534,
+    "encode_ms": [
+     338.68,
+     323.04,
+     312.77
+    ],
+    "max_diff": 127,
+    "changed_px": 0.81144,
+    "psnr": 37.77,
+    "ocr_cer": 0.02941,
+    "ocr_identical": false,
+    "digits_lost": [
+     "181928",
+     "2938313233"
+    ],
+    "digits_new": [
+     "181920",
+     "29303132337"
+    ]
+   },
+   "lossless": {
+    "bytes": 103430,
+    "encode_ms": [
+     279.32,
+     259.61,
+     254.93
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 825
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\f839407c853f463f9758f8c48b3e0d6c.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 99128,
+  "variants": {
+   "q90": {
+    "bytes": 123180,
+    "encode_ms": [
+     334.49,
+     314.68,
+     305.67
+    ],
+    "max_diff": 132,
+    "changed_px": 0.801587,
+    "psnr": 37.71,
+    "ocr_cer": 0.03439,
+    "ocr_identical": false,
+    "digits_lost": [
+     "127",
+     "14",
+     "2",
+     "24",
+     "2526",
+     "33",
+     "3435",
+     "5",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "11",
+     "12",
+     "20",
+     "35"
+    ]
+   },
+   "q92": {
+    "bytes": 132290,
+    "encode_ms": [
+     320.9,
+     311.98,
+     311.36
+    ],
+    "max_diff": 127,
+    "changed_px": 0.799941,
+    "psnr": 37.75,
+    "ocr_cer": 0.03567,
+    "ocr_identical": false,
+    "digits_lost": [
+     "127",
+     "14",
+     "2",
+     "24",
+     "2526",
+     "33",
+     "3435",
+     "5",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "1",
+     "1",
+     "12",
+     "20",
+     "35"
+    ]
+   },
+   "q95": {
+    "bytes": 157598,
+    "encode_ms": [
+     338.3,
+     319.59,
+     311.68
+    ],
+    "max_diff": 126,
+    "changed_px": 0.798007,
+    "psnr": 37.79,
+    "ocr_cer": 0.03057,
+    "ocr_identical": false,
+    "digits_lost": [
+     "127",
+     "2",
+     "24",
+     "2526",
+     "33",
+     "3435",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "1",
+     "12",
+     "20",
+     "35",
+     "8"
+    ]
+   },
+   "lossless": {
+    "bytes": 98052,
+    "encode_ms": [
+     315.06,
+     296.56,
+     296.94
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 950
+ },
+ {
+  "image": "data-codec\\_by_app\\doc-wps\\fe13a0b247bf4c1c88a483e75311a15a.webp",
+  "width": 2560,
+  "height": 1528,
+  "raw_bytes": 11735040,
+  "source_bytes": 121930,
+  "variants": {
+   "q90": {
+    "bytes": 138186,
+    "encode_ms": [
+     347.35,
+     324.34,
+     310.45
+    ],
+    "max_diff": 132,
+    "changed_px": 0.812532,
+    "psnr": 37.34,
+    "ocr_cer": 0.02444,
+    "ocr_identical": false,
+    "digits_lost": [
+     "2",
+     "291",
+     "2938313233",
+     "371",
+     "7",
+     "7",
+     "89"
+    ],
+    "digits_new": [
+     "29",
+     "2930313233",
+     "37",
+     "87"
+    ]
+   },
+   "q92": {
+    "bytes": 148498,
+    "encode_ms": [
+     339.39,
+     322.01,
+     318.12
+    ],
+    "max_diff": 127,
+    "changed_px": 0.810972,
+    "psnr": 37.39,
+    "ocr_cer": 0.03,
+    "ocr_identical": false,
+    "digits_lost": [
+     "2",
+     "291",
+     "371",
+     "6",
+     "7",
+     "89"
+    ],
+    "digits_new": [
+     "289",
+     "37"
+    ]
+   },
+   "q95": {
+    "bytes": 176782,
+    "encode_ms": [
+     346.42,
+     331.63,
+     324.15
+    ],
+    "max_diff": 127,
+    "changed_px": 0.811771,
+    "psnr": 37.43,
+    "ocr_cer": 0.02,
+    "ocr_identical": false,
+    "digits_lost": [
+     "291",
+     "371",
+     "6",
+     "7"
+    ],
+    "digits_new": [
+     "0",
+     "29",
+     "37"
+    ]
+   },
+   "lossless": {
+    "bytes": 120668,
+    "encode_ms": [
+     347.44,
+     351.89,
+     350.2
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1082
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\0cd0d54a98b24d78b3d385226ce22746.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 115660,
+  "variants": {
+   "q90": {
+    "bytes": 227600,
+    "encode_ms": [
+     235.58,
+     220.34,
+     216.36
+    ],
+    "max_diff": 129,
+    "changed_px": 0.447012,
+    "psnr": 31.49,
+    "ocr_cer": 0.01468,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": [
+     "2"
+    ]
+   },
+   "q92": {
+    "bytes": 244088,
+    "encode_ms": [
+     235.89,
+     226.03,
+     217.91
+    ],
+    "max_diff": 130,
+    "changed_px": 0.43443,
+    "psnr": 31.51,
+    "ocr_cer": 0.01876,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": [
+     "2"
+    ]
+   },
+   "q95": {
+    "bytes": 276144,
+    "encode_ms": [
+     235.39,
+     225.2,
+     223.19
+    ],
+    "max_diff": 132,
+    "changed_px": 0.419159,
+    "psnr": 31.56,
+    "ocr_cer": 0.02039,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": [
+     "2"
+    ]
+   },
+   "lossless": {
+    "bytes": 114888,
+    "encode_ms": [
+     351.02,
+     338.34,
+     331.02
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1317
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\0ce07b923fa848c095a136049b9f652d.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 102708,
+  "variants": {
+   "q90": {
+    "bytes": 180292,
+    "encode_ms": [
+     225.77,
+     215.98,
+     209.71
+    ],
+    "max_diff": 126,
+    "changed_px": 0.435564,
+    "psnr": 32.84,
+    "ocr_cer": 0.06022,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "1",
+     "1",
+     "1",
+     "1",
+     "10",
+     "15.8",
+     "2",
+     "2",
+     "2,0,2,4",
+     "3",
+     "3",
+     "3",
+     "4"
+    ],
+    "digits_new": [
+     "1,3",
+     "1,4",
+     "2,0,2",
+     "2,1",
+     "3,1",
+     "3,4",
+     "5.8"
+    ]
+   },
+   "q92": {
+    "bytes": 196464,
+    "encode_ms": [
+     223.14,
+     210.83,
+     205.06
+    ],
+    "max_diff": 127,
+    "changed_px": 0.41663,
+    "psnr": 32.92,
+    "ocr_cer": 0.06129,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "1",
+     "1",
+     "1",
+     "1",
+     "10",
+     "15.8",
+     "2",
+     "2",
+     "2,0,2,4",
+     "3",
+     "3",
+     "3",
+     "4"
+    ],
+    "digits_new": [
+     "1,3",
+     "1,4",
+     "2,0,2",
+     "2,1",
+     "3,1",
+     "3,4",
+     "5.8"
+    ]
+   },
+   "q95": {
+    "bytes": 219440,
+    "encode_ms": [
+     227.59,
+     219.86,
+     218.34
+    ],
+    "max_diff": 127,
+    "changed_px": 0.401687,
+    "psnr": 32.97,
+    "ocr_cer": 0.05806,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "1",
+     "1",
+     "1",
+     "1",
+     "10",
+     "15.8",
+     "2",
+     "2",
+     "2,0,2,4",
+     "3",
+     "3",
+     "3",
+     "4"
+    ],
+    "digits_new": [
+     "1,3",
+     "1,4",
+     "2,0,2",
+     "2,1",
+     "3,1",
+     "3,4",
+     "5.8"
+    ]
+   },
+   "lossless": {
+    "bytes": 101730,
+    "encode_ms": [
+     358.39,
+     349.24,
+     351.91
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1074
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\17e9cf5c6a394ce699ffb44a61744aed.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 102708,
+  "variants": {
+   "q90": {
+    "bytes": 180292,
+    "encode_ms": [
+     238.36,
+     223.41,
+     210.89
+    ],
+    "max_diff": 126,
+    "changed_px": 0.435564,
+    "psnr": 32.84,
+    "ocr_cer": 0.06022,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "1",
+     "1",
+     "1",
+     "1",
+     "10",
+     "15.8",
+     "2",
+     "2",
+     "2,0,2,4",
+     "3",
+     "3",
+     "3",
+     "4"
+    ],
+    "digits_new": [
+     "1,3",
+     "1,4",
+     "2,0,2",
+     "2,1",
+     "3,1",
+     "3,4",
+     "5.8"
+    ]
+   },
+   "q92": {
+    "bytes": 196464,
+    "encode_ms": [
+     223.01,
+     214.69,
+     208.67
+    ],
+    "max_diff": 127,
+    "changed_px": 0.41663,
+    "psnr": 32.92,
+    "ocr_cer": 0.06129,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "1",
+     "1",
+     "1",
+     "1",
+     "10",
+     "15.8",
+     "2",
+     "2",
+     "2,0,2,4",
+     "3",
+     "3",
+     "3",
+     "4"
+    ],
+    "digits_new": [
+     "1,3",
+     "1,4",
+     "2,0,2",
+     "2,1",
+     "3,1",
+     "3,4",
+     "5.8"
+    ]
+   },
+   "q95": {
+    "bytes": 219440,
+    "encode_ms": [
+     227.36,
+     222.19,
+     219.32
+    ],
+    "max_diff": 127,
+    "changed_px": 0.401687,
+    "psnr": 32.97,
+    "ocr_cer": 0.05806,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "1",
+     "1",
+     "1",
+     "1",
+     "10",
+     "15.8",
+     "2",
+     "2",
+     "2,0,2,4",
+     "3",
+     "3",
+     "3",
+     "4"
+    ],
+    "digits_new": [
+     "1,3",
+     "1,4",
+     "2,0,2",
+     "2,1",
+     "3,1",
+     "3,4",
+     "5.8"
+    ]
+   },
+   "lossless": {
+    "bytes": 101730,
+    "encode_ms": [
+     361.06,
+     350.07,
+     360.3
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1074
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\1f8162e589dd485ca5459ca2bef8bee0.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 107516,
+  "variants": {
+   "q90": {
+    "bytes": 198202,
+    "encode_ms": [
+     227.15,
+     210.95,
+     207.27
+    ],
+    "max_diff": 133,
+    "changed_px": 0.428175,
+    "psnr": 31.94,
+    "ocr_cer": 0.00711,
+    "ocr_identical": false,
+    "digits_lost": [
+     "15.8"
+    ],
+    "digits_new": [
+     "5.8"
+    ]
+   },
+   "q92": {
+    "bytes": 210734,
+    "encode_ms": [
+     221.14,
+     215.65,
+     212.87
+    ],
+    "max_diff": 134,
+    "changed_px": 0.415846,
+    "psnr": 31.96,
+    "ocr_cer": 0.00508,
+    "ocr_identical": false,
+    "digits_lost": [
+     "3,4,5,6,7"
+    ],
+    "digits_new": [
+     "3",
+     "4,5,6,7"
+    ]
+   },
+   "q95": {
+    "bytes": 236872,
+    "encode_ms": [
+     224.83,
+     216.58,
+     217.56
+    ],
+    "max_diff": 133,
+    "changed_px": 0.400034,
+    "psnr": 32.01,
+    "ocr_cer": 0.0061,
+    "ocr_identical": false,
+    "digits_lost": [
+     "15.8"
+    ],
+    "digits_new": [
+     "5.8"
+    ]
+   },
+   "lossless": {
+    "bytes": 105968,
+    "encode_ms": [
+     305.54,
+     292.09,
+     286.47
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1092
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\3c31fc01b89f4ebbb4c965ea44441aa1.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 98788,
+  "variants": {
+   "q90": {
+    "bytes": 191630,
+    "encode_ms": [
+     230.3,
+     218.36,
+     210.22
+    ],
+    "max_diff": 133,
+    "changed_px": 0.446504,
+    "psnr": 32.13,
+    "ocr_cer": 0.01767,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0,1,2,3,4,5",
+     "2,3,4",
+     "4,5",
+     "6"
+    ],
+    "digits_new": [
+     "0",
+     "1,2,3,4,5",
+     "2,3",
+     "4",
+     "4,5,6"
+    ]
+   },
+   "q92": {
+    "bytes": 205830,
+    "encode_ms": [
+     219.36,
+     209.93,
+     208.24
+    ],
+    "max_diff": 133,
+    "changed_px": 0.428424,
+    "psnr": 32.16,
+    "ocr_cer": 0.01975,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0,1,2,3,4,5",
+     "2,3,4",
+     "4,5"
+    ],
+    "digits_new": [
+     "0",
+     "1,2,3,4",
+     "2,3",
+     "4",
+     "4",
+     "5",
+     "5"
+    ]
+   },
+   "q95": {
+    "bytes": 230068,
+    "encode_ms": [
+     228.78,
+     218.89,
+     211.93
+    ],
+    "max_diff": 134,
+    "changed_px": 0.411601,
+    "psnr": 32.21,
+    "ocr_cer": 0.01559,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0,1,2,3,4,5",
+     "1,1,66.25,333,333,1234.5",
+     "2,3,4",
+     "6"
+    ],
+    "digits_new": [
+     "0",
+     "1,1,66.25,333",
+     "1,2,3,4,5,6",
+     "1234.5",
+     "2,3",
+     "333",
+     "4"
+    ]
+   },
+   "lossless": {
+    "bytes": 98184,
+    "encode_ms": [
+     280.69,
+     270.16,
+     266.18
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1118
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\3dad3e1b8c73466eabc08d8188e0e3b3.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 115422,
+  "variants": {
+   "q90": {
+    "bytes": 193104,
+    "encode_ms": [
+     228.9,
+     217.55,
+     208.78
+    ],
+    "max_diff": 135,
+    "changed_px": 0.456959,
+    "psnr": 32.86,
+    "ocr_cer": 0.03028,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "0",
+     "1",
+     "1",
+     "1",
+     "1",
+     "1,2",
+     "2",
+     "25",
+     "3",
+     "3",
+     "3",
+     "3",
+     "3",
+     "4,-2,0,2,4",
+     "4,5",
+     "5",
+     "6,7,8,9",
+     "9"
+    ],
+    "digits_new": [
+     "0,0",
+     "1,1",
+     "1,3",
+     "2,0,2",
+     "2,1",
+     "2,3,4,5,6,7,8,9",
+     "3,1",
+     "3,4",
+     "3,9",
+     "4",
+     "5,25"
+    ]
+   },
+   "q92": {
+    "bytes": 208090,
+    "encode_ms": [
+     220.64,
+     216.54,
+     212.73
+    ],
+    "max_diff": 131,
+    "changed_px": 0.429217,
+    "psnr": 32.89,
+    "ocr_cer": 0.02775,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "0",
+     "1",
+     "1",
+     "1",
+     "1,2",
+     "25",
+     "3",
+     "3",
+     "3",
+     "3",
+     "3",
+     "4,-2,0,2,4",
+     "4,5",
+     "5",
+     "6,7,8,9",
+     "9"
+    ],
+    "digits_new": [
+     "0,0",
+     "1,1",
+     "1,3",
+     "2,0,2,4",
+     "2,3,4,5,6,7,8,9",
+     "3,1",
+     "3,4",
+     "3,9",
+     "5,25"
+    ]
+   },
+   "q95": {
+    "bytes": 233382,
+    "encode_ms": [
+     232.59,
+     221.9,
+     219.45
+    ],
+    "max_diff": 137,
+    "changed_px": 0.416807,
+    "psnr": 32.96,
+    "ocr_cer": 0.02607,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "0",
+     "1",
+     "1",
+     "1",
+     "1,2",
+     "25",
+     "3",
+     "3",
+     "3",
+     "3",
+     "3",
+     "4,-2,0,2,4",
+     "4,5",
+     "5",
+     "6,7,8,9",
+     "9"
+    ],
+    "digits_new": [
+     "0,0",
+     "1,1",
+     "1,3",
+     "2,0,2,4",
+     "2,3,4,5,6,7,8,9",
+     "3,1",
+     "3,4",
+     "3,9",
+     "5,25"
+    ]
+   },
+   "lossless": {
+    "bytes": 115860,
+    "encode_ms": [
+     207.69,
+     199.76,
+     199.43
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1368
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\3e039832fdb34ad582cc1979ddcb92b1.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 93754,
+  "variants": {
+   "q90": {
+    "bytes": 182814,
+    "encode_ms": [
+     222.45,
+     209.44,
+     208.19
+    ],
+    "max_diff": 126,
+    "changed_px": 0.438982,
+    "psnr": 32.59,
+    "ocr_cer": 0.0092,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "10,11,12",
+     "12",
+     "4,8",
+     "5",
+     "9",
+     "9"
+    ],
+    "digits_new": [
+     "1,5,9",
+     "4,8,12",
+     "9,10,11,12"
+    ]
+   },
+   "q92": {
+    "bytes": 196320,
+    "encode_ms": [
+     221.61,
+     211.71,
+     213.24
+    ],
+    "max_diff": 125,
+    "changed_px": 0.422693,
+    "psnr": 32.64,
+    "ocr_cer": 0.01227,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,2,3,4",
+     "10,11,12",
+     "12",
+     "4,8",
+     "5",
+     "9",
+     "9"
+    ],
+    "digits_new": [
+     "1,5,9",
+     "2,3,4",
+     "4,8,12",
+     "9,10,11,12"
+    ]
+   },
+   "q95": {
+    "bytes": 221610,
+    "encode_ms": [
+     227.31,
+     216.49,
+     213.76
+    ],
+    "max_diff": 123,
+    "changed_px": 0.40753,
+    "psnr": 32.71,
+    "ocr_cer": 0.00613,
+    "ocr_identical": false,
+    "digits_lost": [
+     "10,11,12",
+     "5",
+     "9",
+     "9"
+    ],
+    "digits_new": [
+     "5,9",
+     "9,10,11,12"
+    ]
+   },
+   "lossless": {
+    "bytes": 92462,
+    "encode_ms": [
+     281.6,
+     270.62,
+     266.98
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1116
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\4be5e52f1680438a8ad8acca61f82f76.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 102708,
+  "variants": {
+   "q90": {
+    "bytes": 180292,
+    "encode_ms": [
+     233.34,
+     216.43,
+     211.46
+    ],
+    "max_diff": 126,
+    "changed_px": 0.435564,
+    "psnr": 32.84,
+    "ocr_cer": 0.06022,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "1",
+     "1",
+     "1",
+     "1",
+     "10",
+     "15.8",
+     "2",
+     "2",
+     "2,0,2,4",
+     "3",
+     "3",
+     "3",
+     "4"
+    ],
+    "digits_new": [
+     "1,3",
+     "1,4",
+     "2,0,2",
+     "2,1",
+     "3,1",
+     "3,4",
+     "5.8"
+    ]
+   },
+   "q92": {
+    "bytes": 196464,
+    "encode_ms": [
+     218.24,
+     212.92,
+     213.0
+    ],
+    "max_diff": 127,
+    "changed_px": 0.41663,
+    "psnr": 32.92,
+    "ocr_cer": 0.06129,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "1",
+     "1",
+     "1",
+     "1",
+     "10",
+     "15.8",
+     "2",
+     "2",
+     "2,0,2,4",
+     "3",
+     "3",
+     "3",
+     "4"
+    ],
+    "digits_new": [
+     "1,3",
+     "1,4",
+     "2,0,2",
+     "2,1",
+     "3,1",
+     "3,4",
+     "5.8"
+    ]
+   },
+   "q95": {
+    "bytes": 219440,
+    "encode_ms": [
+     225.15,
+     221.37,
+     219.48
+    ],
+    "max_diff": 127,
+    "changed_px": 0.401687,
+    "psnr": 32.97,
+    "ocr_cer": 0.05806,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "1",
+     "1",
+     "1",
+     "1",
+     "10",
+     "15.8",
+     "2",
+     "2",
+     "2,0,2,4",
+     "3",
+     "3",
+     "3",
+     "4"
+    ],
+    "digits_new": [
+     "1,3",
+     "1,4",
+     "2,0,2",
+     "2,1",
+     "3,1",
+     "3,4",
+     "5.8"
+    ]
+   },
+   "lossless": {
+    "bytes": 101730,
+    "encode_ms": [
+     358.99,
+     360.47,
+     364.18
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1074
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\578c851c3f2749f8974cd8bdcd79f062.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 107516,
+  "variants": {
+   "q90": {
+    "bytes": 198202,
+    "encode_ms": [
+     236.48,
+     222.21,
+     213.63
+    ],
+    "max_diff": 133,
+    "changed_px": 0.428175,
+    "psnr": 31.94,
+    "ocr_cer": 0.00711,
+    "ocr_identical": false,
+    "digits_lost": [
+     "15.8"
+    ],
+    "digits_new": [
+     "5.8"
+    ]
+   },
+   "q92": {
+    "bytes": 210734,
+    "encode_ms": [
+     231.31,
+     217.36,
+     212.07
+    ],
+    "max_diff": 134,
+    "changed_px": 0.415846,
+    "psnr": 31.96,
+    "ocr_cer": 0.00508,
+    "ocr_identical": false,
+    "digits_lost": [
+     "3,4,5,6,7"
+    ],
+    "digits_new": [
+     "3",
+     "4,5,6,7"
+    ]
+   },
+   "q95": {
+    "bytes": 236872,
+    "encode_ms": [
+     226.44,
+     213.96,
+     210.64
+    ],
+    "max_diff": 133,
+    "changed_px": 0.400034,
+    "psnr": 32.01,
+    "ocr_cer": 0.0061,
+    "ocr_identical": false,
+    "digits_lost": [
+     "15.8"
+    ],
+    "digits_new": [
+     "5.8"
+    ]
+   },
+   "lossless": {
+    "bytes": 105968,
+    "encode_ms": [
+     301.13,
+     288.91,
+     288.1
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1092
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\645cd27658e744678edb73c57b33800f.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 117790,
+  "variants": {
+   "q90": {
+    "bytes": 226050,
+    "encode_ms": [
+     237.46,
+     224.73,
+     218.45
+    ],
+    "max_diff": 133,
+    "changed_px": 0.444887,
+    "psnr": 31.22,
+    "ocr_cer": 0.01312,
+    "ocr_identical": false,
+    "digits_lost": [
+     "3,4,5",
+     "3,4,5,6,7",
+     "7"
+    ],
+    "digits_new": [
+     "3",
+     "3",
+     "4",
+     "4,5,6,7",
+     "5",
+     "5"
+    ]
+   },
+   "q92": {
+    "bytes": 241608,
+    "encode_ms": [
+     230.39,
+     219.63,
+     213.08
+    ],
+    "max_diff": 134,
+    "changed_px": 0.431798,
+    "psnr": 31.24,
+    "ocr_cer": 0.00937,
+    "ocr_identical": false,
+    "digits_lost": [
+     "3,4,5",
+     "3,4,5,6,7",
+     "5.8"
+    ],
+    "digits_new": [
+     "15.8",
+     "3",
+     "3",
+     "4,5",
+     "4,5,6,7",
+     "5"
+    ]
+   },
+   "q95": {
+    "bytes": 269752,
+    "encode_ms": [
+     241.13,
+     225.94,
+     222.34
+    ],
+    "max_diff": 133,
+    "changed_px": 0.419433,
+    "psnr": 31.29,
+    "ocr_cer": 0.00656,
+    "ocr_identical": false,
+    "digits_lost": [
+     "3,4,5",
+     "3,4,5,6,7"
+    ],
+    "digits_new": [
+     "3",
+     "3",
+     "4",
+     "4,5,6,7",
+     "5",
+     "5"
+    ]
+   },
+   "lossless": {
+    "bytes": 117204,
+    "encode_ms": [
+     236.66,
+     234.23,
+     232.29
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1168
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\71bd5ec576774592892a2bab5fdb8165.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 117790,
+  "variants": {
+   "q90": {
+    "bytes": 226050,
+    "encode_ms": [
+     234.32,
+     219.38,
+     216.08
+    ],
+    "max_diff": 133,
+    "changed_px": 0.444887,
+    "psnr": 31.22,
+    "ocr_cer": 0.01312,
+    "ocr_identical": false,
+    "digits_lost": [
+     "3,4,5",
+     "3,4,5,6,7",
+     "7"
+    ],
+    "digits_new": [
+     "3",
+     "3",
+     "4",
+     "4,5,6,7",
+     "5",
+     "5"
+    ]
+   },
+   "q92": {
+    "bytes": 241608,
+    "encode_ms": [
+     235.38,
+     224.78,
+     224.53
+    ],
+    "max_diff": 134,
+    "changed_px": 0.431798,
+    "psnr": 31.24,
+    "ocr_cer": 0.00937,
+    "ocr_identical": false,
+    "digits_lost": [
+     "3,4,5",
+     "3,4,5,6,7",
+     "5.8"
+    ],
+    "digits_new": [
+     "15.8",
+     "3",
+     "3",
+     "4,5",
+     "4,5,6,7",
+     "5"
+    ]
+   },
+   "q95": {
+    "bytes": 269752,
+    "encode_ms": [
+     231.79,
+     224.92,
+     222.93
+    ],
+    "max_diff": 133,
+    "changed_px": 0.419433,
+    "psnr": 31.29,
+    "ocr_cer": 0.00656,
+    "ocr_identical": false,
+    "digits_lost": [
+     "3,4,5",
+     "3,4,5,6,7"
+    ],
+    "digits_new": [
+     "3",
+     "3",
+     "4",
+     "4,5,6,7",
+     "5",
+     "5"
+    ]
+   },
+   "lossless": {
+    "bytes": 117204,
+    "encode_ms": [
+     235.56,
+     233.85,
+     231.31
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1168
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\7cb287c27f9049c0853a137c800d655b.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 116956,
+  "variants": {
+   "q90": {
+    "bytes": 225442,
+    "encode_ms": [
+     242.0,
+     227.46,
+     213.38
+    ],
+    "max_diff": 137,
+    "changed_px": 0.398171,
+    "psnr": 31.19,
+    "ocr_cer": 0.01562,
+    "ocr_identical": false,
+    "digits_lost": [
+     "5.8"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "15.8"
+    ]
+   },
+   "q92": {
+    "bytes": 241548,
+    "encode_ms": [
+     235.44,
+     225.28,
+     216.62
+    ],
+    "max_diff": 132,
+    "changed_px": 0.391571,
+    "psnr": 31.21,
+    "ocr_cer": 0.01367,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "0",
+     "1"
+    ]
+   },
+   "q95": {
+    "bytes": 269084,
+    "encode_ms": [
+     232.02,
+     225.88,
+     225.51
+    ],
+    "max_diff": 130,
+    "changed_px": 0.386284,
+    "psnr": 31.26,
+    "ocr_cer": 0.01953,
+    "ocr_identical": false,
+    "digits_lost": [
+     "5.8"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "15.8"
+    ]
+   },
+   "lossless": {
+    "bytes": 116182,
+    "encode_ms": [
+     304.73,
+     291.34,
+     298.97
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1112
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\82628ac6caeb45f7ac1c2f80a45a10e4.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 115422,
+  "variants": {
+   "q90": {
+    "bytes": 193104,
+    "encode_ms": [
+     241.68,
+     220.84,
+     210.97
+    ],
+    "max_diff": 135,
+    "changed_px": 0.456959,
+    "psnr": 32.86,
+    "ocr_cer": 0.03028,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "0",
+     "1",
+     "1",
+     "1",
+     "1",
+     "1,2",
+     "2",
+     "25",
+     "3",
+     "3",
+     "3",
+     "3",
+     "3",
+     "4,-2,0,2,4",
+     "4,5",
+     "5",
+     "6,7,8,9",
+     "9"
+    ],
+    "digits_new": [
+     "0,0",
+     "1,1",
+     "1,3",
+     "2,0,2",
+     "2,1",
+     "2,3,4,5,6,7,8,9",
+     "3,1",
+     "3,4",
+     "3,9",
+     "4",
+     "5,25"
+    ]
+   },
+   "q92": {
+    "bytes": 208090,
+    "encode_ms": [
+     222.27,
+     219.97,
+     216.55
+    ],
+    "max_diff": 131,
+    "changed_px": 0.429217,
+    "psnr": 32.89,
+    "ocr_cer": 0.02775,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "0",
+     "1",
+     "1",
+     "1",
+     "1,2",
+     "25",
+     "3",
+     "3",
+     "3",
+     "3",
+     "3",
+     "4,-2,0,2,4",
+     "4,5",
+     "5",
+     "6,7,8,9",
+     "9"
+    ],
+    "digits_new": [
+     "0,0",
+     "1,1",
+     "1,3",
+     "2,0,2,4",
+     "2,3,4,5,6,7,8,9",
+     "3,1",
+     "3,4",
+     "3,9",
+     "5,25"
+    ]
+   },
+   "q95": {
+    "bytes": 233382,
+    "encode_ms": [
+     222.82,
+     210.59,
+     218.62
+    ],
+    "max_diff": 137,
+    "changed_px": 0.416807,
+    "psnr": 32.96,
+    "ocr_cer": 0.02607,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "0",
+     "1",
+     "1",
+     "1",
+     "1,2",
+     "25",
+     "3",
+     "3",
+     "3",
+     "3",
+     "3",
+     "4,-2,0,2,4",
+     "4,5",
+     "5",
+     "6,7,8,9",
+     "9"
+    ],
+    "digits_new": [
+     "0,0",
+     "1,1",
+     "1,3",
+     "2,0,2,4",
+     "2,3,4,5,6,7,8,9",
+     "3,1",
+     "3,4",
+     "3,9",
+     "5,25"
+    ]
+   },
+   "lossless": {
+    "bytes": 115860,
+    "encode_ms": [
+     212.03,
+     206.7,
+     204.41
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1368
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\8bb27864b4b048d3a030625d3074e737.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 99494,
+  "variants": {
+   "q90": {
+    "bytes": 186756,
+    "encode_ms": [
+     229.22,
+     217.3,
+     212.6
+    ],
+    "max_diff": 130,
+    "changed_px": 0.453857,
+    "psnr": 32.6,
+    "ocr_cer": 0.02035,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,2,3",
+     "1,2,3,4",
+     "15.8",
+     "4,5",
+     "6",
+     "6,7",
+     "8,9"
+    ],
+    "digits_new": [
+     "1",
+     "1",
+     "1,2,3,4,5,6,7,8,9",
+     "1,6",
+     "2",
+     "2",
+     "2",
+     "2,3,4",
+     "5.8"
+    ]
+   },
+   "q92": {
+    "bytes": 199968,
+    "encode_ms": [
+     229.94,
+     218.63,
+     213.58
+    ],
+    "max_diff": 138,
+    "changed_px": 0.429183,
+    "psnr": 32.64,
+    "ocr_cer": 0.01665,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,2,3",
+     "4,5",
+     "6",
+     "6,7",
+     "8,9"
+    ],
+    "digits_new": [
+     "1",
+     "1,2,3,4,5,6,7,8,9",
+     "1,6",
+     "2",
+     "2"
+    ]
+   },
+   "q95": {
+    "bytes": 223860,
+    "encode_ms": [
+     225.78,
+     218.18,
+     216.06
+    ],
+    "max_diff": 133,
+    "changed_px": 0.413417,
+    "psnr": 32.7,
+    "ocr_cer": 0.01758,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,2,3",
+     "4,5",
+     "6",
+     "6,7",
+     "8,9"
+    ],
+    "digits_new": [
+     "1",
+     "1,2,3,4,5,6,7,8,9",
+     "1,6",
+     "2",
+     "2"
+    ]
+   },
+   "lossless": {
+    "bytes": 98116,
+    "encode_ms": [
+     286.44,
+     274.94,
+     270.88
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1227
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\8f5a71cb57164468802a42f43998675f.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 120914,
+  "variants": {
+   "q90": {
+    "bytes": 230184,
+    "encode_ms": [
+     249.53,
+     228.09,
+     218.93
+    ],
+    "max_diff": 131,
+    "changed_px": 0.473846,
+    "psnr": 31.13,
+    "ocr_cer": 0.01623,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,5",
+     "12",
+     "2,3",
+     "4,8",
+     "9"
+    ],
+    "digits_new": [
+     "1,5,9",
+     "2",
+     "3",
+     "4,8,12"
+    ]
+   },
+   "q92": {
+    "bytes": 245718,
+    "encode_ms": [
+     233.49,
+     228.08,
+     225.57
+    ],
+    "max_diff": 132,
+    "changed_px": 0.454235,
+    "psnr": 31.15,
+    "ocr_cer": 0.01623,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,5",
+     "12",
+     "2,3",
+     "4,8",
+     "9"
+    ],
+    "digits_new": [
+     "1,5,9",
+     "2",
+     "3",
+     "4,8,12"
+    ]
+   },
+   "q95": {
+    "bytes": 278352,
+    "encode_ms": [
+     233.96,
+     227.04,
+     226.54
+    ],
+    "max_diff": 132,
+    "changed_px": 0.433778,
+    "psnr": 31.2,
+    "ocr_cer": 0.01262,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,5",
+     "12",
+     "4,8",
+     "9"
+    ],
+    "digits_new": [
+     "1,5,9",
+     "4,8,12"
+    ]
+   },
+   "lossless": {
+    "bytes": 120174,
+    "encode_ms": [
+     268.79,
+     262.66,
+     256.76
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1238
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\9238ddbe1e2e4050abe32ed461c6034f.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 110644,
+  "variants": {
+   "q90": {
+    "bytes": 203856,
+    "encode_ms": [
+     232.77,
+     219.94,
+     213.06
+    ],
+    "max_diff": 133,
+    "changed_px": 0.45012,
+    "psnr": 32.01,
+    "ocr_cer": 0.00895,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,3",
+     "2,1",
+     "3,1"
+    ],
+    "digits_new": [
+     "1",
+     "1",
+     "1",
+     "2,3",
+     "3"
+    ]
+   },
+   "q92": {
+    "bytes": 215906,
+    "encode_ms": [
+     222.58,
+     219.64,
+     215.98
+    ],
+    "max_diff": 126,
+    "changed_px": 0.434365,
+    "psnr": 32.05,
+    "ocr_cer": 0.01988,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,3",
+     "4",
+     "4"
+    ],
+    "digits_new": [
+     "1,4",
+     "3,4"
+    ]
+   },
+   "q95": {
+    "bytes": 244476,
+    "encode_ms": [
+     219.49,
+     213.3,
+     210.11
+    ],
+    "max_diff": 129,
+    "changed_px": 0.418143,
+    "psnr": 32.1,
+    "ocr_cer": 0.00994,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,3",
+     "4",
+     "4"
+    ],
+    "digits_new": [
+     "1,4",
+     "3,4"
+    ]
+   },
+   "lossless": {
+    "bytes": 109072,
+    "encode_ms": [
+     282.62,
+     273.52,
+     271.26
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1128
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\95bd7f79035c408c942bfcc87aac4644.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 116956,
+  "variants": {
+   "q90": {
+    "bytes": 225442,
+    "encode_ms": [
+     238.69,
+     225.29,
+     217.65
+    ],
+    "max_diff": 137,
+    "changed_px": 0.398171,
+    "psnr": 31.19,
+    "ocr_cer": 0.01562,
+    "ocr_identical": false,
+    "digits_lost": [
+     "5.8"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "15.8"
+    ]
+   },
+   "q92": {
+    "bytes": 241548,
+    "encode_ms": [
+     228.37,
+     215.82,
+     216.27
+    ],
+    "max_diff": 132,
+    "changed_px": 0.391571,
+    "psnr": 31.21,
+    "ocr_cer": 0.01367,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "0",
+     "1"
+    ]
+   },
+   "q95": {
+    "bytes": 269084,
+    "encode_ms": [
+     233.78,
+     225.16,
+     221.99
+    ],
+    "max_diff": 130,
+    "changed_px": 0.386284,
+    "psnr": 31.26,
+    "ocr_cer": 0.01953,
+    "ocr_identical": false,
+    "digits_lost": [
+     "5.8"
+    ],
+    "digits_new": [
+     "0",
+     "1",
+     "15.8"
+    ]
+   },
+   "lossless": {
+    "bytes": 116182,
+    "encode_ms": [
+     304.87,
+     298.05,
+     300.78
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1112
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\a46755adc9d14be8abb23918d5fdbf40.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 102708,
+  "variants": {
+   "q90": {
+    "bytes": 180292,
+    "encode_ms": [
+     225.1,
+     207.6,
+     203.98
+    ],
+    "max_diff": 126,
+    "changed_px": 0.435564,
+    "psnr": 32.84,
+    "ocr_cer": 0.06022,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "1",
+     "1",
+     "1",
+     "1",
+     "10",
+     "15.8",
+     "2",
+     "2",
+     "2,0,2,4",
+     "3",
+     "3",
+     "3",
+     "4"
+    ],
+    "digits_new": [
+     "1,3",
+     "1,4",
+     "2,0,2",
+     "2,1",
+     "3,1",
+     "3,4",
+     "5.8"
+    ]
+   },
+   "q92": {
+    "bytes": 196464,
+    "encode_ms": [
+     221.46,
+     215.63,
+     208.83
+    ],
+    "max_diff": 127,
+    "changed_px": 0.41663,
+    "psnr": 32.92,
+    "ocr_cer": 0.06129,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "1",
+     "1",
+     "1",
+     "1",
+     "10",
+     "15.8",
+     "2",
+     "2",
+     "2,0,2,4",
+     "3",
+     "3",
+     "3",
+     "4"
+    ],
+    "digits_new": [
+     "1,3",
+     "1,4",
+     "2,0,2",
+     "2,1",
+     "3,1",
+     "3,4",
+     "5.8"
+    ]
+   },
+   "q95": {
+    "bytes": 219440,
+    "encode_ms": [
+     229.21,
+     214.36,
+     210.15
+    ],
+    "max_diff": 127,
+    "changed_px": 0.401687,
+    "psnr": 32.97,
+    "ocr_cer": 0.05806,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1",
+     "1",
+     "1",
+     "1",
+     "1",
+     "10",
+     "15.8",
+     "2",
+     "2",
+     "2,0,2,4",
+     "3",
+     "3",
+     "3",
+     "4"
+    ],
+    "digits_new": [
+     "1,3",
+     "1,4",
+     "2,0,2",
+     "2,1",
+     "3,1",
+     "3,4",
+     "5.8"
+    ]
+   },
+   "lossless": {
+    "bytes": 101730,
+    "encode_ms": [
+     367.02,
+     357.05,
+     355.57
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1074
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\a572f58bffb24344afc61f60e70136eb.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 104854,
+  "variants": {
+   "q90": {
+    "bytes": 216584,
+    "encode_ms": [
+     230.1,
+     220.48,
+     217.02
+    ],
+    "max_diff": 132,
+    "changed_px": 0.420665,
+    "psnr": 31.4,
+    "ocr_cer": 0.0121,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "0"
+    ]
+   },
+   "q92": {
+    "bytes": 229706,
+    "encode_ms": [
+     228.74,
+     221.65,
+     219.66
+    ],
+    "max_diff": 130,
+    "changed_px": 0.415063,
+    "psnr": 31.43,
+    "ocr_cer": 0.01304,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "0"
+    ]
+   },
+   "q95": {
+    "bytes": 258360,
+    "encode_ms": [
+     235.03,
+     223.87,
+     219.48
+    ],
+    "max_diff": 131,
+    "changed_px": 0.406533,
+    "psnr": 31.48,
+    "ocr_cer": 0.01397,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "0"
+    ]
+   },
+   "lossless": {
+    "bytes": 104222,
+    "encode_ms": [
+     404.81,
+     396.55,
+     414.32
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1163
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\af9b94c99fa54de38f18ac0b24198166.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 115422,
+  "variants": {
+   "q90": {
+    "bytes": 193104,
+    "encode_ms": [
+     233.36,
+     220.07,
+     214.88
+    ],
+    "max_diff": 135,
+    "changed_px": 0.456959,
+    "psnr": 32.86,
+    "ocr_cer": 0.03028,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "0",
+     "1",
+     "1",
+     "1",
+     "1",
+     "1,2",
+     "2",
+     "25",
+     "3",
+     "3",
+     "3",
+     "3",
+     "3",
+     "4,-2,0,2,4",
+     "4,5",
+     "5",
+     "6,7,8,9",
+     "9"
+    ],
+    "digits_new": [
+     "0,0",
+     "1,1",
+     "1,3",
+     "2,0,2",
+     "2,1",
+     "2,3,4,5,6,7,8,9",
+     "3,1",
+     "3,4",
+     "3,9",
+     "4",
+     "5,25"
+    ]
+   },
+   "q92": {
+    "bytes": 208090,
+    "encode_ms": [
+     229.46,
+     221.4,
+     217.31
+    ],
+    "max_diff": 131,
+    "changed_px": 0.429217,
+    "psnr": 32.89,
+    "ocr_cer": 0.02775,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "0",
+     "1",
+     "1",
+     "1",
+     "1,2",
+     "25",
+     "3",
+     "3",
+     "3",
+     "3",
+     "3",
+     "4,-2,0,2,4",
+     "4,5",
+     "5",
+     "6,7,8,9",
+     "9"
+    ],
+    "digits_new": [
+     "0,0",
+     "1,1",
+     "1,3",
+     "2,0,2,4",
+     "2,3,4,5,6,7,8,9",
+     "3,1",
+     "3,4",
+     "3,9",
+     "5,25"
+    ]
+   },
+   "q95": {
+    "bytes": 233382,
+    "encode_ms": [
+     224.62,
+     219.39,
+     219.51
+    ],
+    "max_diff": 137,
+    "changed_px": 0.416807,
+    "psnr": 32.96,
+    "ocr_cer": 0.02607,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "0",
+     "1",
+     "1",
+     "1",
+     "1,2",
+     "25",
+     "3",
+     "3",
+     "3",
+     "3",
+     "3",
+     "4,-2,0,2,4",
+     "4,5",
+     "5",
+     "6,7,8,9",
+     "9"
+    ],
+    "digits_new": [
+     "0,0",
+     "1,1",
+     "1,3",
+     "2,0,2,4",
+     "2,3,4,5,6,7,8,9",
+     "3,1",
+     "3,4",
+     "3,9",
+     "5,25"
+    ]
+   },
+   "lossless": {
+    "bytes": 115860,
+    "encode_ms": [
+     215.01,
+     203.15,
+     197.95
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1368
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\bb657c6cb57a40ce89304606425d4e59.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 104854,
+  "variants": {
+   "q90": {
+    "bytes": 216584,
+    "encode_ms": [
+     237.94,
+     224.6,
+     213.44
+    ],
+    "max_diff": 132,
+    "changed_px": 0.420665,
+    "psnr": 31.4,
+    "ocr_cer": 0.0121,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "0"
+    ]
+   },
+   "q92": {
+    "bytes": 229706,
+    "encode_ms": [
+     232.3,
+     237.57,
+     219.12
+    ],
+    "max_diff": 130,
+    "changed_px": 0.415063,
+    "psnr": 31.43,
+    "ocr_cer": 0.01304,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "0"
+    ]
+   },
+   "q95": {
+    "bytes": 258360,
+    "encode_ms": [
+     229.74,
+     219.55,
+     215.3
+    ],
+    "max_diff": 131,
+    "changed_px": 0.406533,
+    "psnr": 31.48,
+    "ocr_cer": 0.01397,
+    "ocr_identical": false,
+    "digits_lost": [],
+    "digits_new": [
+     "0"
+    ]
+   },
+   "lossless": {
+    "bytes": 104222,
+    "encode_ms": [
+     423.19,
+     399.33,
+     396.42
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1163
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\be6fdeb07e2f4be1b5477bf275f46a85.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 115422,
+  "variants": {
+   "q90": {
+    "bytes": 193104,
+    "encode_ms": [
+     238.15,
+     224.63,
+     217.02
+    ],
+    "max_diff": 135,
+    "changed_px": 0.456959,
+    "psnr": 32.86,
+    "ocr_cer": 0.03028,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "0",
+     "1",
+     "1",
+     "1",
+     "1",
+     "1,2",
+     "2",
+     "25",
+     "3",
+     "3",
+     "3",
+     "3",
+     "3",
+     "4,-2,0,2,4",
+     "4,5",
+     "5",
+     "6,7,8,9",
+     "9"
+    ],
+    "digits_new": [
+     "0,0",
+     "1,1",
+     "1,3",
+     "2,0,2",
+     "2,1",
+     "2,3,4,5,6,7,8,9",
+     "3,1",
+     "3,4",
+     "3,9",
+     "4",
+     "5,25"
+    ]
+   },
+   "q92": {
+    "bytes": 208090,
+    "encode_ms": [
+     224.17,
+     218.65,
+     215.47
+    ],
+    "max_diff": 131,
+    "changed_px": 0.429217,
+    "psnr": 32.89,
+    "ocr_cer": 0.02775,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "0",
+     "1",
+     "1",
+     "1",
+     "1,2",
+     "25",
+     "3",
+     "3",
+     "3",
+     "3",
+     "3",
+     "4,-2,0,2,4",
+     "4,5",
+     "5",
+     "6,7,8,9",
+     "9"
+    ],
+    "digits_new": [
+     "0,0",
+     "1,1",
+     "1,3",
+     "2,0,2,4",
+     "2,3,4,5,6,7,8,9",
+     "3,1",
+     "3,4",
+     "3,9",
+     "5,25"
+    ]
+   },
+   "q95": {
+    "bytes": 233382,
+    "encode_ms": [
+     223.03,
+     217.71,
+     213.62
+    ],
+    "max_diff": 137,
+    "changed_px": 0.416807,
+    "psnr": 32.96,
+    "ocr_cer": 0.02607,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0",
+     "0",
+     "1",
+     "1",
+     "1",
+     "1,2",
+     "25",
+     "3",
+     "3",
+     "3",
+     "3",
+     "3",
+     "4,-2,0,2,4",
+     "4,5",
+     "5",
+     "6,7,8,9",
+     "9"
+    ],
+    "digits_new": [
+     "0,0",
+     "1,1",
+     "1,3",
+     "2,0,2,4",
+     "2,3,4,5,6,7,8,9",
+     "3,1",
+     "3,4",
+     "3,9",
+     "5,25"
+    ]
+   },
+   "lossless": {
+    "bytes": 115860,
+    "encode_ms": [
+     210.36,
+     206.68,
+     211.93
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1368
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\c610445859d0479fa0b00b910fe63ff0.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 99494,
+  "variants": {
+   "q90": {
+    "bytes": 186756,
+    "encode_ms": [
+     234.11,
+     222.74,
+     218.78
+    ],
+    "max_diff": 130,
+    "changed_px": 0.453857,
+    "psnr": 32.6,
+    "ocr_cer": 0.02035,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,2,3",
+     "1,2,3,4",
+     "15.8",
+     "4,5",
+     "6",
+     "6,7",
+     "8,9"
+    ],
+    "digits_new": [
+     "1",
+     "1",
+     "1,2,3,4,5,6,7,8,9",
+     "1,6",
+     "2",
+     "2",
+     "2",
+     "2,3,4",
+     "5.8"
+    ]
+   },
+   "q92": {
+    "bytes": 199968,
+    "encode_ms": [
+     219.78,
+     213.65,
+     210.7
+    ],
+    "max_diff": 138,
+    "changed_px": 0.429183,
+    "psnr": 32.64,
+    "ocr_cer": 0.01665,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,2,3",
+     "4,5",
+     "6",
+     "6,7",
+     "8,9"
+    ],
+    "digits_new": [
+     "1",
+     "1,2,3,4,5,6,7,8,9",
+     "1,6",
+     "2",
+     "2"
+    ]
+   },
+   "q95": {
+    "bytes": 223860,
+    "encode_ms": [
+     231.94,
+     219.75,
+     212.51
+    ],
+    "max_diff": 133,
+    "changed_px": 0.413417,
+    "psnr": 32.7,
+    "ocr_cer": 0.01758,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,2,3",
+     "4,5",
+     "6",
+     "6,7",
+     "8,9"
+    ],
+    "digits_new": [
+     "1",
+     "1,2,3,4,5,6,7,8,9",
+     "1,6",
+     "2",
+     "2"
+    ]
+   },
+   "lossless": {
+    "bytes": 98116,
+    "encode_ms": [
+     294.79,
+     283.7,
+     277.06
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1227
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\d1d823cdb0da4365890284ffdb6fea2b.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 115660,
+  "variants": {
+   "q90": {
+    "bytes": 227600,
+    "encode_ms": [
+     244.22,
+     233.1,
+     223.39
+    ],
+    "max_diff": 129,
+    "changed_px": 0.447012,
+    "psnr": 31.49,
+    "ocr_cer": 0.01468,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": [
+     "2"
+    ]
+   },
+   "q92": {
+    "bytes": 244088,
+    "encode_ms": [
+     237.21,
+     225.21,
+     222.74
+    ],
+    "max_diff": 130,
+    "changed_px": 0.43443,
+    "psnr": 31.51,
+    "ocr_cer": 0.01876,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": [
+     "2"
+    ]
+   },
+   "q95": {
+    "bytes": 276144,
+    "encode_ms": [
+     228.99,
+     226.34,
+     239.84
+    ],
+    "max_diff": 132,
+    "changed_px": 0.419159,
+    "psnr": 31.56,
+    "ocr_cer": 0.02039,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": [
+     "2"
+    ]
+   },
+   "lossless": {
+    "bytes": 114888,
+    "encode_ms": [
+     337.18,
+     321.69,
+     320.19
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1317
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\d4a8d412690c43c289debfe577c9e837.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 110644,
+  "variants": {
+   "q90": {
+    "bytes": 203856,
+    "encode_ms": [
+     230.0,
+     214.48,
+     204.11
+    ],
+    "max_diff": 133,
+    "changed_px": 0.45012,
+    "psnr": 32.01,
+    "ocr_cer": 0.00895,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,3",
+     "2,1",
+     "3,1"
+    ],
+    "digits_new": [
+     "1",
+     "1",
+     "1",
+     "2,3",
+     "3"
+    ]
+   },
+   "q92": {
+    "bytes": 215906,
+    "encode_ms": [
+     222.94,
+     217.96,
+     211.45
+    ],
+    "max_diff": 126,
+    "changed_px": 0.434365,
+    "psnr": 32.05,
+    "ocr_cer": 0.01988,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,3",
+     "4",
+     "4"
+    ],
+    "digits_new": [
+     "1,4",
+     "3,4"
+    ]
+   },
+   "q95": {
+    "bytes": 244476,
+    "encode_ms": [
+     217.34,
+     213.03,
+     212.83
+    ],
+    "max_diff": 129,
+    "changed_px": 0.418143,
+    "psnr": 32.1,
+    "ocr_cer": 0.00994,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,3",
+     "4",
+     "4"
+    ],
+    "digits_new": [
+     "1,4",
+     "3,4"
+    ]
+   },
+   "lossless": {
+    "bytes": 109072,
+    "encode_ms": [
+     282.34,
+     270.66,
+     265.13
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1128
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\dc8ac7836e224d28b595cdf2382a40a2.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 107516,
+  "variants": {
+   "q90": {
+    "bytes": 198202,
+    "encode_ms": [
+     235.03,
+     220.41,
+     217.36
+    ],
+    "max_diff": 133,
+    "changed_px": 0.428175,
+    "psnr": 31.94,
+    "ocr_cer": 0.00711,
+    "ocr_identical": false,
+    "digits_lost": [
+     "15.8"
+    ],
+    "digits_new": [
+     "5.8"
+    ]
+   },
+   "q92": {
+    "bytes": 210734,
+    "encode_ms": [
+     215.05,
+     207.95,
+     210.13
+    ],
+    "max_diff": 134,
+    "changed_px": 0.415846,
+    "psnr": 31.96,
+    "ocr_cer": 0.00508,
+    "ocr_identical": false,
+    "digits_lost": [
+     "3,4,5,6,7"
+    ],
+    "digits_new": [
+     "3",
+     "4,5,6,7"
+    ]
+   },
+   "q95": {
+    "bytes": 236872,
+    "encode_ms": [
+     228.38,
+     220.23,
+     214.56
+    ],
+    "max_diff": 133,
+    "changed_px": 0.400034,
+    "psnr": 32.01,
+    "ocr_cer": 0.0061,
+    "ocr_identical": false,
+    "digits_lost": [
+     "15.8"
+    ],
+    "digits_new": [
+     "5.8"
+    ]
+   },
+   "lossless": {
+    "bytes": 105968,
+    "encode_ms": [
+     288.36,
+     280.15,
+     283.35
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1092
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\e15342d7d2374a569f38ee7f31aa894a.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 110644,
+  "variants": {
+   "q90": {
+    "bytes": 203856,
+    "encode_ms": [
+     224.13,
+     212.05,
+     204.95
+    ],
+    "max_diff": 133,
+    "changed_px": 0.45012,
+    "psnr": 32.01,
+    "ocr_cer": 0.00895,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,3",
+     "2,1",
+     "3,1"
+    ],
+    "digits_new": [
+     "1",
+     "1",
+     "1",
+     "2,3",
+     "3"
+    ]
+   },
+   "q92": {
+    "bytes": 215906,
+    "encode_ms": [
+     224.64,
+     216.27,
+     215.0
+    ],
+    "max_diff": 126,
+    "changed_px": 0.434365,
+    "psnr": 32.05,
+    "ocr_cer": 0.01988,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,3",
+     "4",
+     "4"
+    ],
+    "digits_new": [
+     "1,4",
+     "3,4"
+    ]
+   },
+   "q95": {
+    "bytes": 244476,
+    "encode_ms": [
+     219.97,
+     220.29,
+     217.12
+    ],
+    "max_diff": 129,
+    "changed_px": 0.418143,
+    "psnr": 32.1,
+    "ocr_cer": 0.00994,
+    "ocr_identical": false,
+    "digits_lost": [
+     "1,3",
+     "4",
+     "4"
+    ],
+    "digits_new": [
+     "1,4",
+     "3,4"
+    ]
+   },
+   "lossless": {
+    "bytes": 109072,
+    "encode_ms": [
+     279.2,
+     271.2,
+     263.85
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1128
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\efcfa886658d44a18cd86509cfb8872b.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 117790,
+  "variants": {
+   "q90": {
+    "bytes": 226050,
+    "encode_ms": [
+     243.18,
+     230.95,
+     232.4
+    ],
+    "max_diff": 133,
+    "changed_px": 0.444887,
+    "psnr": 31.22,
+    "ocr_cer": 0.01312,
+    "ocr_identical": false,
+    "digits_lost": [
+     "3,4,5",
+     "3,4,5,6,7",
+     "7"
+    ],
+    "digits_new": [
+     "3",
+     "3",
+     "4",
+     "4,5,6,7",
+     "5",
+     "5"
+    ]
+   },
+   "q92": {
+    "bytes": 241608,
+    "encode_ms": [
+     249.68,
+     250.48,
+     248.13
+    ],
+    "max_diff": 134,
+    "changed_px": 0.431798,
+    "psnr": 31.24,
+    "ocr_cer": 0.00937,
+    "ocr_identical": false,
+    "digits_lost": [
+     "3,4,5",
+     "3,4,5,6,7",
+     "5.8"
+    ],
+    "digits_new": [
+     "15.8",
+     "3",
+     "3",
+     "4,5",
+     "4,5,6,7",
+     "5"
+    ]
+   },
+   "q95": {
+    "bytes": 269752,
+    "encode_ms": [
+     232.89,
+     221.54,
+     219.93
+    ],
+    "max_diff": 133,
+    "changed_px": 0.419433,
+    "psnr": 31.29,
+    "ocr_cer": 0.00656,
+    "ocr_identical": false,
+    "digits_lost": [
+     "3,4,5",
+     "3,4,5,6,7"
+    ],
+    "digits_new": [
+     "3",
+     "3",
+     "4",
+     "4,5,6,7",
+     "5",
+     "5"
+    ]
+   },
+   "lossless": {
+    "bytes": 117204,
+    "encode_ms": [
+     240.1,
+     227.66,
+     226.06
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1168
+ },
+ {
+  "image": "data-codec\\_by_app\\web-edge\\f22b3d44c1f445abaaabb37e9a897011.webp",
+  "width": 1557,
+  "height": 1490,
+  "raw_bytes": 6959790,
+  "source_bytes": 115660,
+  "variants": {
+   "q90": {
+    "bytes": 227600,
+    "encode_ms": [
+     241.69,
+     219.71,
+     218.76
+    ],
+    "max_diff": 129,
+    "changed_px": 0.447012,
+    "psnr": 31.49,
+    "ocr_cer": 0.01468,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": [
+     "2"
+    ]
+   },
+   "q92": {
+    "bytes": 244088,
+    "encode_ms": [
+     236.94,
+     228.33,
+     222.97
+    ],
+    "max_diff": 130,
+    "changed_px": 0.43443,
+    "psnr": 31.51,
+    "ocr_cer": 0.01876,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": [
+     "2"
+    ]
+   },
+   "q95": {
+    "bytes": 276144,
+    "encode_ms": [
+     237.99,
+     227.76,
+     227.01
+    ],
+    "max_diff": 132,
+    "changed_px": 0.419159,
+    "psnr": 31.56,
+    "ocr_cer": 0.02039,
+    "ocr_identical": false,
+    "digits_lost": [
+     "0"
+    ],
+    "digits_new": [
+     "2"
+    ]
+   },
+   "lossless": {
+    "bytes": 114888,
+    "encode_ms": [
+     330.78,
+     333.94,
+     331.18
+    ],
+    "max_diff": 0,
+    "changed_px": 0.0,
+    "psnr": null,
+    "ocr_cer": 0.0,
+    "ocr_identical": true,
+    "digits_lost": [],
+    "digits_new": []
+   }
+  },
+  "ocr_chars": 1317
+ }
+]

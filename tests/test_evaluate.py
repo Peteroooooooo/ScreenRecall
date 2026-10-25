@@ -61,14 +61,70 @@ def test_split_selection_and_missing_models_are_recorded(h):
 def test_protocol_check_and_loader(tmp_path):
     items = []
     for sp in ("dev", "blind"):
-        for sc in ("code", "chat", "web", "table"):
-            for k in range(5):
+        for j, sc in enumerate(("code", "chat", "web", "table_doc")):
+            for k in range(7 + (j + (sp == "blind")) % 2):  # 每侧每场景 7 或 8 条，每侧 30
                 items.append({"id": f"{sp}-{sc}-{k}", "split": sp, "scenario": sc,
                               "language": "zh" if len(items) % 2 == 0 else "en", "query": "x", "relevant": ["f"]})
     path = tmp_path / "q.json"
     path.write_text(json.dumps(items), encoding="utf-8")
     qs = evaluate.load_queries(path)
+    assert len(qs) == evaluate.MAIN_SET == 60
     notes = evaluate.protocol_check(qs)
-    assert notes == []  # 40 条、每侧每场景 5 条、中英各 20
-    bad = evaluate.protocol_check(qs[:-1] + [evaluate.Query("z", "blind", "table", "en", "text", "x", [])])
+    assert notes == []  # 60 条、开发 / 盲测各 30、每侧每场景 ≥7、中英各 30
+    bad = evaluate.protocol_check(qs[:-1] + [evaluate.Query("z", "blind", "table_doc", "en", "text", "x", [])])
     assert any("没有相关帧" in n for n in bad)
+    few = [q for q in qs if not (q.split == "dev" and q.scenario == "code")]
+    notes = evaluate.protocol_check(few)
+    assert any("dev / code 有 0 条" in n for n in notes) and any("主集为 60" in n for n in notes)
+    old = evaluate.protocol_check(qs[:-1] + [evaluate.Query("t", "blind", "table", "en", "text", "x", ["f"])])
+    assert any("'table' 不在" in n for n in old)
+    assert evaluate.protocol_check(qs[:-1] + [evaluate.Query("d", "dev", "code", "en", "text", "x", ["f"])]) != []
+
+
+def test_candidates_restrict_every_branch_before_topk(h):
+    """仿界面帧不在正式名单里：任何实验（含纯引号路径）都不能把它排进结果，正式帧补上名次。"""
+    p = Pipeline(h)
+    mock = p.add(make_image(1), ["error 0x80070005 access denied mock terminal"])
+    real = p.add(make_image(2), ["error 0x80070005 access denied"])
+    eng = p.engines()
+    only_real = frozenset({real})
+    for q in (_q(1, "access denied error", [real], scenario="code"), _q(2, '"0x80070005"', [real], scenario="code")):
+        full = evaluate.rankings(h.conn, q, eng)
+        assert any(mock in v for k, v in full.items() if not k.startswith("_"))
+        ranks = evaluate.rankings(h.conn, q, eng, candidates=only_real)
+        for e in evaluate.EXPERIMENTS:
+            assert mock not in ranks[e]
+        assert ranks["exp1_lexical"][:1] == [real] and ranks["exp4_rrf_text"][:1] == [real]
+    rep = evaluate.evaluate(h.conn, [_q(1, "access denied", [real])], eng, candidates=only_real)
+    assert rep["frames_in_library"] == 1 and rep["candidates_restricted"]
+
+
+def _qfile(tmp_path, status, relevant):
+    path = tmp_path / "q.json"
+    path.write_text(json.dumps([{"id": "d1", "split": "dev", "scenario": "code", "language": "en", "query": "x",
+                                 "relevant": relevant, "review_status": status}]), encoding="utf-8")
+    return path
+
+
+def test_formal_run_refuses_drafts_missing_candidates_and_blind_rehearsal(tmp_path, capsys):
+    q = _qfile(tmp_path, "draft", ["f1"])
+    assert evaluate.load_queries(q)[0].review_status == "draft"
+    assert evaluate.main(["--queries", str(q), "--split", "dev", "--out", str(tmp_path / "o"), "--check-only"]) == 0
+    assert "未经人工复核" in capsys.readouterr().out
+    # 正式：草稿、无候选名单 → 拒绝
+    assert evaluate.main(["--queries", str(q), "--split", "dev", "--out", str(tmp_path / "o")]) == 1
+    err = capsys.readouterr().err
+    assert "review_status" in err and "--candidates" in err
+    # 正式：相关帧不在名单里 → 拒绝
+    cand = tmp_path / "cand.txt"
+    cand.write_text("# x\nf2\n", encoding="utf-8")
+    q2 = _qfile(tmp_path, "approved", ["f1"])
+    assert evaluate.main(["--queries", str(q2), "--split", "dev", "--out", str(tmp_path / "o"),
+                          "--candidates", str(cand)]) == 1
+    assert "不在正式候选名单" in capsys.readouterr().err
+    # 演练只能跑 dev
+    assert evaluate.main(["--queries", str(q), "--split", "blind", "--out", str(tmp_path / "o"), "--rehearsal"]) == 1
+    assert "只能跑 --split dev" in capsys.readouterr().err
+    assert not (tmp_path / "o").exists()
+    rep = {"split": "dev", "run_kind": "rehearsal", "frames_in_library": 3, "summary": {}}
+    assert "不是正式实验结果" in evaluate.to_markdown(rep)

@@ -88,6 +88,9 @@ def test_mem_samples_process_tree():
         g = out["groups"]["bench-mem-probe"]
         assert g["rss_mib"]["max"] > 0 and out["groups"]["total"]["rss_mib"]["n"] >= 1
         assert child.pid in out["pids"]["bench-mem-probe"]
+        light = bench.sample_memory(psutil, groups, duration_s=0.2, interval_s=0.1, with_uss=False)
+        assert light["groups"]["bench-mem-probe"]["uss_mib"] is None and not light["uss_sampled"]
+        assert light["groups"]["bench-mem-probe"]["rss_mib"]["max"] > 0
     finally:
         child.kill()
         child.wait()

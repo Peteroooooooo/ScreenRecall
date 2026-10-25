@@ -1,0 +1,5 @@
+{
+  "_note": "冻结版本。2026-10-21 由曹贺乔、肖天奕确认，按画面主要可见内容标注（规则见 datasets/COLLECTION.md 第 5.3 节）。冻结后不再增删类别；需要改动时新建版本并重新标注、记录在 PROGRESS。",
+  "frozen": "2026-10-21",
+  "labels": ["code", "chat", "web", "table_doc"]
+}

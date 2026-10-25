@@ -1,5 +1,7 @@
 # 数据集：标注与划分
 
+**采集与标注规程（两人共用）见 [COLLECTION.md](COLLECTION.md)**；任务表、查询分配和模板在 `collection/`。受控截图用 `python -m screenrecall.collect`（清单 / 检查 / 导入 / 标注表 / 事实→相关帧）导入同一个数据目录，`python -m screenrecall.indexer` 在 Mac 或 Windows 上跑完 OCR 与向量；之后按下面的步骤校验、划分、训练、评测。
+
 这里放**冻结后**的类别表、标注 CSV 和划分清单（随代码提交），用于方案 6.1 / 6.4 的分类实验。frame_id 只对产生它的那份数据库有效，所以每个数据集目录要写明来自哪台机器、哪份 `data\` 备份。不要提交截图本身或真实聊天内容。
 
 流程（命令在仓库根目录运行，Windows 用 `.\.venv\Scripts\python.exe`）：
