@@ -1,4 +1,4 @@
-# 一键启动（Windows，PowerShell 7 或 5.1）：后台 + 网页界面，并打开浏览器。
+﻿# 一键启动（Windows，PowerShell 7 或 5.1）：后台 + 网页界面，并打开浏览器。
 #   .\start.ps1                         # 默认数据目录（config 里的 data_dir，默认 data\）
 #   .\start.ps1 -DataDir data-dataset   # 指定数据目录
 #   .\start.ps1 -NoDaemon               # 只开网页（只查不录，例如查看数据集库）
