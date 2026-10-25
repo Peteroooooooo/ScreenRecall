@@ -1,0 +1,31 @@
+{
+  "classes": [
+    "chat",
+    "code",
+    "table_doc",
+    "web"
+  ],
+  "feature_model_id": "sentence-transformers/clip-ViT-B-32@327ab6726d33",
+  "feature_preprocess": "pad-square-rgb128-v1",
+  "hyperparameters": {
+    "C": 1.0,
+    "class_weight": null,
+    "max_iter": 5000,
+    "seed": 0
+  },
+  "split_manifest": {
+    "fractions": {
+      "train": 0.6,
+      "val": 0.2,
+      "test": 0.2
+    },
+    "seed": 0,
+    "labels_csv_blake2b": "d12e1fcc2aa82bc655bb3bd07952385c"
+  },
+  "trained_on": {
+    "train": 1313,
+    "val": 435
+  },
+  "created_at_ms": 1792653215984,
+  "version": "2123143ee97f8f80"
+}

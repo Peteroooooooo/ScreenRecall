@@ -100,7 +100,7 @@ def load_config(data_dir_override: str | os.PathLike | None = None) -> Config:
     raw = tomllib.loads((REPO_ROOT / "config.default.toml").read_text(encoding="utf-8"))
     local = REPO_ROOT / "config.local.toml"
     if local.exists():
-        raw = _merge(raw, tomllib.loads(local.read_text(encoding="utf-8")))
+        raw = _merge(raw, tomllib.loads(local.read_text(encoding="utf-8-sig")))
 
     data_dir = Path(
         data_dir_override
@@ -112,7 +112,7 @@ def load_config(data_dir_override: str | os.PathLike | None = None) -> Config:
     # 数据目录自带的覆盖（最后合并）：只作用于这一份数据，用于独立的删除 / 配额测试库，不影响正式数据
     per_dir = data_dir / "config.toml"
     if per_dir.exists():
-        override = tomllib.loads(per_dir.read_text(encoding="utf-8"))
+        override = tomllib.loads(per_dir.read_text(encoding="utf-8-sig"))  # utf-8-sig：容忍 PowerShell 5.1 写出的 BOM
         override.pop("storage", None)
         raw = _merge(raw, override)
 

@@ -1,0 +1,4 @@
+﻿image_id,file,sha,width,height,captured_local,time_source,collector,device,task_id,scenario,app,window_title,language,facts,keep,drop_reason,note,source_kind
+cao-code-01-001,截屏2026-10-18 10.02.31.png,（manifest 命令自动算）,2880,1800,2026-10-18 10:02:31,filename,cao,cao-mbp,cao-code-01,code,Terminal,zsh — train.py,en,cao-code-01#1;cao-code-01#2,yes,,示例行,real_app
+cao-code-01-002,截屏2026-10-18 10.03.05.png,（自动）,2880,1800,2026-10-18 10:03:05,filename,cao,cao-mbp,cao-code-01,code,Terminal,zsh — train.py,en,cao-code-01#2,yes,,近重复保留：batch_size 16→32 后重跑，报错行不同,real_app
+cao-code-01-003,b.png,（自动）,1440,900,,unknown,cao,cao-mbp,cao-code-01,code,Terminal,,en,,drop,模糊：截图时窗口还在滚动,示例行,real_app

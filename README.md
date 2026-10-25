@@ -2,17 +2,40 @@
 
 轻量本地屏幕记忆系统（NUS-ISS PRS Practice Module，Group 9）。用原词、语义或大致画面描述找回保存过的屏幕，并回到原图核对来源与时间。产品首期目标是 Windows 10/11 单用户、本地 CPU 推理。实施依据：《ScreenMemory_Brain_详细实现方案_独立版》与 `readable_Proposal.md`。
 
-## 当前分支状态：`feat/lifecycle`
+## 当前分支状态：`feat/dataset-collection`
 
 | 项目 | 状态 |
 | --- | --- |
-| 基于 | `feat/evidence-browse` @ `c35ae9e`（草稿 PR #4）← `feat/vector-search`（草稿 PR #3）← `feat/capture-cadence`（草稿 PR #2）← `feat/p0-closed-loop`（P0，PR #1）；以上都**尚未合入 `main`** |
-| PR | 草稿 PR #5，base `feat/evidence-browse`；合并顺序 #1 → #2 → #3 → #4 → #5，详见 [PROGRESS.md](PROGRESS.md) |
-| 本分支新增 | **已实现**：收藏、删除本次记录 / 删除此画面的全部记录（先说明影响范围再确认）、按时间范围删除（预览后确认，默认保留收藏）、30 天原图 / 90 天记录到期、10 GiB 配额与 2 GiB 最低剩余空间、空间不足时暂停采集；数据库 v5（`favorites`）、v6（`frame_labels`）。**测量工具**：`python -m screenrecall.bench`（扩库、查询耗时、就绪延迟、进程树内存），**还没有在 Windows 测试机上产出任何测量数字** |
-| 测试 | **macOS**：`pytest tests` 151/151（继承 105 + 新增 46），含 2 条真实模型测试；新增的是逻辑测试与 Streamlit AppTest，磁盘占用用注入函数模拟，不含真实窗口 |
-| Windows 实机 | **本分支新增内容全部待验证**；继承功能的实机状态见下表 |
+| 基于 | `feat/lifecycle` @ `1e124b5`（草稿 PR #5）← `feat/evidence-browse`（草稿 PR #4）← `feat/vector-search`（草稿 PR #3）← `feat/capture-cadence`（草稿 PR #2）← `main`（已含 P0，PR #1 于 10-16 合入） |
+| PR | 草稿 [PR #6](https://github.com/Peteroooooooo/ScreenRecall/pull/6)，base `main`（PR #1–#5 已于 2026-10-21 用 merge commit 合入 `main` @ `effee82`），详见 [PROGRESS.md](PROGRESS.md) |
+| 本分支新增 | 受控数据集的**采集与标注规程**（[datasets/COLLECTION.md](datasets/COLLECTION.md)）、80 个任务的任务表、40 条查询的分配表、清单 / 事实 / 标注模板；工具 `python -m screenrecall.collect`（清单、检查、导入、标注表、事实→相关帧）和 `python -m screenrecall.indexer`（不采集、只跑 OCR 与向量，Mac 上可用）；导入支持逐张的应用、窗口标题和捕获时间 |
+| 测试 | **macOS**：`pytest tests` 199/199；其中 1 条用真实 RapidOCR，其余是逻辑测试；命令行全流程用真实 OCR + 真实向量模型跑通 |
+| 数据 | 曹贺乔 1,343 张原始截图（只在本机、被 git 忽略），剔除 281，**人工验收（初标 + 第二人复核、非仿界面）1,033 帧**：code 249 / chat 306 / web 265 / table_doc 213；类别表 2026-10-21 冻结（`datasets/labelset.json`）。任务内近重复 322 对由 kiro-ai 按 OCR 差异判定（非人工，见 PROGRESS 第 13 项）。肖天奕的约 1,000 帧尚未合并。初步分类结果 cao-v0（只用曹的数据）：test Macro F1 1.000、val 0.854，基线 0.113 / 0.573，**偏乐观，不是最终结果**；曹的 20 条查询已起草（草稿，待复核）。**还没有检索实验结果** |
+| Windows 实机 | 本分支新增内容未在 Windows 上运行；`collect` / `indexer` 不依赖窗口 API，预期可用，**待验证** |
 
-## 本分支新增内容（P1 收藏 / 删除 / 到期 / 配额，方案 5.2、5.4，A11、A12）
+## 本分支新增内容（受控数据采集与标注，方案 6.1、6.2、6.4）
+
+| 能力 | 做了什么 | 代码 / 文件 | 验证 |
+| --- | --- | --- | --- |
+| 规程 | 两人共用的采集方式、目录与命名、有效帧标准、去重与补采、标注字段与类别规则、分组划分、40 条查询与盲测隔离、合并流程、小批试采步骤 | `datasets/COLLECTION.md` | 文档 |
+| 任务表与查询分配 | 每人每场景 10 个任务 × 约 25 帧；查询每场景 10 条、开发 / 盲测各 5、按场景交替中英 2/3 与 3/2，每人 20 条且中英各 10 | `datasets/collection/tasks.csv`、`query_slots.csv` | 分配数量用脚本核对过 |
+| 采集清单 | `collect manifest <任务文件夹>`：逐张一行，自动填编号、指纹、尺寸；捕获时间只从 macOS / Windows 截图工具写进文件名的时间取，取不到记 `unknown`；重复运行保留人工填写的列 | `screenrecall/collect.py` | Mac 测试 |
+| 检查 | `collect check <根目录>`：必填字段、类别与语言取值、事实编号、短边 ≥500、像素完全相同、跨人跨任务近重复（差分哈希初筛 + 缩略图逐像素确认）、任务内近重复要写变化说明、每任务 ≤40、各采集者 / 场景数量 | `collect.py` | Mac 测试；近重复阈值在合成文字画面上核对过（不同文字不算、只改一处算），**未在真实截图上校准** |
+| 导入 | `collect import`：检查不过就拒绝；每个任务一个导入批次，带清单里的应用、窗口标题和捕获时间；已导入的按指纹跳过，补采后不会重复入库 | `collect.py`、`importer.py`（新增逐文件 `FileMeta`） | Mac 测试 |
+| 只建索引 | `python -m screenrecall.indexer --data-dir DIR`：复用后台同一套 OCR / 向量 worker，不启动采集，跑完退出并报告剩余和失败数 | `screenrecall/indexer.py` | Mac 上真实 RapidOCR 测试 + 真实向量模型命令行跑通 |
+| 标注表 | `collect labels`：生成 `dataset.py` 格式的标注 CSV，附采集者、图片编号、原图路径、事实、OCR 字数、时间是否已知；两人各标分表，再合成总表，同一帧填法不一致会报错；复核人不能与标注人相同（`dataset check` 新增） | `collect.py`、`dataset.py` | Mac 测试 |
+| 查询相关帧 | `collect facts --queries`：按清单里的事实标记填 `relevant`，已有答案不覆盖 | `collect.py` | Mac 测试 |
+| 画面来源（10-18） | 清单新增 `source_kind`：`real_app` 真实桌面应用、`real_web` 真实网站、`mock_ui` 自制 HTML 仿界面；`mock_ui` 只作开发测试样本，`dataset check / split / classify` 默认排除。app 只写实际进程名，避免"只看应用名"基线拿到类别答案 | `collect.py`、`dataset.py` | Mac 测试 + 变异检查 |
+| 近重复报告（10-18） | `check` 输出原始帧、保留、剔除、完全重复组数、任务内 / 跨任务近重复**对数**和待人工判定数，并逐对列出；只有人工写的 `近重复保留：…` 才算判定；`--labels` 一并统计已标注 / 已复核数 | `collect.py` | Mac 测试 + 变异检查 |
+| 类别线索检查（10-18） | 标注表新增 `ocr_task_id_leak`：OCR 在画面里读到任务编号（如地址栏）就标出 | `collect.py` | Mac 测试 |
+| Mac 截图辅助 | `datasets/capture_mac.py`：独立 Chromium 窗口截公开网站，自动关 cookie / iframe 弹窗、等图片加载；`datasets/capture_real_mac.py`：真实 Terminal（分步脚本逐步截图）与 Numbers（虚构表格）；`datasets/pilot_review.py`：生成复核表、网页事实草稿和开发查询草稿 | `datasets/` | 实际截图验证（Terminal 5 张）；Numbers 待人打开文件 |
+| 捕获覆盖实验（10-21，方案 6.3） | `python -m screenrecall.coverage plan / stimulus / analyze`：冻结事件脚本（单字变化 / 被动消息 / A→B→A × 1/3/4/6/10 秒 × 静止 / 光标闪烁 / 大面积动画 / 滚动，随机错开），tkinter 受控测试窗口按脚本播放并记录实际显示时间，按抓拍时间统计每个事件是否被保存、漏掉时有没有中断标记，目标条件给 Wilson 95% 区间；排错脚本按 ≤25 分钟分段 | `screenrecall/coverage.py` | Mac：真实 Recorder + 假窗口 + 注入时钟模拟播放，测试窗口实际打开截图；**Windows 实测未跑** |
+| WebP 编码对照（10-21，方案 5.1） | `python -m screenrecall.codec_compare`：无损来源图分层抽样，q90/q92/q95/无损的大小、编码 P50/P95、PSNR、逐像素一致、真实 OCR 全文与数字串是否变化，并排放大图给人看小字 | `screenrecall/codec_compare.py` | 合成图测试；Mac 16 张 Retina 截图冒烟（不作结论）；**Windows 未跑** |
+| 失败待办人工重试（10-21，方案 3.4） | 侧栏「失败的待办」：按阶段列失败原因，一键把可重试的改回待处理；原图缺失 / 到期 / 已删除、版本已变的不改；命令行 `python -m screenrecall.retry` | `screenrecall/retry.py`、`app.py` | 真实 OcrWorker + 替身引擎、页面 AppTest、变异检查 |
+
+## 继承自 `feat/lifecycle`（P1 收藏 / 删除 / 到期 / 配额，方案 5.2、5.4，A11、A12）
+
+`feat/lifecycle` 的新增内容已于 2026-10-16 在 Windows 11 实机验证（肖天奕，提交 `0fd523d`；分类与评测脚本未在 Windows 上验证），详见 PROGRESS「验证记录」。
 
 规则以 `readable_Proposal.md` 5.2、5.4 为准，加团队 2026-10-16 的决定：用户明确选择"删除此画面的全部记录"时，页面先列出将删除的出现记录和其中的收藏，确认后执行；到期和配额触发的自动清理一律保护收藏。
 
@@ -53,10 +76,11 @@
 | 继承 P0（`feat/p0-closed-loop`） | 指定窗口开启/暂停与 ACK、定时采样与精确复用、内容与出现分开存、缺口、WebP 原子落盘、RapidOCR 与持久待办、引号原串/短词/FTS5 词法检索、日期/应用筛选、原图查看与命中行高亮 | 已实现，Windows 11 实机通过 |
 | 继承采集节奏（`feat/capture-cadence`） | 等稳保存、`unsaved_change` 中断标记、排错模式、页面/快捷键补拍、允许/排除规则、数据库 v2 | 已实现；Windows 实机主要场景通过（30 分钟自动退出、快捷键被占用待验证） |
 | 继承向量检索（`feat/vector-search`） | 数据库 v3、文本块与向量、向量任务处理、文字模式（词法 + 语义 RRF）、画面模式（多语言 CLIP）、页面文字/画面切换与模型缓存 | 已实现；真实模型测试通过（Mac 与 Windows）；Windows 实机端到端通过（肖天奕 10-14 记录） |
-| 继承证据浏览（`feat/evidence-browse`） | 证据浏览与并排、放宽匹配、A05–A10 自动化验收、批量导入、数据库 v4 | 已实现；Mac 测试通过；Windows 实机待验证 |
-| 本分支新增 | 收藏、三种删除、30/90 天到期、配额与空间不足暂停、A11/A12 可在 Mac 上验证的部分、数据库 v5/v6；测量工具；标注 / 划分工具与分类器流程；检索评测脚本 | 已实现；Mac 测试通过（分类与评测只用合成数据 / 替身编码器验证流程）；Windows 实机待验证；**没有测量数字、分类结果和检索实验结果** |
+| 继承证据浏览（`feat/evidence-browse`） | 证据浏览与并排、放宽匹配、A05–A10 自动化验收、批量导入、数据库 v4 | 已实现；Windows 11 实机验证通过（10-16，肖天奕） |
+| 继承 `feat/lifecycle` | 收藏、三种删除、30/90 天到期、配额与空间不足暂停、A11/A12 可在 Mac 上验证的部分、数据库 v5/v6；测量工具；标注 / 划分工具与分类器流程；检索评测脚本 | 已实现；收藏删除到期配额 Windows 实机通过（10-16）；分类与评测只用合成数据 / 替身编码器验证流程；**没有测量数字、分类结果和检索实验结果** |
+| 本分支新增 | 受控数据采集与标注规程、任务表与查询分配、`collect` 与 `indexer` 工具 | 已实现；Mac 测试通过；**尚无真实数据** |
 
-还没有开始：受控数据与标注手册、40 条查询真值、分类与五组检索实验的真实运行和报告、维护页人工重试、资源测量的实际运行（脚本已写，未在测试机上跑）、A13 实机核验、评测实验。顺序见 PROGRESS.md「下一步」。
+还没有开始：真实数据采集与标注（规程和工具已就绪，见 `datasets/COLLECTION.md`）、40 条查询真值、分类与五组检索实验的真实运行和报告、维护页人工重试、资源测量的实际运行（脚本已写，未在测试机上跑）、A13 实机核验。顺序见 PROGRESS.md「下一步」。
 
 ## 运行
 
@@ -72,9 +96,14 @@ python -m screenrecall.models --download   # 联网一次，下载锁定版本�
 # 终端 1（仓库根目录）：后台。只做环境检查可加 --check（"向量模型"一项应为 OK）
 python -m screenrecall.daemon
 
-# 终端 2（仓库根目录）：页面，打开 http://127.0.0.1:8501
-streamlit run app.py
+# 第一次（或 web/ 有改动后）：构建网页前端，需要 Node.js 20+
+cd web; npm ci; npm run build; cd ..
+
+# 终端 2（仓库根目录）：网页界面，打开 http://127.0.0.1:8600
+python -m screenrecall.webapi            # 可加 --data-dir data-dataset
 ```
+
+旧的 Streamlit 页面仍保留（`streamlit run app.py`，8501 端口），功能相同；新界面是 `screenrecall/webapi.py`（JSON API，只绑定 127.0.0.1、核对 Host、改数据的请求要带 `X-ScreenRecall` 头）+ `web/`（React + Vite + Tailwind）。改前端时：先 `python -m screenrecall.webapi --dev-origin http://127.0.0.1:5173`，再在 `web/` 下 `npm run dev`，打开 5173 端口热更新。
 
 后台会在 OCR 之后补算向量。页面里选"文字"或"画面"模式搜索；首次语义或画面查询要加载模型，本机约 1–2 分钟。
 
@@ -86,7 +115,10 @@ streamlit run app.py
 uv venv --python 3.12 .venv && source .venv/bin/activate
 uv pip install -r requirements-dev.txt torch==2.14.1 transformers==5.19.0 sentence-transformers==6.1.0 huggingface-hub==1.33.0 scikit-learn==1.9.1
 python -m screenrecall.models --download   # 可选：不下载则 2 条真实模型测试自动跳过
-python -m pytest tests
+python -m pytest tests --basetemp=data/pytest   # 本机默认临时目录建不了 SQLite 时加 --basetemp
+# 在 Mac 上导入截图并跑真实 OCR（数据集准备，见 datasets/COLLECTION.md）还需要：
+uv pip install rapidocr-onnxruntime==1.4.4 onnxruntime==1.20.1 opencv-python==5.0.0.93
+python -m screenrecall.indexer --data-dir data-dataset
 ```
 
 ## 配置与数据
@@ -98,8 +130,10 @@ python -m pytest tests
 ## 代码结构
 
 ```
-app.py                    Streamlit 页面：录制控制、文字 / 画面两种搜索、原图核验、前后浏览与并排
+app.py                    Streamlit 页面（旧界面，保留）：录制控制、文字 / 画面两种搜索、原图核验、前后浏览与并排
+web/                      网页界面前端（React + Vite + Tailwind；npm run build 生成 web/dist，由 webapi 托管）
 screenrecall/
+  webapi.py               网页界面的 JSON API 与静态托管（python -m screenrecall.webapi，端口 8600）
   daemon.py               后台入口：环境检查、单实例锁、恢复、采集/OCR/向量线程与控制循环
   capture.py              采样、等稳/排错节奏、精确复用、出现记录、缺口与中断标记、补拍
   cadence.py              记录节奏（纯逻辑）
@@ -114,11 +148,13 @@ screenrecall/
   retrieval.py            文字模式 RRF、画面模式、向量矩阵
   evidence.py             录制段时间线、前后关系与缺口提示
   importer.py             批量导入 PNG/JPEG/WebP、批次幂等、命令行
-  lifecycle.py            收藏、删除、到期、配额与定时维护（本分支新增）
-  bench.py                资源与速度测量工具（本分支新增）
-  dataset.py              标注清单、校验与按来源组划分（本分支新增）
-  classify.py             LR 内容分类器训练、基线、评测与预测（本分支新增）
-  evaluate.py             五组检索实验与 Hit@5 / MRR@10（本分支新增）
+  lifecycle.py            收藏、删除、到期、配额与定时维护（继承 feat/lifecycle）
+  bench.py                资源与速度测量工具（继承 feat/lifecycle）
+  dataset.py              标注清单、校验与按来源组划分（继承 feat/lifecycle；本分支加了复核人≠标注人检查）
+  classify.py             LR 内容分类器训练、基线、评测与预测（继承 feat/lifecycle）
+  evaluate.py             五组检索实验与 Hit@5 / MRR@10（继承 feat/lifecycle）
+  collect.py              数据集采集清单、检查、导入、标注表、事实→相关帧（本分支新增）
+  indexer.py              不采集、只跑 OCR 与向量待办（本分支新增，Mac 可用）
   search.py               查询解析、词法检索、排序、原图详情
   control.py              页面 ↔ 后台控制记录
   db.py                   表结构、逐版本迁移（v6）、连接与事务

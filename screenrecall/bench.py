@@ -291,8 +291,12 @@ def find_processes(psutil, patterns: Sequence[str]) -> dict[str, list]:
     return roots
 
 
-def sample_memory(psutil, groups: dict[str, list], duration_s: float, interval_s: float = 1.0) -> dict:
-    """每 interval_s 采样一次：各组（含子进程）CPU% 与 RSS / USS；CPU% 同时给单核口径与整机口径。"""
+def sample_memory(psutil, groups: dict[str, list], duration_s: float, interval_s: float = 1.0,
+                  with_uss: bool = True) -> dict:
+    """每 interval_s 采样一次：各组（含子进程）CPU% 与 RSS / USS；CPU% 同时给单核口径与整机口径。
+
+    with_uss=False 时只采 RSS：Windows 上取 USS 要遍历目标进程的工作集（2 GB 级进程每次约 50 ms），
+    每秒一次会明显拖慢被测的后台（2026-10-23 实测 OCR 吞吐降到原来的几分之一），与就绪延迟同时测时应关掉。"""
     ncpu = psutil.cpu_count() or 1
     trees = {g: [q for r in roots for q in _proc_tree(psutil, r)] for g, roots in groups.items()}
     for procs in trees.values():
@@ -316,6 +320,9 @@ def sample_memory(psutil, groups: dict[str, list], duration_s: float, interval_s
                     rss += q.memory_info().rss / 2**20
                 except psutil.Error:
                     continue
+                if not with_uss:
+                    uss_ok = False
+                    continue
                 try:  # USS 需要更高权限，取不到时只报 RSS
                     uss += q.memory_full_info().uss / 2**20
                 except (psutil.Error, AttributeError):
@@ -329,7 +336,7 @@ def sample_memory(psutil, groups: dict[str, list], duration_s: float, interval_s
             series["total"][k].append(v)
         if time.monotonic() >= end:
             break
-    out = {"cpu_count": ncpu, "interval_s": interval_s, "duration_s": duration_s,
+    out = {"cpu_count": ncpu, "interval_s": interval_s, "duration_s": duration_s, "uss_sampled": with_uss,
            "pids": {g: [q.pid for q in procs] for g, procs in trees.items()}, "groups": {}}
     for g, s in series.items():
         uss = [v for v in s["uss_mib"] if v == v]  # 去掉 NaN（该次采样取不到 USS）
@@ -374,6 +381,7 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("--match", nargs="+", default=["screenrecall.daemon", "streamlit"])
     m.add_argument("--duration", type=float, default=60.0)
     m.add_argument("--interval", type=float, default=1.0)
+    m.add_argument("--no-uss", action="store_true", help="只采 RSS 与 CPU（USS 采样会拖慢被测进程，见 sample_memory）")
     for p in (e, qp, r, m):
         p.add_argument("--out", help="同时写入 JSON 文件")
     args = ap.parse_args(argv)
@@ -413,7 +421,8 @@ def main(argv: list[str] | None = None) -> int:
         missing = [g for g, roots in groups.items() if not roots]
         if missing:
             print(f"没有找到进程：{missing}（命令行需包含这些子串）", file=sys.stderr)
-        _emit(sample_memory(psutil, {g: v for g, v in groups.items() if v}, args.duration, args.interval), args.out)
+        _emit(sample_memory(psutil, {g: v for g, v in groups.items() if v}, args.duration, args.interval,
+                            with_uss=not args.no_uss), args.out)
     return 0
 
 

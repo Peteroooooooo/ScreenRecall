@@ -6,7 +6,7 @@
 
 ## 一句话状态
 
-- P0 最小闭环：已完成，Windows 实机通过。**PR #1 已于 2026-10-16 用 merge commit 合入 `main`**（main 现在是 `4525e6e`）；PR #2–#5 仍是草稿，未合并。
+- P0 最小闭环：已完成，Windows 实机通过。**PR #1 于 2026-10-16、PR #2–#5 于 2026-10-21 依次用 merge commit 合入 `main`**（#2 `fb6f1cf`、#3 `362219c`、#4 `5b9053c`、#5 `effee82`，main 现在是 `effee82`）；只剩草稿 PR #6（数据集工具，base 已改为 `main`）。以下各节里"PR 未合并"的说法是当时的记录。
 - P1 证据浏览 / 批量导入 / 收藏删除到期配额：**2026-10-16 在 Windows 11 实机验证通过**（真实 OCR + 向量 + 真实数据的端到端 19 项全过，见"验证记录"）。
 - P1 采集节奏：等稳、排错模式、补拍、允许/排除规则、未保存变化的中断标记已实现（分支 `feat/capture-cadence`）。2026-10-13 晚在 **Windows 11 实机**跑通主要场景（见"验证记录"），30 分钟自动退出、快捷键被占用两项仍待实机确认。
 - P1 向量基础设施、向量 worker、文字模式（词法 + 语义 RRF）、画面模式（多语言 CLIP）：已实现（分支 `feat/vector-search`），Windows 实机端到端通过。
@@ -19,7 +19,8 @@
 - P1 按时间范围删除：**已实现**（同一分支 `ce66848`）；数据目录可带自己的 `config.toml`，用于独立测试库。
 - P1 标注 / 划分工具与分类器流程：**代码完成**（同一分支 `94657e1`，数据库 **v6**），只在合成数据上测过流程；**没有真实标注数据，也没有分类实验结果**。
 - P1 五组检索实验：**评测脚本完成**（同一分支 `dc9a355`），替身编码器上测过流程；**没有查询真值，也没有实验结果**。
-- P1 其余（受控数据与标注手册、40 条查询真值、捕获覆盖实验、编码对照、失败待办人工重试、报告与演示视频）：未完成，见"完成度总表"与"下一步"。
+- P1 受控数据采集与标注：规程和工具已就绪（分支 `feat/dataset-collection`）。**试采 45 帧已修正、待人工复核**（2026-10-18）：30 张自制 HTML 仿界面改标 `source_kind=mock_ui`，只作开发测试样本；10 张公开网站（含 3 张补采）；5 张**真实 Terminal 窗口**。正式数据集改为以真实应用界面为主。**还没有任何人工标注、分类或检索结果。** Mac 上 pytest 176/176。
+- P1 其余（40 条查询真值、捕获覆盖实验、编码对照、失败待办人工重试、报告与演示视频）：未完成，见"完成度总表"与"下一步"。
 - **证据浏览 / 批量导入 / 收藏删除到期配额已于 2026-10-16 在 Windows 11 实机验证**（真实 OCR + 向量 + 真实数据端到端 19 项全过，`pytest` 132/132；见"验证记录"）。注意：这是在 CAO 推送分类 / 评测（`94657e1`、`dc9a355`）**之前**的提交 `0fd523d` 上验证的；分类与评测脚本本身尚未在 Windows 上验证。
 
 ## 完成度总表（对照 `readable_Proposal.md`，2026-10-16）
@@ -43,14 +44,125 @@
 | WebP 编码对照（5.1：原始像素 / q92 / 无损） | **未完成** | — | — | 未做 |
 | 失败待办人工重试入口（2.4 "允许重试"） | 自动有界重试已有，**人工重试入口未做** | — | — | — |
 | 标注与分组划分工具（6.1） | 完成（`dataset.py`：导出标注清单、校验、按来源组划分） | 通过（合成数据） | 不涉及 | 未用真实数据跑过 |
-| 受控数据、标注手册、40 条查询真值（6.1） | **未完成**（要团队录制和人工标注；类别表只有示例，未冻结） | — | — | 需要 Windows 录制 |
-| 五组检索实验 Exp 1–5、Hit@5 / MRR@10（6.2） | 评测脚本完成（`evaluate.py`：五组同候选、逐条结果、按场景 / 语言给命中数 / 查询数、查询设计检查） | 通过（替身编码器） | 未在真实模型和真实查询上跑 | **没有查询真值，没有任何检索实验结果** |
-| 分类器：LR + 多数类 / 进程名规则基线、Macro F1、混淆矩阵（6.4），页面显示标签并可筛选 | 流程完成（`classify.py`、数据库 v6 `frame_labels`、页面标签与主动筛选） | 通过（**合成数据，只验证流程**） | 未在真实 CLIP 向量上训练 | **没有真实标注，没有任何分类结果**；页面标签未实机查看 |
+| 受控数据采集与标注规程、工具（6.1） | 完成（`datasets/COLLECTION.md`、任务表、查询分配、模板；`collect.py`、`indexer.py`） | 通过（合成图片；近重复阈值未在真实截图上校准） | Mac 上真实 RapidOCR + 向量模型跑通命令行流程（4 张合成图，只验证流程） | `collect` / `indexer` 未在 Windows 运行 |
+| 受控数据、标注、40 条查询真值（6.1） | **曹贺乔部分完成**：人工验收 1,033 帧（双人复核），类别表已冻结；曹的 20 条查询已起草（草稿）。肖天奕的约 1,000 帧与 20 条查询未开始 | — | — | 不需要 Windows 录制（两人都用截图 + 导入）；数据集不能代替捕获覆盖和资源实测 |
+| 五组检索实验 Exp 1–5、Hit@5 / MRR@10（6.2） | 评测脚本完成（`evaluate.py`：五组同候选、逐条结果、按场景 / 语言给命中数 / 查询数、查询设计检查） | 通过（替身编码器） | 未在真实模型和真实查询上跑 | **40 条查询未冻结，没有任何检索实验结果** |
+| 分类器：LR + 多数类 / 进程名规则基线、Macro F1、混淆矩阵（6.4），页面显示标签并可筛选 | 流程完成（`classify.py`、数据库 v6 `frame_labels`、页面标签与主动筛选） | 通过（合成数据） | **初步结果 cao-v0**（只用曹的数据，CLIP + LR）：val 0.854、test 1.000，基线 0.113 / 0.573，偏乐观，见下一步 11 | 最终结果待合并两人数据后重新划分、只跑一次 test |
+| 捕获覆盖实验（6.3） | **脚本完成**（2026-10-21，`coverage.py`：冻结事件脚本 → 受控测试窗口 → 统计） | 通过（真实 Recorder + 假窗口 + 注入时钟模拟播放；**不是实测**） | 不涉及；测试窗口已在 Mac 上实际打开截图确认显示正常 | **Windows 实机未跑**，没有覆盖率数字 |
+| WebP 编码对照（5.1、6.3） | **脚本完成**（2026-10-21，`codec_compare.py`） | 通过（合成文字图） | Mac 冒烟：16 张 Retina 截图 + 真实 RapidOCR（只验证流程，不作结论） | **Windows 实机画面未跑**，`webp_quality` 尚未冻结 |
+| 失败待办人工重试（3.4） | **完成**（2026-10-21，`retry.py` + 侧栏「失败的待办」+ 命令行） | 通过（真实 OcrWorker + 替身引擎、页面 AppTest） | 不涉及 | Windows 页面未实机查看 |
 | 报告、Slides、演示视频、运行包（8.3） | 未开始 | — | — | — |
+
+## 2026-10-23 网页界面替换 Streamlit（分支 `feat/merge-datasets`，未提交时以 `git status` 为准）
+Kiro 起头（`screenrecall/webapi.py`、`tests/test_webapi.py`、前端请求封装与样式令牌），额度用完后由 Claude Code 接着做完前端。技术栈按 10-23 与肖天奕商定：后端 Starlette（只调用现有模块，不重写检索 / 生命周期 / 采集控制逻辑）+ 前端 React 19 + Vite + Tailwind 4（`web/`）。
+- 运行：`cd web; npm ci; npm run build`（Node.js 20+，`web/dist`、`web/node_modules` 不进 git），然后 `python -m screenrecall.webapi --data-dir data-dataset` → http://127.0.0.1:8600。旧页面 `app.py` 保留，功能对应关系一致。
+- 页面：左栏录制状态（2 秒轮询）/ 窗口选择 / 开始暂停 / 排错 / 补拍 / 失败待办重试 / 规则；主区四个标签：搜索（文字 / 画面、日期 / 应用 / 预测类别筛选、放宽匹配，结果缩略图上直接叠加琥珀色原词行与蓝色语义块）、收藏、导入、按时间删除；原图核验页（适应宽度 / 原始像素 1:1、OCR 行悬停高亮对应框、前后浏览胶片条、并排比较、出现记录、收藏、两种删除都先看计划再确认）。查询条件在地址里（`#/?q=…`），可刷新、后退、深链接。
+- 安全：只绑 127.0.0.1；核对 Host（防 DNS rebinding）；非 GET 必须带 `X-ScreenRecall: 1` 且 Origin 是本服务；不开 CORS。
+- 改动：`webapi.py` 收藏列表补画面宽高、请求体非 UTF-8 返回 400（原来 500）；`requirements.txt` 显式加 `starlette==1.8.0`、`uvicorn==0.54.0`、`python-multipart==0.0.32`（原先靠 streamlit 间接装上）。
+- 验证（Windows 11）：pytest 210/210（新增 `test_webapi.py` 10 条）；`npm run build` 类型检查通过；在 `data-dataset` 上用内置浏览器实测 dev 查询（"组会改到哪个会议室了"）与画面模式查询、应用筛选、原图核验、前后浏览、收藏 / 导入 / 按时间删除页面渲染，冷启动首次文字查询约 10 秒。**没有在正式库上点收藏、删除、导入**（会改库），这些只由 `test_webapi.py` 在临时库上覆盖；录制控制没有和真实后台联调。盲测查询没有搜。
+- 已知：Claude 桌面版预览器直接拉起服务时首次语义查询会卡住（服务写日志到文件时正常），在普通终端里运行不受影响。
+- **第二轮（同日，肖天奕在 Edge 里试用后反馈"布局乱、不够高级、要中英文切换"）**：
+  - 布局乱的原因：浏览器扩展向页面注入了不分层的 Tailwind 样式（如 `.flex-col{flex-direction:column}`），压过了 Tailwind v4 放在 `@layer` 里的 `lg:flex-row` 等。在内置浏览器里只注入这一条规则就复现了截图。修法：`@import "tailwindcss" important`（工具类带 !important，分层的 important 声明优先于不分层样式），自定义组件类改为 `sr-` 前缀。注入 `.flex-col / .hidden / .btn` 后复测布局不变。
+  - 视觉重做：深色侧栏导航 + 浅色工作区；搜索首页居中大标题 + 命令栏式搜索框；结果改为卡片网格（排名角标、长截图自动把第一处标记移进取景框）；原图核验改为深色看图台 + 右侧检查栏（OCR 行号、等宽字体）+ 深色胶片条；录制控制从左栏移到独立的"录制"页（状态卡、控制、索引进度、存储配额条、失败待办、规则）。字体换成 Inter（可变）+ JetBrains Mono，均随前端打包，不走 CDN；中文用系统字体。
+  - 中英文切换：侧栏底部"中文 / EN"，选择存在浏览器 localStorage。界面文案在 `web/src/i18n.tsx`（英文字典的类型由中文推出，漏翻会编译失败）；后台各模块返回的提示（检索说明、缺口描述、规则、删除结果、录制状态等）由新文件 `screenrecall/i18n.py` 按请求头 `X-Lang: en` 整句对照翻译，只翻指定字段，未收录的句子保持中文，OCR 文字和窗口标题不动。
+  - 测试：pytest 214/214（新增 `tests/test_i18n.py` 3 条、`test_webapi.py` 英文模式 1 条）；内置浏览器在 1600 宽、375 宽（手机）、中英文下看过搜索、结果、原图核验、录制、导入、按时间删除页。仍未在正式库上点收藏 / 删除 / 导入；录制控制未与真实后台联调。
+- **第三轮（同日，同学反馈后，肖天奕确认按建议改）**：
+  - **分类预测写入正式库**（改了 `data-dataset`，只动 `frame_labels` 表）：先用 SQLite 在线备份到 `data-dataset/_backup/screenrecall.pre-predict-20261023-1530.sqlite3`（integrity ok，写入前 `frame_labels` 0 行），再 `python -m screenrecall.classify --data-dir data-dataset predict --model results\classifier\v1`（模型 `2123143ee97f8f80`，即 test Macro F1 0.868 那个最终模型），写入 2,213 条（原图可用的全部画面）：chat 610 / code 600 / web 518 / table_doc 485。与人工标注对照：test 381/436 = 0.874（与 `results/classifier/v1` 报告一致，说明写入的就是那个模型）、train 1297/1313 = 0.988、val 417/435 = 0.959——train / val 是训练过的数据，偏高，**只用于页面展示类别和筛选，不能当评测结果**，报告仍只用 test 数字。`evaluate.py` 不读 `frame_labels`，检索实验与冻结指纹不受影响。恢复：停掉后台和网页服务后用备份文件覆盖 `screenrecall.sqlite3`。
+  - 界面：库里没有任何预测时，结果卡片、原图核验页不显示类别，筛选里不显示"内容类别"。
+  - 结果卡片：每行 1280 px 以上 3 张、1800 px 以上 4 张（原来 1536 px 以下只有 2 张）；卡片压缩到约 380 px 高（原 557 px），1440×900 一屏可见 6 张（3 张完整）。缩略图有命中框时裁到命中区域（优先原词命中行，约 9 行字高，最多放大 2.4 倍，长行从行首开始），并按放大后的显示宽度请求更清晰的缩略图；画面模式没有命中框时仍显示整图。终端、聊天截图的命中行在卡片上可直接读出。
+
+## 2026-10-23 Windows 实测（第 5 节：资源与性能）
+结果与机器信息见 `results/windows/2026-10-23-DESKTOP-PH4UL0H/README.md`（i7-13700HX / 16 GB / 2560×1600@150%，交流电）。
+- 查询（`data-dataset` 2,213 帧）：热查询 P95 文字 0.35–0.37 s、画面 0.19 s；后台忙碌（排错 + OCR 积压 15–18）时 0.08 / 0.05 s。达标（≤2 s）。冷启动第一次语义查询加载模型 40–160 s（报告要写）。
+- 实时录制（WPS 文字密集 PDF，`tools/scroll_window.py` 投递滚轮自动翻页，普通模式 15 分钟 125 帧，`data-live2`）：OCR 就绪 P50 4.3 s / P95 7.8 s，语义 / 全图向量 P95 约 9.5 s，达标（15 s / 30 s）；后台 CPU 中位 1.4 核、RSS 2.1 GiB，网页服务空闲 RSS 1.2 GiB。
+- 排错模式在这类页面上 OCR 跟不上（约 3.3 秒一帧，OCR 每页 3–6 s）：就绪 P95 约 200 s，待办最高 33（未到 `debug_exit_backlog = 50`）。
+- **作废的第一轮**：`bench mem` 默认每秒读 USS，Windows 上会遍历 2.4 GB 后台的工作集（约 50 ms/次），把 OCR 拖慢到就绪延迟 550 s。文件改名保留并注明不作结论；`bench mem` 新增 `--no-uss`（`tests/test_bench.py` 覆盖），与就绪延迟同时测必须用。
+- **编码对照**（`results/windows/2026-10-23-DESKTOP-PH4UL0H/codec/`）：`data-codec` 无损录 30 分钟（WPS PDF、VS Code、Edge 公开文档页、`tools/mock_chat_window.py` 模拟聊天，共 172 帧），分层抽 120 张对照：无损平均 88 KiB、q92 164 KiB、q95 188 KiB；无损逐像素一致、OCR 120/120 不变，q92 OCR 0/120 不变、86 张数字串有变化；编码 P95 无损 373 ms、q92 319 ms。**建议把 `[capture] webp_lossless` 改为 `true`（待两人确认后改 `config.default.toml`）**；样本缺大面积照片画面，这一点写进报告的局限。Edge / VS Code 不处理投递的滚轮，实测用临时配置的独立实例 + DevTools 协议滚动（`tools/cdp_scroll.py`）。
+- 顺手修复：`config.py` 读 `config.local.toml` / 数据目录 `config.toml` 改用 `utf-8-sig`——PowerShell 5.1 `Set-Content -Encoding utf8` 会写 BOM，原来直接报 `TOMLDecodeError`（本节"删除和配额只在独立测试库上测"的命令也会踩到），`tests/test_config.py` 补了一条。
+- 还没做：捕获覆盖（计划已冻结在 `results/coverage/2026-10-23/`：普通 49 分钟、排错 31 分钟两段）、A13。`data-live`、`data-live2`、`data-codec`、`data-coverage` 都是独立数据目录，不进 git。
+
+## 2026-10-22 肖天奕：两人数据合库、60 条查询（分支 `feat/merge-datasets`）
+与 10-21 交接计划的差异（两人已知会）：肖天奕的约 1,000 帧**不是截图 + `collect import`**，而是 10-18 / 10-20 在 Windows 上用后台**实时录制**（`daemon`，采样临时设 0.5 秒，已恢复 3 秒）得到的 1,151 帧（微信 339、VS Code 270、WPS 249、Edge 293），按每张图主要可见内容人工标注。
+- **合库**：`python datasets/merge_library.py --src data --dst data-dataset --apply`。保留 frame_id，原样搬运 OCR 文字 / 行 / FTS / 文本块 / 向量（两库 schema v6、OCR 版本、分块 c1/n1、MiniLM 与 CLIP 版本及预处理全部一致，脚本先检查，不一致拒绝）；frame_id、路径、像素指纹、录制段均无重叠。合库后 2,218 帧（原图可用 2,213 = 曹 1,062 + 肖 1,151），`integrity_check` ok、外键 0 违例、每帧都有文字与画面向量、每个文本块都有向量、无待办任务、原图文件 0 缺失。合并前的库备份在 `data-dataset/_backup/screenrecall.pre-merge.sqlite3`；目标库 `meta.merge_log` 记了这次合并。
+- **实时录制帧的验收**：`dataset accepted` 的原始清单门禁对实时录制帧（出现记录全是 `live`）放行（`dataset.live_frames`），导入帧照旧要在 `raw/` 清单里、近重复要判完。新增测试 1 条。
+- **标注**：`python datasets/live_labels.py --data-dir data-dataset --src <本地标注表> --annotator xiao --out data-dataset/labels-xiao.csv` 转成与 `labels-cao.csv` 同列。实时录制帧没有任务编号，task_id 按"应用 + 规范化窗口标题 + 5 分钟段"生成（63 组）；全按标题分组的话微信一组 339 帧、划分无法平衡，代价是同一窗口跨段的帧可能分到不同划分，报告里写明。`datasets/v1/labels.csv` = 曹 1,062 + 肖 1,151 行。**肖的 1,151 行还没有复核（review_label / reviewer 空），需曹复核后才能出正式名单和划分**。试划分（`--allow-unreviewed`，不是正式结果）：103 个来源组，train/val/test 各类别都有（test：chat 121 / code 116 / web 111 / table_doc 88）。
+- **查询改为 60 条**（两人 10-22 商定）：曹 20 条（按 `query_slots.csv`）+ 肖 40 条（每侧每场景 5 条），开发 / 盲测各 30、中英各 30、每侧每场景 7–8 条；`evaluate.protocol_check` 按 60 条检查（`MAIN_SET`、`MIN_PER_CELL=7`），场景名必须是类别表里的四个（曹草稿里的 `table` 已统一成 `table_doc`）。`python datasets/build_queries_v1.py ...` 合成 `datasets/v1/queries.json`，id 加 `cao-` / `xiao-` 前缀，`source_id` 保留原编号。肖的 40 条由 kiro-ai 代起草（`drafted_by: ai`）、xiaotianyi 逐条看图复核（删 2 条后补 2 条）→ `approved`；曹的 20 条仍是 `draft`。
+- **开发演练（合库后，`--rehearsal --split dev`，2,213 帧，不是正式结果）**：产品文字模式 Exp 4 Hit@5 20/30（曹 9/10、肖 11/20）；语义 20/30、词法 10/30、画面 7/30。chat 3/8、code 5/8 最弱，table_doc 7/7。肖的 20 条在只含自己数据的库上是 12/20，合库后 11/20。
+- 全部测试 200/200（Windows 11，`.venv` Python 3.12）。
+
+- **10-22 下午复核完成**（肖天奕转述，两人当面复核）：曹复核肖的 1,151 帧标注，改动 0 处（`reviewer=cao`，`review_label` = 初标）；肖逐条复核曹的 20 条查询，改动 0 处（`review_status=approved`）。复核前的文件备份在 `data-dataset/_backup/`。
+- **正式名单**：`dataset accepted` → `data-dataset/accepted.txt`，**2,184 帧**（曹 1,033 + 肖 1,151；29 张 mock_ui 排除）：chat 593 / code 596 / web 514 / table_doc 481。
+- **正式划分**（`datasets/v1/split.json`，`--fractions 0.6,0.2,0.2 --seed 0`，按类别分层、按来源组）：103 组；train 1,313（曹 413 / 肖 900）、val 435（277 / 158）、test 436（343 / 93）。各划分四类都有；采集者比例不均（test 里肖的帧少），报告写明。
+- **最终分类（test 只跑了这一次）**：`results/classifier/v1/`。val 选出 C=1.0、不加权（val Macro F1 0.914）；train+val 重训后 **test Macro F1 0.868、准确率 87.4%**；基线多数类 0.105、进程名规则 0.377。test 各类 F1：chat 0.976、code 0.863、web 0.838、table_doc 0.796；主要混淆 web → table_doc 18、code → web 10 / table_doc 9。
+- **正式开发集检索**（`results/retrieval/20261022-dev/`，`--candidates` 2,184 帧，30 条）：Exp 4 产品文字模式 Hit@5 20/30、MRR@10 0.44；Exp 2 语义 20/30 · 0.53；Exp 1 词法 10/30；Exp 3 画面 7/30；Exp 5 三路 16/30。chat 3/8、code 5/8 最弱。**盲测还没跑**：等两人决定开发集是否调规则，冻结后只跑一次。
+
+- **冻结（10-22，盲测前）**：两人决定开发集阶段**不调整任何检索规则**，全部沿用方案默认值：词法规则（D006：片段全 ≥3 字符用 FTS5 trigram + BM25，含短片段扫描并按命中片段数排序）、文本语义块先 max 到帧再取 Top-50、RRF `k=60` 两路等权、画面模式独立排名、结果 Top-10、无阈值；模型 MiniLM-L12 多语言 `@e8f8c211226b`、CLIP ViT-B/32 `@327ab6726d33`、多语言 CLIP 文本 `@58edf8cada9e`；`config.default.toml` 中 `rrf_k=60`、`branch_top=50`，无本地覆盖。冻结文件 blake2b-128：
+  - `datasets/v1/queries.json`（60 条，全部 approved）`41b537f7bcee3c9a4ca3421cc35da0a1`
+  - `data-dataset/accepted.txt`（2,184 帧，不进 git）`b8892e1e7365905b159fdca5ca508a94`
+  - `datasets/v1/split.json` `f2c95c5fcd118d577fdb0778a600fc38`；`datasets/v1/labels.csv` `d12e1fcc2aa82bc655bb3bd07952385c`
+  - 开发集正式结果 `results/retrieval/20261022-dev/` 用的就是这两份查询与候选文件（指纹一致）。dev 上观察到的失败原因（窗口标签栏 / 菜单等界面文字压过正文、答案只占屏幕一小块）只写进报告的失败分析与后续改进，不在本版修。
+  - 盲测在此提交之后只跑一次：`evaluate --data-dir data-dataset --queries datasets\v1\queries.json --split blind --candidates data-dataset\accepted.txt --out results\retrieval\20261022-blind`，结果原样提交，不重跑。
+
+- **盲测（10-22，只跑了这一次，`results/retrieval/20261022-blind/`，结果文件里的查询 / 候选指纹与上面冻结值一致）**，候选 2,184 帧、30 条：Exp 4 产品文字模式 **Hit@5 22/30（0.73）、MRR@10 0.61**；Exp 2 语义 21/30 · 0.59；Exp 1 词法 8/30 · 0.23；Exp 3 画面 5/30 · 0.15；Exp 5 三路（离线）19/30 · 0.42。分场景（Exp 4）：web 7/8、table_doc 6/8、code 5/7、chat 4/7；中文 10/14、英文 12/16。按预先指定的产品模式演示口径：文字题 19/26（Exp 4）、画面题 4/4（Exp 3）。按出题人：曹 9/10、肖 13/20（Exp 4）。Exp 4 前 5 未命中 7 条：其中 3 条排在 7–10 名（RAG 课程广告、天空球馆晚场价、git 推送被拒），4 条前 10 无命中（串串店会员福利、买卖股票 III、华为机考题型与分值、刷题工作区每套卷题量）——失败原因还没有逐条看图分析（dev 上观察到的是答案只占画面一小块、被界面文字稀释），逐条排名见 JSON。三路融合低于文字模式，支持"画面分支不进文字模式"的设计。
+
+- **盲测后的分析（不改正式结果）**：
+  - 配对显著性 `results/retrieval/20261022-significance.md`（`datasets/significance.py`）：语义 vs 词法、文字 RRF vs 词法在 dev、blind、合并上都显著；文字 RRF vs 纯语义无可靠差异（合并 42 vs 41，p=1.0）；三路 vs 文字 RRF：Hit@5 p=0.09，MRR −0.14 [−0.24, −0.05]。
+  - 失败归因 `results/retrieval/20261022-failures.md`（`datasets/failure_table.py`，块级相似度对比）：16 条未命中中分栏混排 8、相近内容竞争 6、短块抢分 4、跨语言 / 代码 4、疑似漏标 3、融合拖累 2；**界面文字只占排前错误块的 2/64，之前"界面噪声是主因"的判断不成立**。
+  - 补充判定（pooling）：`datasets/pooling.py` 生成 `results/pooling/pool.json`（五组前 5 名中原真值外的帧，649 对）。kiro-ai 按判定依据做 OCR 关键词 + 看图预筛出 22 对（`results/pooling/draft/draft_pool.json`，排除理由在 excluded），**肖天奕 10-23 逐对看图复核**（`judgments-xiao.csv`）：14 对相关、8 对不相关。复判后（`results/pooling/draft/audit.md`）：blind Exp 4 22→23/30、Exp 2 21→22、Exp 5 19→20；dev Exp 4 20→21；Exp 1、3 不变。结论不变，正式分数不改。只有一人复核，未算 κ；作业群那 2 对是曹的题，宜由曹确认。
+  - 报告检索部分草稿：`report/retrieval_section_draft.md`。
+
+**下一步**（复核、正式名单、划分、最终分类、盲测已完成）：① 报告里写检索结果与失败分析（dev 与 blind 都给分子 / 分母与逐条结果） ② 第 5、6 节的 Windows 测量（资源与性能、捕获覆盖、编码对照、A13）照原计划 ③ 报告、Slides、演示视频。
+
+## 2026-10-21 交接给肖天奕：合并数据集、实验与 Windows 测量
+
+分工（10-21 两人商定）：肖天奕在 Windows 上做 ① 采集自己的约 1,000 帧并与曹的数据合并 ② 40 条查询复核与冻结 ③ 五组检索实验 ④ 最终分类结果 ⑤ 资源与性能实测 ⑥ 捕获覆盖实验、编码对照、A13（断网 / 缩放）。曹贺乔在 Mac 上完成的脚本与数据见下。
+
+**代码**：分支 `feat/dataset-collection`（草稿 PR #6，base `main`），以分支最新提交为准。新增 `screenrecall/coverage.py`、`screenrecall/codec_compare.py`、`screenrecall/retry.py`；无新增第三方依赖（测试窗口用 Python 自带的 tkinter，python.org 的 Windows 安装包默认带；先跑 `.\.venv\Scripts\python.exe -c "import tkinter"` 确认）。
+
+**数据包**：`data-dataset-cao-20261021-part1of2.zip` 和 `-part2of2.zip`（各约 625 MB，合计约 1.25 GB，曹贺乔用微信发给你，不放 GitHub：仓库是公开的）。两个包都解压到**同一个位置**（仓库根目录），合起来就是完整的 `data-dataset\`；数据库在第 1 包，校验文件在第 2 包。内含 `data-dataset/` 下的原图 `raw/cao/`、导入副本 `frames/`、数据库 `screenrecall.sqlite3`（一致性快照，`integrity_check` ok）、`labels-cao.csv`（1,062 行，人工标注 + 复核）、`accepted-cao.txt`（1,033 帧）、`review/queries-cao-draft.json`（曹的 20 条草稿查询）、检查报告和 `CHECKSUMS.blake2b.txt`。不含采集用的 venv、备份和作废批次。曹已在 Mac 上从这个 zip 解压出的副本重跑 `collect check`、`dataset accepted`、`evaluate --check-only`，结果与原库一致。
+
+### 0. 准备
+1. `git fetch origin`，`git switch feat/dataset-collection`，`git pull`；`.\.venv\Scripts\python.exe -m pip install -r requirements.txt`；`.\.venv\Scripts\python.exe -m pytest tests --basetemp=data\pytest -q` 全部通过再继续。
+2. 把两个 zip 都解压到仓库根目录（第 2 包解压时如提示同名文件夹，选合并），得到 `data-dataset\`（已被 git 忽略）。**不要重建数据库**：标注和查询里的 frame_id 都跟着这份库。每次导入前先整份复制 `data-dataset\screenrecall.sqlite3` 备份。
+
+### 1. 你的约 1,000 帧（按 `datasets/COLLECTION.md`）
+1. 按 `datasets/collection/tasks.csv` 里 `xiao-*` 的 40 个任务采集，截图放 `data-dataset\raw\xiao\<任务编号>\`，事实记在 `data-dataset\raw\xiao\facts.csv`。主题、应用不要和 `cao-*` 重复；表格优先 Excel / PDF（曹的 Numbers 同版式小表画面多样性低）。
+2. 每个任务：`collect manifest data-dataset\raw\xiao\<任务> --device xiao-win`，补 app / language / facts / source_kind。
+3. 全部：`collect check data-dataset\raw`（同时查两人之间的重复与近重复），0 错误后 `collect import data-dataset\raw --data-dir data-dataset`，`indexer --data-dir data-dataset`（OCR + 向量，0 失败再继续；有失败用 `python -m screenrecall.retry --data-dir data-dataset` 重试）。
+4. `collect labels data-dataset\raw --data-dir data-dataset --collector xiao --out data-dataset\labels-xiao.csv`；你标 `label` / `annotator=xiao`，曹复核 `review_label` / `reviewer=cao`（把 `labels-xiao.csv` 和 `raw\xiao\` 发给曹）。**按每张图的主要可见内容标**，不要整任务统一填。
+5. 任务内近重复在 `data-dataset\raw\xiao\near_dups.csv` 逐对判定（keep_both + 具体差异 + 判定人），否则清单里删一张；已导入的删除要同时从库里删、标注行移到 `labels-xiao-dropped.csv`（`dataset accepted --raw` 会检查）。注意：曹那 322 对是 kiro-ai 按 OCR 差异判定的（reviewer=kiro-ai），你复核曹的数据时可以抽查 table-01 / table-10，另外 `cao-web-08-021`–`023` 有大面积 cookie 弹窗、仍被验收，请再判断一次。
+
+### 2. 40 条查询
+1. 你负责 `query_slots.csv` 里 owner=xiao 的 20 条，格式照抄 `review/queries-cao-draft.json`（相关帧只按采集记录和看图定，**不要用检索结果反推**）。
+2. 复核曹的 20 条：逐条打开相关帧原图核对，看 `review_flag_maybe_relevant` 列出的帧是否漏标；曹确认自己的 20 条，你们互相复核后把 `review_status` 改成 `approved`。
+3. 合成 `datasets/v1/queries.json`（40 条），`evaluate --check-only` 不再提示数量不足后冻结：记下文件 blake2b 指纹写进本文件，提交。**盲测查询任何人都不在页面或命令行里搜。**
+
+### 3. 合并、验收、划分与最终分类
+1. `collect labels data-dataset\raw --data-dir data-dataset --out datasets\v1\labels.csv --keep-from data-dataset\labels-cao.csv data-dataset\labels-xiao.csv`
+2. `dataset --data-dir data-dataset accepted --labels datasets\v1\labels.csv --labelset datasets\labelset.json --raw data-dataset\raw --out data-dataset\accepted.txt`
+3. `dataset --data-dir data-dataset split --labels datasets\v1\labels.csv --labelset datasets\labelset.json --fractions 0.6,0.2,0.2 --seed 0 --out datasets\v1\split.json`（已改为按类别分层；80 个任务组）
+4. `classify --data-dir data-dataset train --labels datasets\v1\labels.csv --labelset datasets\labelset.json --split datasets\v1\split.json --out results\classifier\v1 --report results\classifier\v1\report.json`；test 只看这一次，结果原样写进本文件。
+
+### 4. 五组检索实验
+1. 开发：`evaluate --data-dir data-dataset --queries datasets\v1\queries.json --split dev --candidates data-dataset\accepted.txt --out results\retrieval\<日期>-dev`，据此调规则，把冻结的参数写进本文件。
+2. 冻结后只跑一次：`--split blind --out results\retrieval\<日期>-blind`，结果原样提交，不重跑。
+
+### 5. 资源与性能（结果放 `results\windows\<日期>-<机器名>\`）
+用合并后的 `data-dataset`（约 2,000 帧真实数据，不需要再 expand；要更大的库才用 `bench expand`，扩出来的只用于速度测量）：`bench query --data-dir data-dataset --mode text` 和 `--mode image`、录制一段后 `bench readiness --data-dir <录制用数据目录>`、后台和页面都开着时 `bench mem --duration 600`。机器型号、CPU、内存、分辨率、缩放比例一起记下。
+
+### 6. 捕获覆盖、编码对照、A13
+- **捕获覆盖**（用单独的数据目录，例如 `data-coverage`，不要混进数据集库）：
+  1. `coverage plan --mode normal --out results\coverage\<日期>\plan-normal.json`（60 组合 × 2 次，约 45 分钟）；排错模式 `--mode debug` 会自动切成每段 ≤25 分钟（30 分钟会自动退出排错）。
+  2. 用单独的数据目录启动：后台 `.\.venv\Scripts\python.exe -m screenrecall.daemon --data-dir data-coverage`，页面先 `$env:SCREENRECALL_DATA_DIR="data-coverage"` 再启动；然后 `coverage stimulus --plan ...plan-normal.json --log ...\log-normal.jsonl`，倒计时 15 秒内在页面选「ScreenRecall Coverage Stimulus」窗口、开始录制（排错：每段开始前在页面进入排错模式，`--part 0`、`--part 1`……依次播放）。播放期间不要遮挡、移动这个窗口。
+  3. 结束后停止录制、等 OCR 跑完，`coverage analyze --data-dir data-coverage --plan ... --log ... --out results\coverage\<日期>\normal.json`（同名 `.md` 是汇总表）。普通 / 排错各一份，原样提交。
+  - Mac 上用模拟播放验证过口径（不是实测）：普通模式下主体静止、事件 ≥6 秒全部覆盖，1–4 秒事件和大面积动画 / 滚动背景下覆盖明显下降——这符合等稳规则的预期，实机数字以你跑的为准。60/60 的 95% 置信下界约 94%，要声称 ≥95% 需要更多试次（`--reps` 调大）。
+- **编码对照**：先建一个单独的数据目录（例如 `data-codec`），在它自己的 `data-codec\config.toml` 的 `[capture]` 里设 `webp_lossless = true`，用 `--data-dir data-codec` 启动后台录约 30 分钟代表性画面（四类场景都有），再 `codec_compare --images <该目录>\frames --data-dir <该目录> --out results\windows\<日期>-<机器名>\codec --note "Windows 11，<分辨率>，缩放 <x>%"`。看 `summary.md` 和 `crops\` 并排放大图，决定 `webp_quality`（或改无损）并写进本文件。Mac 冒烟参考（16 张 Retina 截图，不作结论）：无损平均 95 KiB、q92 平均 109 KiB——这批截图无损反而更小，但无损编码 P95 约 350 ms、q92 约 125 ms；q90–q95 都有个别图 OCR 数字串变化，需回原图核对是否编码造成。
+- **A13**：断网后搜索、查看原图、导入仍可用；100% / 125% / 150% 缩放下截图与高亮框对齐。
+- **失败重试**：侧栏「失败的待办」能看到失败原因，点「重试全部可重试的」后待办被重新处理；原图缺失的不改动。
 
 ## Windows 交接步骤（给下一位在 Windows 上接手的同学）
 
-接 **`feat/lifecycle`**，代码提交至少包含 `1c4f0f5`（收藏 / 删除 / 到期 / 配额）、`0fd523d`（测量脚本）、`ce66848`（按时间范围删除、数据目录独立配置）、`94657e1`（标注 / 划分工具、分类器，数据库 v6）、`dc9a355`（检索评测脚本）和之后的文档提交；以分支最新提交为准，`git log --oneline -5` 应能看到这三个。它依赖 PR #1–#4，全部未合并，不要从 `main` 开始。
+接 **`feat/lifecycle`**，代码提交至少包含 `1c4f0f5`（收藏 / 删除 / 到期 / 配额）、`0fd523d`（测量脚本）、`ce66848`（按时间范围删除、数据目录独立配置）、`94657e1`（标注 / 划分工具、分类器，数据库 v6）、`dc9a355`（检索评测脚本）和之后的文档提交；以分支最新提交为准，`git log --oneline -5` 应能看到这三个。这些已于 2026-10-21 全部合入 `main`，现在直接从 `main` 开始即可。
 
 ### 1. 取代码、装环境
 
@@ -130,6 +242,8 @@ $out = "results\windows\2026-10-xx-<机器名>"; New-Item -ItemType Directory -F
 
 | 日期 | 分支 | 基于 | 本轮提交 / PR | 内容 | 验证状态 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-10-18 | `feat/dataset-collection`（CAO，同一分支续推） | `ed09461` | 本轮提交见 `git log`；仍在草稿 PR #6 | 按 40 帧试采检查报告修正：`check` 报告近重复对数 / 待人工判定数 / 来源分布，任务内近重复只认人工写的「近重复保留：」；清单新增 `source_kind`（`real_app / real_web / mock_ui`），`mock_ui` 默认不进 `dataset check / split / classify`；app 只写实际进程名；标注表新增 `source_kind`、`ocr_task_id_leak`；网页截图自动关 iframe 内弹窗、等图片加载；受控页面文件名不带任务编号；新增真实应用采集工具 `capture_real_mac.py`（Terminal / Numbers，prepare + attach）和复核材料脚本 `pilot_review.py` | macOS：pytest 176/176（新增 7 条）、pyflakes 无告警、2 处变异检查（mock_ui 排除、近重复判定标记）均被测试发现；试采数据见"下次恢复"；Windows 未测 |
+| 2026-10-17 | `feat/dataset-collection`（CAO 新分支） | `feat/lifecycle` @ `1e124b5` | `eaa130c`；草稿 PR #6（base `feat/lifecycle`） | 受控数据采集与标注规程、80 个任务表、40 条查询分配、模板；`collect`（清单 / 检查 / 导入 / 标注表 / 事实→相关帧）、`indexer`（只建索引，Mac 可用）；导入支持逐张应用 / 标题 / 时间；`dataset check` 新增复核人≠标注人 | macOS：pytest 169/169（含 1 条真实 RapidOCR、2 条真实向量模型）、pyflakes 无告警、3 处变异检查均被测试发现；命令行全流程用真实 OCR + 向量跑通；**无真实数据**；Windows 未测 |
 | 2026-10-16 | `feat/lifecycle`（肖天奕接力，同一分支） | `0fd523d` | 本轮提交（修 bench 测试、记录验证）；仍在草稿 PR #5 | 合并 PR #1 进 main；证据浏览 / 批量导入 / 收藏删除到期配额的 **Windows 实机验证**；修一个在 Windows venv 下误判的 bench 测试（产品代码未改） | Windows 11：pytest 132/132（含真实模型）、环境检查 9/9、#4+#5 实机端到端 19/19 |
 | 2026-10-16 | `feat/lifecycle`（CAO 新分支，之后又续推） | `feat/evidence-browse` @ `c35ae9e` | `1c4f0f5`（收藏/删除/到期/配额）、`0fd523d`（测量脚本）、`ce66848`（按时间范围删除、数据目录独立配置）、`94657e1`（标注/划分工具 + LR 分类器，schema v6）、`dc9a355`（五组检索评测）；草稿 PR #5（base `feat/evidence-browse`） | 收藏、两种删除 + 按时间范围删除、30/90 天到期、配额暂停（v5）；测量脚本；分类器与评测脚本（仅合成/替身数据验证流程，无真实结果） | macOS：pytest 151/151（含 2 条真实模型）、pyflakes 无告警、5 处变异检查均被测试发现；Windows 未测 |
 | 2026-10-15 | `feat/evidence-browse`（新分支） | `feat/vector-search` @ `40aad90` | `72f36ac`（证据浏览）、`da23ba5`（放宽匹配 + A05–A10）、批量导入提交（见 `git log`）；草稿 PR #4（base `feat/vector-search`） | 证据浏览：同一录制段内前后浏览、缺口/段边界提示、两图并排、切换到同帧的其他出现；"放宽匹配"按钮；A05–A10 自动化验收测试；批量导入（schema v4） | macOS：pytest 105/105（含 2 条真实模型）、pyflakes 无告警；Windows 未测 |
@@ -141,8 +255,10 @@ $out = "results\windows\2026-10-xx-<机器名>"; New-Item -ItemType Directory -F
 ### 分支依赖与合并顺序
 
 ```
-main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-cadence (d325790, 草稿 PR #2) ── feat/vector-search (40aad90, 草稿 PR #3) ── feat/evidence-browse (c35ae9e, 草稿 PR #4) ── feat/lifecycle (草稿 PR #5)
+main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-cadence (d325790, 草稿 PR #2) ── feat/vector-search (40aad90, 草稿 PR #3) ── feat/evidence-browse (c35ae9e, 草稿 PR #4) ── feat/lifecycle (草稿 PR #5) ── feat/dataset-collection (eaa130c, 草稿 PR #6)
 ```
+
+截至 2026-10-17：PR #1 已合入 `main`（`4525e6e`），PR #2–#5 仍是草稿。`feat/dataset-collection` 用到 `feat/lifecycle` 的 `dataset.py` 和导入 v6 结构，所以从 `feat/lifecycle` @ `1e124b5` 建，PR base 选 `feat/lifecycle`，排在 #5 之后合并。
 
 截至 2026-10-16：PR #1–#4 都没有合并。`feat/lifecycle` 改动了 #4 引入的页面和导入、证据模块，所以从 `feat/evidence-browse` 的最新提交建，PR base 选 `feat/evidence-browse`，排在 #4 之后合并。
 
@@ -161,6 +277,14 @@ main (1d01dbe) ── feat/p0-closed-loop (7bfe972, PR #1) ── feat/capture-c
 - **修了一个测试**：`test_bench.py::test_mem_samples_process_tree` 在 Windows venv 下会误判（启动器 shim 会多 spawn 一个解释器，两者都被 bench 正确采集）。只改了测试断言，`bench.py` 产品代码没动。
 - **没有开始任何新功能**。距离"项目完成"还缺的硬交付见"一句话状态 → 距离方案要求的交付还缺什么"。
 - **下一步建议**（按价值与依赖）：① 真实资源测量（第 7 项，bench 脚本已就绪，先录/导入到 1,500–2,000 帧再跑 P95 与两进程内存，据此冻结初值）→ ② 受控数据采集 + 40 条查询真值（第 13 项，需 Windows 录制）→ ③ 分类（第 11 项，依赖 ② 的标注数据）→ ④ 五组检索实验、报告、演示视频（方案 7、8.2）→ ⑤ 浏览器里人工过一遍页面 UI（"待验证"里的交互项）。
+
+## 下次恢复（2026-10-18，`feat/dataset-collection`）
+
+1. `git switch feat/dataset-collection && git pull`；`source .venv/bin/activate`；`python -m pytest tests -q --basetemp=data/pytest` 应为 176 passed。
+2. 试采数据（全被 git 忽略，只在曹贺乔的 Mac 上）：`data-dataset/raw/cao/` 原图 51 张、清单保留 45、剔除 6（`keep=drop` 带原因，原图未删）。来源：`mock_ui` 30（code/chat/table 各 10，开发测试样本）、`real_web` 10、`real_app` 5（`cao-code-01-011…015`，真实 Terminal）。导入 45、OCR / 向量 0 失败。检查报告 `data-dataset/reports/check-pilot-cao-v3.txt`：完全重复 0，任务内近重复 19 对（全部待人工判定），跨任务 0。修正前的清单 / 日志 / 数据库备份在 `data-dataset/backups/2026-10-18-before-pilot-fix/`。
+3. 复核材料在 `data-dataset/review/`：`pilot-review-cao.csv`（逐帧问题与空白人工列）、`web-facts-draft.csv`（网页事实草稿）、`queries-dev-draft.json`（四场景各 1 条开发查询草稿，`relevant` 是建议）。**都没有人工确认过**；没有跑过任何检索。
+4. 真实应用采集：代理沙箱不能让 Terminal / Numbers 打开文档，需要人先执行一次 `open`（`datasets/COLLECTION.md` 第 9 节）。Numbers 场景已 prepare（`data-dataset/scenes-real/wdbf1bb/`，3 个虚构预算表），等人打开后 `numbers attach --task cao-table-01 --seq-start 11`。
+5. 扩量前要人做：标注 + 互相复核这 45 帧；判定 19 对近重复和 `pilot-review-cao.csv` 里的问题；确认网页事实草稿；真实聊天应用的测试账号（见"待团队拍板"6）。
 
 ## 下次恢复（2026-10-16，`feat/lifecycle`）
 
@@ -232,7 +356,7 @@ py -3.12 -m venv .venv
 
 ### macOS（开发与单元测试）
 
-后台和页面依赖 Windows 窗口 API（`winapi.py` 在非 Windows 上直接报错），**在 Mac 上不能运行录制和页面**，也不打算做成 macOS 产品。Mac 上能做的是：写代码、跑 `tests/`（假窗口替身 + 注入时钟 + 真实 SQLite/WebP），以及以后不依赖窗口 API 的模块（向量、检索、分类、评测脚本）。
+后台和页面依赖 Windows 窗口 API（`winapi.py` 在非 Windows 上直接报错），**在 Mac 上不能运行录制和页面**，也不打算做成 macOS 产品。Mac 上能做的是：写代码、跑 `tests/`（假窗口替身 + 注入时钟 + 真实 SQLite/WebP），以及不依赖窗口 API 的模块（向量、检索、分类、评测脚本）；导入截图后可用 `python -m screenrecall.indexer --data-dir <目录>` 在 Mac 上跑真实 OCR 与向量（需额外安装 `rapidocr-onnxruntime==1.4.4 onnxruntime==1.20.1 opencv-python==5.0.0.93`，与 `requirements.txt` 同版本）。
 
 系统自带的 `python3` 是 3.9，缺 `tomllib`，需要另装 Python 3.12，例如用 uv：
 
@@ -405,9 +529,31 @@ python -m pytest tests
 8. ~~证据浏览~~ **已完成**（2026-10-15，`feat/evidence-browse`，Mac 逻辑 + AppTest；Windows 待查看，见"待验证"7）：只在选中出现的录制段内前后浏览，跨缺口和段边界提示，不拼接其他录制段；两图并排不算差异；可切到同帧的另一次出现。
 9. ~~"放宽匹配"按钮与 A05–A13 自动化测试~~ **已完成可在 Mac 上做的部分**（2026-10-15，`feat/evidence-browse`）：放宽按钮 + A05–A10。A11、A12 随第 10 项补；A13 见"待验证"9。
 10. ~~收藏 / 删除 / 配额 / 30·90 天到期~~ **已完成**（2026-10-16，`feat/lifecycle`，Mac 逻辑 + AppTest；Windows 待验证，见"待验证"11）。按时间范围删除 10-16 补上（`ce66848`）。
-11. **分类**：~~训练与评测流程~~ **代码完成**（2026-10-16，`94657e1`，合成数据流程测试）：标注清单导出与校验、按来源组划分、LR + 两个基线、Macro F1 / 逐类 / 混淆矩阵、预测写库与页面筛选。**剩下**：真实标注（13）后训练、写报告；标注手册与类别表冻结。依赖：13。
+11. **分类**：~~训练与评测流程~~ **代码完成**（2026-10-16，`94657e1`，合成数据流程测试）：标注清单导出与校验、按来源组划分、LR + 两个基线、Macro F1 / 逐类 / 混淆矩阵、预测写库与页面筛选。依赖：13。
+    - **初步结果 cao-v0（2026-10-21，只有曹贺乔一人的数据，不是最终结果）**：1,033 帧人工验收帧，按 40 个任务分组划分 0.6/0.2/0.2（`datasets/cao-v0/split.json`，种子 0）。原划分算法只按总帧数分配，chat 大组全部落进 train、val/test 缺 chat，已改为按组多数类分层（`dataset.grouped_split`，新增测试）。
+      - CLIP 图像向量 + LR，val 选超参（C=0.1，val Macro F1 0.854）；**test（8 个任务、209 帧）Macro F1 1.000**；基线：多数类 0.113、只看应用名 0.573。报告 `results/classifier/cao-v0/report.json`。
+      - 解读：test 恰好是界面差异大的任务（Numbers/Excel 表格、Terminal、Element 聊天），val 里 web 与 table_doc 混淆 10 张（arXiv 表格页、x-rates 汇率页）。只有一台电脑、一个人、聊天只有 Element 一个应用，**test 1.000 偏乐观，不能当最终结论**；最终结果要等合并肖天奕的 Windows 数据后重新划分，并且只跑一次 test。
 12. ~~批量导入~~ **已完成**（2026-10-15，`feat/evidence-browse`；Windows 待验证，见"待验证"10）：PNG/JPEG/WebP，导入批次来源、时间未知标注、批次幂等。方案 6.8。依赖：3。
-13. **受控数据采集与标注、40 条查询真值**（需 Windows 录制）：方案 7.1。依赖：1（采集节奏稳定后再录）。
+13. **受控数据采集与标注、40 条查询真值**：规程与工具已完成（2026-10-17，`feat/dataset-collection`）。两人都用系统截图 + `collect import`，不需要 Windows 实时录制。顺序：小批试采（`datasets/COLLECTION.md` 第 8 节，每人每场景 10 张）→ 确认类别表、划分比例和肖天奕的任务表 → 各采约 1,000 有效帧 → 互相复核 → 写并冻结 40 条查询。Mac 与 Windows 都可做；建库统一在一台机器上（当前约定曹贺乔的 Mac，`data-dataset/`）。
+    - **曹贺乔进度（2026-10-21，`feat/dataset-collection` @ `8dae7dd` 之后）**：原始 1,144 张，清单剔除 274 张，真实来源**候选** 838 张（code 225 / chat 246 / web 231 / table 136），另有 30 张 mock_ui 只作开发测试。**人工验收 0 张**——候选数不是正式有效帧。`collect check data-dataset/raw` 0 错误，完全重复 0，跨任务近重复 0 对，任务内近重复 296 对待人工逐对判定；候选全部导入 `data-dataset/screenrecall.sqlite3`，OCR / 文字向量 / 画面向量 868 帧 0 失败（含 mock）。报告 `data-dataset/reports/check-cao-20261021-batch3.txt`，标注表 `data-dataset/labels-cao.csv`（类别全空）。
+    - chat 用本机 Matrix（Synapse，只监听 127.0.0.1:18008，不联邦）+ 官方 Element Web 1.12.32，内容全部合成。10-20 采的 250 张全被 Element "Introducing Sections" 介绍气泡遮挡，已整批标 drop（原图保留）并于 10-21 关掉气泡后重采；4 张私聊开头画面跨任务近重复按规则各删一张。界面全是同一应用，标注与划分时注意。
+    - **第 4 批（2026-10-21 10:28）后**：原始 1,268 张，清单剔除 279 张，真实来源候选 **957** 张（code 250 / chat 246 / web 231 / table 230），人工验收 0。check 0 错误、跨任务近重复 0 对、任务内 322 对待判；OCR/向量 987 帧 0 失败。报告 `data-dataset/reports/check-cao-20261021-batch4.txt`。
+      - 新增：table-04/05 预览 PDF（分 3 轮各 12 个打开，`open-batch-3b-{1,2,3}.sh`）；table-06 diagrams.net 只读查看器显示 5 张虚构流程图 × 5 种变化（深浅色 / 半屏 / 缩放，近重复交人工）；table-08 arXiv HTML 版 5 篇论文各 5 张结果表（原定预览，改浏览器）；code-03 本机 Jupyter（127.0.0.1:18888，随机令牌，`datasets/scenes/jupyter_notebooks.py` 真实内核执行，traceback 里有本机路径，采完已停）。
+      - table-09 时刻表只剩 8 张候选：FlightAware 苏黎世页超时，SBS 首末班车页已下线（5 张 Page Not Found 已剔除），剩下的 FlightAware 帧主要是地图、KTMB 帧主要是介绍图，**是否算时刻表要人工判断**；需要换时刻表来源补采约 17 张。
+      - `cao-code-01-031` 的 OCR 里出现任务编号，标注时判断。
+    - **第 5 批（2026-10-21 11:25）后**：原始 1,343 张，剔除 279，真实来源候选 **1,034** 张（code 250 / chat 306 / web 231 / table 247），人工验收 0。check 0 错误、跨任务 0 对、任务内 322 对待判；OCR/向量 1,064 帧 0 失败。报告 `data-dataset/reports/check-cao-20261021-batch5.txt`。
+      - chat 每任务追加一个新话题房间 6 张（`datasets/scenes/chat_content_c.py`，`capture_chat_element.py --extra`），共 60 张，对话内容全新、不复用原对话；没有把 10-20 被气泡遮挡的旧图加回（它们与重采图是同一脚本同一画面，只多了遮挡）。
+      - table-09 改用 seat61 页面里的真实列车时刻表（马来西亚 / 越南南北行，锚点定位）补 17 张；seat61 的 load 事件常超时，计划里改等 DOMContentLoaded（`wait_until`）。部分帧底部有站内广告条，交人工判断。早先 FlightAware / KTMB 的 8 张是否算时刻表仍待人工判断。
+    - **人工标注与验收（2026-10-21 17:00 后）**：曹贺乔初标、肖天奕复核，`labels-cao.csv` 1,064 行全部有 label / review_label / final_label；复核改动 0 处（第一版按任务统一标，10-21 已改为按每张图重标，table-08 现为 table_doc 15 / web 10）。
+      - 类别表冻结为 `datasets/labelset.json`（2026-10-21）。
+      - 任务内近重复 322 对：**由 kiro-ai 判定**（`near_dups.csv` 的 reviewer 写的是 `kiro-ai`，不是人工），依据是逐对比较 OCR 行差异（模糊匹配排除 OCR 噪声）：316 对两张图的 OCR 文字有实际不同（不同报错、日期、数值、文件），写 keep_both + 具体差异；看图确认后剔除 2 张——`cao-code-04-024`（只多 `--tb=long`，输出与 006 完全相同）、`cao-table-01-003`（仿界面，只差选中单元格）。这 2 张已从数据集库删除，标注行移到 `labels-cao-dropped.csv`。备份在 `data-dataset/backups/2026-10-21-before-neardup/`。注意：OCR 不同不等于画面多样，table-01（Numbers 同版式小表）、table-10（x-rates 不同日期汇率）画面高度相似，建议人工抽查。
+      - `collect check`：原始 1,343，剔除 281，保留 1,062（含 mock_ui 29），0 错误，任务内近重复待判 0 对，跨任务 0 对；报告 `data-dataset/reports/check-cao-20261021-final.txt`。
+      - **人工验收（双人复核、非仿界面）1,033 帧**：code 249 / chat 306 / web 265 / table_doc 213（类别是人工标签，不是场景）。名单 `data-dataset/accepted-cao.txt`（`dataset accepted --raw` 生成，已加近重复与剔除门禁）。
+      - 下一步：分组划分（建议 0.6/0.2/0.2）→ 分类训练评测；写曹负责的 20 条查询；合并肖天奕的 `xiao/`。
+    - **曹负责的 20 条查询（2026-10-21，草稿，`review_status=draft`）**：`data-dataset/review/queries-cao-draft.json`（被 git 忽略，含 frame_id），槽位与查询文字同步写进 `datasets/collection/query_slots.csv`（status=draft）。由 kiro-ai 代 cao 起草，**需要 cao 确认、肖天奕复核后改成 approved 才能正式出分**。
+      - 相关帧只来自采集记录（清单 facts 标记、每张图打开的文件 / 网址）和看图确认，**没有跑任何检索**；盲测 10 条没有在页面或命令行里搜过。dev 只对应 01-05 号任务，blind 只对应 06-10 号。
+      - 看图补了 3 张采集时漏标的相关帧（code-02-004、code-10-007/008）；每条的 `review_flag_maybe_relevant` 列出 OCR 里含关键字、但看图判定不相关的帧，给复核人核对。
+      - `evaluate --check-only` 格式通过；每侧每场景不足 5 条是因为肖天奕的 20 条还没写。
 14. **五组检索实验、资源与存储测量、报告与演示**：方案 6.2、6.3、8.3。**评测脚本已完成**（`dc9a355`，`python -m screenrecall.evaluate`，用法见 `datasets/README.md`）、测量脚本已完成（`0fd523d`）；剩下：40 条查询真值（依赖 13）→ dev 调规则 → 冻结后只跑一次 blind → 报告、Slides、视频。依赖：13。
 
 ## 待团队拍板
@@ -418,3 +564,5 @@ python -m pytest tests
 2. ~~删除整幅画面时收藏怎么处理~~ **已定（2026-10-16）**：用户明确选择"删除此画面的全部记录"时，界面说明会删除哪些出现记录及关联收藏，确认后执行；到期或配额触发的自动清理保护收藏；删除单次出现记录时不误删仍被其他记录引用的共享内容。
 3. 页面文案目前是中文，演示视频若需英文需替换。
 4. `unsaved_change` 缺口是否在实机数据后合并短间隔（见"已知问题"）。
+6. **真实聊天界面从哪来（2026-10-18 起；曹贺乔 10-20 定为"模拟即可"，已用本机 Matrix + Element 合成对话采完曹的 250 张，肖天奕那边仍待定）**：正式数据集要真实应用界面，chat 场景目前只有 mock_ui。需要两人定：用哪个真实聊天应用的网页版（如 Slack / Discord 免费工作区），由谁注册测试账号、在 Playwright 独立窗口里登录一次；聊天内容仍是合成的、只在测试工作区里发，不发给任何真人。
+5. **数据集（试采后两人确认）**：~~类别表~~ **已冻结（2026-10-21，`datasets/labelset.json`）**；第 5.3 节混合画面规则；分类划分比例（建议 `0.6,0.2,0.2`）；肖天奕的 40 个任务（`tasks.csv` 中 `status=draft`）；共享网盘位置；建库由谁做。

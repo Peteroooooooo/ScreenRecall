@@ -53,6 +53,14 @@ class ImportFile:
 
 
 @dataclass(frozen=True)
+class FileMeta:
+    """逐文件的来源信息（数据集清单提供）。None 表示未知，不用文件名或修改时间猜。"""
+    captured_at_ms: int | None = None
+    app: str | None = None
+    window_title: str | None = None
+
+
+@dataclass(frozen=True)
 class ItemResult:
     seq: int
     name: str
@@ -151,14 +159,23 @@ def import_batch(
     *,
     label: str | None = None,
     captured_at_ms: int | None = None,
+    metas: list[FileMeta | None] | None = None,
     free_bytes: Callable[[Path], int] | None = None,
 ) -> BatchResult:
-    """导入一批图片。captured_at_ms 是用户提供的可信捕获时间（整批共用）；None 表示时间未知。"""
+    """导入一批图片。captured_at_ms 是用户提供的可信捕获时间（整批共用）；None 表示时间未知。
+
+    metas 与 files 一一对应，给出逐文件的捕获时间、应用和窗口标题；某项的 captured_at_ms 为 None 时
+    退回整批的 captured_at_ms，两者都没有就记"时间未知"。整批的 time_known 只有每个文件都已知时才为真。
+    """
+    if metas is not None and len(metas) != len(files):
+        raise ValueError("metas 必须与 files 一一对应")
+    metas = metas or [None] * len(files)
     db.init_schema(conn)  # 页面可能先于新版后台打开数据库
     free_bytes = free_bytes or (lambda p: shutil.disk_usage(p).free)
     cfg.data_dir.mkdir(parents=True, exist_ok=True)
     now = utc_ms()
-    time_known = captured_at_ms is not None
+    file_times = [(m.captured_at_ms if m and m.captured_at_ms is not None else captured_at_ms) for m in metas]
+    time_known = all(t is not None for t in file_times) if files else captured_at_ms is not None
     batch_id, session_id, resubmitted, prev = _find_or_create_batch(
         conn, batch_fingerprint(files), label, time_known, now
     )
@@ -197,11 +214,14 @@ def import_batch(
             continue
 
         frame_id, occ_id = db.new_id(), db.new_id()
-        observed = captured_at_ms if time_known else utc_ms()
+        m = metas[seq]
+        f_time = file_times[seq]
+        f_known = f_time is not None
+        observed = f_time if f_known else utc_ms()
         rel = storage.frame_rel_path(frame_id, observed)
         meta = json.dumps(
             {"method": "import", "trigger": "import", "batch_id": batch_id, "file": f.name,
-             "source_format": Path(f.name).suffix.lower().lstrip("."), "time_known": time_known, "dpi": None},
+             "source_format": Path(f.name).suffix.lower().lstrip("."), "time_known": f_known, "dpi": None},
             ensure_ascii=False,
         )
         nbytes = storage.write_atomic(cfg.data_dir, rel, payload, (img.width, img.height))
@@ -216,8 +236,9 @@ def import_batch(
                 )
                 conn.execute(
                     "INSERT INTO occurrences (occurrence_id, frame_id, session_id, first_seen_ms, last_seen_ms, "
-                    "app, window_title, source_type) VALUES (?, ?, ?, ?, ?, NULL, ?, 'import')",
-                    (occ_id, frame_id, session_id, observed, observed, f.name),
+                    "app, window_title, source_type) VALUES (?, ?, ?, ?, ?, ?, ?, 'import')",
+                    (occ_id, frame_id, session_id, observed, observed, (m.app if m else None) or None,
+                     (m.window_title if m else None) or f.name),
                 )
                 conn.execute(
                     "INSERT INTO index_jobs (frame_id, stage, status, target_version, created_at_ms, updated_at_ms) "

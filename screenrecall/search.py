@@ -65,6 +65,8 @@ class Filters:
     end_ms: int | None = None
     apps: tuple[str, ...] = ()
     labels: tuple[str, ...] = ()  # 预测类别（用户主动选择时才筛选；没有预测的画面不在筛选结果里）
+    # 候选帧白名单（仅离线评测用：正式实验只在已验收帧里排名）。None = 不限；在所有分支截断 TopK 之前生效。
+    frames: frozenset[str] | None = None
 
 
 @dataclass(frozen=True)
@@ -165,6 +167,9 @@ def _qualifying_occurrences(
     if frame_ids is not None:
         sql += " AND o.frame_id IN (SELECT value FROM json_each(?))"
         params.append(json.dumps(sorted(frame_ids)))
+    if filters.frames is not None:
+        sql += " AND o.frame_id IN (SELECT value FROM json_each(?))"
+        params.append(json.dumps(sorted(filters.frames)))
     if filters.start_ms is not None:
         sql += " AND o.last_seen_ms >= ?"
         params.append(filters.start_ms)
