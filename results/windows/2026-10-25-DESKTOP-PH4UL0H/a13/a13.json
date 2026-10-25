@@ -1,0 +1,1781 @@
+{
+ "started": "2026-10-25T22:01:57",
+ "machine": "DESKTOP-PH4UL0H",
+ "windows": "Windows-11-10.0.26200-SP0",
+ "phases": [
+  {
+   "phase": "offline",
+   "wifi_off_requested": true,
+   "checks": {
+    "text_search": {
+     "ok": true,
+     "frame_id": "6b58003e2ef744ef9892164a141d5d73"
+    },
+    "image_search": {
+     "ok": true,
+     "results": 1,
+     "message": null,
+     "test_frame_rank": 1
+    },
+    "view_original": {
+     "ok": true,
+     "size": [
+      1143,
+      796
+     ],
+     "bytes": 42524
+    },
+    "import": {
+     "ok": true,
+     "imported": 1,
+     "frame_id": "ad14da89382e48fca936a7bc8945f493"
+    }
+   },
+   "wifi_disconnected": true,
+   "internet_reachable_during": false,
+   "internet_reachable_after_checks": false,
+   "wifi_reconnected": true,
+   "ok": true
+  },
+  {
+   "phase": "scale-150",
+   "scale": 150,
+   "windows": [
+    {
+     "kind": "aware",
+     "frame_id": "fd32ac97cd2d4fcf99e9901adc5c2080",
+     "image_size": [
+      1143,
+      796
+     ],
+     "detail_size": [
+      1143,
+      796
+     ],
+     "frame_bounds_size": [
+      1143,
+      796
+     ],
+     "expected_size": [
+      1143,
+      796
+     ],
+     "method": "print_window",
+     "window_dpi": 144,
+     "monitor_dpi": 144,
+     "size_ok": true,
+     "black_margin": [
+      2,
+      2
+     ],
+     "black_ok": true,
+     "marks_found": true,
+     "map": {
+      "sx": 1.0,
+      "sy": 1.0,
+      "tx": 1.5,
+      "ty": 44.5,
+      "residual": 0.0
+     },
+     "scale_ok": true,
+     "marks_ok": true,
+     "offset_error": [
+      -0.5,
+      -0.5
+     ],
+     "offset_ok": true,
+     "content_edge_gap": [
+      2.5,
+      2.5
+     ],
+     "edge_ok": true,
+     "lines": [
+      {
+       "text": "Hibiscus 150 aware",
+       "found": true,
+       "ocr_text": "Hibiscus 150 aware",
+       "iou": 0.677,
+       "center_dx": 3.5,
+       "center_dy": 3.5,
+       "ocr_box": [
+        64.0,
+        110.0,
+        534.0,
+        158.0
+       ],
+       "expected_box": [
+        60.5,
+        95.5,
+        530.5,
+        165.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "The quick brown fox jumps over 4718 lazy dogs",
+       "found": true,
+       "ocr_text": "The quick brown fox jumps over 4718 lazy dogs",
+       "iou": 0.8,
+       "center_dx": 0.5,
+       "center_dy": 4.0,
+       "ocr_box": [
+        60.0,
+        218.0,
+        653.0,
+        253.0
+       ],
+       "expected_box": [
+        60.5,
+        212.5,
+        651.5,
+        250.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "def merge(a, b): return sorted(a + b)",
+       "found": true,
+       "ocr_text": "def merge(a, b): return sorted(a + b)",
+       "iou": 0.9,
+       "center_dx": -0.5,
+       "center_dy": 1.5,
+       "ocr_box": [
+        60.0,
+        288.0,
+        543.0,
+        318.0
+       ],
+       "expected_box": [
+        60.5,
+        287.5,
+        543.5,
+        315.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "缩放对齐测试：截图与高亮框应该重合",
+       "found": true,
+       "ocr_text": "缩放对齐测试：截图与高亮框应该重合",
+       "iou": 0.83,
+       "center_dx": 0.5,
+       "center_dy": 2.5,
+       "ocr_box": [
+        62.0,
+        362.0,
+        538.0,
+        392.0
+       ],
+       "expected_box": [
+        60.5,
+        356.5,
+        538.5,
+        392.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "Order HZ20261025-0042 at 14:30, total 127.50",
+       "found": true,
+       "ocr_text": "OrderHZ20261025-0042at14:30,total127.50",
+       "iou": 0.711,
+       "center_dx": 1.0,
+       "center_dy": 2.5,
+       "ocr_box": [
+        452.0,
+        501.0,
+        863.0,
+        521.0
+       ],
+       "expected_box": [
+        450.5,
+        494.5,
+        862.5,
+        522.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "Bottom right 9931",
+       "found": true,
+       "ocr_text": "Bottom right 9931",
+       "iou": 0.76,
+       "center_dx": 0.5,
+       "center_dy": 5.0,
+       "ocr_box": [
+        647.0,
+        654.0,
+        934.0,
+        691.0
+       ],
+       "expected_box": [
+        644.5,
+        643.5,
+        935.5,
+        691.5
+       ],
+       "ok": true
+      }
+     ],
+     "lines_ok": true,
+     "overlay": "C:\\Users\\xty\\Desktop\\machine learning\\practice_module_2\\ScreenRecall\\data-a13\\20261025-220153\\overlays\\150-aware.png",
+     "ok": true,
+     "awareness": "per_monitor"
+    },
+    {
+     "kind": "unaware",
+     "frame_id": "724d18a777d5467991ec844f11c8bece",
+     "image_size": [
+      761,
+      532
+     ],
+     "detail_size": [
+      761,
+      532
+     ],
+     "frame_bounds_size": [
+      1142,
+      798
+     ],
+     "expected_size": [
+      761.3,
+      532.0
+     ],
+     "method": "print_window_logical",
+     "window_dpi": 96,
+     "monitor_dpi": 144,
+     "size_ok": true,
+     "black_margin": [
+      0,
+      1
+     ],
+     "black_ok": true,
+     "marks_found": true,
+     "map": {
+      "sx": 1.0001,
+      "sy": 1.0001,
+      "tx": 0.5,
+      "ty": 31.0,
+      "residual": 0.02
+     },
+     "scale_ok": true,
+     "marks_ok": true,
+     "offset_error": [
+      -0.5,
+      -0.0
+     ],
+     "offset_ok": true,
+     "content_edge_gap": [
+      0.5,
+      1.0
+     ],
+     "edge_ok": true,
+     "lines": [
+      {
+       "text": "Saffron 150 unaware",
+       "found": true,
+       "ocr_text": "Saffron150unaware",
+       "iou": 0.653,
+       "center_dx": 2.0,
+       "center_dy": 3.0,
+       "ocr_box": [
+        41.0,
+        76.0,
+        386.0,
+        107.0
+       ],
+       "expected_box": [
+        39.5,
+        65.0,
+        383.5,
+        112.0
+       ],
+       "ok": true
+      },
+      {
+       "text": "The quick brown fox jumps over 4718 lazy dogs",
+       "found": true,
+       "ocr_text": "Thequickbrownfoxjumpsover4718lazydogs",
+       "iou": 0.842,
+       "center_dx": 0.5,
+       "center_dy": 2.0,
+       "ocr_box": [
+        40.0,
+        146.0,
+        440.0,
+        169.0
+       ],
+       "expected_box": [
+        39.5,
+        143.0,
+        439.5,
+        168.0
+       ],
+       "ok": true
+      },
+      {
+       "text": "def merge(a, b): return sorted(a + b)",
+       "found": true,
+       "ocr_text": "def merge(a,b):return sorted（a +b)",
+       "iou": 0.893,
+       "center_dx": 0.5,
+       "center_dy": 1.0,
+       "ocr_box": [
+        41.0,
+        194.0,
+        374.0,
+        213.0
+       ],
+       "expected_box": [
+        39.5,
+        193.0,
+        374.5,
+        212.0
+       ],
+       "ok": true
+      },
+      {
+       "text": "缩放对齐测试：截图与高亮框应该重合",
+       "found": true,
+       "ocr_text": "缩放对齐测试：截图与高亮框应该重合",
+       "iou": 0.877,
+       "center_dx": 0.0,
+       "center_dy": 0.5,
+       "ocr_box": [
+        40.0,
+        241.0,
+        364.0,
+        263.0
+       ],
+       "expected_box": [
+        39.5,
+        239.0,
+        364.5,
+        264.0
+       ],
+       "ok": true
+      },
+      {
+       "text": "Order HZ20261025-0042 at 14:30, total 127.50",
+       "found": true,
+       "ocr_text": "Order HZ20261025-0042at 14:30,total 127.50",
+       "iou": 0.813,
+       "center_dx": 1.5,
+       "center_dy": 1.5,
+       "ocr_box": [
+        302.0,
+        334.0,
+        571.0,
+        348.0
+       ],
+       "expected_box": [
+        299.5,
+        331.0,
+        570.5,
+        348.0
+       ],
+       "ok": true
+      },
+      {
+       "text": "Bottom right 9931",
+       "found": true,
+       "ocr_text": "Bottomright9931",
+       "iou": 0.776,
+       "center_dx": 1.0,
+       "center_dy": 3.5,
+       "ocr_box": [
+        432.0,
+        437.0,
+        626.0,
+        464.0
+       ],
+       "expected_box": [
+        429.5,
+        431.0,
+        626.5,
+        463.0
+       ],
+       "ok": true
+      }
+     ],
+     "lines_ok": true,
+     "overlay": "C:\\Users\\xty\\Desktop\\machine learning\\practice_module_2\\ScreenRecall\\data-a13\\20261025-220153\\overlays\\150-unaware.png",
+     "ok": true,
+     "awareness": "unaware"
+    },
+    {
+     "kind": "edge",
+     "frame_id": "1c096b86c4bb4dce94c4bc02d0c2d1b8",
+     "image_size": [
+      1857,
+      1281
+     ],
+     "detail_size": [
+      1857,
+      1281
+     ],
+     "frame_bounds_size": [
+      1857,
+      1281
+     ],
+     "expected_size": [
+      1857,
+      1281
+     ],
+     "method": "print_window",
+     "window_dpi": 144,
+     "monitor_dpi": 144,
+     "size_ok": true,
+     "black_margin": [
+      0,
+      0
+     ],
+     "black_ok": true,
+     "marks_found": true,
+     "map": {
+      "sx": 1.5,
+      "sy": 1.5,
+      "tx": 7.5,
+      "ty": 119.5,
+      "residual": 0.0
+     },
+     "scale_ok": true,
+     "marks_ok": true,
+     "content_edge_gap": [
+      7.5,
+      8.0
+     ],
+     "lines": [
+      {
+       "text": "Magnolia 150 edge",
+       "found": true,
+       "ocr_text": "Magnolia 150 edge",
+       "iou": 0.787,
+       "center_dx": 1.8,
+       "center_dy": 7.5,
+       "ocr_box": [
+        66.0,
+        182.0,
+        547.0,
+        244.0
+       ],
+       "expected_box": [
+        67.5,
+        170.5,
+        541.8,
+        240.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "The quick brown fox jumps over 4718 lazy dogs",
+       "found": true,
+       "ocr_text": "The quick brown fox jumps over 4718 lazy dogs",
+       "iou": 0.826,
+       "center_dx": 0.6,
+       "center_dy": 3.5,
+       "ocr_box": [
+        66.0,
+        291.0,
+        668.0,
+        329.0
+       ],
+       "expected_box": [
+        67.5,
+        287.5,
+        665.3,
+        325.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "def merge(a, b): return sorted(a + b)",
+       "found": true,
+       "ocr_text": "def merge(a, b): return sorted(a + b)",
+       "iou": 0.9,
+       "center_dx": -0.6,
+       "center_dy": 1.0,
+       "ocr_box": [
+        66.0,
+        362.0,
+        556.0,
+        393.0
+       ],
+       "expected_box": [
+        67.5,
+        362.5,
+        555.7,
+        390.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "缩放对齐测试：截图与高亮框应该重合",
+       "found": true,
+       "ocr_text": "缩放对齐测试：截图与高亮框应该重合",
+       "iou": 0.831,
+       "center_dx": 0.8,
+       "center_dy": 1.5,
+       "ocr_box": [
+        69.0,
+        436.0,
+        552.0,
+        466.0
+       ],
+       "expected_box": [
+        67.5,
+        431.5,
+        552.0,
+        467.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "Order HZ20261025-0042 at 14:30, total 127.50",
+       "found": true,
+       "ocr_text": "OrderHZ20261025-0042at14:30,total127.50",
+       "iou": 0.764,
+       "center_dx": 1.7,
+       "center_dy": 1.5,
+       "ocr_box": [
+        459.0,
+        574.0,
+        858.0,
+        594.0
+       ],
+       "expected_box": [
+        457.5,
+        569.5,
+        856.2,
+        595.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "Bottom right 9931",
+       "found": true,
+       "ocr_text": "Bottom right 9931",
+       "iou": 0.813,
+       "center_dx": 0.2,
+       "center_dy": 4.5,
+       "ocr_box": [
+        653.0,
+        728.0,
+        943.0,
+        768.0
+       ],
+       "expected_box": [
+        652.5,
+        719.5,
+        943.1,
+        767.5
+       ],
+       "ok": true
+      }
+     ],
+     "lines_ok": true,
+     "overlay": "C:\\Users\\xty\\Desktop\\machine learning\\practice_module_2\\ScreenRecall\\data-a13\\20261025-220153\\overlays\\150-edge.png",
+     "ok": true,
+     "dpr": 1.5
+    }
+   ],
+   "ui": [
+    {
+     "frame_id": "fd32ac97cd2d4fcf99e9901adc5c2080",
+     "dpr": 1.5,
+     "boxes": 2,
+     "max_error_css_px": 0.0,
+     "max_error_device_px": 0.0,
+     "ok": true,
+     "kind": "aware"
+    },
+    {
+     "frame_id": "724d18a777d5467991ec844f11c8bece",
+     "dpr": 1.5,
+     "boxes": 2,
+     "max_error_css_px": 0.0,
+     "max_error_device_px": 0.0,
+     "ok": true,
+     "kind": "unaware"
+    },
+    {
+     "frame_id": "1c096b86c4bb4dce94c4bc02d0c2d1b8",
+     "dpr": 1.5,
+     "boxes": 2,
+     "max_error_css_px": 0.0,
+     "max_error_device_px": 0.0,
+     "ok": true,
+     "kind": "edge"
+    }
+   ],
+   "effective_dpi": 144,
+   "ok": true
+  },
+  {
+   "phase": "scale-125",
+   "scale": 125,
+   "windows": [
+    {
+     "kind": "aware",
+     "frame_id": "029f47f4153f4256add83e0e1dba6758",
+     "image_size": [
+      952,
+      664
+     ],
+     "detail_size": [
+      952,
+      664
+     ],
+     "frame_bounds_size": [
+      952,
+      664
+     ],
+     "expected_size": [
+      952,
+      664
+     ],
+     "method": "print_window",
+     "window_dpi": 120,
+     "monitor_dpi": 120,
+     "size_ok": true,
+     "black_margin": [
+      1,
+      1
+     ],
+     "black_ok": true,
+     "marks_found": true,
+     "map": {
+      "sx": 1.0,
+      "sy": 1.0,
+      "tx": 0.5,
+      "ty": 37.5,
+      "residual": 0.01
+     },
+     "scale_ok": true,
+     "marks_ok": true,
+     "offset_error": [
+      -0.5,
+      -0.5
+     ],
+     "offset_ok": true,
+     "content_edge_gap": [
+      1.5,
+      1.5
+     ],
+     "edge_ok": true,
+     "lines": [
+      {
+       "text": "Begonia 125 aware",
+       "found": true,
+       "ocr_text": "Begonia 125 aware",
+       "iou": 0.803,
+       "center_dx": 3.0,
+       "center_dy": 5.0,
+       "ocr_box": [
+        51.0,
+        90.0,
+        440.0,
+        138.0
+       ],
+       "expected_box": [
+        49.5,
+        79.5,
+        435.5,
+        138.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "The quick brown fox jumps over 4718 lazy dogs",
+       "found": true,
+       "ocr_text": "The quickbrownfoxjumps over4718lazydogs",
+       "iou": 0.812,
+       "center_dx": 1.0,
+       "center_dy": 3.0,
+       "ocr_box": [
+        50.0,
+        182.0,
+        534.0,
+        210.0
+       ],
+       "expected_box": [
+        49.5,
+        177.5,
+        532.5,
+        208.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "def merge(a, b): return sorted(a + b)",
+       "found": true,
+       "ocr_text": "def merge(a, b): return sorted(a + b)",
+       "iou": 0.918,
+       "center_dx": -0.0,
+       "center_dy": 0.5,
+       "ocr_box": [
+        50.0,
+        239.0,
+        458.0,
+        264.0
+       ],
+       "expected_box": [
+        49.5,
+        239.5,
+        458.5,
+        262.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "缩放对齐测试：截图与高亮框应该重合",
+       "found": true,
+       "ocr_text": "缩放对齐测试：截图与高亮框应该重合",
+       "iou": 0.865,
+       "center_dx": 0.5,
+       "center_dy": 1.5,
+       "ocr_box": [
+        50.0,
+        301.0,
+        443.0,
+        327.0
+       ],
+       "expected_box": [
+        49.5,
+        297.5,
+        442.5,
+        327.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "Order HZ20261025-0042 at 14:30, total 127.50",
+       "found": true,
+       "ocr_text": "Order HZ20261025-0042 at 14:30, total 127.50",
+       "iou": 0.863,
+       "center_dx": 2.0,
+       "center_dy": 1.5,
+       "ocr_box": [
+        376.0,
+        415.0,
+        728.0,
+        436.0
+       ],
+       "expected_box": [
+        374.5,
+        412.5,
+        725.5,
+        435.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "Bottom right 9931",
+       "found": true,
+       "ocr_text": "Bottom right 9931",
+       "iou": 0.777,
+       "center_dx": 0.5,
+       "center_dy": 4.5,
+       "ocr_box": [
+        538.0,
+        546.0,
+        779.0,
+        579.0
+       ],
+       "expected_box": [
+        536.5,
+        537.5,
+        779.5,
+        578.5
+       ],
+       "ok": true
+      }
+     ],
+     "lines_ok": true,
+     "overlay": "C:\\Users\\xty\\Desktop\\machine learning\\practice_module_2\\ScreenRecall\\data-a13\\20261025-220153\\overlays\\125-aware.png",
+     "ok": true,
+     "awareness": "per_monitor"
+    },
+    {
+     "kind": "unaware",
+     "frame_id": "a23b708e389645329ea2aeedd2f997fd",
+     "image_size": [
+      762,
+      532
+     ],
+     "detail_size": [
+      762,
+      532
+     ],
+     "frame_bounds_size": [
+      952,
+      665
+     ],
+     "expected_size": [
+      761.6,
+      532.0
+     ],
+     "method": "print_window_logical",
+     "window_dpi": 96,
+     "monitor_dpi": 120,
+     "size_ok": true,
+     "black_margin": [
+      1,
+      1
+     ],
+     "black_ok": true,
+     "marks_found": true,
+     "map": {
+      "sx": 1.0,
+      "sy": 1.0,
+      "tx": 0.5,
+      "ty": 30.5,
+      "residual": 0.02
+     },
+     "scale_ok": true,
+     "marks_ok": true,
+     "offset_error": [
+      -0.5,
+      -0.5
+     ],
+     "offset_ok": true,
+     "content_edge_gap": [
+      1.5,
+      1.5
+     ],
+     "edge_ok": true,
+     "lines": [
+      {
+       "text": "Cardamom 125 unaware",
+       "found": true,
+       "ocr_text": "Cardamom125unaware",
+       "iou": 0.693,
+       "center_dx": 3.0,
+       "center_dy": 3.5,
+       "ocr_box": [
+        43.0,
+        75.0,
+        446.0,
+        108.0
+       ],
+       "expected_box": [
+        39.5,
+        64.5,
+        443.5,
+        111.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "The quick brown fox jumps over 4718 lazy dogs",
+       "found": true,
+       "ocr_text": "Thequickbrownfoxjumpsover4718lazydogs",
+       "iou": 0.842,
+       "center_dx": 0.5,
+       "center_dy": 2.0,
+       "ocr_box": [
+        40.0,
+        146.0,
+        440.0,
+        168.0
+       ],
+       "expected_box": [
+        39.5,
+        142.5,
+        439.5,
+        167.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "def merge(a, b): return sorted(a + b)",
+       "found": true,
+       "ocr_text": "def merge（a,b):return sorted(a + b)",
+       "iou": 0.901,
+       "center_dx": -0.0,
+       "center_dy": 1.0,
+       "ocr_box": [
+        40.0,
+        193.0,
+        374.0,
+        213.0
+       ],
+       "expected_box": [
+        39.5,
+        192.5,
+        374.5,
+        211.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "缩放对齐测试：截图与高亮框应该重合",
+       "found": true,
+       "ocr_text": "缩放对齐测试：截图与高亮框应该重合",
+       "iou": 0.877,
+       "center_dx": -0.0,
+       "center_dy": 1.0,
+       "ocr_box": [
+        40.0,
+        241.0,
+        364.0,
+        263.0
+       ],
+       "expected_box": [
+        39.5,
+        238.5,
+        364.5,
+        263.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "Order HZ20261025-0042 at 14:30, total 127.50",
+       "found": true,
+       "ocr_text": "Order HZ20261025-0042at 14:30,total 127.50",
+       "iou": 0.762,
+       "center_dx": 2.0,
+       "center_dy": 2.0,
+       "ocr_box": [
+        302.0,
+        334.0,
+        572.0,
+        348.0
+       ],
+       "expected_box": [
+        299.5,
+        330.5,
+        570.5,
+        347.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "Bottom right 9931",
+       "found": true,
+       "ocr_text": "Bottomright9931",
+       "iou": 0.75,
+       "center_dx": 1.0,
+       "center_dy": 4.0,
+       "ocr_box": [
+        432.0,
+        437.0,
+        626.0,
+        464.0
+       ],
+       "expected_box": [
+        429.5,
+        430.5,
+        626.5,
+        462.5
+       ],
+       "ok": true
+      }
+     ],
+     "lines_ok": true,
+     "overlay": "C:\\Users\\xty\\Desktop\\machine learning\\practice_module_2\\ScreenRecall\\data-a13\\20261025-220153\\overlays\\125-unaware.png",
+     "ok": true,
+     "awareness": "unaware"
+    },
+    {
+     "kind": "edge",
+     "frame_id": "2aec11b5310342e2b4a2d451d72c7501",
+     "image_size": [
+      1547,
+      1067
+     ],
+     "detail_size": [
+      1547,
+      1067
+     ],
+     "frame_bounds_size": [
+      1547,
+      1067
+     ],
+     "expected_size": [
+      1547,
+      1067
+     ],
+     "method": "print_window",
+     "window_dpi": 120,
+     "monitor_dpi": 120,
+     "size_ok": true,
+     "black_margin": [
+      0,
+      0
+     ],
+     "black_ok": true,
+     "marks_found": true,
+     "map": {
+      "sx": 1.25,
+      "sy": 1.25,
+      "tx": 5.8,
+      "ty": 99.8,
+      "residual": 0.01
+     },
+     "scale_ok": true,
+     "marks_ok": true,
+     "content_edge_gap": [
+      6.3,
+      4.8
+     ],
+     "lines": [
+      {
+       "text": "Sequoia 125 edge",
+       "found": true,
+       "ocr_text": "Sequoia 125 edge",
+       "iou": 0.812,
+       "center_dx": -0.1,
+       "center_dy": 5.2,
+       "ocr_box": [
+        53.0,
+        152.0,
+        424.0,
+        201.0
+       ],
+       "expected_box": [
+        55.8,
+        142.3,
+        421.4,
+        200.3
+       ],
+       "ok": true
+      },
+      {
+       "text": "The quick brown fox jumps over 4718 lazy dogs",
+       "found": true,
+       "ocr_text": "The quick brown fox jumps over 4718 lazy dogs",
+       "iou": 0.788,
+       "center_dx": 1.1,
+       "center_dy": 3.7,
+       "ocr_box": [
+        55.0,
+        243.0,
+        557.0,
+        276.0
+       ],
+       "expected_box": [
+        55.8,
+        239.8,
+        554.0,
+        271.8
+       ],
+       "ok": true
+      },
+      {
+       "text": "def merge(a, b): return sorted(a + b)",
+       "found": true,
+       "ocr_text": "def merge(a,b): return sorted(a + b)",
+       "iou": 0.843,
+       "center_dx": -0.7,
+       "center_dy": 0.7,
+       "ocr_box": [
+        53.0,
+        301.0,
+        464.0,
+        328.0
+       ],
+       "expected_box": [
+        55.8,
+        302.3,
+        462.6,
+        325.3
+       ],
+       "ok": true
+      },
+      {
+       "text": "缩放对齐测试：截图与高亮框应该重合",
+       "found": true,
+       "ocr_text": "缩放对齐测试：截图与高亮框应该重合",
+       "iou": 0.862,
+       "center_dx": -1.1,
+       "center_dy": 0.2,
+       "ocr_box": [
+        55.0,
+        362.0,
+        458.0,
+        388.0
+       ],
+       "expected_box": [
+        55.8,
+        359.8,
+        459.5,
+        389.8
+       ],
+       "ok": true
+      },
+      {
+       "text": "Order HZ20261025-0042 at 14:30, total 127.50",
+       "found": true,
+       "ocr_text": "OrderHZ20261025-0042at14:30,total127.50",
+       "iou": 0.769,
+       "center_dx": 1.1,
+       "center_dy": 1.7,
+       "ocr_box": [
+        381.0,
+        479.0,
+        715.0,
+        496.0
+       ],
+       "expected_box": [
+        380.8,
+        474.8,
+        713.0,
+        496.8
+       ],
+       "ok": true
+      },
+      {
+       "text": "Bottom right 9931",
+       "found": true,
+       "ocr_text": "Bottom right 9931",
+       "iou": 0.833,
+       "center_dx": 0.7,
+       "center_dy": 3.2,
+       "ocr_box": [
+        543.0,
+        606.0,
+        787.0,
+        640.0
+       ],
+       "expected_box": [
+        543.3,
+        599.8,
+        785.4,
+        639.8
+       ],
+       "ok": true
+      }
+     ],
+     "lines_ok": true,
+     "overlay": "C:\\Users\\xty\\Desktop\\machine learning\\practice_module_2\\ScreenRecall\\data-a13\\20261025-220153\\overlays\\125-edge.png",
+     "ok": true,
+     "dpr": 1.25
+    }
+   ],
+   "ui": [
+    {
+     "frame_id": "029f47f4153f4256add83e0e1dba6758",
+     "dpr": 1.25,
+     "boxes": 2,
+     "max_error_css_px": 0.0,
+     "max_error_device_px": 0.0,
+     "ok": true,
+     "kind": "aware"
+    },
+    {
+     "frame_id": "a23b708e389645329ea2aeedd2f997fd",
+     "dpr": 1.25,
+     "boxes": 2,
+     "max_error_css_px": 0.0,
+     "max_error_device_px": 0.0,
+     "ok": true,
+     "kind": "unaware"
+    },
+    {
+     "frame_id": "2aec11b5310342e2b4a2d451d72c7501",
+     "dpr": 1.25,
+     "boxes": 2,
+     "max_error_css_px": 0.0,
+     "max_error_device_px": 0.0,
+     "ok": true,
+     "kind": "edge"
+    }
+   ],
+   "effective_dpi": 120,
+   "ok": true
+  },
+  {
+   "phase": "scale-100",
+   "scale": 100,
+   "windows": [
+    {
+     "kind": "aware",
+     "frame_id": "72f118b9e5be478fae1bc72b07a9b958",
+     "image_size": [
+      762,
+      532
+     ],
+     "detail_size": [
+      762,
+      532
+     ],
+     "frame_bounds_size": [
+      762,
+      532
+     ],
+     "expected_size": [
+      762,
+      532
+     ],
+     "method": "print_window",
+     "window_dpi": 96,
+     "monitor_dpi": 96,
+     "size_ok": true,
+     "black_margin": [
+      1,
+      1
+     ],
+     "black_ok": true,
+     "marks_found": true,
+     "map": {
+      "sx": 1.0,
+      "sy": 1.0,
+      "tx": 0.5,
+      "ty": 30.5,
+      "residual": 0.0
+     },
+     "scale_ok": true,
+     "marks_ok": true,
+     "offset_error": [
+      -0.5,
+      -0.5
+     ],
+     "offset_ok": true,
+     "content_edge_gap": [
+      1.5,
+      1.5
+     ],
+     "edge_ok": true,
+     "lines": [
+      {
+       "text": "Marigold 100 aware",
+       "found": true,
+       "ocr_text": "Marigold 100aware",
+       "iou": 0.754,
+       "center_dx": 3.0,
+       "center_dy": 5.0,
+       "ocr_box": [
+        42.0,
+        75.0,
+        376.0,
+        111.0
+       ],
+       "expected_box": [
+        39.5,
+        64.5,
+        372.5,
+        111.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "The quick brown fox jumps over 4718 lazy dogs",
+       "found": true,
+       "ocr_text": "Thequickbrownfoxjumpsover4718lazydogs",
+       "iou": 0.841,
+       "center_dx": 0.5,
+       "center_dy": 2.0,
+       "ocr_box": [
+        40.0,
+        146.0,
+        440.0,
+        168.0
+       ],
+       "expected_box": [
+        39.5,
+        142.5,
+        439.5,
+        167.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "def merge(a, b): return sorted(a + b)",
+       "found": true,
+       "ocr_text": "def merge（a,b):return sorted(a + b)",
+       "iou": 0.9,
+       "center_dx": -0.0,
+       "center_dy": 1.0,
+       "ocr_box": [
+        40.0,
+        193.0,
+        374.0,
+        213.0
+       ],
+       "expected_box": [
+        39.5,
+        192.5,
+        374.5,
+        211.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "缩放对齐测试：截图与高亮框应该重合",
+       "found": true,
+       "ocr_text": "缩放对齐测试：截图与高亮框应该重合",
+       "iou": 0.835,
+       "center_dx": 0.5,
+       "center_dy": 0.5,
+       "ocr_box": [
+        41.0,
+        241.0,
+        364.0,
+        262.0
+       ],
+       "expected_box": [
+        39.5,
+        238.5,
+        364.5,
+        263.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "Order HZ20261025-0042 at 14:30, total 127.50",
+       "found": true,
+       "ocr_text": "Order HZ20261025-0042 at 14:30, total 127.50",
+       "iou": 0.829,
+       "center_dx": 1.5,
+       "center_dy": 1.5,
+       "ocr_box": [
+        301.0,
+        332.0,
+        572.0,
+        349.0
+       ],
+       "expected_box": [
+        299.5,
+        330.5,
+        570.5,
+        347.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "Bottom right 9931",
+       "found": true,
+       "ocr_text": "Bottomright9931",
+       "iou": 0.773,
+       "center_dx": 1.0,
+       "center_dy": 3.5,
+       "ocr_box": [
+        432.0,
+        437.0,
+        626.0,
+        463.0
+       ],
+       "expected_box": [
+        429.5,
+        430.5,
+        626.5,
+        462.5
+       ],
+       "ok": true
+      }
+     ],
+     "lines_ok": true,
+     "overlay": "C:\\Users\\xty\\Desktop\\machine learning\\practice_module_2\\ScreenRecall\\data-a13\\20261025-220153\\overlays\\100-aware.png",
+     "ok": true,
+     "awareness": "per_monitor"
+    },
+    {
+     "kind": "unaware",
+     "frame_id": "e93e6df02de44d5e890ef682ca19d9fe",
+     "image_size": [
+      762,
+      532
+     ],
+     "detail_size": [
+      762,
+      532
+     ],
+     "frame_bounds_size": [
+      762,
+      532
+     ],
+     "expected_size": [
+      762,
+      532
+     ],
+     "method": "print_window",
+     "window_dpi": 96,
+     "monitor_dpi": 96,
+     "size_ok": true,
+     "black_margin": [
+      1,
+      1
+     ],
+     "black_ok": true,
+     "marks_found": true,
+     "map": {
+      "sx": 1.0,
+      "sy": 1.0001,
+      "tx": 0.5,
+      "ty": 30.5,
+      "residual": 0.02
+     },
+     "scale_ok": true,
+     "marks_ok": true,
+     "offset_error": [
+      -0.5,
+      -0.5
+     ],
+     "offset_ok": true,
+     "content_edge_gap": [
+      1.5,
+      1.5
+     ],
+     "edge_ok": true,
+     "lines": [
+      {
+       "text": "Tamarind 100 unaware",
+       "found": true,
+       "ocr_text": "Tamarind 1o0 unaware",
+       "iou": 0.717,
+       "center_dx": 2.0,
+       "center_dy": 3.0,
+       "ocr_box": [
+        41.0,
+        74.0,
+        423.0,
+        108.0
+       ],
+       "expected_box": [
+        39.5,
+        64.5,
+        420.5,
+        111.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "The quick brown fox jumps over 4718 lazy dogs",
+       "found": true,
+       "ocr_text": "Thequickbrownfoxjumpsover4718lazydogs",
+       "iou": 0.841,
+       "center_dx": 0.5,
+       "center_dy": 2.0,
+       "ocr_box": [
+        40.0,
+        146.0,
+        440.0,
+        168.0
+       ],
+       "expected_box": [
+        39.5,
+        142.5,
+        439.5,
+        167.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "def merge(a, b): return sorted(a + b)",
+       "found": true,
+       "ocr_text": "def merge（a,b):return sorted(a + b)",
+       "iou": 0.9,
+       "center_dx": 0.0,
+       "center_dy": 1.0,
+       "ocr_box": [
+        40.0,
+        193.0,
+        374.0,
+        213.0
+       ],
+       "expected_box": [
+        39.5,
+        192.5,
+        374.5,
+        211.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "缩放对齐测试：截图与高亮框应该重合",
+       "found": true,
+       "ocr_text": "缩放对齐测试：截图与高亮框应该重合",
+       "iou": 0.835,
+       "center_dx": 0.5,
+       "center_dy": 0.5,
+       "ocr_box": [
+        41.0,
+        241.0,
+        364.0,
+        262.0
+       ],
+       "expected_box": [
+        39.5,
+        238.5,
+        364.5,
+        263.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "Order HZ20261025-0042 at 14:30, total 127.50",
+       "found": true,
+       "ocr_text": "Order HZ20261025-0042 at 14:30, total 127.50",
+       "iou": 0.83,
+       "center_dx": 1.5,
+       "center_dy": 1.5,
+       "ocr_box": [
+        301.0,
+        332.0,
+        572.0,
+        349.0
+       ],
+       "expected_box": [
+        299.5,
+        330.5,
+        570.5,
+        347.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "Bottom right 9931",
+       "found": true,
+       "ocr_text": "Bottomright9931",
+       "iou": 0.773,
+       "center_dx": 1.0,
+       "center_dy": 3.5,
+       "ocr_box": [
+        432.0,
+        437.0,
+        626.0,
+        463.0
+       ],
+       "expected_box": [
+        429.5,
+        430.5,
+        626.5,
+        462.5
+       ],
+       "ok": true
+      }
+     ],
+     "lines_ok": true,
+     "overlay": "C:\\Users\\xty\\Desktop\\machine learning\\practice_module_2\\ScreenRecall\\data-a13\\20261025-220153\\overlays\\100-unaware.png",
+     "ok": true,
+     "awareness": "unaware"
+    },
+    {
+     "kind": "edge",
+     "frame_id": "2f2a67de33c94b258225146cb745e9a9",
+     "image_size": [
+      1236,
+      853
+     ],
+     "detail_size": [
+      1236,
+      853
+     ],
+     "frame_bounds_size": [
+      1236,
+      853
+     ],
+     "expected_size": [
+      1236,
+      853
+     ],
+     "method": "print_window",
+     "window_dpi": 96,
+     "monitor_dpi": 96,
+     "size_ok": true,
+     "black_margin": [
+      0,
+      0
+     ],
+     "black_ok": true,
+     "marks_found": true,
+     "map": {
+      "sx": 1.0,
+      "sy": 1.0,
+      "tx": 4.5,
+      "ty": 79.5,
+      "residual": 0.0
+     },
+     "scale_ok": true,
+     "marks_ok": true,
+     "content_edge_gap": [
+      5.5,
+      5.5
+     ],
+     "lines": [
+      {
+       "text": "Juniper 100 edge",
+       "found": true,
+       "ocr_text": "Juniper 100 edge",
+       "iou": 0.765,
+       "center_dx": 0.3,
+       "center_dy": 5.5,
+       "ocr_box": [
+        44.0,
+        124.0,
+        329.0,
+        161.0
+       ],
+       "expected_box": [
+        44.5,
+        113.5,
+        327.9,
+        160.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "The quick brown fox jumps over 4718 lazy dogs",
+       "found": true,
+       "ocr_text": "The quick brown fox jumps over 4718 lazy dogs",
+       "iou": 0.816,
+       "center_dx": 1.2,
+       "center_dy": 2.5,
+       "ocr_box": [
+        42.0,
+        193.0,
+        448.0,
+        221.0
+       ],
+       "expected_box": [
+        44.5,
+        191.5,
+        443.1,
+        217.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "def merge(a, b): return sorted(a + b)",
+       "found": true,
+       "ocr_text": "def merge(a, b): return sorted(a + b)",
+       "iou": 0.779,
+       "center_dx": 0.3,
+       "center_dy": 2.5,
+       "ocr_box": [
+        43.0,
+        242.0,
+        372.0,
+        265.0
+       ],
+       "expected_box": [
+        44.5,
+        241.5,
+        370.0,
+        260.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "缩放对齐测试：截图与高亮框应该重合",
+       "found": true,
+       "ocr_text": "缩放对齐测试：截图与高亮框应该重合",
+       "iou": 0.878,
+       "center_dx": -0.5,
+       "center_dy": 0.0,
+       "ocr_box": [
+        42.0,
+        286.0,
+        369.0,
+        313.0
+       ],
+       "expected_box": [
+        44.5,
+        287.5,
+        367.5,
+        311.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "Order HZ20261025-0042 at 14:30, total 127.50",
+       "found": true,
+       "ocr_text": "Order HZ20261025-0042 at 14:30, total 127.50",
+       "iou": 0.736,
+       "center_dx": 1.1,
+       "center_dy": 2.5,
+       "ocr_box": [
+        304.0,
+        382.0,
+        573.0,
+        399.0
+       ],
+       "expected_box": [
+        304.5,
+        379.5,
+        570.3,
+        396.5
+       ],
+       "ok": true
+      },
+      {
+       "text": "Bottom right 9931",
+       "found": true,
+       "ocr_text": "Bottomright9931",
+       "iou": 0.774,
+       "center_dx": 1.6,
+       "center_dy": 3.5,
+       "ocr_box": [
+        435.0,
+        486.0,
+        631.0,
+        512.0
+       ],
+       "expected_box": [
+        434.5,
+        479.5,
+        628.2,
+        511.5
+       ],
+       "ok": true
+      }
+     ],
+     "lines_ok": true,
+     "overlay": "C:\\Users\\xty\\Desktop\\machine learning\\practice_module_2\\ScreenRecall\\data-a13\\20261025-220153\\overlays\\100-edge.png",
+     "ok": true,
+     "dpr": 1
+    }
+   ],
+   "ui": [
+    {
+     "frame_id": "72f118b9e5be478fae1bc72b07a9b958",
+     "dpr": 1,
+     "boxes": 2,
+     "max_error_css_px": 0.0,
+     "max_error_device_px": 0.0,
+     "ok": true,
+     "kind": "aware"
+    },
+    {
+     "frame_id": "e93e6df02de44d5e890ef682ca19d9fe",
+     "dpr": 1,
+     "boxes": 2,
+     "max_error_css_px": 0.0,
+     "max_error_device_px": 0.0,
+     "ok": true,
+     "kind": "unaware"
+    },
+    {
+     "frame_id": "2f2a67de33c94b258225146cb745e9a9",
+     "dpr": 1,
+     "boxes": 2,
+     "max_error_css_px": 0.0,
+     "max_error_device_px": 0.0,
+     "ok": true,
+     "kind": "edge"
+    }
+   ],
+   "effective_dpi": 96,
+   "ok": true
+  }
+ ],
+ "notes": [],
+ "original_scale": 150,
+ "recommended_scale": 150,
+ "scales": [
+  150,
+  125,
+  100
+ ],
+ "args": "--wifi-off --scales 100,125,150",
+ "data_dir": "C:\\Users\\xty\\Desktop\\machine learning\\practice_module_2\\ScreenRecall\\data-a13\\20261025-220153",
+ "restored_scale": 150,
+ "net_attempts": 2,
+ "net_attempt_targets": [
+  "screenrecall.daemon dns huggingface.co（utils/_detect_agent.py:196 _fetch_registry）",
+  "screenrecall.webapi dns huggingface.co（utils/_detect_agent.py:196 _fetch_registry）"
+ ],
+ "minutes": 1.7,
+ "ok": true
+}

@@ -100,7 +100,7 @@ cd web; npm run build                                     # 前端（页面由�
 | 受控数据集（`feat/dataset-collection`） | 采集与标注规程、任务表与查询分配、`collect` 与 `indexer` 工具；捕获覆盖、编码对照、失败待办人工重试 | 已实现；两人数据已采完、合库、复核 |
 | 合库与实验（`feat/merge-datasets`，PR #7） | 合库、60 条查询、正式划分、最终分类、五组检索（dev + 盲测一次）、Windows 资源实测、编码对照；网页界面 | 已完成，结果在 `results/` |
 
-还没有做：捕获覆盖实验的 Windows 实测、A13 实机核验（断网、缩放）；报告、Slides、演示视频。见 PROGRESS.md。
+v1 的捕获覆盖实验（2026-10-24，`results/coverage/2026-10-23/`）和 A13 断网 / 100–150% 缩放核验（2026-10-25，`results/windows/2026-10-25-DESKTOP-PH4UL0H/a13/`）已在 Windows 实机完成，见 PROGRESS.md。
 
 ## 运行
 
