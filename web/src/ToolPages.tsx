@@ -3,8 +3,13 @@ import { useState } from "react";
 import { FolderUp, Star } from "lucide-react";
 import { get, post, postForm, type Favorite, type ImportResult, type RangePlan } from "./api";
 import { useT } from "./i18n";
-import { fmtTime, navigate, useLoad } from "./lib";
+import { fmtTime, markMetaStale, navigate, useLoad } from "./lib";
 import { Banner, Chip, Empty, Field, FramedShot, PageHeader, Spinner, Unavailable, useMeta, useToast } from "./ui";
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+/** 本机时区的 YYYY-MM-DD / HH:MM（<input type="date|time"> 的取值格式） */
+export const localDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+export const localClock = (d: Date) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 
 export function FavoritesPage() {
   const { t } = useT();
@@ -125,8 +130,9 @@ export function ImportPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [label, setLabel] = useState("");
   const [known, setKnown] = useState(false);
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("00:00");
+  // 与旧页面一致：捕获日期 / 时间默认取打开页面时的本机日期与时间
+  const [date, setDate] = useState(() => localDate(new Date()));
+  const [time, setTime] = useState(() => localClock(new Date()));
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -149,6 +155,7 @@ export function ImportPage() {
         fd.append("captured_time", time);
       }
       setRes(await postForm<ImportResult>("/api/import", fd));
+      markMetaStale(); // 新导入可能带来新的应用名，筛选列表要跟着更新
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -197,6 +204,7 @@ export function ImportPage() {
                 <thead className="text-xs text-faint"><tr className="border-b border-rule">
                   <th className="px-4 py-2.5 font-medium">{t("imp.seq")}</th><th className="font-medium">{t("imp.file")}</th>
                   <th className="font-medium">{t("imp.status")}</th><th className="font-medium">{t("imp.reason")}</th>
+                  <th className="pr-4 font-medium"><span className="sr-only">{t("imp.open")}</span></th>
                 </tr></thead>
                 <tbody>
                   {res.batch.items.map((i) => (
@@ -204,6 +212,11 @@ export function ImportPage() {
                       <td className="sr-num px-4 py-2">{i.seq + 1}</td><td className="break-all pr-4">{i.name}</td>
                       <td className={`pr-4 ${i.status === "failed" ? "text-alarm" : i.status === "ok" ? "text-signal" : "text-graphite"}`}>{status[i.status]}</td>
                       <td className="pr-4 text-graphite">{i.reason}</td>
+                      <td className="whitespace-nowrap pr-4 text-right">
+                        {i.status === "ok" && i.frame_id && (
+                          <a className="font-medium text-cobalt hover:underline" href={`#/frame/${i.frame_id}?back=${encodeURIComponent("#/import")}`}>{t("imp.open")}</a>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

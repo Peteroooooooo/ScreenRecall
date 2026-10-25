@@ -27,15 +27,17 @@ export const setApiLang = (l: string) => {
   lang = l;
 };
 
-export function get<T>(path: string): Promise<T> {
-  return fetch(path, { headers: { Accept: "application/json", "X-Lang": lang } }).then((r) => handle<T>(r));
+// signal：页面不再等待时（换了查询、点了"停止等待"、轮询超时）中止请求；服务端照常算完，只是前端不再收结果
+export function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+  return fetch(path, { headers: { Accept: "application/json", "X-Lang": lang }, signal }).then((r) => handle<T>(r));
 }
 
-export function post<T>(path: string, body: unknown = {}): Promise<T> {
+export function post<T>(path: string, body: unknown = {}, signal?: AbortSignal): Promise<T> {
   return fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-ScreenRecall": "1", "X-Lang": lang },
     body: JSON.stringify(body),
+    signal,
   }).then((r) => handle<T>(r));
 }
 
@@ -120,6 +122,8 @@ export interface Detail {
   height: number;
   image_status: string;
   image_ok: boolean;
+  /** pending（排队或识别中）/ done / failed；旧服务没有这个字段 */
+  ocr_status?: string;
   capture_meta: Record<string, unknown>;
   time_known: boolean;
   text: string;
@@ -194,6 +198,18 @@ export interface Status {
     reason: string | null;
   };
   retention: { image_days: number; record_days: number };
+}
+
+/** GET /api/models：查询侧编码器的加载状态（旧服务没有这个接口，返回 404） */
+export type ModelStateName = "idle" | "loading" | "ready" | "unavailable" | "disabled";
+export interface ModelState {
+  state: ModelStateName;
+  elapsed_ms: number | null;
+  reason: string | null;
+}
+export interface Models {
+  text: ModelState;
+  image: ModelState;
 }
 
 export interface WindowItem {
