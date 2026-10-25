@@ -8,8 +8,10 @@ data_dir = "data"
 [capture]
 interval_seconds = 3.0     # 普通模式采样间隔（方案 4.1）
 recent_cache_size = 4      # 最近已接受画面缓存，用于 A→B→A 精确复用（方案 4.2：3–5 个）
-webp_quality = 92          # 初值，待与无损对比后冻结（方案 6.5）
-webp_lossless = false
+webp_quality = 92          # 只在 webp_lossless = false 时生效
+# 2026-10-23 Windows 编码对照（results/windows/2026-10-23-DESKTOP-PH4UL0H/codec/）：文字为主的截图无损平均 88 KiB、
+# q92 164 KiB；无损逐像素一致、OCR 120/120 不变，q92 每张 OCR 都有变化。故默认无损（大面积照片画面可能更大）
+webp_lossless = true
 webp_method = 4            # 0–6，越大越慢、文件越小
 # 等稳（方案 4.1）：相邻两次观察的变化像素比例低于此值即视为稳定并保存；初值，待事件脚本验证后冻结
 stable_change_ratio = 0.01
@@ -70,5 +72,6 @@ maintenance_interval_seconds = 300
 
 [classify]
 # 内容分类器训练产物目录（python -m screenrecall.classify train 的 --out），相对路径以仓库根目录为基准。
-# 留空则不预测；特征模型与 [models] 的全图模型不一致时不会加载
-model_dir = ""
+# 留空则不预测；特征模型与 [models] 的全图模型不一致时不会加载。
+# 默认用随仓库提交的最终模型（test Macro F1 0.868）；后台空闲时给缺预测的旧画面补写类别
+model_dir = "results/classifier/v1"
