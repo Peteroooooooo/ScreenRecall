@@ -318,6 +318,7 @@ def _frame_extras(conn: sqlite3.Connection, fids: list[str]) -> tuple[set[str], 
 def api_meta(st: State, _: dict) -> dict:
     out = {"tz_label": timeutil.tz_label(), "rules": rules.describe(st.cfg.rules), "notice": NO_AUTH_NOTICE,
            "retention": {"image_days": st.cfg.retention.image_days, "record_days": st.cfg.retention.record_days},
+           "debug_max_minutes": st.cfg.capture.debug_max_minutes,
            "data_dir": str(st.cfg.data_dir), "schema_required": db.SCHEMA_VERSION}
     if not st.cfg.db_path.exists():
         return out | {"db_ok": False, "db_problem": f"还没有找到数据库：{st.cfg.db_path}。请先运行后台："

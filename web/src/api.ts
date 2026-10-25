@@ -164,6 +164,7 @@ export interface Meta {
   rules: string[];
   notice: string;
   retention: { image_days: number; record_days: number };
+  debug_max_minutes?: number; // 旧服务没有这个字段时按 30
   data_dir: string;
 }
 

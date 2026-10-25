@@ -120,6 +120,8 @@ function Controls({ s }: { s: Status | null }) {
   const list = wins.data?.windows ?? [];
   const picked = list.find((w) => String(w.hwnd) === hwnd);
   const recording = !!s && s.alive && s.control.actual_state === "recording";
+  const alive = !!s && s.alive; // 后台未运行时开始录制只会得到 409；录制中仍可选别的窗口再点开始来切换目标
+  const debugMin = Math.round(useMeta()?.debug_max_minutes ?? 30);
   return (
     <Card title={t("rec.controls")}>
       {lost && <Banner tone="warn" className="mb-4">{t("rec.lostControls")}</Banner>}
@@ -139,12 +141,12 @@ function Controls({ s }: { s: Status | null }) {
       {wins.data?.problem && <Banner tone="warn" className="mt-3">{wins.data.problem}</Banner>}
       {picked && !picked.allowed && <Banner tone="warn" className="mt-3">{t("rec.cannot", { r: picked.reason ?? "" })}</Banner>}
       <div className="mt-4 flex flex-wrap gap-2">
-        <button className="sr-btn sr-btn-primary" disabled={busy || !picked || !picked.allowed} onClick={() => send({ action: "start", hwnd: picked?.hwnd })}>
+        <button className="sr-btn sr-btn-primary" disabled={busy || !alive || !picked || !picked.allowed} onClick={() => send({ action: "start", hwnd: picked?.hwnd })}>
           <Play size={15} />{t("rec.btnStart")}
         </button>
         <button className="sr-btn sr-btn-line" disabled={busy} onClick={() => send({ action: "pause" })}><Pause size={15} />{t("rec.btnPause")}</button>
         <span className="mx-1 hidden w-px self-stretch bg-rule sm:block" />
-        <button className="sr-btn sr-btn-line" disabled={busy || !recording} title={t("rec.btnDebugTip")} onClick={() => send({ action: "debug" })}><Bug size={15} />{t("rec.btnDebug")}</button>
+        <button className="sr-btn sr-btn-line" disabled={busy || !recording} title={t("rec.btnDebugTip")} onClick={() => send({ action: "debug" })}><Bug size={15} />{t("rec.btnDebug", { m: debugMin })}</button>
         <button className="sr-btn sr-btn-line" disabled={busy || !recording} title={t("rec.btnSnapTip")} onClick={() => send({ action: "snapshot" })}><Camera size={15} />{t("rec.btnSnap")}</button>
       </div>
     </Card>
