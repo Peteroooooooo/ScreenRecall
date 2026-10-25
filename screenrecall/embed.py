@@ -115,12 +115,24 @@ class EmbedWorker:
             return False
         job = self._claim(conn)
         if job is None:
-            return False
+            return self._backfill_labels(conn)
         if job.stage == vectors.TEXT_STAGE:
             self._process_text(conn, job)
         else:
             self._process_image(conn, job)
         return True
+
+    def _backfill_labels(self, conn: sqlite3.Connection) -> bool:
+        """空闲时给已有全图向量、但缺本模型预测的画面补写类别（每次至多一批），返回是否写了。"""
+        clf = self.classifier
+        if clf is None:
+            return False
+        todo = classify.frames_needing_prediction(conn, clf)
+        if not todo:
+            return False
+        n = classify.predict_frames(conn, clf, todo)
+        self.log.info("classify backfill frames=%d written=%d model=%s", len(todo), n, clf.version)
+        return n > 0
 
     def _claim(self, conn: sqlite3.Connection) -> _Job | None:
         while True:
