@@ -226,6 +226,10 @@ export const MetaCtx = createContext<Meta | null>(null);
 export const useMeta = () => useContext(MetaCtx);
 export const StatusCtx = createContext<Status | null>(null);
 export const useStatus = () => useContext(StatusCtx);
+/** 状态轮询连不上本机服务：lost 为 true 时 StatusCtx 里只是最后一次拿到的旧状态 */
+export type Conn = { lost: boolean; error: string | null };
+export const ConnCtx = createContext<Conn>({ lost: false, error: null });
+export const useConn = () => useContext(ConnCtx);
 
 export function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
   return (
@@ -294,7 +298,8 @@ export function Segmented<T extends string>({ value, options, onChange, label, s
   );
 }
 
-export function stateOf(s: Status | null): { tone: "rec" | "idle" | "off" | "pending"; key: Key } {
+export function stateOf(s: Status | null, lost = false): { tone: "rec" | "idle" | "off" | "pending"; key: Key } {
+  if (lost) return { tone: "off", key: "mini.lost" };
   if (!s || !s.alive) return { tone: "off", key: "mini.offline" };
   if (s.pending) return { tone: "pending", key: s.control.desired_state === "recording" ? "mini.pendingOn" : "mini.pendingOff" };
   if (s.control.actual_state === "recording") return { tone: "rec", key: "mini.recording" };
