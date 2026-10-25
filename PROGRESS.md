@@ -6,6 +6,8 @@
 
 ## 一句话状态
 
+- **2026-10-25 最新**：`feat/merge-datasets` 已由 PR #7 合入 main；接手后第一轮（分支 `feat/polish`）见下方"2026-10-25"一节。下面各条是当时的记录。
+
 - P0 最小闭环：已完成，Windows 实机通过。**PR #1 于 2026-10-16、PR #2–#5 于 2026-10-21 依次用 merge commit 合入 `main`**（#2 `fb6f1cf`、#3 `362219c`、#4 `5b9053c`、#5 `effee82`，main 现在是 `effee82`）；只剩草稿 PR #6（数据集工具，base 已改为 `main`）。以下各节里"PR 未合并"的说法是当时的记录。
 - P1 证据浏览 / 批量导入 / 收藏删除到期配额：**2026-10-16 在 Windows 11 实机验证通过**（真实 OCR + 向量 + 真实数据的端到端 19 项全过，见"验证记录"）。
 - P1 采集节奏：等稳、排错模式、补拍、允许/排除规则、未保存变化的中断标记已实现（分支 `feat/capture-cadence`）。2026-10-13 晚在 **Windows 11 实机**跑通主要场景（见"验证记录"），30 分钟自动退出、快捷键被占用两项仍待实机确认。
@@ -52,6 +54,17 @@
 | WebP 编码对照（5.1、6.3） | **脚本完成**（2026-10-21，`codec_compare.py`） | 通过（合成文字图） | Mac 冒烟：16 张 Retina 截图 + 真实 RapidOCR（只验证流程，不作结论） | **Windows 实机画面未跑**，`webp_quality` 尚未冻结 |
 | 失败待办人工重试（3.4） | **完成**（2026-10-21，`retry.py` + 侧栏「失败的待办」+ 命令行） | 通过（真实 OcrWorker + 替身引擎、页面 AppTest） | 不涉及 | Windows 页面未实机查看 |
 | 报告、Slides、演示视频、运行包（8.3） | 未开始 | — | — | — |
+
+## 2026-10-25 接手后第一轮：网页界面打磨、默认配置、实机联调（分支 `feat/polish`，基于 main @ `f59ae7e`）
+第三位组员接手（`feat/merge-datasets` 已由 PR #7 合入 main）。数据用肖天奕 10-23 的合库包 `data-dataset-merged-20261023-part{1,2}of2.zip`（校验 3,691/3,691 一致，`dataset check` 已标注 2,184 帧）。
+- **默认配置**：`[capture] webp_lossless = true`（依据 10-23 编码对照）；`[classify] model_dir = "results/classifier/v1"`。向量 worker 空闲时给"有全图向量、缺本模型预测"的画面补写类别（老数据、后配置的分类器、换模型），`classify.frames_needing_prediction`，测试 1 条。合库包里 `frame_labels` 是空的（打包早于 10-23 下午的 predict），已备份到 `data-dataset/_backup/screenrecall.pre-predict-20261025.sqlite3` 后重写 2,213 条：chat 610 / code 600 / web 518 / table_doc 485，与 10-23 记录一致。
+- **后端 `webapi.py`**：所有错误都是 JSON `{"error"}` 且可翻译（参数错 400、超限 413、库被锁 503、未知异常 500 只给简短说明、日志里留堆栈）；库结构过旧 / 过新时除 `/api/meta`、`/api/import` 外返回 503；重复删除返回 404；单个上传文件超 64 MiB 记为该文件失败。模型：文字 / 画面各一把锁；启动后后台线程预加载（`--no-preload` 关闭）；新接口 `GET /api/models`（每种模式 `state` = idle / loading / ready / unavailable / disabled、`elapsed_ms`、`reason`）。本机实测启动后约 10 s 文字模型就绪，第一次语义查询不再等模型。`/api/meta` 新增 `debug_max_minutes`。
+- **前端 `web/`**：连接中断（连续 2 次失败或 5 s 无成功）时侧栏 / 录制页显示"连接中断"并禁用录制控制，恢复后自动刷新；应用 / 类别 / 规则列表每分钟、回到窗口、导入后、恢复连接时刷新；搜索页显示模型真实加载状态，查询中显示已等待秒数并可"停止等待"；空输入提示、结果卡片"命中片段"、并排比较标题带应用 / 标题 / 来源、OCR 未完成显示"文字识别中"、采集说明只在录制中显示、导入默认当前时间并可点开导入的画面、1:1 改为 1 图像像素 = 1 CSS 像素、窄屏也显示本机提示、375 px 下详情页溢出修复；排错按钮显示配置的分钟数；后台未运行时"开始录制"不可点（录制中仍可选别的窗口再点开始来切换目标）。新增 Vitest 测试 19 条（`cd web; npm test`）。
+- **一键启动** `start.ps1`：前端未构建或 `web/src` 比 `web/dist` 新时先构建，后台开新窗口，网页服务在当前窗口，就绪后打开浏览器；`-DataDir`、`-NoDaemon`、`-NoBrowser`、`-Port`。UTF-8 BOM，Windows PowerShell 5.1 也能解析。
+- **实机联调**（`results/windows/2026-10-25-PETER/live-webui.md`，i5-12600KF / 32 GB / 3840×2160@150%，独立目录 `data-dev`，只录自建的 tkinter 合成文字窗口）：7 项全过——网页 API 开始 / 暂停 / ACK、录到的画面可按原词与语义搜到、重启后默认不录；排错 `debug_max_minutes = 1` 时 60 s 自动退回（"待验证"1 的时间部分）；页面补拍与 `Ctrl+Alt+S`；**快捷键被占用**时状态写明注册失败、页面补拍照常（"待验证"2）；**真实 Edge InPrivate** 窗口不可录制、开始被拒（"待验证"4）；后台离线时控制请求 409；失败待办列出与重试。
+- 测试：pytest 247/247、前端 19/19、`npm run build` 通过。
+- 已知小问题（未修）：强杀后台后 `control.actual_state` 停在 `recording` 直到下次启动（页面和 API 先看心跳，不受影响）；原图缺失的画面两个向量状态停在 `pending` 而没有对应待办（积压计数仍为 0）；快捷键被占用后后台不重试注册，要重启后台。
+- 还没做：捕获覆盖实验（计划已冻结在 `results/coverage/2026-10-23/`，共约 80 分钟，期间测试窗口不能被遮挡）、A13（断网、100/125/150% 缩放对齐）、排错模式积压 50 提前退出、真实应用下的节奏（"待验证"3）；报告、Slides、演示视频。
 
 ## 2026-10-23 网页界面替换 Streamlit（分支 `feat/merge-datasets`，未提交时以 `git status` 为准）
 Kiro 起头（`screenrecall/webapi.py`、`tests/test_webapi.py`、前端请求封装与样式令牌），额度用完后由 Claude Code 接着做完前端。技术栈按 10-23 与肖天奕商定：后端 Starlette（只调用现有模块，不重写检索 / 生命周期 / 采集控制逻辑）+ 前端 React 19 + Vite + Tailwind 4（`web/`）。
