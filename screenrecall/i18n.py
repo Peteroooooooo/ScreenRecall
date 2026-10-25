@@ -85,6 +85,14 @@ EXACT = {
     "画面编号不合法": "Invalid screen id", "数量只能是 10、20 或 50": "Count must be 10, 20 or 50",
     "数据库正忙（后台正在写入），请稍后重试": "Database busy (the daemon is writing); try again shortly",
     "请求体不是合法的 UTF-8 JSON": "Request body is not valid UTF-8 JSON",
+    "请求体应为 JSON 对象": "Request body must be a JSON object", "参数应为列表": "Parameter must be a list",
+    "参数不合法": "Invalid parameter", "mode 应为 text 或 image": "mode must be text or image",
+    "semantic_lines 应为整数列表": "semantic_lines must be a list of integers",
+    "找不到这个接口": "No such endpoint", "不支持这种请求方法": "Method not allowed",
+    "只接受本机地址访问": "Only local addresses are accepted", "缺少 X-ScreenRecall 请求头": "Missing X-ScreenRecall header",
+    "不接受其他网页发来的修改请求": "Changes sent from other web pages are not accepted",
+    "上传的表单字段太多或太大": "The upload form has too many or too large fields",
+    "上传内容不是合法的表单（multipart/form-data）": "The upload is not a valid multipart/form-data form",
 }
 
 
@@ -94,6 +102,15 @@ def _gaps(m: re.Match) -> str:
         label, _, n = p.partition("×")
         parts.append(GAP_EN.get(label, label) + (f" ×{n}" if n else ""))
     return "known gaps in between: " + ", ".join(parts) + ". Screens in this period were not saved; do not treat it as continuous footage."
+
+
+def _counted(s: str) -> str:
+    """"原因 数量、原因 数量" → 逐项翻译原因。"""
+    parts = []
+    for p in s.split("、"):
+        label, _, n = p.rpartition(" ")
+        parts.append(f"{to_en(label)} {n}" if label else to_en(p))
+    return ", ".join(parts)
 
 
 PATTERNS: list[tuple[re.Pattern, Callable[[re.Match], str]]] = [(re.compile(p), f) for p, f in [
@@ -143,9 +160,19 @@ PATTERNS: list[tuple[re.Pattern, Callable[[re.Match], str]]] = [(re.compile(p), 
     (r"^(.+)。删除范围已更新。$", lambda m: f"{to_en(m[1])}. The deletion scope has been updated."),
     (r"^(.+)。请重新预览。$", lambda m: f"{to_en(m[1])}. Preview again."),
     (r"^已改回待处理 (\d+) 条，后台会自动重新处理。(?:未改：(.+)。)?$",
-     lambda m: f"Re-queued {m[1]} job(s); the daemon will process them again." + (f" Unchanged: {m[2]}." if m[2] else "")),
+     lambda m: f"Re-queued {m[1]} job(s); the daemon will process them again."
+     + (f" Unchanged: {_counted(m[2])}." if m[2] else "")),
     (r"^数据库结构是 v(\d+)，代码需要 v(\d+)。请重启后台完成升级。$",
      lambda m: f"Database schema is v{m[1]} but the code needs v{m[2]}. Restart the daemon to upgrade."),
+    (r"^数据库结构是 v(\d+)，比代码支持的 v(\d+) 新，请更新代码。$",
+     lambda m: f"Database schema v{m[1]} is newer than the v{m[2]} this code supports. Update the code."),
+    (r"^数据库读写出错：(.+)。请确认后台已运行并完成升级，详情见网页服务的日志。$",
+     lambda m: f"Database error: {m[1]}. Make sure the daemon is running and has upgraded the database; "
+               "see the web server log for details."),
+    (r"^服务器内部错误（(.+)），详情见网页服务的日志。$",
+     lambda m: f"Internal server error ({m[1]}); see the web server log for details."),
+    (r"^一次最多导入 (\d+) 个文件，请分批上传$", lambda m: f"At most {m[1]} files per import; upload in smaller batches"),
+    (r"^日期超出范围：(.+)$", lambda m: f"Date out of range: {m[1]}"),
     (r"^还没有找到数据库：(.+)。请先运行后台：python -m screenrecall\.daemon$",
      lambda m: f"Database not found: {m[1]}. Start the daemon first: python -m screenrecall.daemon"),
     (r"^日期格式不对：(.+)（应为 YYYY-MM-DD）$", lambda m: f"Invalid date: {m[1]} (expected YYYY-MM-DD)"),
