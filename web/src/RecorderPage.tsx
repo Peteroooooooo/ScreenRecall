@@ -4,8 +4,8 @@ import { useState, type ReactNode } from "react";
 import { Bug, Camera, ChevronDown, Pause, Play, RefreshCw, RotateCcw } from "lucide-react";
 import { get, post, type Failed, type Status, type WindowItem } from "./api";
 import { useT } from "./i18n";
-import { fmtAge, fmtTime, useLoad } from "./lib";
-import { Banner, Dot, PageHeader, Spinner, stateOf, useMeta, useStatus, useToast } from "./ui";
+import { TIMEOUT_ERROR, fmtAge, fmtTime, useLoad } from "./lib";
+import { Banner, Dot, PageHeader, Spinner, stateOf, useConn, useMeta, useStatus, useToast } from "./ui";
 
 const GIB = 1024 ** 3;
 
@@ -46,10 +46,29 @@ function useSend() {
   return { busy, send };
 }
 
+function LostHero() {
+  const { t } = useT();
+  const { error } = useConn();
+  return (
+    <section className="relative overflow-hidden rounded-card bg-night p-6 text-night-text shadow-lift" role="alert">
+      <div className="relative flex items-start gap-3">
+        <span className="mt-2"><Dot tone="off" size={10} /></span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[20px] font-semibold tracking-tight text-white">{t("rec.lost")}</p>
+          <p className="mt-1.5 text-sm text-night-faint">{t("rec.lostNote")}</p>
+          {error && <p className="mt-1.5 break-all font-mono text-xs text-night-faint">{error === TIMEOUT_ERROR ? t("conn.timeout") : error}</p>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function StatusHero({ s }: { s: Status | null }) {
   const { t } = useT();
   const { busy, send } = useSend();
+  const { lost } = useConn();
   const st = stateOf(s);
+  if (lost) return <LostHero />;
   if (!s) return <section className="sr-card p-6"><Spinner /></section>;
   const c = s.control;
   const now = s.now_ms;
@@ -81,7 +100,8 @@ function StatusHero({ s }: { s: Status | null }) {
         </div>
       )}
       <div className="relative mt-4 space-y-1.5 text-[13px] text-night-faint empty:hidden">
-        {s.alive && c.capture_note && <p className="text-marker">{c.capture_note}</p>}
+        {/* 采集说明（如"窗口被遮挡"）只对正在录制的窗口有意义 */}
+        {recording && c.capture_note && <p className="text-marker">{c.capture_note}</p>}
         {c.mode_reason && c.actual_mode === "normal" && <p>{c.mode_reason}</p>}
         {c.snapshot_result && <p>{t("rec.snapshot", { t: fmtAge(c.snapshot_at_ms, now), r: c.snapshot_result })}</p>}
         {s.alive && c.hotkey_status && <p>{c.hotkey_status}</p>}
@@ -94,12 +114,15 @@ function Controls({ s }: { s: Status | null }) {
   const { t } = useT();
   const wins = useLoad(() => get<{ windows: WindowItem[]; problem?: string }>("/api/windows"), []);
   const [hwnd, setHwnd] = useState("");
-  const { busy, send } = useSend();
+  const { busy: sending, send } = useSend();
+  const { lost } = useConn();
+  const busy = sending || lost; // 连接中断时不发控制请求（状态已不可信）
   const list = wins.data?.windows ?? [];
   const picked = list.find((w) => String(w.hwnd) === hwnd);
   const recording = !!s && s.alive && s.control.actual_state === "recording";
   return (
     <Card title={t("rec.controls")}>
+      {lost && <Banner tone="warn" className="mb-4">{t("rec.lostControls")}</Banner>}
       <label className="mb-1.5 block text-xs font-medium text-graphite" htmlFor="win">{t("rec.window")}</label>
       <div className="flex gap-2">
         <div className="relative min-w-0 flex-1">
@@ -235,6 +258,7 @@ export default function RecorderPage() {
   const { t } = useT();
   const s = useStatus();
   const meta = useMeta();
+  const { lost } = useConn();
   return (
     <div className="animate-rise">
       <PageHeader title={t("rec.title")} sub={t("rec.sub")} />
@@ -245,8 +269,11 @@ export default function RecorderPage() {
           <FailedCard />
         </div>
         <div className="space-y-5">
-          {s && <IndexCard s={s} />}
-          {s && <StorageCard s={s} />}
+          {/* 连接中断时保留最后一次的数字，但调淡，免得被当成当前值 */}
+          <div className={`space-y-5 transition-opacity ${lost ? "opacity-50" : ""}`} aria-disabled={lost || undefined}>
+            {s && <IndexCard s={s} />}
+            {s && <StorageCard s={s} />}
+          </div>
           <Card title={t("rec.rules")}>
             <ul className="space-y-1.5 text-sm">
               {meta?.rules.map((r, i) => <li key={i} className="break-all">{r}</li>)}

@@ -50,15 +50,26 @@ function OccLine({ d }: { d: Detail }) {
   );
 }
 
-function StepCard({ s, onOpen, current = false }: { s: Step; onOpen?: () => void; current?: boolean }) {
-  const cap = s.source_type === "import" ? `${s.window_title ?? ""}` : fmtTime(s.first_seen_ms);
+function StepCard({ s, onOpen, current = false, full = false }: { s: Step; onOpen?: () => void; current?: boolean; full?: boolean }) {
+  const isImport = s.source_type === "import";
+  const cap = isImport ? `${s.window_title ?? ""}` : fmtTime(s.first_seen_ms);
+  // 并排比较时写全：时间 · 来源，下一行应用 · 窗口标题（与旧页面 _step_caption 一致）；胶片条太窄，只放时间
+  const where = isImport ? "" : [s.app, s.window_title].filter(Boolean).join(" · ");
+  const tone = current ? "text-white" : "text-night-faint";
   const body = (
     <>
       <div className={`overflow-hidden rounded-[8px] ring-1 ${current ? "ring-2 ring-marker" : "ring-night-line"}`}>
-        {s.image_status === "ok" ? <Shot fid={s.frame_id} width={s.width} height={s.height} thumb={360} />
+        {s.image_status === "ok" ? <Shot fid={s.frame_id} width={s.width} height={s.height} thumb={full ? 720 : 360} />
           : <Unavailable className="aspect-video bg-night-3" />}
       </div>
-      <span className={`sr-num mt-1.5 block truncate font-mono text-[10.5px] ${current ? "text-white" : "text-night-faint"}`} title={cap}>{cap}</span>
+      {full ? (
+        <div className="mt-2 min-w-0 text-xs">
+          <p className={`sr-num truncate font-mono text-[11px] ${tone}`} title={`${cap} · ${s.source_label}`}>{cap} · {s.source_label}</p>
+          {where && <p className="mt-0.5 truncate text-night-faint" title={where}>{where}</p>}
+        </div>
+      ) : (
+        <span className={`sr-num mt-1.5 block truncate font-mono text-[10.5px] ${tone}`} title={cap}>{cap}</span>
+      )}
     </>
   );
   if (!onOpen) return <div aria-current={current || undefined}>{body}</div>;
@@ -110,7 +121,7 @@ function Context({ d, go, atOrigin, backToOrigin }: { d: Detail; go: (s: Step) =
         <div className="mt-4">
           <div className="grid gap-4 md:grid-cols-2">
             {(cmp === "prev" ? [other, ctx.current] : [ctx.current, other]).map((st) => (
-              <StepCard key={st.occurrence_id} s={st} current={st.occurrence_id === ctx.current.occurrence_id} />
+              <StepCard key={st.occurrence_id} s={st} full current={st.occurrence_id === ctx.current.occurrence_id} />
             ))}
           </div>
           <p className="mt-3 text-xs text-night-faint">{t("ctx.compareNote")} {gapMsg || t("ctx.noGap")}</p>
@@ -200,7 +211,7 @@ function Actions({ d, onChanged, onDeleted }: { d: Detail; onChanged: () => void
       <p className="mt-2.5 text-xs leading-relaxed text-faint">
         {o.favorited ? t("detail.favOn") : d.image_status !== "ok" ? t("detail.favNoImage") : t("detail.favHint")}
       </p>
-      <div className="mt-4 flex gap-2 border-t border-rule pt-4">
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-rule pt-4">
         <button className="sr-btn sr-btn-danger h-9 flex-1 text-[13px]" disabled={busy}
           onClick={() => run(async () => setOccPlan(await get<OccurrencePlan>(`/api/occurrences/${o.occurrence_id}/delete-plan`)))}>
           {t("detail.delOcc")}
@@ -290,7 +301,9 @@ export default function DetailPage({ fid, params }: { fid: string; params: URLSe
        ...d.lex_lines.map((i) => ({ kind: "lex" as const, quad: d.lines[i].quad, line: i }))]
     : [];
   const boxOf = (line: number) => boxes.findIndex((b) => b.line === line);
-  const dpr = window.devicePixelRatio || 1;
+  // 没有 OCR 行时说明原因：还在排队 / 识别、识别失败、或识别完成但没有文字
+  const ocrNote = d && (d.ocr_status === "failed" ? t("detail.ocrFailed")
+    : d.ocr_status && d.ocr_status !== "done" ? t("detail.ocrPending") : d.text || t("detail.ocrEmpty"));
 
   return (
     <div className="animate-rise space-y-5">
@@ -303,7 +316,8 @@ export default function DetailPage({ fid, params }: { fid: string; params: URLSe
 
       {det.loading && !d ? <div className="py-24 text-center"><Spinner /></div> : det.error ? <Banner tone="alarm">{det.error}</Banner> : d && (
         <>
-          <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+          {/* 窄屏单列也要 minmax(0,1fr)：默认的 auto 列会被长文本撑宽，看图台右边贴到屏幕边缘 */}
+          <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
             <section className="overflow-hidden rounded-card bg-night shadow-lift">
               <div className="flex flex-wrap items-center gap-3 border-b border-night-line px-4 py-3">
                 {d.image_ok && (
@@ -326,8 +340,9 @@ export default function DetailPage({ fid, params }: { fid: string; params: URLSe
                 {d.image_status === "expired" ? <Banner tone="warn">{t("detail.expired")}</Banner>
                   : !d.image_ok ? <Banner tone="warn">{t("detail.missing")}</Banner>
                     : (
+                      // 1:1：一个图片像素 = 一个 CSS 像素（与旧页面 max-width:none 的 <img> 一致）
                       <div className="mx-auto overflow-hidden rounded-[6px] shadow-[0_20px_60px_-20px_rgb(0_0_0/0.8)] ring-1 ring-white/5"
-                        style={zoom === "px" ? { width: d.width / dpr } : undefined}>
+                        style={zoom === "px" ? { width: d.width, maxWidth: "none" } : undefined}>
                         <Shot key={d.frame_id} fid={d.frame_id} width={d.width} height={d.height} boxes={boxes} focus={focus} animate />
                       </div>
                     )}
@@ -360,7 +375,7 @@ export default function DetailPage({ fid, params }: { fid: string; params: URLSe
                       );
                     })}
                   </ol>
-                ) : <p className="text-xs text-faint">{d.text || t("detail.ocrEmpty")}</p>}
+                ) : <p className={`text-xs ${d.ocr_status === "failed" ? "text-alarm" : "text-faint"}`}>{ocrNote}</p>}
               </Panel>
             </div>
           </div>
