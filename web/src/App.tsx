@@ -1,12 +1,13 @@
+import { useEffect, useMemo, useRef } from "react";
 import { CircleDot, Eraser, FolderUp, Search, Star } from "lucide-react";
 import { get, type Meta, type Status } from "./api";
 import { LangProvider, useT, type Key, type Lang } from "./i18n";
-import { useLoad, usePoll, useRoute } from "./lib";
+import { META_STALE_EVENT, useLoad, usePoll, useRoute } from "./lib";
 import SearchPage from "./SearchPage";
 import DetailPage from "./DetailPage";
 import RecorderPage from "./RecorderPage";
 import { CleanupPage, FavoritesPage, ImportPage } from "./ToolPages";
-import { Banner, Dot, MetaCtx, Segmented, Spinner, StatusCtx, ToastHost, stateOf, useMeta } from "./ui";
+import { Banner, ConnCtx, Dot, MetaCtx, Segmented, Spinner, StatusCtx, ToastHost, stateOf, useMeta } from "./ui";
 
 const NAV: { path: string; key: Key; icon: typeof Search }[] = [
   { path: "/", key: "nav.search", icon: Search },
@@ -45,10 +46,10 @@ function LangSwitch({ dark = false }: { dark?: boolean }) {
   );
 }
 
-function Sidebar({ active, status }: { active: string; status: Status | null }) {
+function Sidebar({ active, status, lost }: { active: string; status: Status | null; lost: boolean }) {
   const { t } = useT();
   const meta = useMeta();
-  const st = stateOf(status);
+  const st = stateOf(status, lost);
   const ix = (status?.index ?? {}) as Record<string, number>;
   return (
     <aside className="sr-dark-scroll sticky top-0 hidden h-screen w-[252px] shrink-0 flex-col overflow-y-auto bg-night text-night-text lg:flex">
@@ -78,12 +79,14 @@ function Sidebar({ active, status }: { active: string; status: Status | null }) 
             <Dot tone={st.tone} />
             {t(st.key)}
           </div>
-          {status?.alive && status.control.actual_state === "recording" && status.control.target_title && (
+          {lost ? (
+            <div className="mt-1.5 text-xs leading-relaxed text-night-faint">{t("mini.lostNote")}</div>
+          ) : status?.alive && status.control.actual_state === "recording" && status.control.target_title && (
             <div className="mt-1.5 truncate text-xs text-night-faint" title={status.control.target_title}>
               {status.control.target_process} · {status.control.target_title}
             </div>
           )}
-          {status && <div className="sr-num mt-2 font-mono text-[11px] text-night-faint">{t("mini.stats", { b: ix.backlog ?? 0, f: (ix.frames ?? 0).toLocaleString() })}</div>}
+          {status && !lost && <div className="sr-num mt-2 font-mono text-[11px] text-night-faint">{t("mini.stats", { b: ix.backlog ?? 0, f: (ix.frames ?? 0).toLocaleString() })}</div>}
         </a>
         <div className="flex items-center justify-between px-1">
           <LangSwitch dark />
@@ -94,9 +97,9 @@ function Sidebar({ active, status }: { active: string; status: Status | null }) 
   );
 }
 
-function TopBar({ active, status }: { active: string; status: Status | null }) {
+function TopBar({ active, status, lost }: { active: string; status: Status | null; lost: boolean }) {
   const { t } = useT();
-  const st = stateOf(status);
+  const st = stateOf(status, lost);
   return (
     <header className="sticky top-0 z-30 bg-night text-night-text lg:hidden">
       <div className="flex items-center gap-3 px-4 pt-3">
@@ -117,15 +120,49 @@ function TopBar({ active, status }: { active: string; status: Status | null }) {
   );
 }
 
+/** 筛选用的应用 / 类别 / 规则会随录制和导入变化：每分钟、窗口重新获得焦点、导入完成、连接恢复时重新拉一次。 */
+function useMetaRefresh(reload: () => void, lost: boolean) {
+  const last = useRef(Date.now());
+  useEffect(() => {
+    const now = (force: boolean) => {
+      if (!force && Date.now() - last.current < 5000) return; // focus 与 visibilitychange 常一起触发
+      last.current = Date.now();
+      reload();
+    };
+    const onFocus = () => now(false);
+    const onVisible = () => !document.hidden && now(false);
+    const onStale = () => now(true);
+    const iv = window.setInterval(() => !document.hidden && now(true), 60_000);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener(META_STALE_EVENT, onStale);
+    return () => {
+      window.clearInterval(iv);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener(META_STALE_EVENT, onStale);
+    };
+  }, [reload]);
+  const wasLost = useRef(lost);
+  useEffect(() => {
+    if (wasLost.current && !lost) reload();
+    wasLost.current = lost;
+  }, [lost, reload]);
+}
+
 function Shell() {
   const { t } = useT();
   const { path, params } = useRoute();
-  const meta = useLoad(() => get<Meta>("/api/meta"), []);
-  const status = usePoll(() => get<Status>("/api/status"), 2000);
+  const meta = useLoad((signal) => get<Meta>("/api/meta", signal), []);
+  const status = usePoll((signal) => get<Status>("/api/status", signal), 2000);
+  useMetaRefresh(meta.reload, status.lost);
+  const conn = useMemo(() => ({ lost: status.lost, error: status.error }), [status.lost, status.error]);
   const active = path.startsWith("/frame/") ? "/" : NAV.some((n) => n.path === path) ? path : "/";
 
-  if (meta.loading && !meta.data) return <div className="p-10"><Spinner /></div>;
-  if (meta.error || !meta.data) return <div className="p-10"><Banner tone="alarm">{t("common.connectFail", { e: meta.error ?? "" })}</Banner></div>;
+  // 后台刷新失败时保留已有的筛选列表，不把整页换成错误
+  if (!meta.data)
+    return meta.error ? <div className="p-10"><Banner tone="alarm">{t("common.connectFail", { e: meta.error })}</Banner></div>
+      : <div className="p-10"><Spinner /></div>;
   if (!meta.data.db_ok)
     return (
       <div className="mx-auto max-w-xl p-10">
@@ -138,17 +175,21 @@ function Shell() {
   return (
     <MetaCtx.Provider value={meta.data}>
       <StatusCtx.Provider value={status.data}>
-        <ToastHost>
-          <div className="flex min-h-screen bg-canvas font-sans text-[14.5px] leading-normal text-ink">
-            <Sidebar active={active} status={status.data} />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <TopBar active={active} status={status.data} />
-              <main className="mx-auto w-full max-w-[1480px] flex-1 px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
-                <Page path={path} params={params} />
-              </main>
+        <ConnCtx.Provider value={conn}>
+          <ToastHost>
+            <div className="flex min-h-screen bg-canvas font-sans text-[14.5px] leading-normal text-ink">
+              <Sidebar active={active} status={status.data} lost={status.lost} />
+              <div className="flex min-w-0 flex-1 flex-col">
+                <TopBar active={active} status={status.data} lost={status.lost} />
+                <main className="mx-auto w-full max-w-[1480px] flex-1 px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
+                  <Page path={path} params={params} />
+                </main>
+                {/* 侧栏（含本机访问说明）在窄屏隐藏，这里补一份 */}
+                <footer className="px-5 pb-6 text-[11px] leading-relaxed text-faint sm:px-8 lg:hidden">{meta.data.notice}</footer>
+              </div>
             </div>
-          </div>
-        </ToastHost>
+          </ToastHost>
+        </ConnCtx.Provider>
       </StatusCtx.Provider>
     </MetaCtx.Provider>
   );
