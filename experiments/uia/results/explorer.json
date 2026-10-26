@@ -1,0 +1,426 @@
+{
+ "app": "explorer",
+ "dpi_mode": "per_monitor_v2",
+ "notes": {
+  "private_ui": true
+ },
+ "window_class": "CabinetWClass",
+ "capture": {
+  "size": [
+   1782,
+   1391
+  ],
+  "method": "print_window",
+  "rect": [
+   129,
+   120,
+   1911,
+   1511
+  ],
+  "dpi": 144,
+  "capture_ms": 67.8,
+  "ocr_ms": 7426.1
+ },
+ "cold_series": [
+  {
+   "t_ms": 132,
+   "call_ms": 131.2,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 330,
+   "call_ms": 95.1,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 547,
+   "call_ms": 115.7,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 735,
+   "call_ms": 86.5,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 925,
+   "call_ms": 87.7,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 1122,
+   "call_ms": 95.8,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 1316,
+   "call_ms": 92.1,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 1512,
+   "call_ms": 94.4,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 1700,
+   "call_ms": 86.4,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 1894,
+   "call_ms": 92.5,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 2121,
+   "call_ms": 124.3,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 2313,
+   "call_ms": 90.7,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 2525,
+   "call_ms": 110.3,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 2726,
+   "call_ms": 99.5,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 2923,
+   "call_ms": 94.7,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 3127,
+   "call_ms": 103.0,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 3314,
+   "call_ms": 85.7,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 3513,
+   "call_ms": 97.3,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 3708,
+   "call_ms": 92.8,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 3901,
+   "call_ms": 91.9,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 4098,
+   "call_ms": 95.0,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 4296,
+   "call_ms": 96.9,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 4490,
+   "call_ms": 92.3,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 4687,
+   "call_ms": 95.0,
+   "elements": 247,
+   "vis_chars": 3061
+  },
+  {
+   "t_ms": 4885,
+   "call_ms": 95.5,
+   "elements": 247,
+   "vis_chars": 3061
+  }
+ ],
+ "latency_ms": {
+  "first": {
+   "build_cache": 87.3,
+   "walk": 4.9,
+   "textpattern_total": 12.3,
+   "tp_lines": 7.3,
+   "tp_doc": 1.6,
+   "total": 104.6
+  },
+  "median_rest": {
+   "build_cache": 86.9,
+   "walk": 5.2,
+   "textpattern_total": 13.5,
+   "tp_lines": 7.3,
+   "tp_doc": 2.0,
+   "total": 105.3
+  },
+  "n": 7
+ },
+ "per_run_elements": [
+  247,
+  247,
+  247,
+  247,
+  247,
+  247,
+  247
+ ],
+ "per_run_visible_chars": [
+  3015,
+  3015,
+  3015,
+  3015,
+  3015,
+  3015,
+  3015
+ ],
+ "latency_lite_ms": {
+  "build_cache": 84.9,
+  "walk": 5.2,
+  "textpattern_total": 3.1,
+  "tp_lines": 0.0,
+  "tp_doc": 0.0,
+  "total": 94.0
+ },
+ "analysis": {
+  "elements": 247,
+  "text_items_visible": 98,
+  "text_items_all": 100,
+  "chars_visible": 1114,
+  "chars_all": 1121,
+  "ocr_lines": 158,
+  "ocr_chars": 1626,
+  "frameworks": [
+   "DirectUI",
+   "Win32",
+   "XAML"
+  ],
+  "window_name": "<省略>",
+  "ctypes_visible_text": {
+   "Edit": 210,
+   "Button": 27,
+   "ListItem": 26,
+   "TreeItem": 16,
+   "SplitButton": 12,
+   "Text": 9,
+   "Pane": 3,
+   "Group": 2,
+   "RadioButton": 2,
+   "Window": 1,
+   "StatusBar": 1,
+   "Tree": 1
+  },
+  "textpatterns": [
+   {
+    "ct": "Text",
+    "cls": "TextBlock",
+    "visible_chars": 15,
+    "lines": 1,
+    "doc_len": 15,
+    "error": null
+   },
+   {
+    "ct": "Edit",
+    "cls": "TextBox",
+    "visible_chars": 0,
+    "lines": 0,
+    "doc_len": 0,
+    "error": null
+   },
+   {
+    "ct": "Text",
+    "cls": "TextBlock",
+    "visible_chars": 3,
+    "lines": 1,
+    "doc_len": 3,
+    "error": null
+   },
+   {
+    "ct": "Text",
+    "cls": "TextBlock",
+    "visible_chars": 9,
+    "lines": 1,
+    "doc_len": 9,
+    "error": null
+   },
+   {
+    "ct": "Text",
+    "cls": "TextBlock",
+    "visible_chars": 2,
+    "lines": 1,
+    "doc_len": 2,
+    "error": null
+   },
+   {
+    "ct": "Text",
+    "cls": "TextBlock",
+    "visible_chars": 5,
+    "lines": 1,
+    "doc_len": 5,
+    "error": null
+   },
+   {
+    "ct": "Text",
+    "cls": "TextBlock",
+    "visible_chars": 7,
+    "lines": 1,
+    "doc_len": 7,
+    "error": null
+   },
+   {
+    "ct": "Text",
+    "cls": "TextBlock",
+    "visible_chars": 5,
+    "lines": 1,
+    "doc_len": 5,
+    "error": null
+   }
+  ],
+  "password_fields": [],
+  "password_plaintext_anywhere": false,
+  "edits": "<省略>",
+  "coverage": {
+   "tree": {
+    "ocr_in_uia_line": 0.926,
+    "ocr_in_uia_char": 0.911,
+    "ocr_exact_of_found": 0.96,
+    "uia_in_ocr_line": 0.571,
+    "uia_in_ocr_char": 0.759,
+    "uia_lines": 98
+   },
+   "textpattern": {
+    "ocr_in_uia_line": 0.074,
+    "ocr_in_uia_char": 0.058,
+    "ocr_exact_of_found": 0.8,
+    "uia_in_ocr_line": 0.857,
+    "uia_in_ocr_char": 0.956,
+    "uia_lines": 7
+   },
+   "content": {
+    "ocr_in_uia_line": 0.904,
+    "ocr_in_uia_char": 0.907,
+    "ocr_exact_of_found": 0.959,
+    "uia_in_ocr_line": 0.831,
+    "uia_in_ocr_char": 0.896,
+    "uia_lines": 65
+   },
+   "union": {
+    "ocr_in_uia_line": 0.926,
+    "ocr_in_uia_char": 0.911,
+    "ocr_exact_of_found": 0.96,
+    "uia_in_ocr_line": 0.57,
+    "uia_in_ocr_char": 0.758,
+    "uia_lines": 100
+   }
+  },
+  "ex_ocr_differs": "<已省略 5 条：窗口含账号信息>",
+  "ex_ocr_not_in_uia": "<已省略 10 条：窗口含账号信息>",
+  "ex_uia_not_in_ocr": "<已省略 25 条：窗口含账号信息>",
+  "ex_content_not_in_ocr": "<已省略 11 条：窗口含账号信息>",
+  "chars_tp_value_offscreen": 0,
+  "rect_align_tree": {
+   "pairs": 6,
+   "center_inside_frac": 1.0,
+   "median_iou": 0.495,
+   "median_dcx": -12.5,
+   "median_dcy": 0.5,
+   "median_dleft": -27.5,
+   "median_dtop": 8.5
+  },
+  "rect_align_textpattern": {
+   "pairs": 4,
+   "center_inside_frac": 0.5,
+   "median_iou": 0.348,
+   "median_dcx": 52.5,
+   "median_dcy": 263.2,
+   "median_dleft": 27.5,
+   "median_dtop": 257.5
+  },
+  "markers": {
+   "EXP-F01": {
+    "ocr": true,
+    "tree_visible": true,
+    "tree_all": true,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "EXP-F10": {
+    "ocr": true,
+    "tree_visible": true,
+    "tree_all": true,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "EXP-F40": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "SR-UIA-Explorer": {
+    "ocr": true,
+    "tree_visible": true,
+    "tree_all": true,
+    "tp_visible": true,
+    "tp_document": true
+   }
+  }
+ },
+ "new_ocr_lines_after_uia": "<已省略 2 条>",
+ "occluded": {
+  "uia_visible_items": 98,
+  "uia_visible_items_unoccluded": 98,
+  "uia_same_items_frac": 1.0,
+  "tp_visible_chars": 46,
+  "tp_visible_chars_unoccluded": 46,
+  "uia_ms": 94.7,
+  "printwindow_ocr_line_keep": 1.0,
+  "printwindow_shows_occluder": false
+ },
+ "minimized": {
+  "elements": 8,
+  "visible_items": 0,
+  "all_items": 7,
+  "tp_visible_chars": 0,
+  "tp_doc_chars": 0,
+  "uia_ms": 10.3,
+  "capture": "minimized"
+ }
+}

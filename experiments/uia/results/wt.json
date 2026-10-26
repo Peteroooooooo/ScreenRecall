@@ -1,0 +1,393 @@
+{
+ "app": "wt",
+ "dpi_mode": "per_monitor_v2",
+ "notes": {},
+ "window_class": "CASCADIA_HOSTING_WINDOW_CLASS",
+ "capture": {
+  "size": [
+   1782,
+   1391
+  ],
+  "method": "print_window",
+  "rect": [
+   129,
+   120,
+   1911,
+   1511
+  ],
+  "dpi": 144,
+  "capture_ms": 42.9,
+  "ocr_ms": 5532.8
+ },
+ "cold_series": [
+  {
+   "t_ms": 32,
+   "call_ms": 32.1,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 147,
+   "call_ms": 14.1,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 270,
+   "call_ms": 22.0,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 397,
+   "call_ms": 26.2,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 515,
+   "call_ms": 17.7,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 640,
+   "call_ms": 23.8,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 768,
+   "call_ms": 27.6,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 902,
+   "call_ms": 32.5,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 1030,
+   "call_ms": 26.8,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 1144,
+   "call_ms": 13.6,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 1265,
+   "call_ms": 20.2,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 1384,
+   "call_ms": 17.6,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 1501,
+   "call_ms": 16.3,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 1620,
+   "call_ms": 18.4,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 1737,
+   "call_ms": 16.2,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 1873,
+   "call_ms": 35.8,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 1996,
+   "call_ms": 21.7,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 2119,
+   "call_ms": 21.8,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 2240,
+   "call_ms": 20.6,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 2358,
+   "call_ms": 17.6,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 2475,
+   "call_ms": 16.2,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 2606,
+   "call_ms": 30.3,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 2729,
+   "call_ms": 22.2,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 2853,
+   "call_ms": 23.4,
+   "elements": 23,
+   "vis_chars": 5717
+  },
+  {
+   "t_ms": 2985,
+   "call_ms": 30.6,
+   "elements": 23,
+   "vis_chars": 5717
+  }
+ ],
+ "latency_ms": {
+  "first": {
+   "build_cache": 20.5,
+   "walk": 0.5,
+   "textpattern_total": 20.4,
+   "tp_lines": 19.1,
+   "tp_doc": 0.6,
+   "total": 41.4
+  },
+  "median_rest": {
+   "build_cache": 22.3,
+   "walk": 0.5,
+   "textpattern_total": 20.5,
+   "tp_lines": 19.0,
+   "tp_doc": 0.5,
+   "total": 46.2
+  },
+  "n": 7
+ },
+ "per_run_elements": [
+  23,
+  23,
+  23,
+  23,
+  23,
+  23,
+  23
+ ],
+ "per_run_visible_chars": [
+  98,
+  98,
+  98,
+  98,
+  98,
+  98,
+  98
+ ],
+ "latency_lite_ms": {
+  "build_cache": 11.3,
+  "walk": 0.5,
+  "textpattern_total": 0.8,
+  "tp_lines": 0.0,
+  "tp_doc": 0.0,
+  "total": 12.5
+ },
+ "analysis": {
+  "elements": 23,
+  "text_items_visible": 12,
+  "text_items_all": 13,
+  "chars_visible": 68,
+  "chars_all": 74,
+  "ocr_lines": 83,
+  "ocr_chars": 847,
+  "frameworks": [
+   "Win32",
+   "XAML"
+  ],
+  "window_name": "SR-UIA-CONSOLE",
+  "ctypes_visible_text": {
+   "Button": 7,
+   "Text": 2,
+   "Window": 1,
+   "TabItem": 1,
+   "SplitButton": 1,
+   "ScrollBar": 1,
+   "MenuBar": 1,
+   "MenuItem": 1
+  },
+  "textpatterns": [
+   {
+    "ct": "Text",
+    "cls": "TextBlock",
+    "visible_chars": 14,
+    "lines": 1,
+    "doc_len": 14,
+    "error": null
+   },
+   {
+    "ct": "Text",
+    "cls": "TermControl",
+    "visible_chars": 5605,
+    "lines": 31,
+    "doc_len": 24125,
+    "error": null
+   }
+  ],
+  "password_fields": [],
+  "password_plaintext_anywhere": false,
+  "edits": [],
+  "coverage": {
+   "tree": {
+    "ocr_in_uia_line": 0.012,
+    "ocr_in_uia_char": 0.018,
+    "ocr_exact_of_found": 1.0,
+    "uia_in_ocr_line": 0.083,
+    "uia_in_ocr_char": 0.206,
+    "uia_lines": 12
+   },
+   "textpattern": {
+    "ocr_in_uia_line": 1.0,
+    "ocr_in_uia_char": 1.0,
+    "ocr_exact_of_found": 0.952,
+    "uia_in_ocr_line": 1.0,
+    "uia_in_ocr_char": 1.0,
+    "uia_lines": 32
+   },
+   "content": {
+    "ocr_in_uia_line": 1.0,
+    "ocr_in_uia_char": 1.0,
+    "ocr_exact_of_found": 0.952,
+    "uia_in_ocr_line": 0.969,
+    "uia_in_ocr_char": 0.982,
+    "uia_lines": 32
+   },
+   "union": {
+    "ocr_in_uia_line": 1.0,
+    "ocr_in_uia_char": 1.0,
+    "ocr_exact_of_found": 0.952,
+    "uia_in_ocr_line": 0.738,
+    "uia_in_ocr_char": 0.936,
+    "uia_lines": 42
+   }
+  },
+  "ex_ocr_differs": [
+   {
+    "ocr": "CON-L174:",
+    "uia": "1con-l174",
+    "score": 88.9
+   },
+   {
+    "ocr": "CON-L178：",
+    "uia": "9con-l178",
+    "score": 88.9
+   },
+   {
+    "ocr": "CON-L192：",
+    "uia": "con-l192控",
+    "score": 88.9
+   },
+   {
+    "ocr": "CON-L20O控制台输出",
+    "uia": "con-l200控制台输出",
+    "score": 92.3
+   }
+  ],
+  "ex_ocr_not_in_uia": [],
+  "ex_uia_not_in_ocr": [
+   "关闭标签页",
+   "新建标签页",
+   "powershell.exe",
+   "垂直",
+   "垂直小幅下降",
+   "垂直大幅下降",
+   "垂直小幅增长",
+   "系统",
+   "最小化",
+   "最大化",
+   "关闭"
+  ],
+  "ex_content_not_in_ocr": [
+   "powershell.exe"
+  ],
+  "chars_tp_value_offscreen": 0,
+  "rect_align_tree": {
+   "pairs": 0
+  },
+  "rect_align_textpattern": {
+   "pairs": 2,
+   "center_inside_frac": 1.0,
+   "median_iou": 0.556,
+   "median_dcx": -306.2,
+   "median_dcy": 0.8,
+   "median_dleft": -1.0,
+   "median_dtop": 1.0
+  },
+  "markers": {
+   "CON-L001": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": true
+   },
+   "CON-L150": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": true
+   },
+   "CON-L200": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": true,
+    "tp_document": true
+   }
+  }
+ },
+ "new_ocr_lines_after_uia": [],
+ "occluded": {
+  "uia_visible_items": 12,
+  "uia_visible_items_unoccluded": 12,
+  "uia_same_items_frac": 1.0,
+  "tp_visible_chars": 5619,
+  "tp_visible_chars_unoccluded": 5619,
+  "uia_ms": 48.8,
+  "printwindow_ocr_line_keep": 1.0,
+  "printwindow_shows_occluder": false
+ },
+ "minimized": {
+  "elements": 23,
+  "visible_items": 0,
+  "all_items": 17,
+  "tp_visible_chars": 5619,
+  "tp_doc_chars": 24139,
+  "uia_ms": 70.3,
+  "capture": "minimized"
+ }
+}

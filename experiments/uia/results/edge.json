@@ -1,0 +1,553 @@
+{
+ "app": "edge",
+ "dpi_mode": "per_monitor_v2",
+ "notes": {},
+ "window_class": "Chrome_WidgetWin_1",
+ "browser_before": {
+  "cpu_pct_of_one_core": 2.2,
+  "private_mib": 303.1,
+  "procs": 8
+ },
+ "capture": {
+  "size": [
+   1782,
+   1391
+  ],
+  "method": "print_window",
+  "rect": [
+   129,
+   120,
+   1911,
+   1511
+  ],
+  "dpi": 144,
+  "capture_ms": 33.0,
+  "ocr_ms": 5208.5
+ },
+ "cold_series": [
+  {
+   "t_ms": 39,
+   "call_ms": 39.0,
+   "elements": 49,
+   "vis_chars": 267
+  },
+  {
+   "t_ms": 216,
+   "call_ms": 75.3,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 402,
+   "call_ms": 84.2,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 572,
+   "call_ms": 68.5,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 753,
+   "call_ms": 79.6,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 933,
+   "call_ms": 78.8,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 1109,
+   "call_ms": 73.8,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 1283,
+   "call_ms": 73.1,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 1456,
+   "call_ms": 71.5,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 1627,
+   "call_ms": 70.4,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 1814,
+   "call_ms": 85.7,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 1999,
+   "call_ms": 83.0,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 2178,
+   "call_ms": 77.5,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 2350,
+   "call_ms": 70.9,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 2530,
+   "call_ms": 75.9,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 2707,
+   "call_ms": 76.1,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 2888,
+   "call_ms": 79.8,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 3059,
+   "call_ms": 69.6,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 3237,
+   "call_ms": 76.7,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 3410,
+   "call_ms": 71.6,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 3584,
+   "call_ms": 72.5,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 3751,
+   "call_ms": 65.9,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 3922,
+   "call_ms": 69.9,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 4106,
+   "call_ms": 81.8,
+   "elements": 159,
+   "vis_chars": 1713
+  },
+  {
+   "t_ms": 4278,
+   "call_ms": 70.7,
+   "elements": 159,
+   "vis_chars": 1713
+  }
+ ],
+ "latency_ms": {
+  "first": {
+   "build_cache": 33.4,
+   "walk": 3.0,
+   "textpattern_total": 101.3,
+   "tp_lines": 51.8,
+   "tp_doc": 2.2,
+   "total": 137.8
+  },
+  "median_rest": {
+   "build_cache": 33.6,
+   "walk": 3.1,
+   "textpattern_total": 97.7,
+   "tp_lines": 51.5,
+   "tp_doc": 2.3,
+   "total": 135.0
+  },
+  "n": 7
+ },
+ "per_run_elements": [
+  159,
+  159,
+  159,
+  159,
+  159,
+  159,
+  159
+ ],
+ "per_run_visible_chars": [
+  1002,
+  1002,
+  1002,
+  1002,
+  1002,
+  1002,
+  1002
+ ],
+ "latency_lite_ms": {
+  "build_cache": 20.7,
+  "walk": 2.9,
+  "textpattern_total": 44.5,
+  "tp_lines": 0.0,
+  "tp_doc": 0.0,
+  "total": 68.1
+ },
+ "analysis": {
+  "elements": 159,
+  "text_items_visible": 76,
+  "text_items_all": 121,
+  "chars_visible": 957,
+  "chars_all": 7261,
+  "ocr_lines": 50,
+  "ocr_chars": 752,
+  "frameworks": [
+   "Chrome",
+   "Win32"
+  ],
+  "window_name": "SR-UIA 测试页 Probe 和另外 1 个页面 - [InPrivate] - Microsoft​ Edge",
+  "ctypes_visible_text": {
+   "Text": 27,
+   "DataItem": 24,
+   "Button": 14,
+   "Group": 7,
+   "Edit": 3,
+   "TabItem": 2,
+   "Window": 1,
+   "Pane": 1,
+   "ToolBar": 1,
+   "Hyperlink": 1,
+   "Document": 1,
+   "Tab": 1
+  },
+  "textpatterns": [
+   {
+    "ct": "Edit",
+    "cls": "OmniboxViewViews",
+    "visible_chars": 0,
+    "lines": 0,
+    "doc_len": 63,
+    "error": null
+   },
+   {
+    "ct": "Text",
+    "cls": "Label",
+    "visible_chars": 0,
+    "lines": 0,
+    "doc_len": 26,
+    "error": null
+   },
+   {
+    "ct": "Document",
+    "cls": "",
+    "visible_chars": 711,
+    "lines": 44,
+    "doc_len": 6912,
+    "error": null
+   },
+   {
+    "ct": "Edit",
+    "cls": "Textfield",
+    "visible_chars": 0,
+    "lines": 0,
+    "doc_len": 0,
+    "error": null
+   }
+  ],
+  "password_fields": [
+   {
+    "name": "密码",
+    "ct": "Edit",
+    "value_len": 15,
+    "value_is_plaintext": false
+   }
+  ],
+  "password_plaintext_anywhere": false,
+  "edits": [
+   {
+    "name": "地址和搜索栏",
+    "value": "%USERPROFILE%/AppData/Local/Temp/sr-uia-run/fixtures/page.html",
+    "ct": "Edit"
+   },
+   {
+    "name": "用户名",
+    "value": "probe_user_01",
+    "ct": "Edit"
+   }
+  ],
+  "coverage": {
+   "tree": {
+    "ocr_in_uia_line": 0.864,
+    "ocr_in_uia_char": 0.797,
+    "ocr_exact_of_found": 0.921,
+    "uia_in_ocr_line": 0.644,
+    "uia_in_ocr_char": 0.655,
+    "uia_lines": 73
+   },
+   "textpattern": {
+    "ocr_in_uia_line": 0.841,
+    "ocr_in_uia_char": 0.78,
+    "ocr_exact_of_found": 0.973,
+    "uia_in_ocr_line": 0.923,
+    "uia_in_ocr_char": 0.918,
+    "uia_lines": 39
+   },
+   "content": {
+    "ocr_in_uia_line": 0.886,
+    "ocr_in_uia_char": 0.817,
+    "ocr_exact_of_found": 0.949,
+    "uia_in_ocr_line": 0.881,
+    "uia_in_ocr_char": 0.847,
+    "uia_lines": 59
+   },
+   "union": {
+    "ocr_in_uia_line": 0.909,
+    "ocr_in_uia_char": 0.83,
+    "ocr_exact_of_found": 0.95,
+    "uia_in_ocr_line": 0.667,
+    "uia_in_ocr_char": 0.673,
+    "uia_lines": 81
+   }
+  },
+  "ex_ocr_differs": [
+   {
+    "ocr": "）SR-UIA测试页Probe",
+    "uia": "sr-uia测试页probe",
+    "score": 96.6
+   },
+   {
+    "ocr": "收到。另外 rn 和m、0和 O、1和I在截图里容易认错：rnm 0O0 1l1。",
+    "uia": "收到。另外rn和m、0和o、1和l在截图里容易认错:rnm0o01l1。",
+    "score": 97.2
+   }
+  ],
+  "ex_ocr_not_in_uia": [
+   " 文件 %USERPROFILE%/AppData/Local/Temp/sr-uia-run/fixtures/page.html",
+   "TICK 66",
+   "CANVAS-ONLY画布里的文字42",
+   "ARIAHIDDEN-VISIBLE屏幕可见但对辅助技术隐藏"
+  ],
+  "ex_uia_not_in_ocr": [
+   "SR-UIA 测试页 Probe 和另外 1 个页面 - [InPrivate] - Microsoft​ Edge",
+   "SR-UIA 测试页 Probe - Microsoft Edge (InPrivate)",
+   "最小化",
+   "最大化",
+   "关闭",
+   "应用栏",
+   "返回",
+   "刷新",
+   "地址和搜索栏",
+   "将此页面添加到收藏夹(Ctrl+D)",
+   "收藏夹",
+   "无痕浏览",
+   "设置及其他 (Alt+F)",
+   "若要进行快速访问，请将你的网址收藏放在此收藏夹栏上。",
+   "立即管理收藏夹",
+   "TICK 92",
+   "SRONLY-INVISIBLE 只给读屏器的隐藏文字",
+   "消息 来自 李雷",
+   "消息 来自 Alice Zhang",
+   "消息 来自 韩梅梅",
+   "消息 来自 Bob Smith",
+   "标签页栏",
+   "搜索标签页",
+   "SR-UIA 测试页 Probe - 内存使用率 - 26.7 MB",
+   "关闭标签页"
+  ],
+  "ex_content_not_in_ocr": [
+   "地址和搜索栏",
+   "若要进行快速访问，请将你的网址收藏放在此收藏夹栏上。",
+   "立即管理收藏夹",
+   "TICK 92",
+   "SRONLY-INVISIBLE 只给读屏器的隐藏文字",
+   "SR-UIA 测试页 Probe - 内存使用率 - 26.7 MB",
+   "密码 \n•••••••••••••••"
+  ],
+  "chars_tp_value_offscreen": 147,
+  "rect_align_tree": {
+   "pairs": 25,
+   "center_inside_frac": 1.0,
+   "median_iou": 0.517,
+   "median_dcx": -7.5,
+   "median_dcy": 1.5,
+   "median_dleft": 12.0,
+   "median_dtop": 7.0
+  },
+  "rect_align_textpattern": {
+   "pairs": 31,
+   "center_inside_frac": 1.0,
+   "median_iou": 0.832,
+   "median_dcx": 1.0,
+   "median_dcy": 2.0,
+   "median_dleft": -1.0,
+   "median_dtop": 4.0
+  },
+  "markers": {
+   "探针页面": {
+    "ocr": true,
+    "tree_visible": true,
+    "tree_all": true,
+    "tp_visible": true,
+    "tp_document": true
+   },
+   "TICK": {
+    "ocr": true,
+    "tree_visible": true,
+    "tree_all": true,
+    "tp_visible": true,
+    "tp_document": true
+   },
+   "probe_user_01": {
+    "ocr": true,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": true,
+    "tp_document": true
+   },
+   "Dummy-Pa55word!": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "CANVAS-ONLY": {
+    "ocr": true,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "ARIAHIDDEN-VISIBLE": {
+    "ocr": true,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "SRONLY-INVISIBLE": {
+    "ocr": false,
+    "tree_visible": true,
+    "tree_all": true,
+    "tp_visible": true,
+    "tp_document": true
+   },
+   "DISPLAYNONE-SECRET": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "INV-20261026-0731": {
+    "ocr": true,
+    "tree_visible": true,
+    "tree_all": true,
+    "tp_visible": true,
+    "tp_document": true
+   },
+   "ORD-2026-0003": {
+    "ocr": true,
+    "tree_visible": true,
+    "tree_all": true,
+    "tp_visible": true,
+    "tp_document": true
+   },
+   "CODE-BLOCK-MARKER": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": false,
+    "tp_document": true
+   },
+   "ARTICLE-P01": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": false,
+    "tp_document": true
+   },
+   "ARTICLE-P20": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": false,
+    "tp_document": true
+   },
+   "ARTICLE-P40": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": false,
+    "tp_document": true
+   },
+   "HIDDENTAB-MARKER": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": false
+   }
+  }
+ },
+ "browser_after_uia": {
+  "cpu_pct_of_one_core": 1.9,
+  "private_mib": 302.2,
+  "procs": 8
+ },
+ "new_ocr_lines_after_uia": [
+  "TICK 114 "
+ ],
+ "occluded": {
+  "uia_visible_items": 74,
+  "uia_visible_items_unoccluded": 74,
+  "uia_same_items_frac": 0.986,
+  "tp_visible_chars": 712,
+  "tp_visible_chars_unoccluded": 711,
+  "uia_ms": 129.0,
+  "printwindow_ocr_line_keep": 0.991,
+  "printwindow_shows_occluder": false
+ },
+ "minimized": {
+  "elements": 144,
+  "visible_items": 57,
+  "all_items": 121,
+  "tp_visible_chars": 712,
+  "tp_doc_chars": 7002,
+  "uia_ms": 143.4,
+  "capture": "minimized"
+ },
+ "browser_idle_45s_later": {
+  "cpu_pct_of_one_core": 3.6,
+  "private_mib": 290.8,
+  "procs": 8
+ }
+}

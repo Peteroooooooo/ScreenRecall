@@ -1,0 +1,289 @@
+{
+ "app": "word",
+ "dpi_mode": "per_monitor_v2",
+ "notes": {
+  "private_ui": true,
+  "slow": true
+ },
+ "window_class": "OpusApp",
+ "capture": {
+  "size": [
+   1782,
+   1391
+  ],
+  "method": "print_window",
+  "rect": [
+   129,
+   120,
+   1911,
+   1511
+  ],
+  "dpi": 144,
+  "capture_ms": 153.2,
+  "ocr_ms": 8168.7
+ },
+ "cold_series": [
+  {
+   "t_ms": 2911,
+   "call_ms": 2909.6,
+   "elements": 317,
+   "vis_chars": 1986
+  },
+  {
+   "t_ms": 5952,
+   "call_ms": 2938.0,
+   "elements": 319,
+   "vis_chars": 1986
+  },
+  {
+   "t_ms": 8709,
+   "call_ms": 2654.6,
+   "elements": 319,
+   "vis_chars": 1986
+  },
+  {
+   "t_ms": 11953,
+   "call_ms": 3140.9,
+   "elements": 319,
+   "vis_chars": 1986
+  },
+  {
+   "t_ms": 14674,
+   "call_ms": 2619.1,
+   "elements": 319,
+   "vis_chars": 1986
+  },
+  {
+   "t_ms": 17369,
+   "call_ms": 2591.8,
+   "elements": 319,
+   "vis_chars": 1986
+  }
+ ],
+ "latency_ms": {
+  "first": {
+   "build_cache": 296.5,
+   "walk": 6.2,
+   "textpattern_total": 154.3,
+   "tp_lines": 82.2,
+   "tp_doc": 2.9,
+   "total": 457.0
+  },
+  "median_rest": {
+   "build_cache": 1580.7,
+   "walk": 6.5,
+   "textpattern_total": 151.8,
+   "tp_lines": 79.4,
+   "tp_doc": 2.9,
+   "total": 1744.5
+  },
+  "n": 7
+ },
+ "per_run_elements": [
+  319,
+  319,
+  319,
+  319,
+  319,
+  319,
+  319
+ ],
+ "per_run_visible_chars": [
+  1116,
+  1116,
+  1116,
+  1116,
+  1116,
+  1116,
+  1116
+ ],
+ "latency_lite_ms": {
+  "build_cache": 228.5,
+  "walk": 6.2,
+  "textpattern_total": 68.2,
+  "tp_lines": 0.0,
+  "tp_doc": 0.0,
+  "total": 303.3
+ },
+ "analysis": {
+  "elements": 319,
+  "text_items_visible": 143,
+  "text_items_all": 173,
+  "chars_visible": 900,
+  "chars_all": 1286,
+  "ocr_lines": 134,
+  "ocr_chars": 1128,
+  "frameworks": [
+   "Chrome",
+   "Win32",
+   "WinForm"
+  ],
+  "window_name": "<省略>",
+  "ctypes_visible_text": {
+   "Button": 80,
+   "MenuItem": 22,
+   "Pane": 14,
+   "Group": 14,
+   "TabItem": 13,
+   "SplitButton": 9,
+   "Edit": 5,
+   "RadioButton": 5,
+   "ComboBox": 5,
+   "Window": 3,
+   "Custom": 3,
+   "Document": 2
+  },
+  "textpatterns": [
+   {
+    "ct": "Document",
+    "cls": "",
+    "visible_chars": 73,
+    "lines": 11,
+    "doc_len": 680,
+    "error": null
+   },
+   {
+    "ct": "Edit",
+    "cls": "NetUISearchBoxTextbox",
+    "visible_chars": 0,
+    "lines": 0,
+    "doc_len": 0,
+    "error": null
+   },
+   {
+    "ct": "Edit",
+    "cls": "NetUITextbox",
+    "visible_chars": 9,
+    "lines": 2,
+    "doc_len": 9,
+    "error": null
+   },
+   {
+    "ct": "Edit",
+    "cls": "NetUITextbox",
+    "visible_chars": 2,
+    "lines": 2,
+    "doc_len": 2,
+    "error": null
+   },
+   {
+    "ct": "Document",
+    "cls": "_WwG",
+    "visible_chars": 786,
+    "lines": 28,
+    "doc_len": 3381,
+    "error": null
+   }
+  ],
+  "password_fields": [],
+  "password_plaintext_anywhere": false,
+  "edits": "<省略>",
+  "coverage": {
+   "tree": {
+    "ocr_in_uia_line": 0.574,
+    "ocr_in_uia_char": 0.259,
+    "ocr_exact_of_found": 0.985,
+    "uia_in_ocr_line": 0.366,
+    "uia_in_ocr_char": 0.222,
+    "uia_lines": 142
+   },
+   "textpattern": {
+    "ocr_in_uia_line": 0.374,
+    "ocr_in_uia_char": 0.729,
+    "ocr_exact_of_found": 0.884,
+    "uia_in_ocr_line": 0.977,
+    "uia_in_ocr_char": 0.995,
+    "uia_lines": 43
+   },
+   "content": {
+    "ocr_in_uia_line": 0.557,
+    "ocr_in_uia_char": 0.792,
+    "ocr_exact_of_found": 0.922,
+    "uia_in_ocr_line": 0.889,
+    "uia_in_ocr_char": 0.953,
+    "uia_lines": 63
+   },
+   "union": {
+    "ocr_in_uia_line": 0.809,
+    "ocr_in_uia_char": 0.881,
+    "ocr_exact_of_found": 0.946,
+    "uia_in_ocr_line": 0.468,
+    "uia_in_ocr_char": 0.565,
+    "uia_lines": 171
+   }
+  },
+  "ex_ocr_differs": "<已省略 5 条：窗口含账号信息>",
+  "ex_ocr_not_in_uia": "<已省略 22 条：窗口含账号信息>",
+  "ex_uia_not_in_ocr": "<已省略 25 条：窗口含账号信息>",
+  "ex_content_not_in_ocr": "<已省略 7 条：窗口含账号信息>",
+  "chars_tp_value_offscreen": 168,
+  "rect_align_tree": {
+   "pairs": 12,
+   "center_inside_frac": 1.0,
+   "median_iou": 0.378,
+   "median_dcx": 0.2,
+   "median_dcy": 0.0,
+   "median_dleft": 16.5,
+   "median_dtop": 6.0
+  },
+  "rect_align_textpattern": {
+   "pairs": 27,
+   "center_inside_frac": 1.0,
+   "median_iou": 0.823,
+   "median_dcx": -4.0,
+   "median_dcy": 0.0,
+   "median_dleft": -2.0,
+   "median_dtop": 0.0
+  },
+  "markers": {
+   "WORD-P01": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": true,
+    "tp_document": true
+   },
+   "WORD-P10": {
+    "ocr": true,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": true,
+    "tp_document": true
+   },
+   "WORD-P40": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": true
+   },
+   "WORD-P60": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": true
+   }
+  }
+ },
+ "new_ocr_lines_after_uia": "<已省略 0 条>",
+ "occluded": {
+  "uia_visible_items": 141,
+  "uia_visible_items_unoccluded": 141,
+  "uia_same_items_frac": 1.0,
+  "tp_visible_chars": 870,
+  "tp_visible_chars_unoccluded": 870,
+  "uia_ms": 408.1,
+  "printwindow_ocr_line_keep": 1.0,
+  "printwindow_shows_occluder": false
+ },
+ "minimized": {
+  "elements": 319,
+  "visible_items": 0,
+  "all_items": 294,
+  "tp_visible_chars": 870,
+  "tp_doc_chars": 4072,
+  "uia_ms": 488.0,
+  "capture": "minimized"
+ }
+}
