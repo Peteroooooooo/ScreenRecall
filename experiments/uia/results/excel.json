@@ -1,0 +1,426 @@
+{
+ "app": "excel",
+ "dpi_mode": "per_monitor_v2",
+ "notes": {
+  "private_ui": true
+ },
+ "window_class": "XLMAIN",
+ "capture": {
+  "size": [
+   1782,
+   1391
+  ],
+  "method": "print_window",
+  "rect": [
+   129,
+   120,
+   1911,
+   1511
+  ],
+  "dpi": 144,
+  "capture_ms": 80.4,
+  "ocr_ms": 7420.8
+ },
+ "cold_series": [
+  {
+   "t_ms": 432,
+   "call_ms": 427.4,
+   "elements": 652,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 841,
+   "call_ms": 304.6,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 1258,
+   "call_ms": 311.1,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 1680,
+   "call_ms": 306.6,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 2078,
+   "call_ms": 293.2,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 2491,
+   "call_ms": 306.9,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 2903,
+   "call_ms": 306.7,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 3323,
+   "call_ms": 314.0,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 3733,
+   "call_ms": 305.3,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 4137,
+   "call_ms": 298.5,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 4549,
+   "call_ms": 306.5,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 4954,
+   "call_ms": 299.6,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 5382,
+   "call_ms": 321.3,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 5797,
+   "call_ms": 310.1,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 6197,
+   "call_ms": 293.9,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 6631,
+   "call_ms": 326.3,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 7047,
+   "call_ms": 310.2,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 7453,
+   "call_ms": 301.0,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 7875,
+   "call_ms": 315.2,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 8296,
+   "call_ms": 315.2,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 8702,
+   "call_ms": 299.8,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 9102,
+   "call_ms": 295.3,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 9528,
+   "call_ms": 320.1,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 9942,
+   "call_ms": 307.7,
+   "elements": 655,
+   "vis_chars": 2052
+  },
+  {
+   "t_ms": 10358,
+   "call_ms": 310.1,
+   "elements": 655,
+   "vis_chars": 2052
+  }
+ ],
+ "latency_ms": {
+  "first": {
+   "build_cache": 272.6,
+   "walk": 13.3,
+   "textpattern_total": 56.1,
+   "tp_lines": 36.9,
+   "tp_doc": 3.5,
+   "total": 342.0
+  },
+  "median_rest": {
+   "build_cache": 284.6,
+   "walk": 13.2,
+   "textpattern_total": 51.8,
+   "tp_lines": 35.1,
+   "tp_doc": 2.4,
+   "total": 351.6
+  },
+  "n": 7
+ },
+ "per_run_elements": [
+  655,
+  655,
+  655,
+  655,
+  655,
+  655,
+  655
+ ],
+ "per_run_visible_chars": [
+  1948,
+  1948,
+  1948,
+  1948,
+  1948,
+  1948,
+  1948
+ ],
+ "latency_lite_ms": {
+  "build_cache": 286.0,
+  "walk": 13.4,
+  "textpattern_total": 14.1,
+  "tp_lines": 0.0,
+  "tp_doc": 0.0,
+  "total": 313.0
+ },
+ "analysis": {
+  "elements": 655,
+  "text_items_visible": 531,
+  "text_items_all": 667,
+  "chars_visible": 1758,
+  "chars_all": 2723,
+  "ocr_lines": 268,
+  "ocr_chars": 1309,
+  "frameworks": [
+   "Chrome",
+   "Win32",
+   "WinForm"
+  ],
+  "window_name": "<省略>",
+  "ctypes_visible_text": {
+   "DataItem": 419,
+   "Button": 48,
+   "MenuItem": 22,
+   "Group": 15,
+   "TabItem": 15,
+   "Pane": 13,
+   "RadioButton": 5,
+   "Edit": 4,
+   "Window": 3,
+   "ListItem": 3,
+   "Image": 3,
+   "Custom": 2
+  },
+  "textpatterns": [
+   {
+    "ct": "Document",
+    "cls": "",
+    "visible_chars": 94,
+    "lines": 30,
+    "doc_len": 162,
+    "error": null
+   },
+   {
+    "ct": "Edit",
+    "cls": "NetUISearchBoxTextbox",
+    "visible_chars": 0,
+    "lines": 0,
+    "doc_len": 0,
+    "error": null
+   },
+   {
+    "ct": "Edit",
+    "cls": "Edit",
+    "visible_chars": 0,
+    "lines": 0,
+    "doc_len": 0,
+    "error": null
+   },
+   {
+    "ct": "Edit",
+    "cls": "XLFormulaBarEditor",
+    "visible_chars": 2,
+    "lines": 2,
+    "doc_len": 2,
+    "error": null
+   },
+   {
+    "ct": "DataItem",
+    "cls": "XLSpreadsheetCell",
+    "visible_chars": 2,
+    "lines": 1,
+    "doc_len": 2,
+    "error": null
+   },
+   {
+    "ct": "DataItem",
+    "cls": "XLSpreadsheetCell",
+    "visible_chars": 2,
+    "lines": 1,
+    "doc_len": 2,
+    "error": null
+   },
+   {
+    "ct": "DataItem",
+    "cls": "XLSpreadsheetCell",
+    "visible_chars": 2,
+    "lines": 1,
+    "doc_len": 2,
+    "error": null
+   },
+   {
+    "ct": "DataItem",
+    "cls": "XLSpreadsheetCell",
+    "visible_chars": 2,
+    "lines": 1,
+    "doc_len": 2,
+    "error": null
+   }
+  ],
+  "password_fields": [],
+  "password_plaintext_anywhere": false,
+  "edits": "<省略>",
+  "coverage": {
+   "tree": {
+    "ocr_in_uia_line": 0.371,
+    "ocr_in_uia_char": 0.274,
+    "ocr_exact_of_found": 0.989,
+    "uia_in_ocr_line": 0.153,
+    "uia_in_ocr_char": 0.157,
+    "uia_lines": 510
+   },
+   "textpattern": {
+    "ocr_in_uia_line": 0.055,
+    "ocr_in_uia_char": 0.043,
+    "ocr_exact_of_found": 1.0,
+    "uia_in_ocr_line": 1.0,
+    "uia_in_ocr_char": 1.0,
+    "uia_lines": 14
+   },
+   "content": {
+    "ocr_in_uia_line": 0.283,
+    "ocr_in_uia_char": 0.19,
+    "ocr_exact_of_found": 1.0,
+    "uia_in_ocr_line": 0.137,
+    "uia_in_ocr_char": 0.152,
+    "uia_lines": 438
+   },
+   "union": {
+    "ocr_in_uia_line": 0.392,
+    "ocr_in_uia_char": 0.282,
+    "ocr_exact_of_found": 0.989,
+    "uia_in_ocr_line": 0.161,
+    "uia_in_ocr_char": 0.164,
+    "uia_lines": 515
+   }
+  },
+  "ex_ocr_differs": "<已省略 1 条：窗口含账号信息>",
+  "ex_ocr_not_in_uia": "<已省略 25 条：窗口含账号信息>",
+  "ex_uia_not_in_ocr": "<已省略 25 条：窗口含账号信息>",
+  "ex_content_not_in_ocr": "<已省略 25 条：窗口含账号信息>",
+  "chars_tp_value_offscreen": 987,
+  "rect_align_tree": {
+   "pairs": 17,
+   "center_inside_frac": 0.941,
+   "median_iou": 0.45,
+   "median_dcx": -0.5,
+   "median_dcy": -0.5,
+   "median_dleft": 11.0,
+   "median_dtop": 5.0
+  },
+  "rect_align_textpattern": {
+   "pairs": 8,
+   "center_inside_frac": 1.0,
+   "median_iou": 0.88,
+   "median_dcx": -0.8,
+   "median_dcy": -1.0,
+   "median_dleft": -3.0,
+   "median_dtop": -2.0
+  },
+  "markers": {
+   "XL-R01": {
+    "ocr": true,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "XL-R20": {
+    "ocr": true,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "XL-R60": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "张三": {
+    "ocr": true,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": false,
+    "tp_document": false
+   }
+  }
+ },
+ "new_ocr_lines_after_uia": "<已省略 0 条>",
+ "occluded": {
+  "uia_visible_items": 530,
+  "uia_visible_items_unoccluded": 530,
+  "uia_same_items_frac": 1.0,
+  "tp_visible_chars": 104,
+  "tp_visible_chars_unoccluded": 104,
+  "uia_ms": 434.8,
+  "printwindow_ocr_line_keep": 1.0,
+  "printwindow_shows_occluder": false
+ },
+ "minimized": {
+  "elements": 653,
+  "visible_items": 0,
+  "all_items": 782,
+  "tp_visible_chars": 104,
+  "tp_doc_chars": 172,
+  "uia_ms": 375.7,
+  "capture": "minimized"
+ }
+}

@@ -1,0 +1,493 @@
+{
+ "app": "vscode",
+ "dpi_mode": "per_monitor_v2",
+ "notes": {},
+ "window_class": "Chrome_WidgetWin_1",
+ "browser_before": {
+  "cpu_pct_of_one_core": 12.7,
+  "private_mib": 1017.5,
+  "procs": 9
+ },
+ "capture": {
+  "size": [
+   1782,
+   1391
+  ],
+  "method": "print_window",
+  "rect": [
+   129,
+   120,
+   1911,
+   1511
+  ],
+  "dpi": 144,
+  "capture_ms": 37.1,
+  "ocr_ms": 9463.5
+ },
+ "cold_series": [
+  {
+   "t_ms": 30,
+   "call_ms": 29.6,
+   "elements": 14,
+   "vis_chars": 109
+  },
+  {
+   "t_ms": 255,
+   "call_ms": 123.2,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 467,
+   "call_ms": 110.2,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 679,
+   "call_ms": 110.0,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 885,
+   "call_ms": 104.2,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 1104,
+   "call_ms": 118.0,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 1318,
+   "call_ms": 112.0,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 1539,
+   "call_ms": 118.8,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 1758,
+   "call_ms": 116.4,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 1970,
+   "call_ms": 110.2,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 2181,
+   "call_ms": 109.5,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 2396,
+   "call_ms": 113.2,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 2608,
+   "call_ms": 110.3,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 2823,
+   "call_ms": 114.0,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 3049,
+   "call_ms": 123.3,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 3260,
+   "call_ms": 108.9,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 3487,
+   "call_ms": 125.2,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 3702,
+   "call_ms": 113.3,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 3913,
+   "call_ms": 109.5,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 4131,
+   "call_ms": 116.7,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 4354,
+   "call_ms": 120.6,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 4565,
+   "call_ms": 109.0,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 4780,
+   "call_ms": 112.9,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 4999,
+   "call_ms": 118.1,
+   "elements": 218,
+   "vis_chars": 3864
+  },
+  {
+   "t_ms": 5221,
+   "call_ms": 120.5,
+   "elements": 218,
+   "vis_chars": 3864
+  }
+ ],
+ "latency_ms": {
+  "first": {
+   "build_cache": 24.1,
+   "walk": 4.0,
+   "textpattern_total": 183.1,
+   "tp_lines": 92.3,
+   "tp_doc": 1.7,
+   "total": 211.1
+  },
+  "median_rest": {
+   "build_cache": 28.4,
+   "walk": 4.1,
+   "textpattern_total": 176.8,
+   "tp_lines": 88.2,
+   "tp_doc": 1.6,
+   "total": 208.2
+  },
+  "n": 7
+ },
+ "per_run_elements": [
+  218,
+  218,
+  218,
+  218,
+  218,
+  218,
+  218
+ ],
+ "per_run_visible_chars": [
+  3205,
+  3205,
+  3205,
+  3205,
+  3205,
+  3205,
+  3205
+ ],
+ "latency_lite_ms": {
+  "build_cache": 17.4,
+  "walk": 4.1,
+  "textpattern_total": 86.2,
+  "tp_lines": 0.0,
+  "tp_doc": 0.0,
+  "total": 109.6
+ },
+ "analysis": {
+  "elements": 218,
+  "text_items_visible": 105,
+  "text_items_all": 107,
+  "chars_visible": 2418,
+  "chars_all": 2684,
+  "ocr_lines": 133,
+  "ocr_chars": 1713,
+  "frameworks": [
+   "Chrome",
+   "Win32"
+  ],
+  "window_name": "sample.py - vscode-proj - Visual Studio Code",
+  "ctypes_visible_text": {
+   "Button": 54,
+   "Text": 29,
+   "Group": 25,
+   "ToolBar": 9,
+   "MenuItem": 7,
+   "TabItem": 7,
+   "Window": 3,
+   "Tab": 2,
+   "List": 2,
+   "Pane": 1,
+   "Document": 1,
+   "Tree": 1
+  },
+  "textpatterns": [
+   {
+    "ct": "Document",
+    "cls": "",
+    "visible_chars": 659,
+    "lines": 83,
+    "doc_len": 1083,
+    "error": null
+   }
+  ],
+  "password_fields": [],
+  "password_plaintext_anywhere": false,
+  "edits": [],
+  "coverage": {
+   "tree": {
+    "ocr_in_uia_line": 0.228,
+    "ocr_in_uia_char": 0.248,
+    "ocr_exact_of_found": 0.75,
+    "uia_in_ocr_line": 0.264,
+    "uia_in_ocr_char": 0.113,
+    "uia_lines": 91
+   },
+   "textpattern": {
+    "ocr_in_uia_line": 0.122,
+    "ocr_in_uia_char": 0.098,
+    "ocr_exact_of_found": 0.667,
+    "uia_in_ocr_line": 0.864,
+    "uia_in_ocr_char": 0.827,
+    "uia_lines": 22
+   },
+   "content": {
+    "ocr_in_uia_line": 0.179,
+    "ocr_in_uia_char": 0.204,
+    "ocr_exact_of_found": 0.682,
+    "uia_in_ocr_line": 0.567,
+    "uia_in_ocr_char": 0.315,
+    "uia_lines": 30
+   },
+   "union": {
+    "ocr_in_uia_line": 0.228,
+    "ocr_in_uia_char": 0.248,
+    "ocr_exact_of_found": 0.75,
+    "uia_in_ocr_line": 0.277,
+    "uia_in_ocr_char": 0.119,
+    "uia_lines": 94
+   }
+  },
+  "ex_ocr_differs": [
+   {
+    "ocr": "2 sample.py X",
+    "uia": "sample.py",
+    "score": 90.0
+   },
+   {
+    "ocr": "V vscode-proj",
+    "uia": "vscode-proj-",
+    "score": 91.7
+   },
+   {
+    "ocr": "2 sample.py",
+    "uia": "sample.py",
+    "score": 94.7
+   },
+   {
+    "ocr": "2 sample.py",
+    "uia": "sample.py",
+    "score": 94.7
+   },
+   {
+    "ocr": "Al responses may be inaccurate",
+    "uia": "airesponsesmaybeinaccurate",
+    "score": 96.2
+   },
+   {
+    "ocr": "① Do you want to install the recommended 'Python' extension",
+    "uia": ":doyouwanttoinstalltherecommended'python'extension",
+    "score": 98.0
+   },
+   {
+    "ocr": "> Timeline",
+    "uia": "ntimeline",
+    "score": 88.9
+   }
+  ],
+  "ex_ocr_not_in_uia": [
+   "\"\"SR-UIA 合成代码文件。\"\"",
+   "def func_001(x: int) -> int:",
+   "#CODE-L001中文注释1",
+   "return x * 1 + 7",
+   "def func_002(x: int) -> int:",
+   "#CODE-L002 中文注释 2",
+   "return x * 2 + 1",
+   "def func_003(x: int) -> int:",
+   "# CODE-L003 中文注释 3",
+   "return x * 3 + 8",
+   "def func_004(x: int) -> int:",
+   "#CODE-L004 中文注释 4",
+   "10",
+   "return x * 4 + 2",
+   "11",
+   "def:",
+   "func_005(x: int) -> int:",
+   "# CODE-L005 中文注释5",
+   "12",
+   "return x * 5 + 9",
+   "13",
+   "def func_006(x: int) -> int: ",
+   "#C0DE-L006中文注释6",
+   "14",
+   "return x * 6 + 3"
+  ],
+  "ex_uia_not_in_ocr": [
+   "sample.py - vscode-proj - Visual Studio Code",
+   "Minimize",
+   "Maximize",
+   "Close",
+   "More",
+   "Go Back (Alt+LeftArrow)",
+   "Go Forward (Alt+RightArrow)",
+   "Agent Status",
+   "Open Quick Access",
+   "Toggle Chat",
+   "More Actions",
+   "Open in Agents Window (Ctrl+Shift+Alt+A)",
+   "Title actions",
+   "Customize Layout...",
+   "Toggle Primary Side Bar (Ctrl+B)",
+   "Toggle Panel (Ctrl+J)",
+   "Toggle Secondary Side Bar (Ctrl+Alt+B)",
+   "Active View Switcher",
+   "Explorer (Ctrl+Shift+E)",
+   "Search (Ctrl+Shift+F)",
+   "Source Control (Ctrl+Shift+G)",
+   "Run and Debug (Ctrl+Shift+D)",
+   "Extensions (Ctrl+Shift+X)",
+   "Manage",
+   "Accounts"
+  ],
+  "ex_content_not_in_ocr": [
+   "sample.py - vscode-proj - Visual Studio Code",
+   "Explorer (Ctrl+Shift+E)",
+   "Search (Ctrl+Shift+F)",
+   "Source Control (Ctrl+Shift+G)",
+   "Run and Debug (Ctrl+Shift+D)",
+   "Extensions (Ctrl+Shift+X)",
+   "Explorer Section: vscode-proj",
+   "Chat (Ctrl+Alt+I)",
+   "The editor is not accessible at this time. To enable screen reader optimized mode, use Shift+Alt+F1",
+   "Local",
+   "Default permissions",
+   "Do you want to install the recommended 'Python' extension from Microsoft for the Python language?",
+   "Open in Agents"
+  ],
+  "chars_tp_value_offscreen": 163,
+  "rect_align_tree": {
+   "pairs": 12,
+   "center_inside_frac": 1.0,
+   "median_iou": 0.491,
+   "median_dcx": 0.5,
+   "median_dcy": 1.0,
+   "median_dleft": 9.0,
+   "median_dtop": 8.5
+  },
+  "rect_align_textpattern": {
+   "pairs": 9,
+   "center_inside_frac": 1.0,
+   "median_iou": 0.714,
+   "median_dcx": 1.5,
+   "median_dcy": 2.0,
+   "median_dleft": -3.0,
+   "median_dtop": 3.0
+  },
+  "markers": {
+   "CODE-L001": {
+    "ocr": true,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "CODE-L010": {
+    "ocr": true,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "CODE-L080": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "CODE-L150": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "sample.py": {
+    "ocr": true,
+    "tree_visible": true,
+    "tree_all": true,
+    "tp_visible": true,
+    "tp_document": true
+   }
+  }
+ },
+ "browser_after_uia": {
+  "cpu_pct_of_one_core": 4.7,
+  "private_mib": 971.8,
+  "procs": 9
+ },
+ "new_ocr_lines_after_uia": [
+  "\"\"\"SR-UIA 合成代码文件。\"\"\""
+ ],
+ "occluded": {
+  "uia_visible_items": 105,
+  "uia_visible_items_unoccluded": 105,
+  "uia_same_items_frac": 1.0,
+  "tp_visible_chars": 659,
+  "tp_visible_chars_unoccluded": 659,
+  "uia_ms": 216.5,
+  "printwindow_ocr_line_keep": 1.0,
+  "printwindow_shows_occluder": false
+ },
+ "minimized": {
+  "elements": 218,
+  "visible_items": 73,
+  "all_items": 147,
+  "tp_visible_chars": 659,
+  "tp_doc_chars": 1083,
+  "uia_ms": 215.0,
+  "capture": "minimized"
+ },
+ "browser_idle_45s_later": {
+  "cpu_pct_of_one_core": 4.2,
+  "private_mib": 963.3,
+  "procs": 9
+ }
+}

@@ -1,0 +1,530 @@
+{
+ "app": "chrome",
+ "dpi_mode": "per_monitor_v2",
+ "notes": {},
+ "window_class": "Chrome_WidgetWin_1",
+ "browser_before": {
+  "cpu_pct_of_one_core": 3.4,
+  "private_mib": 312.8,
+  "procs": 9
+ },
+ "capture": {
+  "size": [
+   1782,
+   1391
+  ],
+  "method": "print_window",
+  "rect": [
+   129,
+   120,
+   1911,
+   1511
+  ],
+  "dpi": 144,
+  "capture_ms": 36.4,
+  "ocr_ms": 5049.9
+ },
+ "cold_series": [
+  {
+   "t_ms": 33,
+   "call_ms": 32.2,
+   "elements": 39,
+   "vis_chars": 169
+  },
+  {
+   "t_ms": 196,
+   "call_ms": 61.5,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 362,
+   "call_ms": 64.7,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 524,
+   "call_ms": 60.5,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 685,
+   "call_ms": 60.1,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 851,
+   "call_ms": 63.6,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 1014,
+   "call_ms": 62.3,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 1184,
+   "call_ms": 68.1,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 1358,
+   "call_ms": 71.9,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 1527,
+   "call_ms": 68.0,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 1692,
+   "call_ms": 63.7,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 1859,
+   "call_ms": 65.2,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 2026,
+   "call_ms": 65.3,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 2194,
+   "call_ms": 66.5,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 2360,
+   "call_ms": 65.0,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 2525,
+   "call_ms": 63.3,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 2697,
+   "call_ms": 70.0,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 2867,
+   "call_ms": 69.0,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 3042,
+   "call_ms": 74.3,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 3204,
+   "call_ms": 60.4,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 3373,
+   "call_ms": 67.3,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 3539,
+   "call_ms": 64.6,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 3711,
+   "call_ms": 70.2,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 3880,
+   "call_ms": 66.7,
+   "elements": 149,
+   "vis_chars": 1615
+  },
+  {
+   "t_ms": 4051,
+   "call_ms": 69.2,
+   "elements": 149,
+   "vis_chars": 1615
+  }
+ ],
+ "latency_ms": {
+  "first": {
+   "build_cache": 23.9,
+   "walk": 3.8,
+   "textpattern_total": 95.0,
+   "tp_lines": 52.6,
+   "tp_doc": 1.7,
+   "total": 122.8
+  },
+  "median_rest": {
+   "build_cache": 25.6,
+   "walk": 3.1,
+   "textpattern_total": 92.4,
+   "tp_lines": 50.3,
+   "tp_doc": 1.6,
+   "total": 121.0
+  },
+  "n": 7
+ },
+ "per_run_elements": [
+  149,
+  149,
+  149,
+  149,
+  149,
+  149,
+  149
+ ],
+ "per_run_visible_chars": [
+  904,
+  904,
+  904,
+  904,
+  904,
+  904,
+  904
+ ],
+ "latency_lite_ms": {
+  "build_cache": 17.3,
+  "walk": 2.8,
+  "textpattern_total": 38.8,
+  "tp_lines": 0.0,
+  "tp_doc": 0.0,
+  "total": 59.0
+ },
+ "analysis": {
+  "elements": 149,
+  "text_items_visible": 71,
+  "text_items_all": 116,
+  "chars_visible": 860,
+  "chars_all": 7164,
+  "ocr_lines": 50,
+  "ocr_chars": 748,
+  "frameworks": [
+   "Chrome",
+   "Win32"
+  ],
+  "window_name": "SR-UIA 测试页 Probe - Google Chrome",
+  "ctypes_visible_text": {
+   "Text": 26,
+   "DataItem": 24,
+   "Button": 14,
+   "Group": 7,
+   "Edit": 3,
+   "TabItem": 2,
+   "Window": 1,
+   "Pane": 1,
+   "Document": 1
+  },
+  "textpatterns": [
+   {
+    "ct": "Edit",
+    "cls": "OmniboxViewViews",
+    "visible_chars": 0,
+    "lines": 0,
+    "doc_len": 63,
+    "error": null
+   },
+   {
+    "ct": "Document",
+    "cls": "",
+    "visible_chars": 711,
+    "lines": 44,
+    "doc_len": 6912,
+    "error": null
+   }
+  ],
+  "password_fields": [
+   {
+    "name": "密码",
+    "ct": "Edit",
+    "value_len": 15,
+    "value_is_plaintext": false
+   }
+  ],
+  "password_plaintext_anywhere": false,
+  "edits": [
+   {
+    "name": "地址和搜索栏",
+    "value": "%USERPROFILE%/AppData/Local/Temp/sr-uia-run/fixtures/page.html",
+    "ct": "Edit"
+   },
+   {
+    "name": "用户名",
+    "value": "probe_user_01",
+    "ct": "Edit"
+   }
+  ],
+  "coverage": {
+   "tree": {
+    "ocr_in_uia_line": 0.844,
+    "ocr_in_uia_char": 0.793,
+    "ocr_exact_of_found": 0.947,
+    "uia_in_ocr_line": 0.706,
+    "uia_in_ocr_char": 0.737,
+    "uia_lines": 68
+   },
+   "textpattern": {
+    "ocr_in_uia_line": 0.822,
+    "ocr_in_uia_char": 0.786,
+    "ocr_exact_of_found": 0.946,
+    "uia_in_ocr_line": 0.923,
+    "uia_in_ocr_char": 0.918,
+    "uia_lines": 39
+   },
+   "content": {
+    "ocr_in_uia_line": 0.867,
+    "ocr_in_uia_char": 0.822,
+    "ocr_exact_of_found": 0.949,
+    "uia_in_ocr_line": 0.912,
+    "uia_in_ocr_char": 0.887,
+    "uia_lines": 57
+   },
+   "union": {
+    "ocr_in_uia_line": 0.889,
+    "ocr_in_uia_char": 0.827,
+    "ocr_exact_of_found": 0.95,
+    "uia_in_ocr_line": 0.724,
+    "uia_in_ocr_char": 0.747,
+    "uia_lines": 76
+   }
+  },
+  "ex_ocr_differs": [
+   {
+    "ocr": "用户名「probe_user_01",
+    "uia": "用户名probe_user_01密",
+    "score": 94.1
+   },
+   {
+    "ocr": "收到。另外 rn 和 m、0和 O、1和I在截图里容易认错：rnm 000 1l1。",
+    "uia": "收到。另外rn和m、0和o、1和l在截图里容易认错:rnm0o01l1。",
+    "score": 94.4
+   }
+  ],
+  "ex_ocr_not_in_uia": [
+   "①文件",
+   "%USERPROFILE%/AppData/Local/Temp/sr-uia-run/fixtures/page.html",
+   "TICK 66",
+   "CANVAS-ONLY画布里的文字42",
+   "ARIAHIDDEN-VISIBLE屏幕可见但对辅助技术隐藏"
+  ],
+  "ex_uia_not_in_ocr": [
+   "SR-UIA 测试页 Probe - Google Chrome",
+   "SR-UIA 测试页 Probe - Google Chrome（无痕）",
+   "最小化",
+   "最大化",
+   "关闭",
+   "返回",
+   "前进",
+   "重新加载",
+   "地址和搜索栏",
+   "为此标签页添加书签",
+   "Chrome",
+   "TICK 91",
+   "SRONLY-INVISIBLE 只给读屏器的隐藏文字",
+   "消息 来自 李雷",
+   "消息 来自 Alice Zhang",
+   "消息 来自 韩梅梅",
+   "消息 来自 Bob Smith",
+   "标签页搜索",
+   "SR-UIA 测试页 Probe - 内存用量 - 21.0 MB",
+   "新标签页",
+   "密码 \n•••••••••••••••"
+  ],
+  "ex_content_not_in_ocr": [
+   "地址和搜索栏",
+   "TICK 91",
+   "SRONLY-INVISIBLE 只给读屏器的隐藏文字",
+   "SR-UIA 测试页 Probe - 内存用量 - 21.0 MB",
+   "密码 \n•••••••••••••••"
+  ],
+  "chars_tp_value_offscreen": 147,
+  "rect_align_tree": {
+   "pairs": 27,
+   "center_inside_frac": 0.963,
+   "median_iou": 0.499,
+   "median_dcx": -7.5,
+   "median_dcy": 1.5,
+   "median_dleft": 13.0,
+   "median_dtop": 8.0
+  },
+  "rect_align_textpattern": {
+   "pairs": 30,
+   "center_inside_frac": 1.0,
+   "median_iou": 0.832,
+   "median_dcx": 1.0,
+   "median_dcy": 2.0,
+   "median_dleft": -1.0,
+   "median_dtop": 4.0
+  },
+  "markers": {
+   "探针页面": {
+    "ocr": true,
+    "tree_visible": true,
+    "tree_all": true,
+    "tp_visible": true,
+    "tp_document": true
+   },
+   "TICK": {
+    "ocr": true,
+    "tree_visible": true,
+    "tree_all": true,
+    "tp_visible": true,
+    "tp_document": true
+   },
+   "probe_user_01": {
+    "ocr": true,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": true,
+    "tp_document": true
+   },
+   "Dummy-Pa55word!": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "CANVAS-ONLY": {
+    "ocr": true,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "ARIAHIDDEN-VISIBLE": {
+    "ocr": true,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "SRONLY-INVISIBLE": {
+    "ocr": false,
+    "tree_visible": true,
+    "tree_all": true,
+    "tp_visible": true,
+    "tp_document": true
+   },
+   "DISPLAYNONE-SECRET": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": false
+   },
+   "INV-20261026-0731": {
+    "ocr": true,
+    "tree_visible": true,
+    "tree_all": true,
+    "tp_visible": true,
+    "tp_document": true
+   },
+   "ORD-2026-0003": {
+    "ocr": true,
+    "tree_visible": true,
+    "tree_all": true,
+    "tp_visible": true,
+    "tp_document": true
+   },
+   "CODE-BLOCK-MARKER": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": false,
+    "tp_document": true
+   },
+   "ARTICLE-P01": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": false,
+    "tp_document": true
+   },
+   "ARTICLE-P20": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": false,
+    "tp_document": true
+   },
+   "ARTICLE-P40": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": false,
+    "tp_document": true
+   },
+   "HIDDENTAB-MARKER": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": false,
+    "tp_visible": false,
+    "tp_document": false
+   }
+  }
+ },
+ "browser_after_uia": {
+  "cpu_pct_of_one_core": 1.8,
+  "private_mib": 312.5,
+  "procs": 9
+ },
+ "new_ocr_lines_after_uia": [
+  "SR-UlA 探针页面 Probe Page",
+  "TICK 113"
+ ],
+ "occluded": {
+  "uia_visible_items": 69,
+  "uia_visible_items_unoccluded": 69,
+  "uia_same_items_frac": 0.986,
+  "tp_visible_chars": 712,
+  "tp_visible_chars_unoccluded": 711,
+  "uia_ms": 121.5,
+  "printwindow_ocr_line_keep": 0.991,
+  "printwindow_shows_occluder": false
+ },
+ "minimized": {
+  "elements": 149,
+  "visible_items": 57,
+  "all_items": 124,
+  "tp_visible_chars": 712,
+  "tp_doc_chars": 6976,
+  "uia_ms": 126.6,
+  "capture": "minimized"
+ },
+ "browser_idle_45s_later": {
+  "cpu_pct_of_one_core": 4.5,
+  "private_mib": 345.3,
+  "procs": 9
+ }
+}

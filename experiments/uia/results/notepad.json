@@ -1,0 +1,531 @@
+{
+ "app": "notepad",
+ "dpi_mode": "per_monitor_v2",
+ "notes": {},
+ "window_class": "Notepad",
+ "capture": {
+  "size": [
+   1786,
+   1393
+  ],
+  "method": "print_window",
+  "rect": [
+   127,
+   120,
+   1913,
+   1513
+  ],
+  "dpi": 144,
+  "capture_ms": 38.4,
+  "ocr_ms": 11709.5
+ },
+ "cold_series": [
+  {
+   "t_ms": 70,
+   "call_ms": 69.2,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 207,
+   "call_ms": 36.5,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 343,
+   "call_ms": 34.5,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 479,
+   "call_ms": 35.9,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 619,
+   "call_ms": 38.5,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 751,
+   "call_ms": 31.0,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 892,
+   "call_ms": 40.6,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 1025,
+   "call_ms": 31.9,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 1159,
+   "call_ms": 33.4,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 1296,
+   "call_ms": 36.3,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 1430,
+   "call_ms": 33.4,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 1564,
+   "call_ms": 33.2,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 1702,
+   "call_ms": 37.3,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 1834,
+   "call_ms": 30.6,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 1971,
+   "call_ms": 36.3,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 2110,
+   "call_ms": 37.8,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 2247,
+   "call_ms": 36.3,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 2387,
+   "call_ms": 38.2,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 2532,
+   "call_ms": 44.6,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 2673,
+   "call_ms": 39.8,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 2805,
+   "call_ms": 31.3,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 2942,
+   "call_ms": 35.9,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 3079,
+   "call_ms": 36.6,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 3213,
+   "call_ms": 32.6,
+   "elements": 53,
+   "vis_chars": 3490
+  },
+  {
+   "t_ms": 3346,
+   "call_ms": 32.5,
+   "elements": 53,
+   "vis_chars": 3490
+  }
+ ],
+ "latency_ms": {
+  "first": {
+   "build_cache": 29.3,
+   "walk": 1.2,
+   "textpattern_total": 42.1,
+   "tp_lines": 37.0,
+   "tp_doc": 1.7,
+   "total": 72.6
+  },
+  "median_rest": {
+   "build_cache": 30.0,
+   "walk": 1.1,
+   "textpattern_total": 42.8,
+   "tp_lines": 37.1,
+   "tp_doc": 1.7,
+   "total": 73.4
+  },
+  "n": 7
+ },
+ "per_run_elements": [
+  53,
+  53,
+  53,
+  53,
+  53,
+  53,
+  53
+ ],
+ "per_run_visible_chars": [
+  232,
+  232,
+  232,
+  232,
+  232,
+  232,
+  232
+ ],
+ "latency_lite_ms": {
+  "build_cache": 27.9,
+  "walk": 1.1,
+  "textpattern_total": 3.3,
+  "tp_lines": 0.0,
+  "tp_doc": 0.0,
+  "total": 32.7
+ },
+ "analysis": {
+  "elements": 53,
+  "text_items_visible": 34,
+  "text_items_all": 37,
+  "chars_visible": 230,
+  "chars_all": 22541,
+  "ocr_lines": 56,
+  "ocr_chars": 2772,
+  "frameworks": [
+   "Win32",
+   "XAML"
+  ],
+  "window_name": "sr-uia-notes.txt - Notepad",
+  "ctypes_visible_text": {
+   "Button": 18,
+   "Text": 7,
+   "MenuItem": 4,
+   "Window": 1,
+   "Document": 1,
+   "ScrollBar": 1,
+   "Thumb": 1,
+   "TabItem": 1,
+   "MenuBar": 1
+  },
+  "textpatterns": [
+   {
+    "ct": "Document",
+    "cls": "RichEditD2DPT",
+    "visible_chars": 3194,
+    "lines": 44,
+    "doc_len": 22283,
+    "error": null
+   },
+   {
+    "ct": "Text",
+    "cls": "TextBlock",
+    "visible_chars": 16,
+    "lines": 1,
+    "doc_len": 16,
+    "error": null
+   },
+   {
+    "ct": "Text",
+    "cls": "TextBlock",
+    "visible_chars": 9,
+    "lines": 1,
+    "doc_len": 9,
+    "error": null
+   },
+   {
+    "ct": "Text",
+    "cls": "TextBlock",
+    "visible_chars": 10,
+    "lines": 1,
+    "doc_len": 10,
+    "error": null
+   },
+   {
+    "ct": "Text",
+    "cls": "TextBlock",
+    "visible_chars": 3,
+    "lines": 1,
+    "doc_len": 3,
+    "error": null
+   },
+   {
+    "ct": "Text",
+    "cls": "TextBlock",
+    "visible_chars": 5,
+    "lines": 1,
+    "doc_len": 5,
+    "error": null
+   },
+   {
+    "ct": "Text",
+    "cls": "TextBlock",
+    "visible_chars": 15,
+    "lines": 1,
+    "doc_len": 15,
+    "error": null
+   },
+   {
+    "ct": "Text",
+    "cls": "TextBlock",
+    "visible_chars": 6,
+    "lines": 1,
+    "doc_len": 6,
+    "error": null
+   }
+  ],
+  "password_fields": [],
+  "password_plaintext_anywhere": false,
+  "edits": [],
+  "coverage": {
+   "tree": {
+    "ocr_in_uia_line": 0.17,
+    "ocr_in_uia_char": 0.023,
+    "ocr_exact_of_found": 1.0,
+    "uia_in_ocr_line": 0.273,
+    "uia_in_ocr_char": 0.26,
+    "uia_lines": 33
+   },
+   "textpattern": {
+    "ocr_in_uia_line": 0.849,
+    "ocr_in_uia_char": 0.993,
+    "ocr_exact_of_found": 0.156,
+    "uia_in_ocr_line": 1.0,
+    "uia_in_ocr_char": 1.0,
+    "uia_lines": 51
+   },
+   "content": {
+    "ocr_in_uia_line": 0.868,
+    "ocr_in_uia_char": 0.993,
+    "ocr_exact_of_found": 0.174,
+    "uia_in_ocr_line": 0.945,
+    "uia_in_ocr_char": 0.99,
+    "uia_lines": 55
+   },
+   "union": {
+    "ocr_in_uia_line": 0.906,
+    "ocr_in_uia_char": 0.995,
+    "ocr_exact_of_found": 0.208,
+    "uia_in_ocr_line": 0.696,
+    "uia_in_ocr_char": 0.946,
+    "uia_lines": 79
+   }
+  },
+  "ex_ocr_differs": [
+   {
+    "ocr": "NOTE-L001 记事本第1行 quick brown fox 0O1ll rn/m 3.14159 user1@example.com",
+    "uia": "note-l001记事本第1行quickbrownfox0o1li|rn/m3.14159user1@example.co",
+    "score": 96.7
+   },
+   {
+    "ocr": "NOTE-L002 记事本第2行 quick brown fox 001l rn/m 3.14159 user2@example.com",
+    "uia": "note-l002记事本第2行quickbrownfox0o1li|rn/m3.14159user2@example.c",
+    "score": 95.0
+   },
+   {
+    "ocr": "NOTE-L003 记事本第3行 quick brown fox 001l| rn/m 3.14159 user3@example.com",
+    "uia": "note-l003记事本第3行quickbrownfox0o1li|rn/m3.14159user3@example.co",
+    "score": 96.7
+   },
+   {
+    "ocr": "NOTE-L004 记事本第4行 quick brown fox 001ll rn/m 3.14159 user4@example.com",
+    "uia": "ote-l004记事本第4行quickbrownfox0o1li|rn/m3.14159user4@example.com",
+    "score": 95.1
+   },
+   {
+    "ocr": "NOTE-L005 记事本第5行 quick brown fox 001ll rn/m 3.14159 user5@example.com",
+    "uia": "note-l005记事本第5行quickbrownfox0o1li|rn/m3.14159user5@example.co",
+    "score": 95.1
+   },
+   {
+    "ocr": "NOTE-L006 记事本第6行 quick brown fox 001ll rn/m 3.14159 user6@example.com",
+    "uia": "ote-l006记事本第6行quickbrownfox0o1li|rn/m3.14159user6@example.com",
+    "score": 95.1
+   },
+   {
+    "ocr": "NOTE-L007 记事本第7行 quick brown fox 001ll rn/m 3.14159 user7@example.com",
+    "uia": "note-l007记事本第7行quickbrownfox0o1li|rn/m3.14159user7@example.co",
+    "score": 95.1
+   },
+   {
+    "ocr": "NOTE-L008 记事本第8行 quick brown fox 001ll rn/m 3.14159 user8@example.com",
+    "uia": "note-l008记事本第8行quickbrownfox0o1li|rn/m3.14159user8@example.co",
+    "score": 95.1
+   },
+   {
+    "ocr": "NOTE-L009 记事本第9行 quick brown fox 001ll| rn/m 3.14159 user9@example.com",
+    "uia": "note-l009记事本第9行quickbrownfox0o1li|rn/m3.14159user9@example.com",
+    "score": 96.8
+   },
+   {
+    "ocr": "NOTE-L011 记事本第11行 quick brown fox 001ll| rn/m 3.14159 user11@example.com",
+    "uia": "note-l011记事本第11行quickbrownfox0o1li|rn/m3.14159user11@example.com",
+    "score": 96.9
+   },
+   {
+    "ocr": "NOTE-L012 记事本第12行 quick brown fox 001ll rn/m 3.14159 user12@example.com",
+    "uia": "ote-l012记事本第12行quickbrownfox0o1li|rn/m3.14159user12@example.com",
+    "score": 95.2
+   },
+   {
+    "ocr": "NOTE-L014 记事本第14行 quick brown fox 001ll rn/m 3.14159 user14@example.com",
+    "uia": "note-l014记事本第14行quickbrownfox0o1li|rn/m3.14159user14@example.co",
+    "score": 95.2
+   },
+   {
+    "ocr": "NOTE-L016 记事本第16行 quick brown fox 001lll rn/m 3.14159 user16@example.com",
+    "uia": "note-l016记事本第16行quickbrownfox0o1li|rn/m3.14159user16@example.com",
+    "score": 95.3
+   },
+   {
+    "ocr": "NOTE-L018 记事本第18行 quick brown fox 001ll rn/m 3.14159 user18@example.com",
+    "uia": "note-l018记事本第18行quickbrownfox0o1li|rn/m3.14159user18@example.co",
+    "score": 95.2
+   },
+   {
+    "ocr": "NOTE-L020 记事本第20行 quick brown fox 001ll rn/m 3.14159 user20@example.com",
+    "uia": "ote-l020记事本第20行quickbrownfox0o1li|rn/m3.14159user20@example.com",
+    "score": 95.2
+   }
+  ],
+  "ex_ocr_not_in_uia": [
+   "ISG",
+   "田〈",
+   "H1",
+   "川√",
+   "x   0 x    "
+  ],
+  "ex_uia_not_in_ocr": [
+   "sr-uia-notes.txt - Notepad",
+   "文本编辑器",
+   "垂直滚动条",
+   "上一行",
+   "位置",
+   "向下翻页",
+   "下一行",
+   "sr-uia-notes.txt. 未修改。",
+   "关闭标签页",
+   "添加新标签页",
+   "标题",
+   "列表",
+   "加粗(Ctrl+B)",
+   "斜体(Ctrl+I)",
+   "删除线(Ctrl+Shift+X)",
+   "链接(Ctrl+K)",
+   "清除格式设置(Ctrl+空格)",
+   "最近更新",
+   "设置",
+   "缩放",
+   "系统",
+   "最小化",
+   "最大化",
+   "关闭"
+  ],
+  "ex_content_not_in_ocr": [
+   "文本编辑器",
+   "sr-uia-notes.txt. 未修改。",
+   "缩放"
+  ],
+  "chars_tp_value_offscreen": 22283,
+  "rect_align_tree": {
+   "pairs": 5,
+   "center_inside_frac": 1.0,
+   "median_iou": 0.804,
+   "median_dcx": 2.0,
+   "median_dcy": 0.5,
+   "median_dleft": 1.0,
+   "median_dtop": 0.0
+  },
+  "rect_align_textpattern": {
+   "pairs": 6,
+   "center_inside_frac": 1.0,
+   "median_iou": 0.771,
+   "median_dcx": 3.0,
+   "median_dcy": 1.0,
+   "median_dleft": 1.5,
+   "median_dtop": 0.0
+  },
+  "markers": {
+   "NOTE-L001": {
+    "ocr": true,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": true,
+    "tp_document": true
+   },
+   "NOTE-L020": {
+    "ocr": true,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": true,
+    "tp_document": true
+   },
+   "NOTE-L150": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": false,
+    "tp_document": true
+   },
+   "NOTE-L300": {
+    "ocr": false,
+    "tree_visible": false,
+    "tree_all": true,
+    "tp_visible": false,
+    "tp_document": true
+   }
+  }
+ },
+ "new_ocr_lines_after_uia": [],
+ "occluded": {
+  "uia_visible_items": 34,
+  "uia_visible_items_unoccluded": 34,
+  "uia_same_items_frac": 1.0,
+  "tp_visible_chars": 3258,
+  "tp_visible_chars_unoccluded": 3258,
+  "uia_ms": 87.5,
+  "printwindow_ocr_line_keep": 0.998,
+  "printwindow_shows_occluder": false
+ },
+ "minimized": {
+  "elements": 53,
+  "visible_items": 0,
+  "all_items": 39,
+  "tp_visible_chars": 3258,
+  "tp_doc_chars": 22347,
+  "uia_ms": 70.1,
+  "capture": "minimized"
+ }
+}
