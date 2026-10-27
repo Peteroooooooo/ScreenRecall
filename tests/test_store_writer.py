@@ -87,10 +87,32 @@ def test_newer_schema_and_fts_version_rejected(tmp_path):
         schema.connect(p)
     c = schema.connect(p, migrate=False)
     c.execute("UPDATE meta SET value = '1' WHERE key = 'schema_version'")
-    c.execute("UPDATE meta SET value = 'f0' WHERE key = 'fts_version'")
     c.close()
-    with pytest.raises(schema.SchemaError):
-        schema.connect(p)
+
+
+def test_fts_or_unicode_version_change_rebuilds_index(tmp_path):
+    """规则版本或 Python 的 Unicode 版本变了：打开时重建全文表，之后删除仍能删干净、检索照常。"""
+    p = tmp_path / schema.DB_NAME
+    with Writer(tmp_path) as wr:
+        sid = wr.segment_for("a.exe", "t", 1000).result(5)
+        b = wr.block_new(sid, 1000).result(5)
+        wr.record_lines(b, 1000, (0, 300), [L("REBUILDSENTINEL 重建索引", 10), L("第二行 abc", 40)]).result(5)
+    for key, stale in (("fts_version", "f0"), ("unicode_version", "1.0.0")):
+        c = schema.connect(p, migrate=False)
+        c.execute("UPDATE meta SET value = ? WHERE key = ?", (stale, key))
+        # 模拟旧规则留下的索引文档：直接清掉，重建后应能查回来
+        c.execute("INSERT INTO lines_bi (lines_bi) VALUES ('delete-all')")
+        c.close()
+        r = schema.connect_ro(p)  # 只读方打开也会触发
+        assert r.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()[0] != stale
+        from screenrecall.store.fts import lexical
+        assert lexical.search(r, "重建").total == 1 and lexical.search(r, "ab").total == 1
+        r.close()
+    from screenrecall.store import delete
+    with Writer(tmp_path) as wr:
+        wr.run_raw(lambda conn: delete.delete_data(conn, tmp_path, time_from=0, time_to=5000)).result(10)
+    raw = p.read_bytes() + (p.with_name(p.name + "-wal").read_bytes() if p.with_name(p.name + "-wal").exists() else b"")
+    assert b"rebuildsentinel" not in raw.lower() and "重建索引".encode() not in raw
 
 
 # ---------------- 写线程 ----------------

@@ -17,10 +17,12 @@ import json
 import logging
 import os
 import queue
+import sqlite3
 import threading
 import time
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import wait as futures_wait
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -44,6 +46,10 @@ _CONTROL_JSON = ("pinned_windows", "excluded_processes", "excluded_title_keyword
 _CONTROL_FIELDS = ("desired_state", "pause_until_ms", "agent_enabled") + _CONTROL_JSON
 _HEARTBEAT_FIELDS = ("recorder_state", "recorder_pid", "recorder_note", "current_hwnd", "current_process",
                      "current_title", "current_since_ms")
+
+
+class BlockGone(ValueError):
+    """块不存在（通常是隐私删除把整个内容源删掉了）。录制方收到后应重新 segment_for + block_new。"""
 
 
 @dataclass(frozen=True)
@@ -70,13 +76,14 @@ class WriterConfig:
 
 
 class _Op:
-    __slots__ = ("fn", "args", "future", "raw")
+    __slots__ = ("fn", "args", "future", "raw", "quiet")
 
-    def __init__(self, fn: Callable, args: tuple, raw: bool = False):
+    def __init__(self, fn: Callable, args: tuple, raw: bool = False, quiet: bool = False):
         self.fn = fn
         self.args = args
         self.future: Future = Future()
         self.raw = raw
+        self.quiet = quiet  # 不改变可见内容（心跳）：整批都是这种时不递增 revision，页面不必刷新
 
 
 _STOP = object()
@@ -117,8 +124,11 @@ class Writer:
         self.clock = clock
         self._q: queue.Queue = queue.Queue()
         self._encoder = ThreadPoolExecutor(max_workers=self.cfg.webp_threads, thread_name_prefix="store-webp")
+        self._encoding: set[Future] = set()  # 还没编码完的帧（flush 要等它们）
+        self._enc_lock = threading.Lock()
         self._ready = threading.Event()
         self._start_error: BaseException | None = None
+        self._closing = False  # 不再接受新的证据帧（编码线程正在收尾）
         self._closed = False
         self._thread = threading.Thread(target=self._run, name="store-writer", daemon=True)
         self._thread.start()
@@ -128,10 +138,10 @@ class Writer:
 
     # ---------------- 线程与批处理 ----------------
 
-    def _submit(self, fn: Callable, *args: Any, raw: bool = False) -> Future:
+    def _submit(self, fn: Callable, *args: Any, raw: bool = False, quiet: bool = False) -> Future:
         if self._closed:
             raise RuntimeError("写线程已关闭")
-        op = _Op(fn, args, raw)
+        op = _Op(fn, args, raw, quiet)
         self._q.put(op)
         return op.future
 
@@ -151,76 +161,101 @@ class Writer:
                 if item.raw:
                     self._run_raw(conn, item)
                     continue
-                stop = self._run_batch(conn, item)
-                if stop:
+                if self._run_batch(conn, item):
                     break
         finally:
             conn.close()
 
     def _run_raw(self, conn, op: _Op) -> None:
+        """事务之外执行；fn 自己开的事务若没结束，回滚并按失败处理（否则之后每批都开不了事务）。"""
         try:
-            op.future.set_result(op.fn(conn, *op.args))
+            value = op.fn(conn, *op.args)
+            err: BaseException | None = None
         except BaseException as e:  # noqa: BLE001
-            log.warning("写库操作 %s 失败：%s", getattr(op.fn, "__name__", op.fn), e)
-            op.future.set_exception(e)
+            value, err = None, e
+        if conn.in_transaction:
+            try:
+                conn.execute("ROLLBACK")
+            except Exception:  # noqa: BLE001
+                pass
+            err = err or RuntimeError("操作结束时留下了未提交的事务，已回滚")
+        if err is None:
+            op.future.set_result(value)
+        else:
+            log.warning("写库操作 %s 失败：%s", getattr(op.fn, "__name__", op.fn), err)
+            op.future.set_exception(err)
 
     def _begin(self, conn) -> None:
+        if conn.in_transaction:  # 不应发生；留着会让 BEGIN 永远失败
+            log.warning("写连接上有未结束的事务，已回滚")
+            conn.execute("ROLLBACK")
         delay = 0.05
         while True:
             try:
                 conn.execute("BEGIN IMMEDIATE")
                 return
-            except Exception as e:  # noqa: BLE001  别的进程长时间占着写锁：重试，不丢操作
+            except sqlite3.OperationalError as e:
+                msg = str(e).lower()
+                if "locked" not in msg and "busy" not in msg:
+                    raise  # 磁盘错误、库损坏等：不重试，交给本批的操作报错
+                # 别的进程长时间占着写锁：重试，不丢操作
                 log.warning("取得写锁失败，稍后重试：%s", e)
                 time.sleep(delay)
                 delay = min(delay * 2, 2.0)
 
     def _run_batch(self, conn, first: _Op) -> bool:
-        self._begin(conn)
-        t0 = time.perf_counter()
+        """处理一批；返回 True 表示读到了停止标记。任何异常都落到本批各操作的 Future 上，写线程不会因此退出。"""
         done: list[tuple[_Op, Any, BaseException | None]] = []
         pending_raw: _Op | None = None
         stop = False
         op: Any = first
-        while True:
-            conn.execute("SAVEPOINT op")
-            try:
-                value = op.fn(conn, *op.args)
-                conn.execute("RELEASE op")
-                op.future._sr_value = value
-                done.append((op, value, None))
-            except BaseException as e:  # noqa: BLE001
-                log.warning("写库操作 %s 失败：%s", getattr(op.fn, "__name__", op.fn), e)
-                done.append((op, None, e))
+        op_err: BaseException | None = None  # 当前操作自己的异常（外层整批作废时仍报给它这个）
+        try:
+            self._begin(conn)
+            t0 = time.perf_counter()
+            while True:
+                conn.execute("SAVEPOINT op")
                 try:
+                    value = op.fn(conn, *op.args)
+                    conn.execute("RELEASE op")
+                except BaseException as e:  # noqa: BLE001
+                    op_err = e
+                    log.warning("写库操作 %s 失败：%s", getattr(op.fn, "__name__", op.fn), e)
+                    # 这两句再失败（严重错误时 SQLite 已回滚整个事务）就走外层：整批作废
                     conn.execute("ROLLBACK TO op")
                     conn.execute("RELEASE op")
-                except Exception:  # noqa: BLE001  严重错误时 SQLite 已回滚整个事务：本批之前的操作也作废
-                    if conn.in_transaction:
-                        conn.execute("ROLLBACK")
-                    done = [(o, None, err or RuntimeError("同批操作出错，事务已回滚")) for o, _, err in done]
-                    self._finish(done)
-                    return False
-            if (time.perf_counter() - t0) * 1000 >= self.cfg.batch_budget_ms:
-                break
-            try:
-                op = self._q.get_nowait()
-            except queue.Empty:
-                break
-            if op is _STOP:
-                stop = True
-                break
-            if op.raw:
-                pending_raw = op
-                break
-        try:
-            schema.bump_revision(conn)
+                    done.append((op, None, e))
+                    op_err = None
+                else:
+                    op.future._sr_value = value
+                    done.append((op, value, None))
+                op = None
+                if (time.perf_counter() - t0) * 1000 >= self.cfg.batch_budget_ms:
+                    break
+                try:
+                    nxt = self._q.get_nowait()
+                except queue.Empty:
+                    break
+                if nxt is _STOP:
+                    stop = True
+                    break
+                if nxt.raw:
+                    pending_raw = nxt
+                    break
+                op = nxt
+            if any(err is None and not o.quiet for o, _, err in done):
+                schema.bump_revision(conn)
             conn.execute("COMMIT")
         except BaseException as e:  # noqa: BLE001
-            log.error("提交失败，本批 %d 个操作作废：%s", len(done), e)
+            log.error("本批 %d 个操作作废：%s", len(done) + (op is not None), e)
             if conn.in_transaction:
-                conn.execute("ROLLBACK")
-            done = [(o, None, e) for o, _, _ in done]
+                try:
+                    conn.execute("ROLLBACK")
+                except Exception:  # noqa: BLE001
+                    pass
+            done = [(o, None, err or RuntimeError(f"同批操作出错，事务已回滚：{e}")) for o, _, err in done]
+            if op is not None:
+                done.append((op, None, op_err or e))
         self._finish(done)
         if pending_raw is not None:
             self._run_raw(conn, pending_raw)
@@ -232,16 +267,24 @@ class Writer:
             if err is None:
                 o.future.set_result(value)
             else:
+                # 回滚了的结果不能再被后面引用这个 Future 的操作当成真的 ID 用
+                if hasattr(o.future, "_sr_value"):
+                    del o.future._sr_value
                 o.future.set_exception(err)
 
     def flush(self, timeout: float | None = 30.0) -> None:
         """等到此前排队的操作（含已提交的帧编码）都写完。"""
-        self._encoder.submit(lambda: None).result(timeout)
-        self._submit(lambda conn: None).result(timeout)
+        with self._enc_lock:
+            pending = list(self._encoding)
+        _, not_done = futures_wait(pending, timeout)
+        if not_done:
+            raise TimeoutError(f"还有 {len(not_done)} 张证据帧没编码完")
+        self._submit(lambda conn: None, quiet=True).result(timeout)
 
     def close(self, timeout: float | None = 30.0) -> None:
         if self._closed:
             return
+        self._closing = True
         self._encoder.shutdown(wait=True)  # 编码完的帧还要排队改状态，先等编码线程
         self._closed = True
         self._q.put(_STOP)
@@ -341,6 +384,8 @@ class Writer:
         line_ids / line_rects：这帧上可见的行（帧像素坐标），用于高亮；line_ids 可直接传 record_lines 的 Future。
         ocr_rects：UIA 读不到字的区域（帧像素坐标），登记为待 OCR。
         """
+        if self._closing or self._closed:
+            raise RuntimeError("写线程已关闭")
         arr = np.ascontiguousarray(np.asarray(bgr)[..., :3], dtype=np.uint8).copy()
         if arr.ndim != 3:
             raise ValueError("bgr 必须是 HxWx3 数组")
@@ -353,8 +398,22 @@ class Writer:
             self._submit(_link_lines, frame_id, line_ids, list(line_rects or []))
         for rect in ocr_rects or ():
             self._submit(_ocr_add, frame_id, tuple(int(v) for v in rect), block_id, pos_y, self.clock())
-        self._encoder.submit(self._encode, frame_id, arr, rel)
+        fut = self._encoder.submit(self._encode, frame_id, arr, rel)
+        with self._enc_lock:
+            self._encoding.add(fut)
+        fut.add_done_callback(self._encoded)
         return frame_id
+
+    def _encoded(self, fut: Future) -> None:
+        with self._enc_lock:
+            self._encoding.discard(fut)
+
+    def sweep_frames(self, older_than_ms: int = 10 * 60_000) -> Future:
+        """收拾上次崩溃留下的"编码中"证据帧：文件已写好的改成 ok，没有文件的改成 failed，并抹掉残留的 .tmp。
+
+        录制进程启动时、保存任何新帧之前调用一次（只处理 captured_ms 早于 now - older_than_ms 的）。返回处理的帧数。
+        """
+        return self._submit(_sweep_frames, str(self.data_dir), self.clock(), self.clock() - int(older_than_ms))
 
     def _encode(self, frame_id: str, arr: np.ndarray, rel: str) -> None:
         path = self.data_dir / rel
@@ -394,9 +453,19 @@ class Writer:
                             self.cfg.ocr_max_attempts, str(self.data_dir))
 
     def ocr_complete(self, region_id: int, *, ok: bool = True, error: str | None = None) -> Future:
-        """OCR 结束。识别出的文字另走 record_lines(source='ocr')。失败且没到最大次数时回到 pending。"""
+        """OCR 结束（只改状态）。成功时一般直接用 ocr_result；失败且没到最大次数时回到 pending。"""
         return self._submit(_ocr_complete, int(region_id), bool(ok), error, self.clock(),
                             self.cfg.ocr_max_attempts)
+
+    def ocr_result(self, region_id: int, lines: Sequence[LineIn]) -> Future:
+        """登记一个区域的 OCR 结果，一步完成：record_lines（source='ocr'，时间 = 帧的 captured_ms，
+        视口 = 该区域在块上的范围）+ 帧内位置 + 区域标记 done。
+
+        lines 用帧像素坐标（不是裁剪图坐标，也不是块坐标），这里换算到块标尺。
+        区域或帧已不存在（OCR 期间被隐私删除）时什么都不写，返回 None；否则返回与 lines 对齐的 line_id 列表。
+        """
+        lines = [LineIn(ln.text, ln.x0, ln.y0, ln.x1, ln.y1, "ocr", ln.confidence) for ln in lines]
+        return self._submit(_ocr_result, int(region_id), lines, self.clock(), self.cfg)
 
     # ---------------- 划过、片段、概括 ----------------
 
@@ -465,10 +534,29 @@ class Writer:
             raise ValueError(f"不能由录制进程写的控制字段：{sorted(bad)}")
         values = dict(fields)
         values["recorder_heartbeat_ms"] = self.clock()
-        return self._submit(_control_update, values, False, self.clock())
+        return self._submit(_control_update, values, False, self.clock(), quiet=True)
 
 
 # ======================= 写线程里执行的操作（conn 已在事务内） =======================
+
+def _purge_end(conn, t: int, app: str | None) -> int | None:
+    """t 落在某次隐私删除的范围里（应用匹配或那次删除不限应用）→ 返回该范围的结束时间，否则 None。
+
+    隐私删除由另一个进程执行时，本进程队列里晚到的写入（时间早于删除）会在删除之后提交，
+    这里据此丢弃，删掉的内容不会"复活"。
+    """
+    row = conn.execute(
+        "SELECT MAX(time_to) FROM purges WHERE time_from <= ? AND ? < time_to "
+        "AND (app IS NULL OR sr_fold(app) = sr_fold(?))", (t, t, app)).fetchone()
+    return None if row is None or row[0] is None else int(row[0])
+
+
+def _segment_app(conn, segment_id) -> str | None:
+    if segment_id is None:
+        return None
+    row = conn.execute("SELECT app FROM segments WHERE segment_id = ?", (int(segment_id),)).fetchone()
+    return None if row is None else row[0]
+
 
 def _control_values(fields: dict) -> dict:
     out = {}
@@ -490,6 +578,9 @@ def _control_update(conn, values: dict, bump_seq: bool, now: int) -> None:
 
 
 def _activity_start(conn, t, hwnd, pid, process, title, excluded) -> int:
+    end = _purge_end(conn, t, process)
+    if end is not None:  # 晚到的、落在已删范围里：从删除范围结束时算起（窗口那时仍在前台）
+        t = max(t, end)
     conn.execute("UPDATE activity SET end_ms = max(start_ms, ?) WHERE end_ms IS NULL", (t,))
     cur = conn.execute(
         "INSERT INTO activity (start_ms, hwnd, pid, process, title, excluded) VALUES (?, ?, ?, ?, ?, ?)",
@@ -525,8 +616,8 @@ def _segment_for(conn, app, title, t, reuse_ms) -> int:
         conn.execute("UPDATE segments SET last_seen_ms = max(last_seen_ms, ?), first_seen_ms = min(first_seen_ms, ?) "
                      "WHERE segment_id = ?", (t, t, row[0]))
         return int(row[0])
-    cur = conn.execute("INSERT INTO segments (app, title, first_seen_ms, last_seen_ms) VALUES (?, ?, ?, ?)",
-                       (app, title, t, t))
+    cur = conn.execute("INSERT INTO segments (app, title, first_seen_ms, last_seen_ms, app_fold, title_fold) "
+                       "VALUES (?, ?, ?, ?, ?, ?)", (app, title, t, t, docs.fold(app), docs.fold(title)))
     return int(cur.lastrowid)
 
 
@@ -582,8 +673,10 @@ def _record_lines(conn, block_id, t, top, bottom, lines: list[LineIn], cfg: Writ
     block_id = int(_value(block_id))
     brow = conn.execute("SELECT segment_id FROM blocks WHERE block_id = ?", (block_id,)).fetchone()
     if brow is None:
-        raise ValueError(f"块 {block_id} 不存在")
+        raise BlockGone(f"块 {block_id} 不存在")
     segment_id = int(brow[0])
+    if _purge_end(conn, t, _segment_app(conn, segment_id)) is not None:
+        return [None] * len(lines)  # 这次"看清"落在已删除的范围里：整个丢弃
     dy = cfg.match_dy_px
 
     incoming = [(i, ln, docs.norm(ln.text)) for i, ln in enumerate(lines)]
@@ -685,6 +778,8 @@ def _link_tails(conn, block_id: int, new_rows: list[tuple[int, str, str, float]]
 
 def _frame_insert(conn, frame_id, rel, w, h, captured, segment_id, block_id, pos_y, hwnd, app, title, keep,
                   pixel_hash) -> str:
+    if _purge_end(conn, captured, app or _segment_app(conn, _opt_int(segment_id))) is not None:
+        return frame_id  # 落在已删除的范围里：不登记；编码完成时发现没有这一行，会把文件抹掉
     frame_no = int(conn.execute(
         "UPDATE meta SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = 'frame_seq' RETURNING value"
     ).fetchone()[0])
@@ -714,8 +809,8 @@ def _frame_done(conn, frame_id, nbytes, now, abs_path) -> None:
 
 
 def _frame_seen(conn, frame_id, t) -> int:
-    row = conn.execute("SELECT segment_id, block_id FROM frames WHERE frame_id = ?", (frame_id,)).fetchone()
-    if row is None:
+    row = conn.execute("SELECT segment_id, block_id, app FROM frames WHERE frame_id = ?", (frame_id,)).fetchone()
+    if row is None or _purge_end(conn, t, row[2] or _segment_app(conn, row[0])) is not None:
         return 0
     conn.execute("UPDATE frames SET last_seen_ms = max(last_seen_ms, ?) WHERE frame_id = ?", (t, frame_id))
     n = conn.execute(
@@ -732,8 +827,14 @@ def _frame_failed(conn, frame_id) -> None:
     conn.execute("UPDATE frames SET status = 'failed' WHERE frame_id = ? AND status = 'encoding'", (frame_id,))
 
 
+def _frame_exists(conn, frame_id) -> bool:
+    return conn.execute("SELECT 1 FROM frames WHERE frame_id = ?", (frame_id,)).fetchone() is not None
+
+
 def _link_lines(conn, frame_id, line_ids, rects) -> int:
     ids = _value(line_ids)
+    if not _frame_exists(conn, frame_id):  # 帧落在已删范围里没登记，或已被删除
+        return 0
     rows = []
     for lid, rect in zip(ids, rects):
         if lid is None:
@@ -744,7 +845,9 @@ def _link_lines(conn, frame_id, line_ids, rects) -> int:
     return len(rows)
 
 
-def _ocr_add(conn, frame_id, rect, block_id, pos_y, now) -> int:
+def _ocr_add(conn, frame_id, rect, block_id, pos_y, now) -> int | None:
+    if not _frame_exists(conn, frame_id):
+        return None
     cur = conn.execute(
         "INSERT INTO ocr_regions (frame_id, x0, y0, x1, y1, block_id, pos_y, created_ms, updated_ms) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -786,10 +889,53 @@ def _ocr_complete(conn, region_id, ok, error, now, max_attempts) -> None:
     )
 
 
-def _skim(conn, segment_id, block_id, start, end, y_from, y_to) -> int:
+def _ocr_result(conn, region_id, lines: list[LineIn], now, cfg: WriterConfig) -> list[int | None] | None:
+    r = conn.execute(
+        "SELECT r.frame_id, r.y0, r.y1, COALESCE(r.block_id, f.block_id) AS block_id, "
+        "COALESCE(r.pos_y, f.pos_y) AS pos_y, f.captured_ms "
+        "FROM ocr_regions r JOIN frames f ON f.frame_id = r.frame_id WHERE r.region_id = ?", (region_id,)
+    ).fetchone()
+    if r is None:
+        return None  # 区域或帧已被删除：识别结果丢弃，删掉的内容不能借 OCR 回来
+    if r["block_id"] is None or r["pos_y"] is None:
+        conn.execute("UPDATE ocr_regions SET status = 'failed', last_error = ?, updated_ms = ? WHERE region_id = ?",
+                     ("区域没有块坐标，文字无法登记", now, region_id))
+        return None
+    pos = float(r["pos_y"])
+    block_lines = [LineIn(ln.text, ln.x0, ln.y0 + pos, ln.x1, ln.y1 + pos, ln.source, ln.confidence) for ln in lines]
+    ids = _record_lines(conn, r["block_id"], int(r["captured_ms"]), pos + r["y0"], pos + r["y1"], block_lines, cfg)
+    _link_lines(conn, r["frame_id"], ids, [(ln.x0, ln.y0, ln.x1, ln.y1) for ln in lines])
+    conn.execute("UPDATE ocr_regions SET status = 'done', last_error = NULL, updated_ms = ? WHERE region_id = ?",
+                 (now, region_id))
+    return ids
+
+
+def _sweep_frames(conn, data_dir, now, cutoff) -> int:
+    from .delete import wipe_file
+
+    rows = conn.execute("SELECT frame_id, image_path FROM frames WHERE status = 'encoding' AND captured_ms < ?",
+                        (cutoff,)).fetchall()
+    for fid, rel in rows:
+        path = Path(data_dir) / rel
+        try:
+            wipe_file(path.with_suffix(".tmp"))  # 写到一半的临时文件也是屏幕内容
+        except OSError as e:
+            log.warning("残留临时文件删除失败 %s：%s", rel, e)
+        if path.is_file():  # 先写临时文件再改名：正式文件存在就是完整的
+            conn.execute("UPDATE frames SET status = 'ok', bytes = ?, saved_ms = ? WHERE frame_id = ?",
+                         (path.stat().st_size, now, fid))
+        else:
+            conn.execute("UPDATE frames SET status = 'failed' WHERE frame_id = ?", (fid,))
+    return len(rows)
+
+
+def _skim(conn, segment_id, block_id, start, end, y_from, y_to) -> int | None:
+    segment_id = int(_value(segment_id))
+    if _purge_end(conn, start, _segment_app(conn, segment_id)) is not None:
+        return None
     cur = conn.execute(
         "INSERT INTO skims (segment_id, block_id, start_ms, end_ms, y_from, y_to) VALUES (?, ?, ?, ?, ?, ?)",
-        (int(_value(segment_id)), _opt_int(block_id), start, max(start, end), y_from, y_to),
+        (segment_id, _opt_int(block_id), start, max(start, end), y_from, y_to),
     )
     return int(cur.lastrowid)
 

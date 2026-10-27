@@ -29,12 +29,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Sequence
 
+from ..timeutil import utc_ms
 from .fts import docs
 
 log = logging.getLogger(__name__)
 
 NEG_INF = -(2 ** 62)
 POS_INF = 2 ** 62
+PURGE_KEEP_MS = 24 * 3600_000  # 删除登记保留多久（晚到写入的最长延迟：录制进程手里的候选帧、空闲 OCR 结果）
 
 
 @dataclass
@@ -111,10 +113,16 @@ def delete_data(
     text_vectors: Sequence = (),
     image_vectors: Sequence = (),
     batch: int = 2000,
+    now_ms: int | None = None,
+    keep_recent_segments_ms: int = 30 * 60_000,
 ) -> DeleteReport:
     """conn 必须是 schema.connect() 的读写连接且不在事务中（会分批开短事务）。
 
     text_vectors / image_vectors：VectorStore 列表，分别以 line_id / frame_no 为 id。
+    开始前先在 purges 里登记 [time_from, min(time_to, now))：别的进程队列里晚到的、时间落在范围里的写入
+    （录制进程手里的候选帧、正在跑的 OCR）提交时会被丢弃。登记保留 PURGE_KEEP_MS。
+    keep_recent_segments_ms：空了的内容源若这段时间内还在用，只清空标题、不删编号（见 _drop_empty_segments）；
+    更早的整个删掉，录制进程再往里写会收到 writer.BlockGone。
     """
     if time_from is None and time_to is None and not app:
         raise ValueError("请至少给出时间范围或应用，避免误删全部记录")
@@ -123,8 +131,16 @@ def delete_data(
     conn.execute("PRAGMA secure_delete = ON")
     lo = NEG_INF if time_from is None else int(time_from)
     hi = POS_INF if time_to is None else int(time_to)
+    now = utc_ms() if now_ms is None else int(now_ms)
     data_dir = Path(data_dir)
     rep = DeleteReport()
+    with _txn(conn):
+        conn.execute("DELETE FROM purges WHERE created_ms < ?", (now - PURGE_KEEP_MS,))
+        # 只拦"删除那一刻之前"的晚到写入：范围伸到将来（"删除今天"、只给应用）时，之后新录的照常保存
+        purge_to = min(hi, now)
+        if purge_to > lo:
+            conn.execute("INSERT INTO purges (time_from, time_to, app, created_ms) VALUES (?, ?, ?, ?)",
+                         (lo, purge_to, app or None, now))
     span = [POS_INF, NEG_INF]  # 被删内容的实际时间跨度，用于让概括失效
 
     def widen(a, b):
@@ -227,8 +243,8 @@ def delete_data(
         rep.skims = len(sk)
 
         # 4. 窗口焦点与缺口：裁剪 / 拆分
-        rep.activity = _clip_intervals(conn, "activity", "activity_id", "process", lo, hi, app, widen)
-        rep.gaps = _clip_intervals(conn, "gaps", "gap_id", "process", lo, hi, app, widen)
+        rep.activity = _clip_intervals(conn, "activity", "activity_id", "process", lo, hi, app, widen, now)
+        rep.gaps = _clip_intervals(conn, "gaps", "gap_id", "process", lo, hi, app, widen, now)
 
         # 5. 片段与概括
         rep.pieces, cleared = _pieces(conn, lo, hi, app, widen)
@@ -241,7 +257,7 @@ def delete_data(
         if app:
             touched_segments.update(int(r[0]) for r in conn.execute(
                 "SELECT segment_id FROM segments WHERE app = ? COLLATE NOCASE", (app,)))
-        rep.segments = _drop_empty_segments(conn, touched_segments)
+        rep.segments = _drop_empty_segments(conn, touched_segments, now - keep_recent_segments_ms)
 
     # 7. 向量
     for vs in text_vectors:
@@ -269,7 +285,8 @@ class _txn:
         return False
 
 
-def _clip_intervals(conn, table: str, pk: str, app_col: str, lo: int, hi: int, app: str | None, widen) -> int:
+def _clip_intervals(conn, table: str, pk: str, app_col: str, lo: int, hi: int, app: str | None, widen,
+                    now: int) -> int:
     """区间表（start_ms / end_ms，end 为空 = 仍在进行）：范围内的删掉，跨边界的裁剪，覆盖整个范围的拆成两段。"""
     params: list = [lo, hi]
     app_sql = ""
@@ -283,7 +300,8 @@ def _clip_intervals(conn, table: str, pk: str, app_col: str, lo: int, hi: int, a
     for r in rows:
         start, end = int(r["start_ms"]), r["end_ms"]
         end_v = POS_INF if end is None else int(end)
-        widen(max(start, lo), min(end_v, hi) if end_v < POS_INF else start)
+        # 被删的那一段：仍在进行的记录（end 为空）最多到现在
+        widen(max(start, lo), min(end_v, hi, max(now, start)))
         keep_left = start < lo
         keep_right = end_v > hi
         if not keep_left and not keep_right:
@@ -358,7 +376,9 @@ def _stale_period_summaries(conn, lo: int, hi: int) -> int:
     return n
 
 
-def _drop_empty_segments(conn, segment_ids: set[int]) -> int:
+def _drop_empty_segments(conn, segment_ids: set[int], recent_from: int) -> int:
+    """删掉空了的内容源和它的块。最近还在用的（last_seen >= recent_from）只清空标题、保留编号：
+    录制进程手里还拿着它的 segment_id / block_id，删掉的话它之后每次写入都会失败。"""
     n = 0
     for sid in sorted(segment_ids):
         busy = conn.execute(
@@ -366,6 +386,13 @@ def _drop_empty_segments(conn, segment_ids: set[int]) -> int:
             "OR EXISTS (SELECT 1 FROM skims WHERE segment_id = ?)", (sid, sid, sid)
         ).fetchone()[0]
         if busy:
+            continue
+        recent = conn.execute("SELECT last_seen_ms >= ? FROM segments WHERE segment_id = ?",
+                              (recent_from, sid)).fetchone()
+        if recent is not None and recent[0]:
+            conn.execute("UPDATE segments SET title = '', title_fold = '', volatile_mask = NULL WHERE segment_id = ?",
+                         (sid,))
+            conn.execute("DELETE FROM piece_segments WHERE segment_id = ?", (sid,))
             continue
         blocks = [int(r[0]) for r in conn.execute("SELECT block_id FROM blocks WHERE segment_id = ?", (sid,))]
         if blocks:

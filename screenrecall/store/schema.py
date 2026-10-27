@@ -12,19 +12,27 @@
 - lines 多了 segment_id（冗余，按内容源分组与删除不用再连 blocks）、tail / tail_line_id（跨行检索用，
   见 fts.docs）；
 - 两个全文表都用普通 contentless（content=''），删除时提供原值：实测 contentless_delete=1 删除后
-  原文字节仍留在库文件里，不满足隐私删除。
+  原文字节仍留在库文件里，不满足隐私删除；
+- 多了 purges（隐私删除登记），别的写入方晚到的、时间落在已删范围里的写入据此丢弃（见 writer）。
+
+全文索引文档由 Python 的 Unicode 规则（NFKC、\\w）算出，删除时要算出一模一样的文档。
+规则版本（FTS_VERSION）或 Python 的 Unicode 版本变了，读写连接打开时自动重建两张全文表。
 """
 
 from __future__ import annotations
 
 import sqlite3
+import unicodedata
 from pathlib import Path
+
+from .fts import docs
 
 DB_NAME = "recall.sqlite3"
 SCHEMA_VERSION = 1
 
 # 全文索引文档的生成规则版本（fts.docs）。删除要提供与写入时完全相同的文档，规则一改就得重建索引
 FTS_VERSION = "f1"
+UNICODE_VERSION = unicodedata.unidata_version
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -66,7 +74,11 @@ CREATE TABLE IF NOT EXISTS segments (
     title          TEXT NOT NULL,
     first_seen_ms  INTEGER NOT NULL,
     last_seen_ms   INTEGER NOT NULL,
-    volatile_mask  TEXT                     -- JSON：易变 32px 方块（视频、时钟）
+    volatile_mask  TEXT,                    -- JSON：易变 32px 方块（视频、时钟）
+    -- sr_fold(app) / sr_fold(title)：隐藏名单按它们比较。预先算好，检索时不必逐行回调 Python
+    -- （5 万个内容源、两个关键词时逐行折叠实测 89 ms）
+    app_fold       TEXT NOT NULL DEFAULT '',
+    title_fold     TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_segments_app_title ON segments (app, title, last_seen_ms);
 CREATE INDEX IF NOT EXISTS idx_segments_last ON segments (last_seen_ms);
@@ -264,9 +276,18 @@ CREATE TABLE IF NOT EXISTS control (
     updated_ms               INTEGER NOT NULL DEFAULT 0
 );
 
+-- 隐私删除登记：[time_from, time_to) + 应用（空 = 所有应用）。删除开始前先登记，
+-- 别的进程晚到的写入（录制进程手里的候选帧、空闲 OCR 结果）时间落在范围里就丢弃。保留 1 天
+CREATE TABLE IF NOT EXISTS purges (
+    purge_id    INTEGER PRIMARY KEY,
+    time_from   INTEGER NOT NULL,
+    time_to     INTEGER NOT NULL,
+    app         TEXT,
+    created_ms  INTEGER NOT NULL
+);
+
 INSERT OR IGNORE INTO control (id) VALUES (1);
 INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', '1');
-INSERT OR IGNORE INTO meta (key, value) VALUES ('fts_version', 'f1');
 INSERT OR IGNORE INTO meta (key, value) VALUES ('revision', '0');
 INSERT OR IGNORE INTO meta (key, value) VALUES ('frame_seq', '0');
 """
@@ -283,10 +304,16 @@ def db_path(data_dir: Path | str) -> Path:
     return Path(data_dir) / DB_NAME
 
 
+def _sql_fold(s):
+    return None if s is None else docs.fold(str(s))
+
+
 def _configure(conn: sqlite3.Connection) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA busy_timeout = 5000")
     conn.execute("PRAGMA foreign_keys = ON")
+    # sr_fold(x) = NFKC + casefold：隐藏名单、隐私删除登记按应用/标题比较时用（SQLite 的 lower/NOCASE 只认 ASCII）
+    conn.create_function("sr_fold", 1, _sql_fold, deterministic=True)
     return conn
 
 
@@ -324,7 +351,9 @@ def connect_ro(path: Path | str) -> sqlite3.Connection:
     另设 query_only 防止误写。
     """
     path = Path(path)
-    if not path.exists() or schema_version(path) != SCHEMA_VERSION:
+    m = _read_meta(path)
+    if (int(m.get("schema_version", 0)) != SCHEMA_VERSION or m.get("fts_version") != FTS_VERSION
+            or m.get("unicode_version") != UNICODE_VERSION):
         connect(path).close()
     conn = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True, timeout=5.0,
                            isolation_level=None, check_same_thread=False)
@@ -333,21 +362,22 @@ def connect_ro(path: Path | str) -> sqlite3.Connection:
     return conn
 
 
-def schema_version(path: Path | str) -> int:
-    """不建库、不加锁地读结构版本；文件不存在或还没有 meta 表时返回 0。"""
-    path = Path(path)
+def _read_meta(path: Path) -> dict[str, str]:
+    """不建库、不加锁地读 meta；文件不存在或还没有 meta 表时返回空 dict。"""
     if not path.exists():
-        return 0
+        return {}
     conn = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True, timeout=5.0)
     try:
-        row = conn.execute(
-            "SELECT value FROM meta WHERE key = 'schema_version'"
-        ).fetchone()
-        return int(row[0]) if row else 0
+        return {str(k): str(v) for k, v in conn.execute("SELECT key, value FROM meta")}
     except sqlite3.OperationalError:
-        return 0
+        return {}
     finally:
         conn.close()
+
+
+def schema_version(path: Path | str) -> int:
+    """不建库、不加锁地读结构版本；文件不存在或还没有 meta 表时返回 0。"""
+    return int(_read_meta(Path(path)).get("schema_version", 0))
 
 
 def init_schema(conn: sqlite3.Connection) -> None:
@@ -360,7 +390,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
         if current > SCHEMA_VERSION:
             raise SchemaError(f"数据库结构版本 {current} 比代码支持的 {SCHEMA_VERSION} 新，请更新代码")
         if current == SCHEMA_VERSION:
-            _check_fts_version(conn)
+            _ensure_fts(conn)
             return
     else:
         current = 0
@@ -372,13 +402,30 @@ def init_schema(conn: sqlite3.Connection) -> None:
             conn,
             _MIGRATIONS[version] + f"\nUPDATE meta SET value = '{version}' WHERE key = 'schema_version';",
         )
-    _check_fts_version(conn)
+    _ensure_fts(conn)
 
 
-def _check_fts_version(conn: sqlite3.Connection) -> None:
-    row = conn.execute("SELECT value FROM meta WHERE key = 'fts_version'").fetchone()
-    if row is None or row[0] != FTS_VERSION:
-        raise SchemaError(f"全文索引规则版本 {row[0] if row else '?'} 与代码 {FTS_VERSION} 不同，需要重建索引")
+def _ensure_fts(conn: sqlite3.Connection) -> None:
+    """全文索引规则或 Unicode 版本与库里登记的不同 → 重建两张全文表（新库只是登记版本）。
+
+    不重建的话，之后按新规则算出的删除文档和库里的对不上，隐私删除会删不干净。
+    """
+    m = {r[0]: r[1] for r in conn.execute(
+        "SELECT key, value FROM meta WHERE key IN ('fts_version', 'unicode_version')")}
+    if m.get("fts_version") == FTS_VERSION and m.get("unicode_version") == UNICODE_VERSION:
+        return
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        if "fts_version" in m or conn.execute("SELECT 1 FROM lines LIMIT 1").fetchone():
+            docs.rebuild_index(conn)
+            conn.execute("UPDATE segments SET app_fold = sr_fold(app), title_fold = sr_fold(title)")
+        conn.executemany("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+                         [("fts_version", FTS_VERSION), ("unicode_version", UNICODE_VERSION)])
+        conn.execute("COMMIT")
+    except BaseException:
+        if conn.in_transaction:
+            conn.execute("ROLLBACK")
+        raise
 
 
 def _run_script(conn: sqlite3.Connection, script: str) -> None:

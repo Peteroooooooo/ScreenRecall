@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -118,6 +119,8 @@ class VectorStore:
         self._tombs = np.zeros(0, np.int64)
         self._manifest_mtime: float | None = None
         self._manifest: dict = {}
+        # 网页服务多个线程共用一个实例：refresh 会替换段的映射和掩码，检索时不能同时进行
+        self._mu = threading.RLock()
         if not readonly:
             self.root.mkdir(parents=True, exist_ok=True)
             with self._lock():
@@ -169,7 +172,12 @@ class VectorStore:
         return min(rows)
 
     def _repair(self, m: dict) -> None:
-        """上次追加写到一半退出：把最后一段的四个文件截到相同行数。"""
+        """上次追加写到一半退出：把最后一段的四个文件截到相同行数。
+
+        别的进程（读取方）正映射着这些文件时 Windows 不允许截短（PermissionError）。
+        这时把这一段封存、另开新的一段接着追加：读取方行数本来就取四个文件的最小值，多出的半行永远不可见；
+        如果硬接着往不齐的文件后面追加，各文件的行就错位了。
+        """
         if not m["segments"]:
             return
         index = max(int(k) for k in m["segments"])
@@ -179,8 +187,13 @@ class VectorStore:
             p = self._path(index, gen, kind)
             width = self.dim * 4 if kind == "vec" else np.dtype(dt).itemsize
             if p.exists() and p.stat().st_size != n * width:
-                with open(p, "r+b") as fh:
-                    fh.truncate(n * width)
+                try:
+                    with open(p, "r+b") as fh:
+                        fh.truncate(n * width)
+                except OSError:
+                    m["segments"][str(index + 1)] = 0
+                    self._write_manifest(m)
+                    return
 
     def _collect_garbage(self, m: dict) -> None:
         left = []
@@ -247,25 +260,36 @@ class VectorStore:
                 fh.write(dead.astype("<i8").tobytes())
                 fh.flush()
             m = self._read_manifest()
-            row_bytes = self.dim * 4
-            zeros = bytes(row_bytes)
             for key, gen in m["segments"].items():
-                index, gen = int(key), int(gen)
-                n = self._file_rows(index, gen)
-                if n == 0:
-                    continue
-                seg_ids = np.fromfile(self._path(index, gen, "ids"), dtype="<i8", count=n)
-                rows = np.flatnonzero(np.isin(seg_ids, dead))
-                if rows.size == 0:
-                    continue
-                with open(self._path(index, gen, "vec"), "r+b") as fh:
-                    for r in rows:
-                        fh.seek(int(r) * row_bytes)
-                        fh.write(zeros)
-                    fh.flush()
-                    os.fsync(fh.fileno())
-                zeroed += int(rows.size)
+                zeroed += self._zero_rows(int(key), int(gen), dead)
+            # 压缩后还删不掉的旧一代文件（读取方仍映射着）里同样有这些行：一并清零，不计数
+            for name in m.get("garbage", []):
+                if name.endswith(".vec"):
+                    index, gen = name[1:].split(".")[0], name.split(".")[1][1:]
+                    self._zero_rows(int(index), int(gen), dead)
         return zeroed
+
+    def _zero_rows(self, index: int, gen: int, dead: np.ndarray) -> int:
+        """把这一段（这一代文件）里 id 属于 dead 的行的向量就地写零；返回行数。"""
+        vec_p, ids_p = self._path(index, gen, "vec"), self._path(index, gen, "ids")
+        if not vec_p.exists() or not ids_p.exists():
+            return 0
+        n = self._file_rows(index, gen)
+        if n == 0:
+            return 0
+        seg_ids = np.fromfile(ids_p, dtype="<i8", count=n)
+        rows = np.flatnonzero(np.isin(seg_ids, dead))
+        if rows.size == 0:
+            return 0
+        row_bytes = self.dim * 4
+        zeros = bytes(row_bytes)
+        with open(vec_p, "r+b") as fh:
+            for r in rows:
+                fh.seek(int(r) * row_bytes)
+                fh.write(zeros)
+            fh.flush()
+            os.fsync(fh.fileno())
+        return int(rows.size)
 
     def compact(self, min_dead_fraction: float = 0.0) -> int:
         """把含死行的段重写为新一代（只保留活行）；返回重写的段数。最后一段（仍在追加）不动。"""
@@ -301,9 +325,10 @@ class VectorStore:
                 self._write_manifest(m)
                 rewritten += 1
             self._collect_garbage(m)
-        self._segments.clear()  # 本进程自己的映射也换成新一代
-        self._manifest_mtime = None
-        self.refresh()
+        with self._mu:
+            self._segments.clear()  # 本进程自己的映射也换成新一代
+            self._manifest_mtime = None
+            self._refresh()
         if not self.readonly:
             with self._lock():
                 m = self._read_manifest()
@@ -320,6 +345,10 @@ class VectorStore:
 
     def refresh(self) -> None:
         """增量刷新：新清单代号、新增行、新增墓碑。"""
+        with self._mu:
+            self._refresh()
+
+    def _refresh(self) -> None:
         mp = self.root / "manifest.json"
         try:
             mtime = mp.stat().st_mtime_ns
@@ -377,10 +406,12 @@ class VectorStore:
         seg.ts_max = int(seg.ts.max()) if n else -1
 
     def __len__(self) -> int:
-        return sum(int(s.alive.sum()) for s in self._segments.values())
+        with self._mu:
+            return sum(int(s.alive.sum()) for s in self._segments.values())
 
     def close(self) -> None:
-        self._segments.clear()
+        with self._mu:
+            self._segments.clear()
 
     def search(
         self,
@@ -395,9 +426,16 @@ class VectorStore:
         refresh: bool = True,
     ) -> list[VectorHit]:
         """余弦相似度前 k。time 为 [time_from, time_to)；ids / groups 限定候选；
-        best_per_group=True 时每组只留最高分的一行，返回前 k 个组。"""
+        best_per_group=True 时每组只留最高分的一行，返回前 k 个组。可在多个线程里同时调用（内部串行）。"""
+        with self._mu:
+            return self._search(query, k, time_from, time_to, ids, groups, best_per_group, refresh)
+
+    def _search(self, query, k, time_from, time_to, ids, groups, best_per_group, refresh) -> list[VectorHit]:
         if refresh:
-            self.refresh()
+            self._refresh()
+        k = int(k)
+        if k <= 0:
+            return []
         q = np.asarray(query, dtype=np.float32).reshape(-1)
         if q.size != self.dim:
             raise ValueError(f"查询向量维度 {q.size} 与库 {self.dim} 不符")

@@ -21,10 +21,27 @@ import numpy as np
 
 from ..timeutil import local_dates_to_utc_range, utc_ms
 from . import schema
-from .fts import lexical
+from .fts import docs, lexical
 
 RRF_K = 60
 Encoder = Callable[[str], np.ndarray]
+
+
+class Hidden:
+    """"对 Agent 隐藏"名单：应用名整名匹配、标题包含关键词，都按 NFKC + casefold 比较（与 SQL 里的 sr_fold 一致）。"""
+
+    def __init__(self, apps: Sequence[str] = (), title_keywords: Sequence[str] = ()):
+        self.apps = {docs.fold(a) for a in apps if a}
+        self.keywords = [docs.fold(k) for k in title_keywords if k]
+
+    def __bool__(self) -> bool:
+        return bool(self.apps or self.keywords)
+
+    def match(self, app: str | None, title: str | None) -> bool:
+        if app and docs.fold(app) in self.apps:
+            return True
+        t = docs.fold(title or "")
+        return any(k in t for k in self.keywords)
 
 
 class Queries:
@@ -36,24 +53,39 @@ class Queries:
         self.encoder = encoder
         self.clock = clock
         self._local = threading.local()
+        self._conns: list[sqlite3.Connection] = []  # 各线程的连接，close() 一起关
+        self._conns_lock = threading.Lock()
 
     def conn(self) -> sqlite3.Connection:
         c = getattr(self._local, "conn", None)
         if c is None:
             c = self._local.conn = schema.connect_ro(self.db_path)
+            with self._conns_lock:
+                self._conns.append(c)
         return c
 
     def close(self) -> None:
-        c = getattr(self._local, "conn", None)
-        if c is not None:
-            c.close()
-            self._local.conn = None
+        """关闭所有线程打开的连接（各线程之后再查询会重新打开）。"""
+        with self._conns_lock:
+            conns, self._conns = self._conns, []
+        for c in conns:
+            try:
+                c.close()
+            except sqlite3.Error:
+                pass
+        self._local = threading.local()
 
     # ---------------- 搜索 ----------------
 
     def search(self, query: str, time_from: int | None = None, time_to: int | None = None, app: str | None = None,
                task: str | None = None, limit: int = 20, encoder: Encoder | None = None, *, per_group: int = 3,
                exclude_apps: Sequence[str] = (), exclude_title_keywords: Sequence[str] = ()) -> dict:
+        """词法 + 可选向量分支（RRF 融合）。
+
+        向量库约定：id = line_id，group = segment_id，ts = 行的 first_seen_ms（不变）。
+        向量分支先按内容源（筛选 + 时间与内容源的存在区间重叠）限定组，再逐条在 SQL 里核验行的存在区间，
+        与词法分支的时间语义一致（行的 [first_seen, last_seen] 与 [time_from, time_to) 重叠）。
+        """
         conn = self.conn()
         filters = lexical.Filters(time_from, time_to, app, task, tuple(exclude_apps), tuple(exclude_title_keywords))
         lex = lexical.search(conn, query, filters=filters, limit=limit, per_group=per_group)
@@ -65,23 +97,29 @@ class Queries:
             return out
 
         allowed = None
-        if app or task or exclude_apps or exclude_title_keywords:
+        if app or task or exclude_apps or exclude_title_keywords or time_from is not None or time_to is not None:
             allowed = self._segment_ids(conn, filters)
         qv = np.asarray(encoder(query), dtype=np.float32)
-        hits = self.text_vectors.search(qv, k=limit, time_from=time_from, time_to=time_to, groups=allowed,
+        # ts = first_seen：first_seen < time_to 可以直接在向量库里筛；time_from 要看 last_seen，只能回表核验
+        hits = self.text_vectors.search(qv, k=max(limit * 3, 30), time_to=time_to, groups=allowed,
                                         best_per_group=True)
         fused: dict[int, float] = {}
         for rank, g in enumerate(out["groups"], 1):
             fused[g["segment_id"]] = fused.get(g["segment_id"], 0.0) + 1.0 / (RRF_K + rank)
         by_seg = {g["segment_id"]: g for g in out["groups"]}
-        for rank, h in enumerate(hits, 1):
-            fused[h.group] = fused.get(h.group, 0.0) + 1.0 / (RRF_K + rank)
-            g = by_seg.get(h.group)
+        rank = 0
+        for h in hits:
+            row = self._vector_line(conn, h.id, time_from, time_to)
+            if row is None:  # 行已删除（墓碑还没读到），或存在区间不在范围里
+                continue
+            rank += 1
+            if rank > limit:
+                break
+            seg_id = int(row["segment_id"])
+            fused[seg_id] = fused.get(seg_id, 0.0) + 1.0 / (RRF_K + rank)
+            g = by_seg.get(seg_id)
             if g is None:
-                g = self._vector_group(conn, h)
-                if g is None:
-                    continue
-                by_seg[h.group] = g
+                g = by_seg[seg_id] = _vector_group(row)
             elif "vector" not in g["sources"]:
                 g["sources"].append("vector")
             g["vector_score"] = h.score
@@ -95,27 +133,25 @@ class Queries:
 
     def _segment_ids(self, conn, f: lexical.Filters) -> list[int]:
         params: dict = {}
-        sql = lexical.segment_filter_sql(f, params) or "SELECT segment_id FROM segments"
+        sql = lexical.segment_filter_sql(f, params) or "SELECT s.segment_id FROM segments s WHERE 1"
+        if f.time_from is not None:
+            params["seg_from"] = int(f.time_from)
+            sql += " AND s.last_seen_ms >= :seg_from"
+        if f.time_to is not None:
+            params["seg_to"] = int(f.time_to)
+            sql += " AND s.first_seen_ms < :seg_to"
         return [int(r[0]) for r in conn.execute(sql, params)]
 
-    def _vector_group(self, conn, h) -> dict | None:
-        row = conn.execute(
+    @staticmethod
+    def _vector_line(conn, line_id: int, time_from: int | None, time_to: int | None):
+        return conn.execute(
             "SELECT l.line_id, l.block_id, l.text, l.x0, l.y0, l.x1, l.y1, l.source, l.confidence, l.first_seen_ms, "
-            "l.last_seen_ms, l.disappeared_ms, s.segment_id, s.app, s.title, s.last_seen_ms AS seg_last "
-            "FROM lines l JOIN segments s ON s.segment_id = l.segment_id WHERE l.line_id = ?", (h.id,)
+            "l.last_seen_ms, l.disappeared_ms, s.segment_id, s.app, s.title "
+            "FROM lines l JOIN segments s ON s.segment_id = l.segment_id WHERE l.line_id = ? "
+            "AND l.last_seen_ms >= ? AND l.first_seen_ms < ?",
+            (int(line_id), -(2 ** 62) if time_from is None else int(time_from),
+             2 ** 62 if time_to is None else int(time_to)),
         ).fetchone()
-        if row is None:  # 行已删除，向量墓碑还没被读到
-            return None
-        return {
-            "segment_id": row["segment_id"], "app": row["app"], "title": row["title"], "hits": 0,
-            "last_seen_ms": row["last_seen_ms"], "sources": ["vector"],
-            "lines": [{
-                "line_id": row["line_id"], "block_id": row["block_id"], "text": row["text"],
-                "rect": [row["x0"], row["y0"], row["x1"], row["y1"]], "source": row["source"],
-                "confidence": row["confidence"], "first_seen_ms": row["first_seen_ms"],
-                "last_seen_ms": row["last_seen_ms"], "disappeared_ms": row["disappeared_ms"],
-            }],
-        }
 
     # ---------------- 时间线 ----------------
 
@@ -124,12 +160,7 @@ class Queries:
         conn = self.conn()
         lo, hi = int(time_from), int(time_to)
         now = self.clock()
-
-        def hidden(process: str | None, title: str | None) -> bool:
-            if process and any(process.casefold() == a.casefold() for a in exclude_apps):
-                return True
-            t = (title or "").casefold()
-            return any(k and k.casefold() in t for k in exclude_title_keywords)
+        hidden = Hidden(exclude_apps, exclude_title_keywords).match
 
         items: list[dict] = []
         app_sql = " AND process = ? COLLATE NOCASE" if app else ""
@@ -158,28 +189,34 @@ class Queries:
                 continue
             items.append({"kind": "gap", "id": r["gap_id"], "start_ms": r["start_ms"], "end_ms": r["end_ms"],
                           "open": r["end_ms"] is None, "reason": r["reason"],
-                          "detail": None if hidden(r["process"], None) else r["detail"]})
+                          # detail 常常就是窗口标题：标题关键词同样要拦
+                          "detail": None if hidden(r["process"], r["detail"]) else r["detail"]})
         order = {"gap": 0, "activity": 1, "piece": 2}
         items.sort(key=lambda x: (x["start_ms"], order[x["kind"]], x["id"]))
         return {"time_from": lo, "time_to": hi, "items": items}
 
     # ---------------- 片段 ----------------
 
-    def piece(self, piece_id: int, *, max_lines: int = 5000) -> dict | None:
+    def piece(self, piece_id: int, *, max_lines: int = 5000, exclude_apps: Sequence[str] = (),
+              exclude_title_keywords: Sequence[str] = ()) -> dict | None:
+        """片段详情；片段本身命中隐藏名单时返回 None，其中命中隐藏名单的内容源（及其证据帧）不返回。"""
         conn = self.conn()
+        hidden = Hidden(exclude_apps, exclude_title_keywords)
         p = conn.execute("SELECT * FROM pieces WHERE piece_id = ?", (int(piece_id),)).fetchone()
-        if p is None:
+        if p is None or hidden.match(p["app"], p["title"]):
             return None
         seg_ids = [int(r[0]) for r in conn.execute(
             "SELECT segment_id FROM piece_segments WHERE piece_id = ? ORDER BY segment_id", (int(piece_id),))]
         start, end = int(p["start_ms"]), int(p["end_ms"])
         segments = []
+        shown: list[int] = []
         truncated = False
         budget = max_lines
         for sid in seg_ids:
             seg = conn.execute("SELECT * FROM segments WHERE segment_id = ?", (sid,)).fetchone()
-            if seg is None:
+            if seg is None or hidden.match(seg["app"], seg["title"]):
                 continue
+            shown.append(sid)
             roots = _block_roots(conn, sid)
             rows = conn.execute(
                 "SELECT * FROM lines WHERE segment_id = ? AND last_seen_ms >= ? AND first_seen_ms <= ? "
@@ -234,28 +271,50 @@ class Queries:
                 for g in conn.execute("SELECT * FROM gaps WHERE COALESCE(end_ms, ?) > ? AND start_ms < ? "
                                       "ORDER BY start_ms", (self.clock(), start, end))]
         frames = [dict(r) for r in conn.execute(
-            f"SELECT frame_id, captured_ms, segment_id, block_id, pos_y, width, height FROM frames "
-            f"WHERE status = 'ok' AND captured_ms >= ? AND captured_ms <= ? AND segment_id IN "
-            f"(SELECT segment_id FROM piece_segments WHERE piece_id = ?) ORDER BY captured_ms",
-            (start, end, int(piece_id)))]
+            "SELECT frame_id, captured_ms, segment_id, block_id, pos_y, width, height FROM frames "
+            "WHERE status = 'ok' AND captured_ms >= ? AND captured_ms <= ? AND segment_id IN "
+            "(SELECT CAST(value AS INTEGER) FROM json_each(?)) ORDER BY captured_ms",
+            (start, end, json.dumps(shown)))]
         return {"piece_id": p["piece_id"], "start_ms": start, "end_ms": end, "app": p["app"], "title": p["title"],
                 "task_label": p["task_label"], "segments": segments, "gaps": gaps, "frames": frames,
                 "truncated": truncated, "summary": self.summary("piece", str(p["piece_id"]))}
 
     # ---------------- 概括、帧、概览 ----------------
 
-    def summary(self, level: str, key: str) -> dict | None:
-        r = self.conn().execute("SELECT * FROM summaries WHERE level = ? AND key = ?", (level, str(key))).fetchone()
+    def summary(self, level: str, key: str, *, exclude_apps: Sequence[str] = (),
+                exclude_title_keywords: Sequence[str] = ()) -> dict | None:
+        """缓存的概括。piece 级：片段命中隐藏名单时返回 None。
+
+        hour / day 级的概括是整段时间的文字，这里没法按应用拆开；给 Agent 用时由生成方（空闲整理进程）
+        把隐藏名单里的内容排除在外，或由 MCP 层在名单非空时不提供。
+        """
+        conn = self.conn()
+        hidden = Hidden(exclude_apps, exclude_title_keywords)
+        if level == "piece" and hidden:
+            try:
+                p = conn.execute("SELECT app, title FROM pieces WHERE piece_id = ?", (int(key),)).fetchone()
+            except ValueError:
+                p = None
+            if p is not None and hidden.match(p["app"], p["title"]):
+                return None
+        r = conn.execute("SELECT * FROM summaries WHERE level = ? AND key = ?", (level, str(key))).fetchone()
         if r is None:
             return None
         return {"level": r["level"], "key": r["key"], "text": r["text"], "refs": json.loads(r["refs"] or "[]"),
                 "status": r["status"], "model": r["model"], "endpoint_host": r["endpoint_host"],
                 "start_ms": r["start_ms"], "end_ms": r["end_ms"], "created_ms": r["created_ms"]}
 
-    def frame(self, frame_id: str, highlight: int | None = None) -> dict | None:
+    def frame(self, frame_id: str, highlight: int | None = None, *, exclude_apps: Sequence[str] = (),
+              exclude_title_keywords: Sequence[str] = ()) -> dict | None:
+        """证据帧（文件路径 + 各行在帧里的位置）。帧或它的内容源命中隐藏名单时返回 None。"""
         conn = self.conn()
-        r = conn.execute("SELECT * FROM frames WHERE frame_id = ?", (frame_id,)).fetchone()
+        r = conn.execute(
+            "SELECT f.*, s.app AS seg_app, s.title AS seg_title FROM frames f "
+            "LEFT JOIN segments s ON s.segment_id = f.segment_id WHERE f.frame_id = ?", (str(frame_id),)).fetchone()
         if r is None:
+            return None
+        hidden = Hidden(exclude_apps, exclude_title_keywords)
+        if hidden and (hidden.match(r["app"], r["title"]) or hidden.match(r["seg_app"], r["seg_title"])):
             return None
         lines = [{"line_id": x["line_id"], "text": x["text"], "rect": [x["x0"], x["y0"], x["x1"], x["y1"]],
                   "highlight": highlight is not None and int(x["line_id"]) == int(highlight)}
@@ -288,7 +347,9 @@ class Queries:
 
         return {
             "day": day.isoformat(), "time_from": lo, "time_to": hi, "apps": apps, "gaps": gaps,
-            "lines_new": count("SELECT COUNT(*) FROM lines WHERE first_seen_ms >= ? AND first_seen_ms < ?", lo, hi),
+            # first_seen 没有索引；first_seen >= lo 蕴含 last_seen >= lo，加上这一条才能走 idx_lines_last_seen
+            "lines_new": count("SELECT COUNT(*) FROM lines WHERE last_seen_ms >= ? AND first_seen_ms >= ? "
+                               "AND first_seen_ms < ?", lo, lo, hi),
             "lines_seen": count("SELECT COUNT(*) FROM lines WHERE last_seen_ms >= ? AND first_seen_ms < ?", lo, hi),
             "frames": count("SELECT COUNT(*) FROM frames WHERE status = 'ok' AND captured_ms >= ? AND captured_ms < ?",
                             lo, hi),
@@ -306,13 +367,29 @@ class Queries:
         d["recorder_alive"] = self.clock() - int(d["recorder_heartbeat_ms"] or 0) <= alive_ms
         return d
 
-    def apps(self, time_from: int | None = None, time_to: int | None = None) -> list[dict]:
+    def apps(self, time_from: int | None = None, time_to: int | None = None, *,
+             exclude_apps: Sequence[str] = ()) -> list[dict]:
         """出现过的应用（内容源）与最近看到时间，供筛选下拉框用。"""
         lo = -(2 ** 62) if time_from is None else int(time_from)
         hi = 2 ** 62 if time_to is None else int(time_to)
+        hidden = Hidden(exclude_apps)
         return [{"app": r[0], "segments": int(r[1]), "last_seen_ms": int(r[2])} for r in self.conn().execute(
             "SELECT app, COUNT(*), MAX(last_seen_ms) FROM segments WHERE last_seen_ms >= ? AND first_seen_ms < ? "
-            "GROUP BY app ORDER BY 3 DESC", (lo, hi))]
+            "GROUP BY app ORDER BY 3 DESC", (lo, hi)) if not hidden.match(r[0], None)]
+
+
+def _vector_group(row) -> dict:
+    """只有向量分支命中的内容源：一组，一行。"""
+    return {
+        "segment_id": row["segment_id"], "app": row["app"], "title": row["title"], "hits": 0,
+        "last_seen_ms": row["last_seen_ms"], "sources": ["vector"],
+        "lines": [{
+            "line_id": row["line_id"], "block_id": row["block_id"], "text": row["text"],
+            "rect": [row["x0"], row["y0"], row["x1"], row["y1"]], "source": row["source"],
+            "confidence": row["confidence"], "first_seen_ms": row["first_seen_ms"],
+            "last_seen_ms": row["last_seen_ms"], "disappeared_ms": row["disappeared_ms"],
+        }],
+    }
 
 
 def _block_roots(conn, segment_id: int) -> dict[int, tuple[int, int, str, int]]:

@@ -50,7 +50,9 @@ def test_plan_routing():
     assert kinds == {"微信": "short", "组会纪要": "tri", "helloworld": "tri", "ab": "short", "微a": "short"}
     assert p.dropped == ("##",)
     short = {t.text: t.fts for t in p.terms if t.kind == "short"}
-    assert short["微信"] == ('"微信"',) and short["ab"] == ('"ab"*',) and short["微a"] == ('"微"*', '"a"*')
+    # 混合短词只用中日韩词元出候选，由 instr 精确核验（"微a" 也要能搜到 "微ab"、"x微a"）
+    assert short["微信"] == ('"微信"',) and short["ab"] == ('"ab"*',) and short["微a"] == ('"微"*',)
+    assert {t.text: t.word_prefix for t in p.terms if t.kind == "short"} == {"微信": False, "ab": True, "微a": False}
     assert lexical.plan("会").terms[0].fts == ('"会"*',)
     assert lexical.plan('"未闭合').error
 
