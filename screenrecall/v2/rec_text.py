@@ -5,7 +5,8 @@
 静止（不是"和已存的图一模一样"的那种）：
 1. 画面在静止之后又变了（核心里这个窗口最后一次变化晚于这一帧），或者队列积压太多 → 不读（读到的是别的画面），
    整帧算待 OCR；
-2. 否则 UiaReader.read(hwnd)；读完再核对一次画面没变，变了就丢掉这次结果；
+2. 否则 UiaReader.read(hwnd)（对这个窗口的第一次读取没来得及重读时，稍等再读一次）；读完再核对一次画面没变，
+   变了就丢掉这次结果；
 3. 只收 role='text' 的行；屏幕坐标 → 帧坐标（ev.fmap）→ 块坐标（+ pos_y）。正文（TextPattern 的行）上方的
    固定区域（标签页、地址栏这类）不收，否则每滚一次就在新位置多出一行；
 4. 写文字行：只在"读到了可用文字"时写，并且视口只取真正被 UIA 覆盖的横条（去掉 uncovered），
@@ -63,6 +64,7 @@ class TextStats:
     uia_reads: int = 0
     uia_usable: int = 0
     uia_not_ok: int = 0  # busy / timeout / error
+    first_touch_rereads: int = 0  # 第一次读一个窗口时稍等又读了一次
     stale: int = 0  # 画面已经变了，没读或丢掉了结果
     blocked: int = 0  # 暂停 / 锁屏 / 窗口此刻不能录（最小化、被隐藏、命中排除），没读或丢掉了结果
     excluded_drops: int = 0  # 证据帧的窗口标题此刻命中排除，没存
@@ -280,10 +282,7 @@ class TextWorker:
         elif not self._hint(ev.hwnd):
             self.stats.no_hint += 1
         else:
-            t0 = time.perf_counter()
-            res = self.reader.read(ev.hwnd)
-            self.stats.add("uia_ms", (time.perf_counter() - t0) * 1000)
-            self.stats.uia_reads += 1
+            res = self._read(ev)
             if res.status not in ("ok", "empty"):
                 self.stats.uia_not_ok += 1
             if not self._can_read(ev.hwnd):  # 读的这段时间里暂停了 / 命中排除：结果不要
@@ -326,6 +325,29 @@ class TextWorker:
                 self.core.request_evidence(ev.hwnd, ev.still_id)
                 self.stats.evidence_requested += 1
         self.stats.add("still_ms", (time.perf_counter() - t_start) * 1000)
+
+    def _read(self, ev: StillEvent):
+        """读一次 UIA。读取器说这是对这个窗口的第一次读、预算里没能重读（first_touch：浏览器这时常常只给外框，
+        页面还不在辅助功能树里）时，这里稍等再读一次，取元素多的那次 —— 不然一直不变的窗口（刚钉住的）
+        第一屏的字永远读不到。"""
+        t0 = time.perf_counter()
+        res = self.reader.read(ev.hwnd)
+        self.stats.add("uia_ms", (time.perf_counter() - t0) * 1000)
+        self.stats.uia_reads += 1
+        if not getattr(res, "first_touch", False) or res.status not in ("ok", "empty") or self._stopping:
+            return res
+        cfg = getattr(self.reader, "cfg", None)
+        time.sleep(float(getattr(cfg, "first_touch_retry_s", 0.2) or 0.2))
+        if self._changed_since(ev) or not self._can_read(ev.hwnd):
+            return res
+        t0 = time.perf_counter()
+        res2 = self.reader.read(ev.hwnd)
+        self.stats.add("uia_ms", (time.perf_counter() - t0) * 1000)
+        self.stats.uia_reads += 1
+        self.stats.first_touch_rereads += 1
+        if res2.status in ("ok", "empty") and res2.element_count >= res.element_count:
+            return res2
+        return res
 
     def _top(self, ev, res=None, fmap=None) -> int:
         """帧里从第几行开始登记待 OCR（帧像素）：系统标题栏以下；这次读字认出了窗口上部的界面条（标签页条、

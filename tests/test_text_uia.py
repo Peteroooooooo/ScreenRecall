@@ -477,6 +477,18 @@ def test_concurrent_reader_never_waits_past_its_budget():
     r.close()
 
 
+def test_slow_first_touch_without_room_to_retry_is_flagged():
+    """第一次读本身就慢、预算里放不下"稍等再读"：结果标 first_touch，调用方（录制进程的读字线程）自己重读；
+    之后的读取不再标。"""
+    be = FakeBackend(delay=0.3)
+    r = UiaReader(UiaConfig(timeout_s=0.5, first_touch_retry_s=0.2), backend=be, win32=FakeWin())
+    res = r.read(1)
+    assert res.status == "ok" and res.first_touch and be.reads == 1
+    be.delay = 0
+    assert r.read(1).first_touch is False
+    r.close()
+
+
 def test_timed_out_first_touch_is_retried_later():
     be = FakeBackend(delay=5.0)
     r = UiaReader(UiaConfig(timeout_s=0.1, first_touch_retry_s=0.05), backend=be, win32=FakeWin())

@@ -26,6 +26,7 @@
 from __future__ import annotations
 
 import ctypes
+import dataclasses
 import os
 import sys
 import threading
@@ -96,6 +97,9 @@ class UiaResult:
     uncovered: tuple[Rect, ...] = ()
     # 窗口上部界面条（标签页条、工具栏）的最下沿，屏幕 y（chrome_bottom）；待 OCR 的区域从它下面开始
     chrome_bottom: int | None = None
+    # 这是对这个窗口的第一次读取，预算不够、没有按 first_touch_retry_s 再读一次：浏览器这时常常只给外框
+    # （没有页面），调用方（自己的线程，不怕多等）应当稍等再读一次
+    first_touch: bool = False
 
     @property
     def content_chars(self) -> int:
@@ -884,6 +888,9 @@ class UiaReader:
                         res2 = self._read_once(hwnd, rect, budget, t0)  # budget 是从 t0 起算的总预算
                         if res2.status in ("ok", "empty") and res2.element_count >= res.element_count:
                             res = res2
+                    elif retry > 0:
+                        # 第一次读本身就慢（初始化 COM、目标程序刚建辅助功能树），预算里放不下重读：让调用方来
+                        res = dataclasses.replace(res, first_touch=True)
         finally:
             self._lock.release()
         self._update_hint(hwnd, res)
