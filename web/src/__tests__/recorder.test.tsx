@@ -82,6 +82,40 @@ describe("recorder page", () => {
     await waitFor(() => expect(posts.at(-1)).toEqual({ hidden_from_agents: { apps: [], title_keywords: ["示例私事", "工资"] } }));
   });
 
+  it("two quick removals both stick: the second save builds on the first one's result", async () => {
+    let cur = settings({ excluded_processes: ["SampleA.exe", "SampleB.exe"], pinned: [
+      { process: "SampleChat.exe", title: "示例小组群聊" }, { process: "SampleEditor.exe", title: "示例文档.txt" },
+    ] });
+    const posts: SettingsPatch[] = [];
+    mockFetch(async (c) => {
+      if (c.path === "/api/v2/settings" && c.method === "POST") {
+        posts.push(c.body as SettingsPatch);
+        await new Promise((r) => setTimeout(r, 30)); // 服务端慢一点：第二下点击时第一次还没回来
+        cur = { ...cur, ...(c.body as SettingsPatch) };
+        return { body: cur };
+      }
+      if (c.path === "/api/v2/settings") return { body: cur };
+      return null;
+    });
+    renderAt("#/recorder");
+    fireEvent.click(await screen.findByRole("button", { name: "移除 SampleA.exe" }));
+    fireEvent.click(screen.getByRole("button", { name: "移除 SampleB.exe" }));
+    await waitFor(() => expect(posts).toHaveLength(2));
+    expect(posts[1]).toEqual({ excluded_processes: [] });
+    await waitFor(() => expect(screen.queryByRole("button", { name: "移除 SampleA.exe" })).toBeNull());
+
+    fireEvent.click(screen.getByRole("button", { name: "取消固定 示例小组群聊" }));
+    fireEvent.click(screen.getByRole("button", { name: "取消固定 示例文档.txt" }));
+    await waitFor(() => expect(posts).toHaveLength(4));
+    expect(posts[3]).toEqual({ pinned: [] });
+  });
+
+  it("a window without a title shows just the app name", async () => {
+    mockFetch((c) => (c.path === "/api/v2/status" ? { body: status({ current: { app: "SampleEditor.exe", title: "" } }) } : null));
+    renderAt("#/recorder");
+    expect(await screen.findByText("正在看：SampleEditor")).toBeTruthy();
+  });
+
   it("a failed save shows the server message", async () => {
     mockFetch((c) => (c.path === "/api/v2/settings" && c.method === "POST" ? { status: 400, body: { error: "名单太长" } } : null));
     renderAt("#/recorder");

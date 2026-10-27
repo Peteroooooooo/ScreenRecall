@@ -215,9 +215,15 @@ export const LOST_AFTER_MS = 5000;
 export const HIDDEN_FACTOR = 5;
 
 export function usePoll<T>(fn: (signal: AbortSignal) => Promise<T>, ms: number, timeoutMs = POLL_TIMEOUT_MS) {
-  const [data, setData] = useState<T | null>(null);
+  const [data, setDataState] = useState<T | null>(null);
   const [lost, setLost] = useState(false);
   const kick = useRef<() => void>(() => {});
+  // 外部直接写入（比如暂停接口返回的新状态）之后，比它早发出的那次轮询结果是旧的，丢掉，免得顶栏闪回旧状态
+  const epoch = useRef(0);
+  const setData = useCallback((d: T) => {
+    epoch.current += 1;
+    setDataState(d);
+  }, []);
   useEffect(() => {
     let alive = true;
     let timer: number | undefined;
@@ -235,12 +241,13 @@ export function usePoll<T>(fn: (signal: AbortSignal) => Promise<T>, ms: number, 
       const c = new AbortController();
       ctrl = c;
       const to = window.setTimeout(() => c.abort(), timeoutMs);
+      const startEpoch = epoch.current;
       fn(c.signal)
         .then((d) => {
           if (!alive) return;
           fails = 0;
           lastOk = Date.now();
-          setData(d);
+          if (startEpoch === epoch.current) setDataState(d);
           setLost(false);
         })
         .catch(() => {

@@ -47,7 +47,8 @@ export default function PiecePage({ id }: { id: number }) {
     body: t("piece.deleteBody", { app: appName(p.app), a: fmtWhen(p.start_ms), b: fmtClock(p.end_ms) }),
     run: async () => {
       try {
-        await api.remove({ from_ms: p.start_ms, to_ms: p.end_ms, app: p.app });
+        // 删除范围是 [from, to)：+1 才包含正好在片段结束那一刻的截图和文字
+        await api.remove({ from_ms: p.start_ms, to_ms: p.end_ms + 1, app: p.app });
         toast(t("piece.deleted"));
         navigate("/", { date: isToday ? undefined : dayStr });
       } catch (e) {
@@ -193,29 +194,33 @@ function useRegen(id: number, data: PieceDetail | null, reload: (silent?: boolea
   const since = useRef(0);
   const sig = (d: PieceDetail | null) => (d?.summary ? `${d.summary.status}|${d.summary.text}` : "");
 
+  // 概括变了就停
   useEffect(() => {
-    if (!busy) return;
-    if (sig(data) !== base.current) {
+    if (busy && sig(data) !== base.current) {
       setBusy(false);
       toast(t("piece.regenDone"));
-      return;
     }
-    if (Date.now() - since.current > REGEN_MAX_MS) {
-      setBusy(false);
-      toast(t("piece.regenQueued"), "info");
-      return;
-    }
-    const tm = window.setTimeout(() => reload(true), REGEN_POLL_MS);
-    return () => window.clearTimeout(tm);
-  }, [busy, data, reload, t, toast]);
+  }, [busy, data, t, toast]);
+  // 定时重新拉：用固定间隔，不靠 data 变化来排下一次（某次拉取失败时 data 不变，按 data 排就会停在“生成中”）
+  useEffect(() => {
+    if (!busy) return;
+    const iv = window.setInterval(() => {
+      if (Date.now() - since.current > REGEN_MAX_MS) {
+        setBusy(false);
+        toast(t("piece.regenQueued"), "info");
+      } else reload(true);
+    }, REGEN_POLL_MS);
+    return () => window.clearInterval(iv);
+  }, [busy, reload, t, toast]);
 
   const start = async () => {
     base.current = sig(data);
     since.current = Date.now();
+    setBusy(true); // 请求发出时就禁用按钮，连点不会重复排队
     try {
       await api.summarize(id);
-      setBusy(true);
     } catch (e) {
+      setBusy(false);
       toast(errText(e, t("common.offline")), "alarm");
     }
   };

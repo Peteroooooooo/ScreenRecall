@@ -128,7 +128,8 @@ function LlmCard({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => void }
     setBusy("save");
     try {
       const body: { base_url: string; model: string; api_key?: string } = { base_url: baseUrl.trim(), model: model.trim() };
-      if (key) body.api_key = key; // 留空 = 保留原来的密钥
+      const k = key.trim(); // 粘贴时带进来的空白不算；只有空白 = 留空
+      if (k) body.api_key = k; // 留空 = 保留原来的密钥
       onSaved(await api.saveLlm(body));
       setKey("");
       setShow(false);

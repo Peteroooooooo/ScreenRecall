@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, renderHook, screen, waitFor, within } from "@testing-library/react";
+import { usePoll } from "../lib";
 import { mockFetch, status } from "../test/helpers";
 import { renderAt, toasts } from "../test/render";
 
@@ -114,5 +115,23 @@ describe("shell", () => {
     renderAt("#/");
     expect(await screen.findByText("连不上后台服务", {}, { timeout: 3500 })).toBeTruthy();
     expect(screen.getByTestId("status-pill").textContent).toContain("连接中断");
+  });
+});
+
+describe("usePoll", () => {
+  it("drops a poll result that was already in flight when the status was set directly (no flash back to the old state)", async () => {
+    let release: (v: string) => void = () => {};
+    let n = 0;
+    const fn = () => {
+      n += 1;
+      return n === 1 ? Promise.resolve("recording") : new Promise<string>((r) => { release = r; });
+    };
+    const { result } = renderHook(() => usePoll(fn, 50));
+    await waitFor(() => expect(result.current.data).toBe("recording"));
+    await waitFor(() => expect(n).toBe(2)); // 第二次轮询已发出、还没回来
+    act(() => result.current.setData("paused")); // 暂停接口先回来了
+    await act(async () => release("recording")); // 旧的轮询结果后到
+    expect(result.current.data).toBe("paused");
+    await waitFor(() => expect(n).toBeGreaterThanOrEqual(3));
   });
 });
