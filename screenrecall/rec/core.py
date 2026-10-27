@@ -43,6 +43,7 @@ class RecorderConfig:
     lock_poll_ms: int = 500        # 多久查一次锁屏
     exist_poll_ms: int = 1000      # 多久查一次不在录的窗口还在不在
     max_trackers: int = 16         # 最多记住几个窗口的状态（多了丢最久没动的）
+    title_settle_ms: int = 1000    # 同一前台窗口的标题变了，稳定这么久才算新的一条活动（进度百分比这类标题不刷屏）
     tracker: TrackerConfig = field(default_factory=TrackerConfig)
     pool: PoolConfig = field(default_factory=PoolConfig)
 
@@ -90,11 +91,14 @@ class RecorderCore:
         self._block_ids = itertools.count()
         self._still_ids = itertools.count()
         self._recording: set[int] = set()  # 上一轮真正在录（喂帧）的窗口
+        self._fg_key: tuple | None = None  # 最后一次报给 sink.foreground 的 (窗口, 进程, 是否排除, 标题)
+        self._fg_pending: tuple[tuple, int] | None = None  # 标题变了、还在等它稳定
         self._step_lock = threading.RLock()  # step() / shutdown() 和别的线程调的 stats() 互斥
         self._thread: threading.Thread | None = None
         self._stop_evt = threading.Event()
         self.steps = 0
         self.frames_fed = 0
+        self.feed_kinds: dict[str, int] = {}  # feed() 的结果各有几次（first / same / shift / break ...），统计用
 
     # ---------- 命令（任何线程都可以调） ----------
 
@@ -117,6 +121,19 @@ class RecorderCore:
 
     def set_rules(self, rules: RulesConfig | None) -> None:
         self._cmd("rules", rules)
+
+    def request_evidence(self, hwnd: int, still_id: int) -> None:
+        """下一轮里：still_id 还是这个窗口的候选帧时马上存成证据帧（evidence reason 'needs_ocr'）。"""
+        self._cmd("evidence", (int(hwnd), int(still_id)))
+
+    def drop_candidates(self) -> None:
+        """下一轮里丢掉所有窗口内存里的候选帧，不存（和 pause() 一起发时先发这个）。"""
+        self._cmd("drop")
+
+    def last_change_ms(self, hwnd: int) -> int | None:
+        """这个窗口最后一次有效画面变化的时间；没在跟踪时 None。任何线程都可以调（只读一个整数）。"""
+        tr = self.trackers.get(hwnd)
+        return None if tr is None else tr.last_change_ms
 
     @property
     def paused(self) -> bool:
@@ -160,6 +177,7 @@ class RecorderCore:
         """关掉所有会话；每个窗口存下候选帧并记"stopped"缺口。"""
         with self._step_lock:
             now = self.clock() if now is None else now
+            self._note_foreground(now, 0)
             self.pool.close_all()
             for tr in self.trackers.values():
                 tr.close(now, "stopped")
@@ -236,6 +254,14 @@ class RecorderCore:
                 self._pinned.remove(arg)
             elif name == "rules":
                 self._rules = arg
+            elif name == "evidence":
+                h, sid = arg
+                tr = self.trackers.get(h)
+                if tr is not None:
+                    tr.request_evidence(sid)
+            elif name == "drop":
+                for tr in self.trackers.values():
+                    tr.drop_candidate()
 
     def _check_lock(self, now: int) -> bool:
         if now - self._last_lock_poll >= self.config.lock_poll_ms:
@@ -258,6 +284,47 @@ class RecorderCore:
                 tr.gap_end(now)
         return False
 
+    def _note_foreground(self, now: int, hwnd: int) -> None:
+        """活动日志：前台窗口（系统界面、锁屏、暂停算"没有"）换了，或标题变了且稳定了 → sink.foreground(...)。
+
+        sink 没有 foreground 方法时什么都不做。命中排除规则的窗口只报进程名和"已排除"，不报标题。
+        """
+        fn = getattr(self.sink, "foreground", None)
+        if fn is None:
+            return
+        desc = self.windows.describe(hwnd) if hwnd else None
+        if desc is None:
+            key = None
+        else:
+            proc, title = desc
+            excluded = rule_reason(proc, title, self._rules) is not None
+            key = (hwnd, proc, excluded, "" if excluded else (title or ""))
+        if key == self._fg_key:
+            self._fg_pending = None
+            return
+        prev = self._fg_key
+        settle = self.config.title_settle_ms
+        same_window = key is not None and prev is not None and key[:3] == prev[:3]
+        t = now
+        if same_window and settle > 0:  # 只是标题变了：等它稳定
+            if self._fg_pending is None or self._fg_pending[0] != key:
+                self._fg_pending = (key, now)
+                return
+            if now - self._fg_pending[1] < settle:
+                return
+            t = self._fg_pending[1]
+        self._fg_pending = None
+        self._fg_key = key
+        if key is None:
+            fn(t, None, None, None, None, False)
+            return
+        pid_fn = getattr(self.windows, "pid", None)
+        try:
+            pid = pid_fn(hwnd) if pid_fn else None
+        except Exception:  # noqa: BLE001
+            pid = None
+        fn(t, hwnd, pid, key[1], None if key[2] else key[3], key[2])
+
     def _reason(self, hwnd: int) -> str | None:
         st = self.windows.state(hwnd)
         reason = st.gap_reason
@@ -279,12 +346,14 @@ class RecorderCore:
         wheel = [ev for ev in self.inputs.drain_wheel() if now - ev.t_ms <= self.config.tracker.wheel_recent_ms]
         if self._paused or self._check_lock(now):
             self._recording = set()
+            self._note_foreground(now, 0)
             return
         if self._watcher is not None:
             self._watcher.drain()  # 钩子只用来叫醒；状态每一轮都直接查
 
         # 要录哪些窗口
         fg = self.windows.foreground()
+        self._note_foreground(now, fg if fg and not self.windows.is_shell(fg) else 0)
         cands: list[int] = []
         if fg and not self.windows.is_shell(fg):
             cands.append(fg)
@@ -369,7 +438,8 @@ class RecorderCore:
             if f is not None:
                 self.frames_fed += 1
                 self._active[h] = now
-                tr.feed(f)
+                kind = tr.feed(f)
+                self.feed_kinds[kind] = self.feed_kinds.get(kind, 0) + 1
         self._recording = recording
         for tr in self.trackers.values():
             tr.tick(now)
@@ -380,6 +450,7 @@ class RecorderCore:
             return {
                 "steps": self.steps,
                 "frames_fed": self.frames_fed,
+                "kinds": dict(self.feed_kinds),
                 "sessions": {h: self.pool.kind_of(h) for h in self.pool.sources()},
                 "recording": sorted(self._recording),
                 "trackers": {h: {"block": t.block, "pos_y": t.pos_y, "frames": t.frames, "dropped": t.dropped,
