@@ -885,3 +885,17 @@ def test_text_backlog_skips_oldest_reads(tmp_path):
         tw.put_still(StillCtx(ev, "a", "b", BlockRef(1, 0, "a", "b", 1, 1)))
     skipped = [item.skip_uia for _, item, _ in tw._q]
     assert skipped == [True, True, False, False] and tw.stats.backlog_skips == 2
+
+
+def test_only_hwnds_from_flag_and_test_env():
+    """测试隔离：--only-hwnds 和 SCREENRECALL_TEST_ONLY_HWNDS（主进程启动的录制子进程继承它）合并；写错就报错，
+    不会悄悄变成录全部窗口。"""
+    import pytest
+
+    from screenrecall.v2 import recorder
+
+    assert recorder.TEST_ONLY_HWNDS_ENV == "SCREENRECALL_TEST_ONLY_HWNDS"
+    assert recorder.only_hwnds("", "") == set()
+    assert recorder.only_hwnds("12, 0x10", "5") == {12, 16, 5}
+    with pytest.raises(ValueError):
+        recorder.only_hwnds("", "abc")

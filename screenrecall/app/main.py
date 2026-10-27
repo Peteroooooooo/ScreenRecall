@@ -374,6 +374,14 @@ def _setup_logging(home: Path) -> None:
     logging.getLogger("screenrecall").setLevel(logging.INFO)
 
 
+def app_switches(cfg, args) -> tuple[bool, bool]:
+    """(显示托盘, 启动后打开主页)：配置 [v2.app] tray / open_browser，命令行 --no-tray / --no-browser / --autostart 只能关。"""
+    app = getattr(cfg, "app", None)
+    tray_on = bool(getattr(app, "tray", True)) and not args.no_tray
+    browser_on = bool(getattr(app, "open_browser", True)) and not (args.no_browser or args.autostart)
+    return tray_on, browser_on
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m screenrecall.app", description="ScreenRecall v2 主进程")
     ap.add_argument("--data-dir", help="数据目录（默认 %%LOCALAPPDATA%%\\ScreenRecall\\data）")
@@ -404,8 +412,9 @@ def main(argv: list[str] | None = None) -> int:
             children = build_children(cfg, home=home, recorder_module=a.recorder_module,
                                       worker_module=a.worker_module or None)
     port = a.port if a.port is not None else (cfg.app.port if cfg is not None else DEFAULT_PORT)
+    tray_on, browser_on = app_switches(cfg, a)
     opts = AppOptions(home=home, data_dir=Path(cfg.data_dir) if cfg else (Path(a.data_dir) if a.data_dir else None),
-                      port=port, tray=not a.no_tray, open_browser=not (a.no_browser or a.autostart),
+                      port=port, tray=tray_on, open_browser=browser_on,
                       fake_queries=a.fake_queries, legacy_web=not a.no_legacy_web, extra_origins=tuple(a.dev_origin),
                       children=children, store=store, cfg=cfg,
                       idle_threshold_s=cfg.idle.threshold_s if cfg else 300.0)
