@@ -197,7 +197,8 @@ def _recover(conn, now: int, default_procs: list, default_kws: list) -> dict:
     if crashed and now > hb:
         conn.execute("INSERT INTO gaps (start_ms, end_ms, reason, detail) VALUES (?, ?, 'error', ?)",
                      (hb, now, "recorder not running"))
-    # 第一次在这个库上启动：默认排除规则写进 control（页面已经改过的列表不覆盖）
+    # 第一次在这个库上启动：默认排除规则写进 control（页面已经改过的列表不覆盖）。
+    # 期望状态（开始录制）不在这里改：那是主进程的 adapters._seed_control，它认得这个标记
     fresh = conn.execute("INSERT OR IGNORE INTO meta (key, value) VALUES ('recorder_defaults_ms', ?)",
                          (str(now),)).rowcount == 1
     if fresh:
