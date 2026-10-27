@@ -405,7 +405,7 @@ def api_piece(ctx: V2Context, req: dict) -> dict:
     conn = q.conn()
     shown = [s["segment_id"] for s in p["segments"]]
     line_ids = [ln["line_id"] for s in p["segments"] for b in s["blocks"] for ln in b["lines"]]
-    frames_of = latest_frames(conn, line_ids)
+    frames_of = frames_for_lines(conn, line_ids)
     roots: dict[int, tuple[int, int, str, int]] = {}
     for sid in shown:
         roots.update(_block_roots(conn, sid))
@@ -518,7 +518,7 @@ def api_search(ctx: V2Context, req: dict) -> dict:
     first_seen = {int(r[0]): int(r[1]) for r in conn.execute(
         "SELECT segment_id, first_seen_ms FROM segments WHERE segment_id IN "
         "(SELECT CAST(value AS INTEGER) FROM json_each(?))", (json.dumps(seg_ids),))} if seg_ids else {}
-    frames_of = latest_frames(conn, [ln["line_id"] for g in res["groups"] for ln in g["lines"]])
+    frames_of = frames_for_lines(conn, [ln["line_id"] for g in res["groups"] for ln in g["lines"]])
     groups = []
     for g in res["groups"]:
         lines = unique_lines(sorted(g["lines"], key=lambda ln: -int(ln["last_seen_ms"])))
@@ -538,6 +538,47 @@ def api_search(ctx: V2Context, req: dict) -> dict:
     groups.sort(key=lambda g: (-g["last_seen_ms"], -g["segment_id"]))
     total = max(int(res.get("total_groups") or 0), len(groups))
     return {"query": query, "total_groups": total, "groups": groups, "semantic": bool(res.get("semantic"))}
+
+
+def frames_for_lines(conn, line_ids: Sequence[int]) -> dict[int, str]:
+    """每行一张证据帧：先用帧上登记过这一行的（latest_frames）；没有的（UIA 读到字的那一屏没存成证据帧、
+    或者存的时候还没有这一行）退回到同一块（合并过的按根块）里画面范围盖住这一行的帧，时间上离这行出现的
+    时段最近的那张；一张都盖不住时用这行出现之后的第一张同块帧。都没有就不给（页面没有缩略图）。"""
+    out = latest_frames(conn, line_ids)
+    missing = sorted({int(x) for x in line_ids if x is not None} - set(out))
+    if not missing:
+        return out
+    rows = conn.execute(
+        "SELECT line_id, block_id, segment_id, y0, y1, first_seen_ms, last_seen_ms FROM lines WHERE line_id IN "
+        "(SELECT CAST(value AS INTEGER) FROM json_each(?))", (json.dumps(missing),)).fetchall()
+    by_seg: dict[int, list] = {}
+    for r in rows:
+        by_seg.setdefault(int(r["segment_id"]), []).append(r)
+    for sid, lines in by_seg.items():
+        roots = _block_roots(conn, sid)
+        frames = []
+        for f in conn.execute(
+                "SELECT frame_id, block_id, pos_y, height, captured_ms, frame_no FROM frames WHERE segment_id = ? "
+                "AND status = 'ok' AND block_id IS NOT NULL AND pos_y IS NOT NULL", (sid,)):
+            root, off = roots.get(int(f["block_id"]), (int(f["block_id"]), 0))[:2]
+            top = int(f["pos_y"]) + off
+            frames.append((root, top, top + int(f["height"]), int(f["captured_ms"]), int(f["frame_no"]), f["frame_id"]))
+        for ln in lines:
+            root, off = roots.get(int(ln["block_id"]), (int(ln["block_id"]), 0))[:2]
+            y0, y1 = float(ln["y0"]) + off, float(ln["y1"]) + off
+            t0, t1 = int(ln["first_seen_ms"]), int(ln["last_seen_ms"])
+            same = [f for f in frames if f[0] == root]
+            cover = [f for f in same if f[1] <= y0 + 2 and y1 - 2 <= f[2]]
+            if cover:
+                def dist(f):
+                    return 0 if t0 <= f[3] <= t1 else min(abs(f[3] - t0), abs(f[3] - t1))
+                best = min(cover, key=lambda f: (dist(f), -f[3], -f[4]))
+            else:
+                later = [f for f in same if f[3] >= t0]
+                best = min(later, key=lambda f: (f[3], f[4])) if later else None
+            if best is not None:
+                out[int(ln["line_id"])] = best[5]
+    return out
 
 
 def unique_lines(lines: list[dict]) -> list[dict]:
