@@ -756,6 +756,15 @@ def _autostart_command(ctx: V2Context) -> str | None:
     return autostart.default_command(args=("--autostart", "--data-dir", str(ctx.data_dir)))
 
 
+def _origin(url: str) -> tuple:
+    """协议 + 主机 + 端口：密钥能不能沿用看这个（同一服务器换路径可以沿用）。"""
+    try:
+        p = urlsplit(url)
+        return (p.scheme.lower(), (p.hostname or "").lower(), p.port)
+    except ValueError:
+        return ("", "", None)
+
+
 def api_settings_llm(ctx: V2Context, req: dict) -> dict:
     from ..app.llm import read_env_file
 
@@ -775,6 +784,9 @@ def api_settings_llm(ctx: V2Context, req: dict) -> dict:
     path = ctx.home / ".env"
     paths.ensure_private_dir(ctx.home)
     old = read_env_file(path)
+    if key is None and old.get("LLM_API_KEY") and _origin(old.get("LLM_BASE_URL", "")) != _origin(base):
+        # 原来的密钥只发给原来的服务器：换了服务器（或 https 换成 http）却不填密钥，就会把旧密钥发给新地址
+        raise ApiError(400, "更换接口地址的服务器时请重新填写密钥")
     values = {"LLM_BASE_URL": base, "LLM_MODEL": model}
     if key is not None:
         values["LLM_API_KEY"] = key
