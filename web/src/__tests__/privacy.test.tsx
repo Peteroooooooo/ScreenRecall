@@ -24,7 +24,7 @@ describe("privacy page", () => {
     await waitFor(() => expect(toasts().join()).toContain("已删除：30 行文字、2 张截图"));
   });
 
-  it("today deletes from local midnight to now", async () => {
+  it("today deletes the whole local day (to the next midnight; the server stops at its own now)", async () => {
     const calls = mockFetch((c) => (c.path === "/api/v2/delete" ? deleted : null));
     renderAt("#/privacy");
     fireEvent.click(await screen.findByRole("button", { name: "删除今天全部" }));
@@ -33,7 +33,8 @@ describe("privacy page", () => {
     const b = calls.find((c) => c.path === "/api/v2/delete")!.body as { from_ms: number; to_ms: number };
     const d = new Date();
     expect(b.from_ms).toBe(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime());
-    expect(Math.abs(b.to_ms - Date.now())).toBeLessThan(10_000);
+    // 用浏览器的“现在”当结束时间，会漏掉服务端提交前那一刻才写进来的帧和文字
+    expect(b.to_ms).toBe(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime());
   });
 
   it("a time range must be ordered and is sent as UTC ms", async () => {
