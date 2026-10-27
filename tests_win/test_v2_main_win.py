@@ -260,7 +260,7 @@ def test_v2_main_end_to_end(tmp_path, stubs):
                 rss[p.pid] = (f"{p.name()} {mod}", rss_mib(p.pid))  # venv 的 python.exe 是启动器，真进程是它的子进程
 
             res = anyio.run(shim_calls, {**env, "PYTHONPATH": str(ROOT)})
-            assert res["tools"] == ["search", "timeline", "summary", "get_frame"]
+            assert res["tools"] == ["search", "read", "timeline", "summary", "get_frame"]
             out = text_of(res["search"])
             assert not res["search"].isError and "> ScreenRecall synthetic 组会 line" in out, out
             tl = text_of(res["timeline"])
