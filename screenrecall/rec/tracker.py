@@ -86,7 +86,8 @@ class Sink(Protocol):
         """画面静止了。"""
 
     def evidence(self, ev: StillEvent, reason: str) -> None:
-        """马上把这次静止的画面存成证据帧。reason: 'leaving' 滚出屏幕 / 'replaced' 原地被换掉 / 'closing' 窗口不再跟踪。"""
+        """马上把这次静止的画面存成证据帧。reason: 'leaving' 滚出屏幕 / 'replaced' 原地被换掉 / 'closing' 窗口不再跟踪
+        / 'needs_ocr' 集成方读不到字、要求现在就存（RecorderCore.request_evidence）。"""
 
     def skim(self, hwnd: int, block: int, t0_ms: int, t1_ms: int, direction: str, distance_px: int,
              y0: int, y1: int) -> None:
@@ -257,6 +258,29 @@ class WindowTracker:
     @property
     def saved_count(self) -> int:
         return len(self._saved)
+
+    @property
+    def last_change_ms(self) -> int:
+        """最后一次有效变化（被接受的那一帧）的时间。别的线程读一个整数是安全的。"""
+        return self._last_change
+
+    def request_evidence(self, still_id: int) -> bool:
+        """集成方要求现在就把这次静止存成证据帧（例如 UIA 读不到字、要登记待 OCR）。
+
+        只有它还是当前候选帧时才存（reason 'needs_ocr'），并记进"已存"，之后不会再因为离开屏幕存第二次；
+        已经存过、被换掉或不值得存的，什么都不做，返回 False。
+        """
+        c = self._cand
+        if c is None or self.closed or c.ev.still_id != still_id:
+            return False
+        self._save_candidate("needs_ocr")
+        return True
+
+    def drop_candidate(self) -> bool:
+        """丢掉内存里的候选帧，不存（暂停、规则变化、隐私删除时的卫生处理）。"""
+        had = self._cand is not None
+        self._cand = None
+        return had
 
     def _typing(self, now: int) -> bool:
         return self._last_key is not None and now - self._last_key < self.config.typing_still_ms
