@@ -82,7 +82,8 @@ class Queries:
                exclude_apps: Sequence[str] = (), exclude_title_keywords: Sequence[str] = ()) -> dict:
         """词法 + 可选向量分支（RRF 融合）。
 
-        向量库约定：id = line_id，group = segment_id，ts = 行的 first_seen_ms（不变）。
+        向量库约定：id = line_id 或段落编号 text_chunks.chunk_id（一个向量对应几行），group = segment_id，
+        ts = 行（段落里最早一行）的 first_seen_ms（不变）。
         向量分支先按内容源（筛选 + 时间与内容源的存在区间重叠）限定组，再逐条在 SQL 里核验行的存在区间，
         与词法分支的时间语义一致（行的 [first_seen, last_seen] 与 [time_from, time_to) 重叠）。
         """
@@ -109,9 +110,10 @@ class Queries:
         by_seg = {g["segment_id"]: g for g in out["groups"]}
         rank = 0
         for h in hits:
-            row = self._vector_line(conn, h.id, time_from, time_to)
-            if row is None:  # 行已删除（墓碑还没读到），或存在区间不在范围里
+            rows = self._vector_lines(conn, h.id, time_from, time_to)
+            if not rows:  # 行已删除（墓碑还没读到），或存在区间不在范围里
                 continue
+            row = rows[0]
             rank += 1
             if rank > limit:
                 break
@@ -119,7 +121,7 @@ class Queries:
             fused[seg_id] = fused.get(seg_id, 0.0) + 1.0 / (RRF_K + rank)
             g = by_seg.get(seg_id)
             if g is None:
-                g = by_seg[seg_id] = _vector_group(row)
+                g = by_seg[seg_id] = _vector_group(rows[:max(1, per_group)])
             elif "vector" not in g["sources"]:
                 g["sources"].append("vector")
             g["vector_score"] = h.score
@@ -143,15 +145,18 @@ class Queries:
         return [int(r[0]) for r in conn.execute(sql, params)]
 
     @staticmethod
-    def _vector_line(conn, line_id: int, time_from: int | None, time_to: int | None):
+    def _vector_lines(conn, vec_id: int, time_from: int | None, time_to: int | None) -> list:
+        """向量 id → 行（阅读顺序）。空闲整理进程按段落算向量：id = text_chunks.chunk_id，对应段落的全部行；
+        没有段落登记的 id 按单行（id = line_id）处理。只返回存在区间与 [time_from, time_to) 重叠的行。"""
         return conn.execute(
             "SELECT l.line_id, l.block_id, l.text, l.x0, l.y0, l.x1, l.y1, l.source, l.confidence, l.first_seen_ms, "
             "l.last_seen_ms, l.disappeared_ms, s.segment_id, s.app, s.title "
-            "FROM lines l JOIN segments s ON s.segment_id = l.segment_id WHERE l.line_id = ? "
-            "AND l.last_seen_ms >= ? AND l.first_seen_ms < ?",
-            (int(line_id), -(2 ** 62) if time_from is None else int(time_from),
-             2 ** 62 if time_to is None else int(time_to)),
-        ).fetchone()
+            "FROM lines l JOIN segments s ON s.segment_id = l.segment_id WHERE l.line_id IN "
+            "(SELECT line_id FROM text_chunks WHERE chunk_id = :id UNION SELECT :id) "
+            "AND l.last_seen_ms >= :lo AND l.first_seen_ms < :hi ORDER BY l.order_key, l.line_id",
+            {"id": int(vec_id), "lo": -(2 ** 62) if time_from is None else int(time_from),
+             "hi": 2 ** 62 if time_to is None else int(time_to)},
+        ).fetchall()
 
     # ---------------- 时间线 ----------------
 
@@ -378,17 +383,18 @@ class Queries:
             "GROUP BY app ORDER BY 3 DESC", (lo, hi)) if not hidden.match(r[0], None)]
 
 
-def _vector_group(row) -> dict:
-    """只有向量分支命中的内容源：一组，一行。"""
+def _vector_group(rows) -> dict:
+    """只有向量分支命中的内容源：一组；行 = 命中段落里（时间范围内）的前几行。"""
+    row = rows[0]
     return {
         "segment_id": row["segment_id"], "app": row["app"], "title": row["title"], "hits": 0,
-        "last_seen_ms": row["last_seen_ms"], "sources": ["vector"],
+        "last_seen_ms": max(r["last_seen_ms"] for r in rows), "sources": ["vector"],
         "lines": [{
-            "line_id": row["line_id"], "block_id": row["block_id"], "text": row["text"],
-            "rect": [row["x0"], row["y0"], row["x1"], row["y1"]], "source": row["source"],
-            "confidence": row["confidence"], "first_seen_ms": row["first_seen_ms"],
-            "last_seen_ms": row["last_seen_ms"], "disappeared_ms": row["disappeared_ms"],
-        }],
+            "line_id": r["line_id"], "block_id": r["block_id"], "text": r["text"],
+            "rect": [r["x0"], r["y0"], r["x1"], r["y1"]], "source": r["source"],
+            "confidence": r["confidence"], "first_seen_ms": r["first_seen_ms"],
+            "last_seen_ms": r["last_seen_ms"], "disappeared_ms": r["disappeared_ms"],
+        } for r in rows],
     }
 
 
