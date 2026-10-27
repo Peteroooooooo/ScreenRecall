@@ -75,4 +75,5 @@ def test_lazy_encoder_loads_and_unloads():
     while lazy.loaded and time.monotonic() < end:
         time.sleep(0.05)
     assert not lazy.loaded
+    assert lazy.max_tokens == 128 and not lazy.loaded  # 读配置值不会把模型重新加载
     lazy.unload()
