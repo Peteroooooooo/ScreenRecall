@@ -22,10 +22,11 @@ Sink 的实现应当只把事件放进队列，不要在回调里做耗时工作
 
 from __future__ import annotations
 
+import itertools
 import logging
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Protocol
+from typing import Iterator, Protocol
 
 import numpy as np
 
@@ -209,15 +210,17 @@ class _Run:
 class WindowTracker:
     """一个窗口的状态机。只在一个线程里调用（录制核心的分析线程）。"""
 
-    def __init__(self, hwnd: int, sink: Sink, config: TrackerConfig | None = None):
+    def __init__(self, hwnd: int, sink: Sink, config: TrackerConfig | None = None, *,
+                 block_ids: Iterator[int] | None = None, still_ids: Iterator[int] | None = None):
+        """block_ids / still_ids：编号发生器。录制核心传共用的，使编号在整个进程里唯一；默认从 0 开始。"""
         self.hwnd = hwnd
         self.sink = sink
         self.config = config or TrackerConfig()
         self.block = -1
         self.pos_y = 0
         self.pos_x = 0
-        self._next_block = 0
-        self._next_still = 0
+        self._block_ids = block_ids if block_ids is not None else itertools.count()
+        self._still_ids = still_ids if still_ids is not None else itertools.count()
         self._latest: Frame | None = None
         self._last_change = 0
         self._stilled = True
@@ -338,8 +341,7 @@ class WindowTracker:
 
     def _start_block(self, t: int, direction: str | None) -> None:
         after = self.block if self.block >= 0 else None
-        self.block = self._next_block
-        self._next_block += 1
+        self.block = next(self._block_ids)
         self.pos_y = self.pos_x = 0
         self._anchored = None
         self.sink.block_started(self.hwnd, self.block, t, after, direction)
@@ -477,8 +479,7 @@ class WindowTracker:
         frame = self._latest
         fp = frame.fp
         vol = self._vol_cells(fp, now)
-        sid = self._next_still
-        self._next_still += 1
+        sid = next(self._still_ids)
         same = self._find_identical(fp, vol)
         if same is not None:
             rejoined = None

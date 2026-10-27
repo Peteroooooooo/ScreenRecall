@@ -11,20 +11,13 @@ from __future__ import annotations
 import ctypes
 import logging
 import threading
-import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Callable
 
 from . import win32
+from .clock import Clock, now_ms
 
 log = logging.getLogger(__name__)
-
-Clock = Callable[[], int]
-
-
-def monotonic_ms() -> int:
-    return time.monotonic_ns() // 1_000_000
 
 
 @dataclass(frozen=True)
@@ -50,7 +43,7 @@ class InputMonitor:
 
     def __init__(self, clock: Clock | None = None, *, use_raw_input: bool = True, use_mouse_hook: bool = False,
                  max_events: int = 1024):
-        self._clock = clock or monotonic_ms
+        self._clock = clock or now_ms
         self._use_raw = use_raw_input
         self._use_hook = use_mouse_hook
         self._wheel: deque[WheelEvent] = deque(maxlen=max_events)
