@@ -235,6 +235,8 @@ class WindowTracker:
         self._wheel_pending: list[int] = []
         self._anchored: tuple[int, str, int] | None = None
         self._gap: tuple[int, str] | None = None
+        self._prompt = False  # prompt()：拿到下一帧就静止判断
+        self._prompt_fed = False
         self.closed = False
         # 统计
         self.frames = 0
@@ -282,6 +284,14 @@ class WindowTracker:
         self._cand = None
         return had
 
+    def prompt(self) -> None:
+        """窗口刚变得能录（刚钉住、缺口刚结束）：拿到下一帧就马上做一次静止判断，不等 still_ms，
+        画面和之前一样（"same"）也做 —— 一直不变的窗口没有"下一次变化"，第一屏要不然永远不读。
+        下一帧是平移 / 原地变 / 接不上时按平常的计时（画面还在动）。"""
+        if not self.closed:
+            self._prompt = True
+            self._prompt_fed = False
+
     def _typing(self, now: int) -> bool:
         return self._last_key is not None and now - self._last_key < self.config.typing_still_ms
 
@@ -303,6 +313,17 @@ class WindowTracker:
 
     def feed(self, frame: Frame) -> str:
         """喂一帧，返回这一帧的处理结果：'first' / 'same' / 'volatile' / 'shift' / 'inplace' / 'break' / 'ignored'。"""
+        kind = self._feed(frame)
+        if self._prompt and kind != "ignored":
+            if kind in ("first", "same", "volatile"):
+                self._prompt_fed = True
+                if self._latest is not None:
+                    self._stilled = False  # 下一次 tick 就做静止判断
+            else:
+                self._prompt = False  # 画面在动：按平常的计时
+        return kind
+
+    def _feed(self, frame: Frame) -> str:
         if self.closed or self._gap is not None:
             return "ignored"
         self.frames += 1
@@ -479,6 +500,9 @@ class WindowTracker:
         self._check_anchor(now)
         if self._stilled:
             return
+        if self._prompt and self._prompt_fed:
+            self._do_still(now)
+            return
         need = self.config.typing_still_ms if self._typing(now) else self.config.still_ms
         if now - self._last_change >= need:
             self._do_still(now)
@@ -500,6 +524,7 @@ class WindowTracker:
 
     def _do_still(self, now: int) -> None:
         self._stilled = True
+        self._prompt = self._prompt_fed = False
         self._end_run()
         frame = self._latest
         fp = frame.fp

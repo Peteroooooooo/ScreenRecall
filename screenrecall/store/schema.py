@@ -24,11 +24,12 @@ from __future__ import annotations
 import sqlite3
 import unicodedata
 from pathlib import Path
+from typing import Callable
 
 from .fts import docs
 
 DB_NAME = "recall.sqlite3"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # 全文索引文档的生成规则版本（fts.docs）。删除要提供与写入时完全相同的文档，规则一改就得重建索引
 FTS_VERSION = "f1"
@@ -309,7 +310,25 @@ ALTER TABLE frames ADD COLUMN label TEXT;
 ALTER TABLE frames ADD COLUMN label_score REAL;
 ALTER TABLE frames ADD COLUMN label_model TEXT;
 """,
+    # v3：lines.alias_of —— 合并过的块里两边都有的行，并入那份指向留下显示的那份（store.aliases）。
+    # 不用外键（删除被指向的行时按外键逐行扫全表）：隐私删除自己清空指向被删行的 alias_of。
+    # 已有的合并树在同一个事务里补一次（_POST_MIGRATIONS）
+    3: """
+ALTER TABLE lines ADD COLUMN alias_of INTEGER;
+CREATE INDEX IF NOT EXISTS idx_lines_alias ON lines (alias_of) WHERE alias_of IS NOT NULL;
+""",
 }
+
+
+def _backfill_aliases(conn: sqlite3.Connection) -> None:
+    from . import aliases
+
+    aliases.backfill(conn, ALIAS_MATCH_DY_PX)
+
+
+ALIAS_MATCH_DY_PX = 8.0  # 与 writer.WriterConfig.match_dy_px 的默认值相同
+# 迁移里要用 Python 做的部分：和同版本的 SQL 在同一个写事务里执行
+_POST_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {3: _backfill_aliases}
 
 
 class SchemaError(RuntimeError):
@@ -417,6 +436,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
         _run_script(
             conn,
             _MIGRATIONS[version] + f"\nUPDATE meta SET value = '{version}' WHERE key = 'schema_version';",
+            _POST_MIGRATIONS.get(version),
         )
     _ensure_fts(conn)
 
@@ -444,9 +464,15 @@ def _ensure_fts(conn: sqlite3.Connection) -> None:
         raise
 
 
-def _run_script(conn: sqlite3.Connection, script: str) -> None:
+def _run_script(conn: sqlite3.Connection, script: str,
+                post: Callable[[sqlite3.Connection], None] | None = None) -> None:
     try:
-        conn.executescript("BEGIN IMMEDIATE;\n" + script + "\nCOMMIT;")
+        if post is None:
+            conn.executescript("BEGIN IMMEDIATE;\n" + script + "\nCOMMIT;")
+            return
+        conn.executescript("BEGIN IMMEDIATE;\n" + script)  # executescript 不会替我们提交未结束的事务
+        post(conn)
+        conn.execute("COMMIT")
     except BaseException:
         if conn.in_transaction:
             conn.execute("ROLLBACK")

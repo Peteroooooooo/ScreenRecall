@@ -152,7 +152,7 @@ class Queries:
             "SELECT l.line_id, l.block_id, l.text, l.x0, l.y0, l.x1, l.y1, l.source, l.confidence, l.first_seen_ms, "
             "l.last_seen_ms, l.disappeared_ms, s.segment_id, s.app, s.title "
             "FROM lines l JOIN segments s ON s.segment_id = l.segment_id WHERE l.line_id IN "
-            "(SELECT line_id FROM text_chunks WHERE chunk_id = :id UNION SELECT :id) "
+            "(SELECT line_id FROM text_chunks WHERE chunk_id = :id UNION SELECT :id) AND l.alias_of IS NULL "
             "AND l.last_seen_ms >= :lo AND l.first_seen_ms < :hi ORDER BY l.order_key, l.line_id",
             {"id": int(vec_id), "lo": -(2 ** 62) if time_from is None else int(time_from),
              "hi": 2 ** 62 if time_to is None else int(time_to)},
@@ -225,7 +225,7 @@ class Queries:
             roots = _block_roots(conn, sid)
             rows = conn.execute(
                 "SELECT * FROM lines WHERE segment_id = ? AND last_seen_ms >= ? AND first_seen_ms <= ? "
-                "ORDER BY first_seen_ms LIMIT ?", (sid, start, end, budget + 1),
+                "AND alias_of IS NULL ORDER BY first_seen_ms LIMIT ?", (sid, start, end, budget + 1),
             ).fetchall()
             if len(rows) > budget:
                 rows = rows[:budget]

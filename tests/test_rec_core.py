@@ -401,6 +401,56 @@ def test_pinned_windows_and_cap(env):
     assert env.core.pinned == (4, 5, 6)
 
 
+def test_newly_pinned_window_is_read_on_its_first_frame(env):
+    """刚钉住的窗口：第一帧来了马上静止判断（不等 1 秒）；钉住一个已经跟踪过、画面没变的窗口也一样
+    （一直不变的窗口没有"下一次变化"，不然第一屏永远不读）。"""
+    env.core.pin(2)
+    env.core.step()
+    env.show(2, env.img(0))
+    env.run(80)
+    st = [e["ev"] for e in env.sink.of("still") if e["ev"].hwnd == 2]
+    assert len(st) == 1 and not st[0].identical_to_saved
+    # 窗口 1 在前台录过、静止过；换到窗口 2 前台后它的会话停了。之后把它钉住，画面和之前一模一样
+    env.show(1, env.img(300))
+    env.run(1200)
+    env.win.fg = 2
+    env.run(3200)
+    assert 1 not in env.core.pool
+    n = len(env.sink.of("still"))
+    env.core.pin(1)
+    env.core.step()
+    env.show(1, env.img(300))
+    env.run(80)
+    assert len(env.sink.of("still")) == n + 1 and env.sink.of("still")[-1]["ev"].hwnd == 1
+
+
+def test_window_back_from_a_gap_is_read_on_its_first_frame(env):
+    env.core.step()
+    env.show(1, env.img(0))
+    env.run(1200)
+    n = len(env.sink.of("still"))
+    env.win.windows[1]["minimized"] = True
+    env.run(100)
+    env.win.windows[1]["minimized"] = False
+    env.run(40)
+    env.show(1, env.img(0))
+    env.run(80)
+    assert len(env.sink.of("still")) == n + 1
+
+
+def test_moving_content_keeps_normal_still_timing_after_a_pin(env):
+    env.core.pin(2)
+    env.core.step()
+    env.show(2, env.img(0))
+    env.run(80)
+    n = len(env.sink.of("still"))
+    env.show(2, env.img(200))  # 画面在动：按平常的计时
+    env.run(400)
+    assert len(env.sink.of("still")) == n
+    env.run(800)
+    assert len(env.sink.of("still")) == n + 1
+
+
 def test_closed_window_drops_tracker_and_pin(env):
     env.core.pin(2)
     env.core.step()
@@ -427,6 +477,56 @@ def test_wheel_boosts_rate_and_reaches_tracker(env):
     assert env.sink.of("block_anchor")[-1]["anchor"] == "top"
     env.run(1000)
     assert src.max_fps == 1.0
+
+
+def test_navigation_key_boosts_rate_of_the_foreground_window(env):
+    """翻页 / 方向 / 空格键之后 nav_boost_ms 内用 wheel_fps（浏览器平滑翻页的动画要多拿几帧）；普通按键不算。"""
+    env.core.pin(2)
+    env.core.step()
+    env.show(1, env.img(0))
+    env.run(1200)
+    src = env.src(1)
+    env.inp.key(env.clock.t)  # 打字
+    env.run(40)
+    assert src.max_fps == 1.0
+    env.inp.key(env.clock.t, nav=True)
+    env.run(40)
+    assert src.max_fps == 10.0 and env.src(2).max_fps == 1.0  # 只给前台窗口
+    env.run(600)
+    assert src.max_fps == 1.0
+
+
+def test_consecutive_shifts_keep_the_fast_rate(env):
+    """画面一帧帧平移（平滑滚动、惯性，没有滚轮事件）：最后一次判成平移之后 shift_boost_ms 内都用 wheel_fps，
+    整段动画都能接上。"""
+    env.core.step()
+    env.show(1, env.img(0))
+    env.run(1200)
+    src = env.src(1)
+    env.inp.key(env.clock.t, nav=True)
+    tops = [0]
+    for top in (40, 160, 330, 420):  # 一次翻页的动画：先快后慢
+        env.run(100)
+        env.show(1, env.img(top))
+        tops.append(top)
+    env.run(2000)
+    assert env.core.trackers[1].pos_y == 420
+    assert env.core.feed_kinds.get("shift", 0) == 4 and env.core.feed_kinds.get("break", 0) == 0
+    # 没有按键、只靠"一直在平移"：第一帧按 1 帧/秒来，之后每一帧都还在平移 → 一直快
+    env.run(1000)
+    t = env.clock.t
+    env.show(1, env.img(460))
+    env.run(1000)
+    assert src.max_fps == 1.0
+    env.show(1, env.img(500))
+    env.run(80)
+    assert env.core.feed_kinds["shift"] == 6 and src.max_fps == 10.0
+    env.run(100)
+    env.show(1, env.img(540))
+    env.run(100)
+    assert env.core.feed_kinds["shift"] == 7  # 100 ms 后的下一帧就收了
+    env.run(700)
+    assert src.max_fps == 1.0 and env.clock.t > t
 
 
 def test_wheel_over_other_window_goes_there(env):

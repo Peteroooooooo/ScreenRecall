@@ -58,6 +58,8 @@ class Win:
         self.env, self.hwnd, self.doc, self.uia_text = env, hwnd, doc, uia_text
         self.top = 0
         self.origin = (0, 0)  # 窗口在屏幕上的左上角（只影响 UIA 给的屏幕坐标；假截图来源的帧边界固定在 (0, 0)）
+        self.chrome: int | None = None  # 读不到字时 UIA 认出的界面条下沿（窗口内 y）
+        self.first_touch = False  # True：第一次读只给外框、并标 first_touch（真实 Edge 第一次被访问时的样子）
         self.head = S.header(W)
         env.win.add(hwnd, process, title)
         env.wins[hwnd] = self
@@ -74,7 +76,8 @@ class Win:
         ox, oy = self.origin
         rect = (ox, oy, ox + W, oy + HEAD + VH)
         if not self.uia_text:
-            return uia.UiaResult("empty", [], False, 3.0, 4, rect)
+            cb = None if self.chrome is None else oy + self.chrome
+            return uia.UiaResult("empty", [], False, 3.0, 4, rect, chrome_bottom=cb)
         lines = [uia.UiaLine("合成窗口 - 标题栏", (ox + 16, oy + 14, ox + 300, oy + 40), "TabItem", "name", "text")]
         for y0, y1, text in self.doc.lines:
             sy0, sy1 = HEAD + y0 - self.top, HEAD + y1 - self.top
@@ -97,7 +100,15 @@ class FakeReader:
         self.reads += 1
         if self.status:
             return uia.UiaResult(self.status, [], False, 500.0, window_rect=(0, 0, W, HEAD + VH))
-        return self.env.wins[hwnd].uia_result()
+        w = self.env.wins[hwnd]
+        if w.first_touch:  # 浏览器第一次被访问：只有外框（标签页），页面还不在辅助功能树里
+            w.first_touch = False
+            ox, oy = w.origin
+            rect = (ox, oy, ox + W, oy + HEAD + VH)
+            lines = [uia.UiaLine("合成窗口 - 标签页", (ox + 16, oy + 14, ox + 300, oy + 40), "TabItem", "name", "ui")]
+            return uia.UiaResult("ok", lines, False, 400.0, 3, rect, uncovered=((ox, oy + 40, ox + W, oy + HEAD + VH),),
+                                 chrome_bottom=oy + HEAD, first_touch=True)
+        return w.uia_result()
 
     def has_text_hint(self, hwnd: int) -> bool:
         return True
@@ -391,6 +402,38 @@ def test_ocr_region_starts_below_the_system_caption(env):
     env.run(1300)
     reg = env.db().execute("SELECT x0, y0, x1, y1 FROM ocr_regions").fetchall()
     assert [tuple(r) for r in reg] == [(0, 30, W, HEAD + VH)]
+
+
+def test_pinned_static_window_first_screen_is_stored(env):
+    """刚钉住、画面一直不变的浏览器窗口：第一次 UIA 读取只有外框（first_touch），读字线程稍等再读一次，
+    第一屏的字马上存下（不等下一次画面变化 —— 一直不变的窗口没有下一次）。"""
+    env.win.add(9, "explorer.exe", "别的窗口")
+    env.win.fg = 9
+    env.control(excluded_processes=["explorer.exe"])  # 前台是用户自己的、不录的窗口
+    w = Win(env, 2, "msedge.exe", "钉住的页面 - Edge", Doc())
+    w.first_touch = True
+    env.window_list[:] = [(2, "msedge.exe", "钉住的页面 - Edge")]
+    env.control(pinned_windows=[{"hwnd": 2, "process": "msedge.exe", "title": "钉住的页面 - Edge"}])
+    env.run(600)
+    w.show(0)
+    env.run(400)
+    conn = env.db()
+    texts = [r["text"] for r in _lines(conn)]
+    assert texts == [ln[2] for ln in w.doc.lines if ln[0] < VH]
+    assert env.proc.text.stats.first_touch_rereads == 1
+
+
+def test_ocr_region_starts_below_the_app_chrome_bars(env):
+    """页面还没进辅助功能树（浏览器刚开始加载）：UIA 只认出了窗口上部的标签页条 / 工具栏（chrome_bottom），
+    整帧待 OCR 时从它们下面开始，标签页标题和网址不会被识别成正文。"""
+    w = Win(env, 3, "msedge.exe", "加载中", Doc(seed=5), uia_text=False)
+    w.chrome = HEAD
+    env.win.fg = 3
+    env.run(40)
+    w.show(0)
+    env.run(1300)
+    reg = env.db().execute("SELECT x0, y0, x1, y1 FROM ocr_regions").fetchall()
+    assert [tuple(r) for r in reg] == [(0, HEAD, W, HEAD + VH)]
 
 
 def test_busy_or_timeout_uia_means_ocr(env):

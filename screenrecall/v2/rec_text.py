@@ -5,7 +5,8 @@
 静止（不是"和已存的图一模一样"的那种）：
 1. 画面在静止之后又变了（核心里这个窗口最后一次变化晚于这一帧），或者队列积压太多 → 不读（读到的是别的画面），
    整帧算待 OCR；
-2. 否则 UiaReader.read(hwnd)；读完再核对一次画面没变，变了就丢掉这次结果；
+2. 否则 UiaReader.read(hwnd)（对这个窗口的第一次读取没来得及重读时，稍等再读一次）；读完再核对一次画面没变，
+   变了就丢掉这次结果；
 3. 只收 role='text' 的行；屏幕坐标 → 帧坐标（ev.fmap）→ 块坐标（+ pos_y）。正文（TextPattern 的行）上方的
    固定区域（标签页、地址栏这类）不收，否则每滚一次就在新位置多出一行；
 4. 写文字行：只在"读到了可用文字"时写，并且视口只取真正被 UIA 覆盖的横条（去掉 uncovered），
@@ -63,6 +64,7 @@ class TextStats:
     uia_reads: int = 0
     uia_usable: int = 0
     uia_not_ok: int = 0  # busy / timeout / error
+    first_touch_rereads: int = 0  # 第一次读一个窗口时稍等又读了一次
     stale: int = 0  # 画面已经变了，没读或丢掉了结果
     blocked: int = 0  # 暂停 / 锁屏 / 窗口此刻不能录（最小化、被隐藏、命中排除），没读或丢掉了结果
     excluded_drops: int = 0  # 证据帧的窗口标题此刻命中排除，没存
@@ -117,6 +119,24 @@ def covered_spans(top: int, bottom: int, holes: list[tuple[int, int]]) -> list[t
     if bottom > cur:
         out.append((cur, bottom))
     return out
+
+
+def stored_lines(res, fmap) -> tuple[list[tuple[str, tuple[int, int, int, int], bool]], int]:
+    """一次读字结果里要存成文字行的那些：[(文字, 帧坐标矩形, 是否 TextPattern 可见行)]，以及正文顶边（帧 y）。
+
+    只收 role 'text'（界面文字由 uia.collect_lines 标成 'ui'）；正文上方的固定区域（标签页、地址栏）不收：
+    有 TextPattern 正文时，正文第一行以上的都算固定区域。"""
+    conv: list[tuple[str, tuple[int, int, int, int], bool]] = []
+    for ln in res.lines:
+        if ln.role != "text" or not ln.text.strip():
+            continue
+        r = fmap.rect_to_frame(*ln.rect)
+        if r is None:
+            continue
+        conv.append((ln.text, r, ln.source_detail.startswith("textpattern")))
+    tp_idx = [i for i, (_, _, tp) in enumerate(conv) if tp]
+    content_top = min(conv[i][1][1] for i in tp_idx) if tp_idx else 0
+    return [c for c in conv if c[1][1] >= content_top], content_top
 
 
 class TextWorker:
@@ -262,10 +282,7 @@ class TextWorker:
         elif not self._hint(ev.hwnd):
             self.stats.no_hint += 1
         else:
-            t0 = time.perf_counter()
-            res = self.reader.read(ev.hwnd)
-            self.stats.add("uia_ms", (time.perf_counter() - t0) * 1000)
-            self.stats.uia_reads += 1
+            res = self._read(ev)
             if res.status not in ("ok", "empty"):
                 self.stats.uia_not_ok += 1
             if not self._can_read(ev.hwnd):  # 读的这段时间里暂停了 / 命中排除：结果不要
@@ -286,7 +303,8 @@ class TextWorker:
         if res is not None and res.status in ("ok", "empty"):
             uncovered = self._uncovered_frame(res, fmap)
             res_f = dataclasses.replace(res, uncovered=tuple(uncovered))
-            regions = uia.ocr_regions(res_f, bgr, (0, 0), min_gap_px=self.min_gap_px, top=self._top(ev))
+            top = self._top(ev, res, fmap)
+            regions = uia.ocr_regions(res_f, bgr, (0, 0), min_gap_px=self.min_gap_px, top=top)
             if res.usable:
                 self.stats.uia_usable += 1
                 try:
@@ -294,7 +312,7 @@ class TextWorker:
                 except Exception:  # noqa: BLE001 - 字没写进去：这一帧整帧待 OCR，别把文字丢了
                     self.stats.errors += 1
                     log.exception("写文字行失败，改为整帧待 OCR")
-                    regions = uia.ocr_regions(_NO_READ, bgr, (0, 0), min_gap_px=self.min_gap_px, top=self._top(ev))
+                    regions = uia.ocr_regions(_NO_READ, bgr, (0, 0), min_gap_px=self.min_gap_px, top=top)
         else:
             regions = uia.ocr_regions(_NO_READ, bgr, (0, 0), min_gap_px=self.min_gap_px, top=self._top(ev))
         self._info[ev.still_id] = StillInfo(line_ids, rects, [tuple(map(int, r)) for r in regions],
@@ -308,14 +326,47 @@ class TextWorker:
                 self.stats.evidence_requested += 1
         self.stats.add("still_ms", (time.perf_counter() - t_start) * 1000)
 
-    def _top(self, ev) -> int:
-        """帧里系统标题栏以下从第几行开始（帧像素）；取不到时 0。"""
-        try:
-            px = int(self.caption_px(ev.hwnd) or 0)
-        except Exception:  # noqa: BLE001
-            return 0
+    def _read(self, ev: StillEvent):
+        """读一次 UIA。读取器说这是对这个窗口的第一次读、预算里没能重读（first_touch：浏览器这时常常只给外框，
+        页面还不在辅助功能树里）时，这里稍等再读一次，取元素多的那次 —— 不然一直不变的窗口（刚钉住的）
+        第一屏的字永远读不到。"""
+        t0 = time.perf_counter()
+        res = self.reader.read(ev.hwnd)
+        self.stats.add("uia_ms", (time.perf_counter() - t0) * 1000)
+        self.stats.uia_reads += 1
+        if not getattr(res, "first_touch", False) or res.status not in ("ok", "empty") or self._stopping:
+            return res
+        cfg = getattr(self.reader, "cfg", None)
+        time.sleep(float(getattr(cfg, "first_touch_retry_s", 0.2) or 0.2))
+        if self._changed_since(ev) or not self._can_read(ev.hwnd):
+            return res
+        t0 = time.perf_counter()
+        res2 = self.reader.read(ev.hwnd)
+        self.stats.add("uia_ms", (time.perf_counter() - t0) * 1000)
+        self.stats.uia_reads += 1
+        self.stats.first_touch_rereads += 1
+        if res2.status in ("ok", "empty") and res2.element_count >= res.element_count:
+            return res2
+        return res
+
+    def _top(self, ev, res=None, fmap=None) -> int:
+        """帧里从第几行开始登记待 OCR（帧像素）：系统标题栏以下；这次读字认出了窗口上部的界面条（标签页条、
+        工具栏，uia.chrome_bottom）时从它下面开始，否则页面还没进辅助功能树时整帧识别会把标签页、地址栏识别成正文。"""
         scale = getattr(ev.fmap, "scale_y", 1.0) or 1.0
-        return max(0, int(px / scale))
+        try:
+            top = max(0, int(int(self.caption_px(ev.hwnd) or 0) / scale))
+        except Exception:  # noqa: BLE001
+            top = 0
+        cb = getattr(res, "chrome_bottom", None) if res is not None else None
+        fm = fmap or ev.fmap
+        if cb is not None and fm is not None:
+            try:
+                y = fm.to_frame(fm.left, cb)[1]
+            except Exception:  # noqa: BLE001
+                y = 0
+            if 0 < y < fm.height:
+                top = max(top, int(y))
+        return top
 
     def _hint(self, hwnd: int) -> bool:
         fn = getattr(self.reader, "has_text_hint", None)
@@ -381,18 +432,7 @@ class TextWorker:
 
     def _write_lines(self, ctx: StillCtx, res, uncovered, fh: int, fmap) -> tuple[list, list]:
         ev = ctx.ev
-        conv: list[tuple[str, tuple[int, int, int, int], bool]] = []
-        for ln in res.lines:
-            if ln.role != "text" or not ln.text.strip():
-                continue
-            r = fmap.rect_to_frame(*ln.rect)
-            if r is None:
-                continue
-            conv.append((ln.text, r, ln.source_detail.startswith("textpattern")))
-        # 正文上方的固定区域（标签页、地址栏）不收：有 TextPattern 正文时，正文第一行以上的都算固定区域
-        tp_idx = [i for i, (_, _, tp) in enumerate(conv) if tp]
-        content_top = min(conv[i][1][1] for i in tp_idx) if tp_idx else 0
-        conv = [c for c in conv if c[1][1] >= content_top]
+        conv, content_top = stored_lines(res, fmap)
         spans = covered_spans(content_top, fh, [(r[1], r[3]) for r in uncovered])
         if not spans:
             return [], []
