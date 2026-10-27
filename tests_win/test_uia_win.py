@@ -192,6 +192,65 @@ def test_edge_visible_only(reader, tmp_path):
                 time.sleep(0.5)
 
 
+@pytest.mark.skipif(not EDGE.exists(), reason="本机没有 Edge")
+def test_edge_first_touch_page_not_lost(comtypes_cache, tmp_path):
+    """默认 0.5 s 预算、新浏览器进程第一次被访问：只给外框（标签、地址栏）也算 usable，
+    但页面区域必须出现在 uncovered 里，调用方才会登记待 OCR，不会把这一屏的正文丢掉。"""
+    marker = uuid.uuid4().hex[:6]
+    title = f"sr-uia-ft-{marker}"
+    paras = "".join(f"<p>SRFT-{i} 合成段落 synthetic paragraph {i}</p>" for i in range(40))
+    page = tmp_path / "ft.html"
+    page.write_text(f"<!doctype html><meta charset=utf-8><title>{title}</title><body>{paras}</body>", encoding="utf-8")
+    profile = Path(tempfile.mkdtemp(prefix="sr-uia-edge-"))
+    proc = subprocess.Popen([
+        str(EDGE), f"--user-data-dir={profile}", "--no-first-run", "--no-default-browser-check",
+        "--disable-extensions", "--disable-sync", "--new-window", "--window-size=1000,800",
+        "--window-position=60,60", page.as_uri(),
+    ])
+    try:
+        hwnd = _find_hwnd(title, timeout=30)
+        time.sleep(2.0)
+        r = uia.UiaReader(uia.UiaConfig(comtypes_cache_dir=str(comtypes_cache)))
+        first = r.read(hwnd)
+        later = None
+        for _ in range(10):
+            time.sleep(0.5)
+            later = r.read(hwnd)
+            if any("SRFT-" in ln.text for ln in later.lines):
+                break
+        r.close()
+        page_lines = [ln for ln in later.lines if "SRFT-" in ln.text]
+        assert page_lines, "之后的读取应读到页面正文"
+        first_hits = sum(1 for ln in first.lines if "SRFT-" in ln.text)
+        if first_hits == 0:
+            # 第一次没读到正文：正文所在的位置必须落在 uncovered 横条里
+            for ln in page_lines:
+                mid = (ln.rect[1] + ln.rect[3]) // 2
+                assert any(b[1] <= mid < b[3] for b in first.uncovered), (ln.rect, first.uncovered)
+        # 读到正文后，正文区域不再整片算作没读到
+        page_top = min(ln.rect[1] for ln in page_lines)
+        page_bottom = max(ln.rect[3] for ln in page_lines)
+        inside = sum(max(0, min(b[3], page_bottom) - max(b[1], page_top)) for b in later.uncovered)
+        assert inside < 0.2 * (page_bottom - page_top)
+        print(f"edge first touch: status={first.status} usable={first.usable} page-lines={first_hits} "
+              f"uncovered={len(first.uncovered)}; later page-lines={len(page_lines)} uncovered={len(later.uncovered)}")
+    finally:
+        tag = str(profile)
+        for p in psutil.process_iter(["name", "cmdline"]):
+            try:
+                if (p.info["name"] or "").lower() == "msedge.exe" and any(tag in (c or "") for c in p.info["cmdline"] or []):
+                    p.kill()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+        _kill_tree(proc.pid)
+        for _ in range(20):
+            try:
+                shutil.rmtree(profile)
+                break
+            except OSError:
+                time.sleep(0.5)
+
+
 def test_tk_no_usable_text_and_hint(tmp_path):
     proc, hwnd = _start_tk(tmp_path)
     try:

@@ -5,6 +5,9 @@ from __future__ import annotations
 import threading
 import time
 
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+
 from screenrecall.text import uia
 from screenrecall.text.uia import Elem, TpLines, UiaConfig, UiaLine, UiaReader, collect_lines
 
@@ -100,6 +103,69 @@ def test_multiline_name_split():
 
 def test_to_frame_rect():
     assert uia.to_frame_rect((150, 260, 300, 280), (100, 200)) == (50, 60, 200, 80)
+
+
+# ---------- 没读到字的区域与待 OCR ----------
+
+def _ln(t, b, text="正文", role="text"):
+    return UiaLine(text, (110, t, 800, b), "Text", "name", role)
+
+
+def test_uncovered_bands_chrome_only_and_container_ignored():
+    # 浏览器第一次被访问：只有顶部工具栏的字，外加一个整窗大小的窗口名
+    lines = [_ln(100, 130, "标签页标题"), _ln(135, 160, "example.test/page"),
+             UiaLine("窗口标题", WIN, "Window", "name", "ui")]
+    assert uia.uncovered_bands(lines, WIN, min_gap_px=48) == [(100, 160, 900, 700)]
+    # 段落间距小于 min_gap_px 不算；中间一大段空着算
+    lines = [_ln(100, 130), _ln(150, 180), _ln(400, 430), _ln(660, 700)]
+    assert uia.uncovered_bands(lines, WIN, min_gap_px=48) == [(100, 180, 900, 400), (100, 430, 900, 660)]
+    assert uia.uncovered_bands([], WIN) == [WIN]
+    # 重叠、乱序的行
+    assert uia.uncovered_bands([_ln(480, 700), _ln(300, 520), _ln(100, 330)], WIN) == []
+
+
+def _canvas(h=600, w=800):
+    return np.full((h, w, 3), 255, np.uint8)
+
+
+def _write(img, x, y, text="一行短字 short", size=14):
+    im = Image.fromarray(img)
+    ImageDraw.Draw(im).text((x, y), text, fill=(0, 0, 0), font=ImageFont.truetype(r"C:\Windows\Fonts\msyh.ttc", size))
+    img[:] = np.asarray(im)
+
+
+def test_has_ink():
+    img = _canvas(120, 1500)
+    assert not uia.has_ink(img)
+    _write(img, 20, 50, "短词", 12)  # 宽横条里只有一个短词也要算有字
+    assert uia.has_ink(img)
+    grad = np.tile(np.linspace(0, 255, 1500, dtype=np.uint8)[None, :, None], (120, 1, 3))
+    assert not uia.has_ink(grad)
+    div = _canvas(120, 1500)
+    div[:, 700] = 0  # 竖分隔线
+    assert not uia.has_ink(div)
+    line = _canvas(120, 1500)
+    line[60] = 0  # 横线
+    assert not uia.has_ink(line)
+    assert uia.has_ink(img[:, :, 1])  # 单通道（绿色通道）也行
+    assert not uia.has_ink(np.zeros((1, 10), np.uint8))
+
+
+def test_ocr_regions():
+    frame = _canvas()
+    _write(frame, 40, 400, "图片里的字 text inside an image")
+    origin = (WIN[0], WIN[1])  # 帧左上角 = 窗口可见边框左上角
+    bad = uia.UiaResult("timeout", [], False, 1.0, window_rect=WIN)
+    assert uia.ocr_regions(bad, frame) == [(0, 0, 800, 600)]
+    assert uia.ocr_regions(bad, _canvas()) == []  # 整帧空白：不登记
+    unusable = uia.UiaResult("ok", [_ln(100, 130, "短")], False, 1.0, window_rect=WIN)
+    assert uia.ocr_regions(unusable, frame) == [(0, 0, 800, 600)]
+    # 可用：只登记有字的那条没读到字的横条（屏幕 y 300..550 -> 帧 y 200..450），空白的横条不登记
+    good = uia.UiaResult("ok", [_ln(100, 130, "足够长的一段正文文字 enough text here")], True, 1.0,
+                         window_rect=WIN, uncovered=((100, 160, 900, 280), (100, 300, 900, 550)))
+    assert uia.ocr_regions(good, frame) == [(0, 200, 800, 450)]
+    assert uia.ocr_regions(good, frame, origin) == [(0, 200, 800, 450)]
+    assert uia.ocr_regions(uia.UiaResult("ok", good.lines, True, 1.0, window_rect=WIN), frame) == []
 
 
 # ---------- 读取器：线程与超时 ----------
@@ -241,6 +307,64 @@ def test_has_text_hint_streak_and_ttl():
     be.lines = FakeBackend().lines
     r.read(1)  # 读到可用文字：清零
     now[0] = 0
+    assert r.has_text_hint(1)
+    r.close()
+
+
+def test_result_carries_uncovered_bands():
+    be = FakeBackend(lines=[UiaLine("一段足够长的正文文字 enough text", (110, 110, 400, 130), "Text", "name")])
+    res = _reader(be).read(1)
+    assert res.usable and res.uncovered == ((100, 130, 900, 700),)
+
+
+def test_slow_init_is_busy_not_abandoned_and_not_counted():
+    class SlowOpen(FakeBackend):
+        def open(self):
+            time.sleep(0.3)  # 进程里第一次初始化 COM / 生成接口代码
+            return super().open()
+
+    be = SlowOpen()
+    r = _reader(be, timeout_s=0.1, hint_fail_streak=1)
+    res = r.read(1)
+    assert res.status == "busy" and "初始化" in res.error
+    assert r.alive_abandoned() == 0 and r.has_text_hint(1)  # 不算目标程序卡住，也不算"没有文字"
+    time.sleep(0.35)
+    res = r.read(1)
+    assert res.status == "ok" and be.opened == 1 and be.reads == 1  # 被取消的那次没有再去读
+    r.close()
+
+
+def test_concurrent_reader_never_waits_past_its_budget():
+    be = FakeBackend(delay=0.6)
+    r = _reader(be, timeout_s=1.0)
+    t = threading.Thread(target=r.read, args=(1,))
+    t.start()
+    time.sleep(0.05)
+    t0 = time.perf_counter()
+    res = r.read(2, timeout_s=0.1)  # 另一个线程正占着读取器
+    assert res.status == "busy" and time.perf_counter() - t0 < 0.3
+    t.join()
+    r.close()
+
+
+def test_timed_out_first_touch_is_retried_later():
+    be = FakeBackend(delay=5.0)
+    r = UiaReader(UiaConfig(timeout_s=0.1, first_touch_retry_s=0.05), backend=be, win32=FakeWin())
+    assert r.read(1).status == "timeout"
+    be.delay = 0
+    be.counts = [5, 40]
+    res = r.read(1, timeout_s=1.0)
+    assert be.reads == 3 and res.element_count == 40  # 这次仍按第一次访问处理：重试并取元素多的那次
+    r.close()
+
+
+def test_hint_stays_true_for_apps_that_gave_text():
+    be = FakeBackend()
+    r = _reader(be, hint_fail_streak=2)
+    assert r.read(1).usable
+    be.lines = []  # 同一程序的另一个页面是图片 / 画布：读不出字
+    for _ in range(5):
+        assert not r.read(1).usable
     assert r.has_text_hint(1)
     r.close()
 
