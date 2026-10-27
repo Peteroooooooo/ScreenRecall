@@ -73,6 +73,45 @@ def latest_frames(conn, line_ids: Sequence[int]) -> dict[int, str]:
     return out
 
 
+def line_edits(conn, line_ids: Sequence[int]) -> dict[int, dict]:
+    """每行的来源、首次看到时间和原地改写记录：before = 它替换掉的那一行的字；after / after_ms = 后来替换它的行
+    （同一块里，隐藏名单的判断和这一行相同）。"""
+    ids = sorted({int(x) for x in line_ids if x is not None})
+    out: dict[int, dict] = {i: {} for i in ids}
+    if not ids:
+        return out
+    js = json.dumps(ids)
+    for lid, src, first, old in conn.execute(
+            "SELECT l.line_id, l.source, l.first_seen_ms, o.text FROM lines l "
+            "LEFT JOIN lines o ON o.line_id = l.replaces_line_id "
+            "WHERE l.line_id IN (SELECT CAST(value AS INTEGER) FROM json_each(?))", (js,)):
+        out[int(lid)].update({"source": src, "first": int(first)})
+        if old is not None:
+            out[int(lid)]["before"] = old
+    for old_id, text, first in conn.execute(
+            "SELECT replaces_line_id, text, first_seen_ms FROM lines WHERE replaces_line_id IN "
+            "(SELECT CAST(value AS INTEGER) FROM json_each(?)) ORDER BY first_seen_ms", (js,)):
+        out[int(old_id)].setdefault("after", text)
+        out[int(old_id)].setdefault("after_ms", int(first))
+    return out
+
+
+def _segment_view(conn, segment_id: int) -> dict | None:
+    """没有片段可用时（行不在任何片段的时间范围里）：把一个内容源的行排成和 Queries.piece 一样的结构。"""
+    seg = conn.execute("SELECT * FROM segments WHERE segment_id = ?", (segment_id,)).fetchone()
+    if seg is None:
+        return None
+    blocks: dict[int, dict] = {}
+    for r in conn.execute("SELECT * FROM lines WHERE segment_id = ? ORDER BY block_id, order_key, first_seen_ms, "
+                          "line_id", (segment_id,)):
+        b = blocks.setdefault(int(r["block_id"]), {"block_id": int(r["block_id"]), "lines": [], "skims": []})
+        b["lines"].append({"line_id": r["line_id"], "text": r["text"], "source": r["source"],
+                           "first_seen_ms": r["first_seen_ms"], "last_seen_ms": r["last_seen_ms"],
+                           "disappeared_ms": r["disappeared_ms"], "replaces_line_id": r["replaces_line_id"]})
+    return {"piece_id": None, "app": seg["app"], "title": seg["title"], "start_ms": seg["first_seen_ms"],
+            "end_ms": seg["last_seen_ms"], "segments": [{"blocks": list(blocks.values())}]}
+
+
 def piece_of(conn, segment_id: int | None, t_ms: int | None) -> tuple[int, str | None] | None:
     """内容源在 t_ms 时所属的片段（piece_id, task_label）：优先时间上包含 t 的，否则时间最近的。"""
     if segment_id is None:
@@ -357,6 +396,10 @@ class LivePieces:
 
 # ---------------- MCP 的 Queries ----------------
 
+GAP_REASONS_FOR_AGENTS = ("locked", "paused", "excluded")
+MIN_GAP_FOR_AGENTS_MS = 3 * 60_000
+
+
 def _hit_time(x: dict) -> int:
     return int(x.get("last_seen_ms") or 0)
 
@@ -385,6 +428,7 @@ class StoreQueriesAdapter:
         rows = [(g, ln) for _, _, g, ln in ranked[:max(1, int(limit))]]
         rows.sort(key=lambda r: -_hit_time(r[1]))
         frames = latest_frames(conn, [ln["line_id"] for _, ln in rows])
+        edits = line_edits(conn, [ln["line_id"] for _, ln in rows])
         pieces: dict[tuple[int, int], tuple[int, str | None] | None] = {}
         hidden = Hidden(exclude.apps, exclude.title_keywords)
         out = []
@@ -399,11 +443,85 @@ class StoreQueriesAdapter:
                         p = None
                 pieces[key] = p
             p = pieces[key]
+            e = edits.get(int(ln["line_id"]), {})
             out.append(ms.Hit(line_id=int(ln["line_id"]), text=ln["text"], app=g["app"], title=g["title"],
                               seen_ms=_hit_time(ln), frame_id=frames.get(int(ln["line_id"])),
-                              first_seen_ms=ln.get("first_seen_ms"), piece_id=None if p is None else str(p[0]),
-                              task=None if p is None else p[1], score=g.get("score")))
+                              first_seen_ms=e.get("first", ln.get("first_seen_ms")),
+                              piece_id=None if p is None else str(p[0]),
+                              task=None if p is None else p[1], score=g.get("score"), replaced_text=e.get("before"),
+                              replaced_by_text=e.get("after"), replaced_by_ms=e.get("after_ms"),
+                              source=e.get("source", ln.get("source"))))
         return out
+
+    def context(self, *, line_id, piece_id, before, after, offset, limit, exclude) -> ms.Context | None:
+        """read 工具：line_id 所在片段（没有片段时用它所在的内容源）里按阅读顺序排的行，取前后各几行；
+        或 piece_id 片段从 offset 起的 limit 行。片段或内容源命中隐藏名单时返回 None（与不存在一样）。"""
+        conn = self.queries.conn()
+        hidden = Hidden(exclude.apps, exclude.title_keywords)
+        ex = self._ex(exclude)
+        row = None
+        pid: int | None = None
+        if line_id is not None:
+            row = conn.execute(
+                "SELECT l.line_id, l.segment_id, l.first_seen_ms, s.app, s.title FROM lines l "
+                "JOIN segments s ON s.segment_id = l.segment_id WHERE l.line_id = ?", (int(line_id),)).fetchone()
+            if row is None or hidden.match(row["app"], row["title"]):
+                return None
+            p = piece_of(conn, row["segment_id"], row["first_seen_ms"])
+            pid = None if p is None else p[0]
+        else:
+            try:
+                pid = int(str(piece_id).strip())
+            except (TypeError, ValueError):
+                return None
+        data = self.queries.piece(pid, **ex) if pid is not None else None
+        if row is not None and (data is None or not any(
+                x["line_id"] == int(line_id) for s in data["segments"] for b in s["blocks"] for x in b["lines"])):
+            data = _segment_view(conn, int(row["segment_id"]))  # 行不在片段的时间范围里：看它所在的内容源
+        if data is None:
+            return None
+        flat: list[tuple[int, dict]] = []
+        skims: dict[int, list] = {}
+        bi = 0
+        for seg in data["segments"]:
+            for b in seg["blocks"]:
+                skims[bi] = [(s["start_ms"], s["end_ms"]) for s in b.get("skims", ())]
+                for x in b["lines"]:
+                    flat.append((bi, x))
+                bi += 1
+        if line_id is not None:
+            idx = next((i for i, (_, x) in enumerate(flat) if x["line_id"] == int(line_id)), 0)
+            lo, hi = max(0, idx - int(before)), min(len(flat), idx + int(after) + 1)
+        else:
+            lo = min(int(offset), len(flat))
+            hi = min(len(flat), lo + int(limit))
+        part = flat[lo:hi]
+        replaced_at = {int(x["replaces_line_id"]): int(x["first_seen_ms"]) for _, x in flat
+                       if x.get("replaces_line_id") is not None}
+        frames = latest_frames(conn, [x["line_id"] for _, x in part])
+        blocks: list[ms.CtxBlock] = []
+        cur: int | None = None
+        acc: list[ms.CtxLine] = []
+
+        def close() -> None:
+            if acc:
+                blocks.append(ms.CtxBlock(tuple(acc), tuple(skims.get(cur, ()))))
+
+        for b, x in part:
+            if b != cur:
+                close()
+                cur, acc = b, []
+            lid = int(x["line_id"])
+            rep = replaced_at.get(lid)
+            acc.append(ms.CtxLine(lid, x["text"], int(x["first_seen_ms"]), int(x["last_seen_ms"]),
+                                  x.get("source") or "uia", frames.get(lid),
+                                  None if x.get("replaces_line_id") is None else int(x["replaces_line_id"]),
+                                  rep, None if rep is not None or x.get("disappeared_ms") is None
+                                  else int(x["disappeared_ms"])))
+        close()
+        return ms.Context(None if data.get("piece_id") is None else str(data["piece_id"]), data["app"] or "",
+                          data["title"] or "", int(data["start_ms"]), int(data["end_ms"]), tuple(blocks), len(flat),
+                          lo, None if line_id is None else int(line_id))
 
     def timeline(self, *, start_ms, end_ms, app, limit, exclude) -> list[ms.Piece]:
         tl = self.queries.timeline(start_ms, end_ms, app, **self._ex(exclude))
@@ -412,9 +530,25 @@ class StoreQueriesAdapter:
         ids = [int(x["id"]) for x in items]
         withheld = _pieces_touching_hidden(self.queries.conn(), ids, Hidden(exclude.apps, exclude.title_keywords))
         texts = self._piece_summaries([i for i in ids if i not in withheld])
-        return [ms.Piece(piece_id=str(x["id"]), app=x["app"] or "", title=x["title"] or "", start_ms=x["start_ms"],
-                         end_ms=x["end_ms"], task=x["task_label"], summary=texts.get(int(x["id"])))
-                for x in items]
+        out: list = [ms.Piece(piece_id=str(x["id"]), app=x["app"] or "", title=x["title"] or "",
+                              start_ms=x["start_ms"], end_ms=x["end_ms"], task=x["task_label"],
+                              summary=texts.get(int(x["id"]))) for x in items]
+        # 没有记录的时段（锁屏、暂停、排除的窗口）：看经过时要知道"这段时间不在电脑前 / 没录"。
+        # 只给原因和时间，不给 detail（常常是窗口标题）和应用名
+        now = self.queries.clock()
+        merged: list[list] = []  # 同一原因、时间重叠的（几个窗口各记了一条）并成一条
+        for g in sorted((g for g in tl["items"] if g["kind"] == "gap" and g["reason"] in GAP_REASONS_FOR_AGENTS),
+                        key=lambda g: (g["reason"], g["start_ms"])):
+            end = int(g["end_ms"]) if g["end_ms"] is not None else now
+            if merged and merged[-1][2] == g["reason"] and g["start_ms"] <= merged[-1][1]:
+                merged[-1][1] = max(merged[-1][1], end)
+                merged[-1][3] = merged[-1][3] or g["end_ms"] is None
+            else:
+                merged.append([int(g["start_ms"]), end, g["reason"], g["end_ms"] is None])
+        for start, end, reason, still_open in merged:
+            if end - start >= MIN_GAP_FOR_AGENTS_MS:
+                out.append(ms.GapItem(start, None if still_open else end, reason))
+        return out
 
     def _piece_summaries(self, ids: Sequence[int]) -> dict[int, str]:
         if not ids:
