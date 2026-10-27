@@ -29,3 +29,32 @@ def test_unknown_keys_are_errors(tmp_path, monkeypatch):
     monkeypatch.setattr(v2config, "_raw", lambda: raw)
     with pytest.raises(ValueError, match="modle"):
         v2config.load_v2(home=tmp_path)
+
+
+def test_default_toml_documents_every_v2_setting_with_its_default():
+    """config.default.toml 的 [v2.*] 各节写全了对应 dataclass 的键，值和代码里的默认值一致（改一边忘了另一边会报）。"""
+    import dataclasses
+    import tomllib
+
+    from screenrecall.config import REPO_ROOT
+
+    raw = tomllib.loads((REPO_ROOT / "config.default.toml").read_text(encoding="utf-8"))["v2"]
+    for name, cls in (("app", v2config.AppSettings), ("ocr", v2config.OcrSettings),
+                      ("encoder", v2config.EncoderSettings), ("idle", v2config.IdleSettings)):
+        sec = raw.get(name, {})
+        for f in dataclasses.fields(cls):
+            assert f.name in sec, f"[v2.{name}] 缺 {f.name}"
+            assert sec[f.name] == f.default, f"[v2.{name}] {f.name} = {sec[f.name]!r}，代码默认 {f.default!r}"
+
+
+def test_app_switches_config_and_flags():
+    from types import SimpleNamespace as NS
+
+    from screenrecall.app.main import app_switches
+
+    cfg = NS(app=v2config.AppSettings())
+    flags = NS(no_tray=False, no_browser=False, autostart=False)
+    assert app_switches(cfg, flags) == (True, True)
+    assert app_switches(NS(app=v2config.AppSettings(open_browser=False, tray=False)), flags) == (False, False)
+    assert app_switches(cfg, NS(no_tray=True, no_browser=False, autostart=True)) == (False, False)
+    assert app_switches(None, flags) == (True, True)

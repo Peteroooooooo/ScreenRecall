@@ -49,7 +49,6 @@ class IdleSettings:
     piece_gap_ms: int = 120_000    # 同应用同标题、离开不超过这么久，算同一个片段
     summaries: bool = True         # 空闲时用大模型写片段 / 天概括
     clip: bool = True              # 空闲时给证据图算 CLIP 向量（内容分类器要用）
-    use_gpu: bool = False          # OCR 用显卡（需要单独装 onnxruntime-directml，默认关）
     # 以下给空闲整理进程（screenrecall.v2.worker）
     chunk_lines: int = 6           # 文字向量的一个段落最多几行（同一块里阅读顺序相邻）
     chunk_tokens: int = 100        # 一个段落最多多少 token（模型上限 128）

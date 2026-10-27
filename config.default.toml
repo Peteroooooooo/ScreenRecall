@@ -77,7 +77,9 @@ maintenance_interval_seconds = 300
 data_dir = ""               # 空 = %LOCALAPPDATA%\ScreenRecall\data（只有本人能读）
 
 [v2.app]
-port = 8611
+port = 8611                 # 主页端口（只在 127.0.0.1 上）；被占用时自动换一个
+open_browser = true         # 启动后打开主页（命令行 --no-browser / --autostart 时不开）
+tray = true                 # 显示托盘图标（命令行 --no-tray 时不显示）
 
 [v2.recorder]
 normal_fps = 1.0            # 平时、视频时最多 1 帧/秒（实测视频时开销和不截一样）
@@ -88,12 +90,31 @@ still_ms = 1000             # 停手约 1 秒算"停下来"
 typing_still_ms = 2000      # 打字时停 2 秒才读
 
 [v2.ocr]
-model = "tiny"              # PP-OCRv6 tiny；small 只做第二遍
-threads = 2
+model = "tiny"              # PP-OCRv6 tiny；small 只做第二遍（设置页可改）
+second_pass = true          # tiny 置信度低的区域再用 small 读一遍
+second_pass_below = 0.80    # 置信度低于这个值算"低"
+threads = 2                 # OCR 推理线程数
+models_dir = ""             # 空 = <仓库>/models/ocr
+batch_regions = 4           # 一次领几个待识别区域
+
+[v2.encoder]
+threads = 2                 # 主进程查询用的文字向量模型的线程数
+batch_size = 16
+idle_unload_s = 300.0       # 查询模型多久不用就卸载（省内存）
 
 [v2.idle]
-threshold_s = 300.0         # 键鼠 5 分钟没动（或锁屏）开始空闲整理
+threshold_s = 300.0         # 键鼠 5 分钟没动（或锁屏）开始空闲整理（设置页可改）
 piece_gap_ms = 120000       # 同应用同标题、离开不超过 2 分钟算同一个片段
+summaries = true            # 空闲时用大模型写片段 / 天概括（大模型在 .env 里配置）
+clip = true                 # 空闲时给证据图算 CLIP 向量（内容分类器要用）
+chunk_lines = 6             # 文字向量的一个段落最多几行（同一块里阅读顺序相邻）
+chunk_tokens = 100          # 一个段落最多多少 token（模型上限 128）
+llm_min_interval_s = 1.0    # 两次大模型调用至少间隔多少秒
+llm_max_calls = 200         # 一次空闲整理最多调用大模型几次
+llm_reasoning_effort = "none"  # 思考强度；空 = 用模型默认
+classifier_dir = "results/classifier/v1"  # 内容分类器（CLIP 向量 + 线性模型）；空 = 不预测
+frame_report_days = 30      # 只统计（不删除）早于这么多天、没标"保留"的证据帧
+encoder_threads = 4         # 空闲时算文字向量的线程数（用户不在，进程又是低优先级）
 
 [classify]
 # 内容分类器训练产物目录（python -m screenrecall.classify train 的 --out），相对路径以仓库根目录为基准。
