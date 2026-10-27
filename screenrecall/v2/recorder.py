@@ -244,26 +244,11 @@ def _setup_logging(logs_dir: Path) -> None:
 
 
 def _watch_stdin(stop: threading.Event) -> bool:
-    """stdin 是管道 / 文件时，读到 EOF 就叫停（主进程关掉管道 = 让我们退出）。控制台交互运行时不看。"""
-    stream = getattr(sys.stdin, "buffer", None)
-    if stream is None:
-        return False
-    try:
-        if sys.stdin.isatty():
-            return False
-    except (ValueError, OSError):
-        return False
+    """stdin 是管道 / 文件时，读到 EOF 就叫停（主进程关掉管道 = 让我们退出）。控制台交互运行时不看。
+    管道不挂同步读（见 stdin_eof：挂着读会让别的线程加载 DLL 时卡死）。"""
+    from . import stdin_eof
 
-    def run():
-        try:
-            while stream.read(4096):
-                pass
-        except (OSError, ValueError):
-            pass
-        stop.set()
-
-    threading.Thread(target=run, name="sr-recorder-stdin", daemon=True).start()
-    return True
+    return stdin_eof.watch(stop.set, name="sr-recorder-stdin") is not None
 
 
 def main(argv: list[str] | None = None) -> int:
