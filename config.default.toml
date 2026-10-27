@@ -70,6 +70,31 @@ min_free_gib = 2            # 磁盘最低剩余空间
 reserve_mib = 256           # 写入前预留余量，初值
 maintenance_interval_seconds = 300
 
+# ---------------- v2（事件驱动记录：python -m screenrecall.app） ----------------
+# 各节的键与 screenrecall/v2/config.py 里对应 dataclass 的字段同名，没写的用默认值；写错名字会报错。
+# 新数据库 recall.sqlite3 放在 v2 数据目录里；上面 [storage] 的老数据目录只给旧界面和冻结评测用。
+[v2]
+data_dir = ""               # 空 = %LOCALAPPDATA%\ScreenRecall\data（只有本人能读）
+
+[v2.app]
+port = 8611
+
+[v2.recorder]
+normal_fps = 1.0            # 平时、视频时最多 1 帧/秒（实测视频时开销和不截一样）
+wheel_fps = 10.0            # 滚轮在转时最多 10 帧/秒（实测 4 帧/秒跟不上快滑）
+
+[v2.recorder.tracker]
+still_ms = 1000             # 停手约 1 秒算"停下来"
+typing_still_ms = 2000      # 打字时停 2 秒才读
+
+[v2.ocr]
+model = "tiny"              # PP-OCRv6 tiny；small 只做第二遍
+threads = 2
+
+[v2.idle]
+threshold_s = 300.0         # 键鼠 5 分钟没动（或锁屏）开始空闲整理
+piece_gap_ms = 120000       # 同应用同标题、离开不超过 2 分钟算同一个片段
+
 [classify]
 # 内容分类器训练产物目录（python -m screenrecall.classify train 的 --out），相对路径以仓库根目录为基准。
 # 留空则不预测；特征模型与 [models] 的全图模型不一致时不会加载。
