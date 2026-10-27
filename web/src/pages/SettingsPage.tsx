@@ -17,7 +17,6 @@ export default function SettingsPage() {
   const { t, lang, setLang } = useT();
   const [theme, setTheme] = useTheme();
   const st = useSettings();
-  const { status } = useStatus();
   const s = st.data;
 
   return (
@@ -42,14 +41,7 @@ export default function SettingsPage() {
                 ))}
               </select>
             </Row>
-            <Row>
-              <div className="min-w-0 flex-1">
-                <b>{t("set.queue")}</b>
-                <p className="sr-num mt-0.5 text-[13px] text-graphite">
-                  {status ? `${t("set.queueN", { n: fmtInt(status.pending_ocr) })} · ${status.idle_work === "running" ? t("set.queueRun") : t("set.queueIdle")}` : "—"}
-                </p>
-              </div>
-            </Row>
+            <IdleQueueRow />
           </Card>
 
           <Card title={<span id="lbl-ocr">{t("set.ocr")}</span>}>
@@ -92,12 +84,53 @@ export default function SettingsPage() {
               <div>
                 <b>{t("set.dataDir")}</b>
                 <p className="mt-1 rounded-lg border border-rule bg-well px-2.5 py-2 font-mono text-[13px] [overflow-wrap:anywhere]">{s.data_dir}</p>
+                <p className="mt-2 text-[13px]"><a className="text-cobalt hover:underline" href="#/privacy">{t("set.keepLink")} →</a></p>
               </div>
             </div>
           </details>
         </div>
       )}
     </div>
+  );
+}
+
+/** 现在的队列（只有数量）+ “现在就整理”：马上启动空闲整理进程，状态跟着轮询更新 */
+function IdleQueueRow() {
+  const { t } = useT();
+  const toast = useToast();
+  const { status, setStatus } = useStatus();
+  const [busy, setBusy] = useState(false);
+  const running = status?.idle_work === "running";
+  const q = status?.queue ?? (status ? { ocr: status.pending_ocr, vectors: 0, summaries: 0 } : null);
+  const parts = q ? [
+    t("set.queueN", { n: fmtInt(q.ocr) }),
+    q.vectors > 0 && t("set.queueVec", { n: fmtInt(q.vectors) }),
+    q.summaries > 0 && t("set.queueSum", { n: fmtInt(q.summaries) }),
+    running ? t("set.queueRun") : t("set.queueIdle"),
+  ].filter(Boolean).join(" · ") : "—";
+  const run = async () => {
+    setBusy(true);
+    try {
+      setStatus(await api.runIdle());
+      toast(t("set.runStarted"));
+    } catch (e) {
+      toast(t("set.runFail", { e: errText(e, t("common.offline")) }), "alarm");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Row>
+      <div className="min-w-0 flex-1">
+        <b>{t("set.queue")}</b>
+        <p className="sr-num mt-0.5 text-[13px] text-graphite" aria-live="polite">{parts}</p>
+        <p className="mt-0.5 text-[12.5px] text-faint">{t("set.runNote")}</p>
+      </div>
+      <button className="sr-btn sr-btn-line sr-btn-sm" onClick={run} disabled={busy || running || !status}>
+        {(busy || running) && <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" aria-hidden />}
+        {running ? t("set.queueRun") : t("set.runNow")}
+      </button>
+    </Row>
   );
 }
 
