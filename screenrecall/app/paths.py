@@ -13,6 +13,7 @@ from __future__ import annotations
 import ctypes
 import os
 import re
+import secrets
 import sys
 from ctypes import wintypes
 from dataclasses import dataclass
@@ -69,6 +70,9 @@ if sys.platform == "win32":
                                      ctypes.POINTER(wintypes.BOOL))
     _SetNamedSecurityInfoW = _fn(_advapi32, "SetNamedSecurityInfoW", wintypes.DWORD, wintypes.LPWSTR, ctypes.c_int,
                                  wintypes.DWORD, _PVOID, _PVOID, _PVOID, _PVOID)
+    _TreeResetNamedSecurityInfoW = _fn(_advapi32, "TreeResetNamedSecurityInfoW", wintypes.DWORD, wintypes.LPWSTR,
+                                       ctypes.c_int, wintypes.DWORD, _PVOID, _PVOID, _PVOID, _PVOID, wintypes.BOOL,
+                                       _PVOID, ctypes.c_int, _PVOID)
     _GetNamedSecurityInfoW = _fn(_advapi32, "GetNamedSecurityInfoW", wintypes.DWORD, wintypes.LPCWSTR,
                                  ctypes.c_int, wintypes.DWORD, ctypes.POINTER(_PVOID), ctypes.POINTER(_PVOID),
                                  ctypes.POINTER(_PVOID), ctypes.POINTER(_PVOID), ctypes.POINTER(_PVOID))
@@ -83,6 +87,7 @@ _SDDL_REVISION_1 = 1
 _DACL_SECURITY_INFORMATION = 0x00000004
 _PROTECTED_DACL_SECURITY_INFORMATION = 0x80000000
 _UNPROTECTED_DACL_SECURITY_INFORMATION = 0x20000000
+_PROG_INVOKE_NEVER = 1
 
 
 def current_user_sid() -> str:
@@ -113,7 +118,10 @@ def _private_sddl(user_sid: str, is_dir: bool) -> str:
     return "D:P" + "".join(f"(A;{inherit};FA;;;{sid})" for sid in (user_sid, SYSTEM_SID, ADMINS_SID))
 
 
-def _set_dacl(path: Path, sddl: str, protected: bool = True) -> None:
+def _set_dacl(path: Path, sddl: str, protected: bool = True, reset_tree: bool = False) -> None:
+    """写 DACL。reset_tree=True（目录）时用 TreeResetNamedSecurityInfo：子项上原有的显式 ACE、
+    "禁止继承"一并去掉，全部改成只从这个目录继承。只用 SetNamedSecurityInfo 时，子文件自己带的
+    Everyone 等显式条目会原样保留（实测），自选的已有数据目录里旧文件仍然谁都能读。"""
     psd = ctypes.c_void_p()
     if not _ConvertSddl(sddl, _SDDL_REVISION_1, ctypes.byref(psd), None):
         raise AclError(f"无法生成权限描述：{ctypes.WinError(ctypes.get_last_error())}")
@@ -124,8 +132,12 @@ def _set_dacl(path: Path, sddl: str, protected: bool = True) -> None:
             raise AclError(f"无法读取权限描述：{ctypes.WinError(ctypes.get_last_error())}")
         # SetNamedSecurityInfo 会把可继承的三条 ACE 传播到已有的子文件 / 子目录
         flag = _PROTECTED_DACL_SECURITY_INFORMATION if protected else _UNPROTECTED_DACL_SECURITY_INFORMATION
-        err = _SetNamedSecurityInfoW(str(path), _SE_FILE_OBJECT, _DACL_SECURITY_INFORMATION | flag,
-                                     None, None, pdacl, None)
+        if reset_tree:
+            err = _TreeResetNamedSecurityInfoW(str(path), _SE_FILE_OBJECT, _DACL_SECURITY_INFORMATION | flag,
+                                               None, None, pdacl, None, False, None, _PROG_INVOKE_NEVER, None)
+        else:
+            err = _SetNamedSecurityInfoW(str(path), _SE_FILE_OBJECT, _DACL_SECURITY_INFORMATION | flag,
+                                         None, None, pdacl, None)
         if err:
             raise AclError(f"设置权限失败：{path}（{ctypes.WinError(err)}）")
     finally:
@@ -197,7 +209,8 @@ def make_private(path: str | os.PathLike) -> None:
         os.chmod(p, 0o700 if p.is_dir() else 0o600)
         return
     sid = current_user_sid()
-    _set_dacl(p, _private_sddl(sid, p.is_dir()))
+    is_dir = p.is_dir()
+    _set_dacl(p, _private_sddl(sid, is_dir), reset_tree=is_dir)
     problems = verify_private(p, sid)
     if problems:
         raise AclError(f"权限核对没通过：{p}：" + "；".join(problems))
@@ -214,15 +227,17 @@ def ensure_private_dir(path: str | os.PathLike) -> Path:
 
 
 def write_private_file(path: str | os.PathLike, data: bytes) -> Path:
-    """先写到同目录的临时文件、设好权限，再原子替换，读者永远看不到权限未设好的中间状态。"""
+    """先建同目录的空临时文件、设好权限，再写内容、原子替换：内容（如令牌）从来不会出现在权限未设好的文件里。
+    上级目录本身应当已是私有目录（ensure_private_dir），否则别的账户可能在设权限前就打开了这个空文件。"""
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_name(f".{p.name}.{os.getpid()}.tmp")
+    tmp = p.with_name(f".{p.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp")  # 同进程多线程写也不撞名
     try:
-        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_BINARY", 0), 0o600)
-        with os.fdopen(fd, "wb") as f:
-            f.write(data)
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0), 0o600)
+        os.close(fd)
         make_private(tmp)
+        with open(tmp, "r+b") as f:
+            f.write(data)
         os.replace(tmp, p)
     finally:
         if tmp.exists():
