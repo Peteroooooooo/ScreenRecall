@@ -110,6 +110,19 @@ def test_expired_pause_counts_as_recording(env):
         ("recording", None)
     assert effective_state({"desired_state": "paused", "pause_until_ms": None, "recorder_alive": False}, now) == \
         ("paused", None)
+    # 录制进程正常退出时最后一次心跳写 stopped：心跳还新鲜（15 秒内）也不能算在录
+    assert effective_state({"desired_state": "recording", "recorder_alive": True, "recorder_state": "stopped"},
+                           now) == ("stopped", None)
+
+
+def test_status_after_recorder_said_stopped(client, env):
+    env.stack.writer.heartbeat(recorder_state="recording", current_process="tk.exe", current_title="合成").result(5)
+    env.stack.control.invalidate()
+    assert client.get("/api/v2/status").json()["recorder_alive"] is True
+    env.stack.writer.heartbeat(recorder_state="stopped").result(5)
+    env.stack.control.invalidate()
+    s = client.get("/api/v2/status").json()
+    assert (s["recording"], s["recorder_alive"], s["current"]) == ("stopped", False, None)
 
 
 # ---------------- 一天、片段 ----------------

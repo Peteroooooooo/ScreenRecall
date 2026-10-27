@@ -45,9 +45,14 @@ def effective_state(ctrl: dict, now_ms: int) -> tuple[str, int | None]:
     until = ctrl.get("pause_until_ms")
     if ctrl.get("desired_state") == "paused" and (until is None or int(until) > now_ms):
         return "paused", None if until is None else int(until)
-    if not ctrl.get("recorder_alive"):
+    if not recorder_running(ctrl):
         return "stopped", None
     return "recording", None
+
+
+def recorder_running(ctrl: dict) -> bool:
+    """心跳新鲜（15 秒内）且录制进程没有报告自己已停止（正常退出时最后一次心跳写 stopped）。"""
+    return bool(ctrl.get("recorder_alive")) and ctrl.get("recorder_state") != "stopped"
 
 
 def hidden_lists(ctrl: dict) -> tuple[tuple[str, ...], tuple[str, ...]]:
@@ -284,11 +289,18 @@ class StoreQueriesAdapter:
         rows = rows[:max(1, int(limit))]
         frames = latest_frames(conn, [ln["line_id"] for _, ln in rows])
         pieces: dict[tuple[int, int], tuple[int, str | None] | None] = {}
+        hidden = Hidden(exclude.apps, exclude.title_keywords)
         out = []
         for g, ln in rows:
             key = (int(g["segment_id"]), _hit_time(ln))
             if key not in pieces:
-                pieces[key] = piece_of(conn, g["segment_id"], _hit_time(ln))
+                p = piece_of(conn, g["segment_id"], _hit_time(ln))
+                if p is not None and hidden:
+                    # 所属片段命中隐藏名单（片段标题 / 任务名可能就是要藏的内容）：不报片段号和任务名
+                    row = conn.execute("SELECT app, title FROM pieces WHERE piece_id = ?", (p[0],)).fetchone()
+                    if row is None or hidden.match(row["app"], row["title"]):
+                        p = None
+                pieces[key] = p
             p = pieces[key]
             out.append(ms.Hit(line_id=int(ln["line_id"]), text=ln["text"], app=g["app"], title=g["title"],
                               seen_ms=_hit_time(ln), frame_id=frames.get(int(ln["line_id"])),
