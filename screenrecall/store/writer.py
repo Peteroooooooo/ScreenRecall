@@ -650,12 +650,14 @@ def _record_lines(conn, block_id, t, top, bottom, lines: list[LineIn], cfg: Writ
 
 
 def _neighbour(conn, block_id: int, key: float, line_id: int, after: bool):
+    # 写成 order_key 的范围条件（而不是 OR），才能走 idx_lines_live 的范围扫描；块里行多时差几十倍
     if after:
         sql = ("SELECT line_id, norm FROM lines WHERE block_id = ? AND disappeared_ms IS NULL "
-               "AND (order_key > ? OR (order_key = ? AND line_id > ?)) ORDER BY order_key, line_id LIMIT 1")
+               "AND order_key >= ? AND NOT (order_key = ? AND line_id <= ?) ORDER BY order_key, line_id LIMIT 1")
     else:
         sql = ("SELECT line_id, norm FROM lines WHERE block_id = ? AND disappeared_ms IS NULL "
-               "AND (order_key < ? OR (order_key = ? AND line_id < ?)) ORDER BY order_key DESC, line_id DESC LIMIT 1")
+               "AND order_key <= ? AND NOT (order_key = ? AND line_id >= ?) "
+               "ORDER BY order_key DESC, line_id DESC LIMIT 1")
     return conn.execute(sql, (block_id, key, key, line_id)).fetchone()
 
 

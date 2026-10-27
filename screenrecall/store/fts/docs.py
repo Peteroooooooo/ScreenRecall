@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import re
 import sqlite3
 import unicodedata
 from typing import Iterable, Sequence
@@ -28,49 +29,28 @@ def norm(text: str) -> str:
     return "".join(folded.split())
 
 
+# 中日韩表意文字、假名、谚文、注音的码位范围（含两端）
+_CJK_RANGES = (
+    (0x4E00, 0x9FFF), (0x3400, 0x4DBF), (0x3040, 0x30FF), (0x3100, 0x312F), (0x31F0, 0x31FF),
+    (0xAC00, 0xD7AF), (0x1100, 0x11FF), (0xF900, 0xFAFF), (0x20000, 0x3FFFF),
+)
+_CJK_RUN = re.compile("[" + "".join(f"{re.escape(chr(lo))}-{re.escape(chr(hi))}" for lo, hi in _CJK_RANGES) + "]+")
+_WORD = re.compile(r"[^\W_]+")
+
+
 def is_cjk(ch: str) -> bool:
-    """中日韩表意文字、假名、谚文、注音（按码位范围判断，不依赖分类表）。"""
     o = ord(ch)
-    return (
-        0x4E00 <= o <= 0x9FFF
-        or 0x3400 <= o <= 0x4DBF
-        or 0x3040 <= o <= 0x30FF
-        or 0x3100 <= o <= 0x312F
-        or 0x31F0 <= o <= 0x31FF
-        or 0xAC00 <= o <= 0xD7AF
-        or 0x1100 <= o <= 0x11FF
-        or 0xF900 <= o <= 0xFAFF
-        or 0x20000 <= o <= 0x3FFFF
-    )
+    return any(lo <= o <= hi for lo, hi in _CJK_RANGES)
 
 
 def cjk_runs(s: str) -> list[str]:
-    runs: list[str] = []
-    cur: list[str] = []
-    for ch in s:
-        if is_cjk(ch):
-            cur.append(ch)
-        elif cur:
-            runs.append("".join(cur))
-            cur = []
-    if cur:
-        runs.append("".join(cur))
-    return runs
+    """中日韩连续段（与 is_cjk 的码位范围一致）。"""
+    return _CJK_RUN.findall(s)
 
 
 def words(s: str) -> list[str]:
     """非中日韩的字母数字连续段（s 应已 NFKC + casefold）。"""
-    out: list[str] = []
-    cur: list[str] = []
-    for ch in s:
-        if ch.isalnum() and not is_cjk(ch):
-            cur.append(ch)
-        elif cur:
-            out.append("".join(cur))
-            cur = []
-    if cur:
-        out.append("".join(cur))
-    return out
+    return _WORD.findall(_CJK_RUN.sub(" ", s))
 
 
 def run_tokens(run: str) -> list[str]:

@@ -160,3 +160,23 @@ def test_dimension_mismatch(tmp_path):
         vs.search(np.ones(DIM + 1), 1)
     with pytest.raises(ValueError):
         vs.append([1, 2], np.ones((1, DIM)), [1, 2])
+
+
+def test_best_per_group_when_one_group_dominates_top_scores(tmp_path):
+    rng = np.random.default_rng(3)
+    q = np.zeros(DIM, np.float32)
+    q[0] = 1
+    n = 2000
+    vecs = unit(rng, n)
+    vecs[:1900, 0] += 5  # 第 0 组的 1900 行分数都比别的组高
+    vecs /= np.linalg.norm(vecs, axis=1, keepdims=True)
+    grp = np.where(np.arange(n) < 1900, 0, 1 + np.arange(n) % 7)
+    vs = VectorStore(tmp_path / "v", DIM)
+    vs.append(np.arange(1, n + 1), vecs, np.arange(n), grp)
+    s = vecs @ q
+    best = {}
+    for i in range(n):
+        if grp[i] not in best or s[i] > s[best[grp[i]]]:
+            best[grp[i]] = i
+    expect = [int(i) + 1 for i in sorted(best.values(), key=lambda i: -s[i])[:5]]
+    assert [h.id for h in vs.search(q, 5, best_per_group=True)] == expect
