@@ -1,0 +1,108 @@
+{
+  "threads": 2,
+  "images_per_kind": 3,
+  "repeats": 2,
+  "load_s": {
+    "legacy_v4": 0.42,
+    "v6_tiny": 0.58,
+    "v6_small": 0.23
+  },
+  "engines": {
+    "legacy_v4": "rapidocr-onnxruntime 1.4.4 (PP-OCRv4)",
+    "v6_tiny": "rapidocr 3.9.2 / PP-OCRv6 det_tiny+rec_tiny (cls off, crop limit=max)",
+    "v6_small": "rapidocr 3.9.2 / PP-OCRv6 det_small+rec_small (cls off, crop limit=max)"
+  },
+  "kinds": {
+    "chat_1600x1000": {
+      "legacy_v4": {
+        "s_per_image": 2.851,
+        "cer": 0.0009,
+        "english_spaces_kept": 0.367,
+        "lines_found_vs_truth": [
+          64,
+          64
+        ]
+      },
+      "v6_tiny": {
+        "s_per_image": 0.622,
+        "cer": 0.0035,
+        "english_spaces_kept": 0.989,
+        "lines_found_vs_truth": [
+          64,
+          64
+        ]
+      },
+      "v6_small": {
+        "s_per_image": 3.666,
+        "cer": 0.0008,
+        "english_spaces_kept": 1.0,
+        "lines_found_vs_truth": [
+          64,
+          64
+        ]
+      }
+    },
+    "crop_720x400": {
+      "legacy_v4": {
+        "s_per_image": 1.195,
+        "cer": 0.0052,
+        "english_spaces_kept": 0.088,
+        "lines_found_vs_truth": [
+          27,
+          27
+        ]
+      },
+      "v6_tiny": {
+        "s_per_image": 0.165,
+        "cer": 0.0023,
+        "english_spaces_kept": 0.971,
+        "lines_found_vs_truth": [
+          26,
+          27
+        ]
+      },
+      "v6_small": {
+        "s_per_image": 0.863,
+        "cer": 0.0023,
+        "english_spaces_kept": 1.0,
+        "lines_found_vs_truth": [
+          27,
+          27
+        ]
+      }
+    },
+    "dense_2082x1491": {
+      "legacy_v4": {
+        "s_per_image": 30.056,
+        "cer": 0.1184,
+        "english_spaces_kept": 0.061,
+        "lines_found_vs_truth": [
+          271,
+          306
+        ]
+      },
+      "v6_tiny": {
+        "s_per_image": 4.586,
+        "cer": 0.003,
+        "english_spaces_kept": 0.978,
+        "lines_found_vs_truth": [
+          306,
+          306
+        ]
+      },
+      "v6_small": {
+        "s_per_image": 18.888,
+        "cer": 0.0009,
+        "english_spaces_kept": 0.998,
+        "lines_found_vs_truth": [
+          306,
+          306
+        ]
+      }
+    }
+  },
+  "machine": {
+    "cpu": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel",
+    "python": "3.12.13"
+  }
+}

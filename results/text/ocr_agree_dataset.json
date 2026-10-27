@@ -1,0 +1,83 @@
+{
+  "frames_read": 40,
+  "frames_skipped": 0,
+  "threads": 2,
+  "median_megapixels": 3.04,
+  "engines": {
+    "legacy_v4": "rapidocr-onnxruntime 1.4.4 (PP-OCRv4)",
+    "v6_tiny": "rapidocr 3.9.2 / PP-OCRv6 det_tiny+rec_tiny (cls off, crop limit=max)",
+    "v6_small": "rapidocr 3.9.2 / PP-OCRv6 det_small+rec_small (cls off, crop limit=max)"
+  },
+  "s_per_image": {
+    "legacy_v4": {
+      "mean": 7.366,
+      "median": 6.725,
+      "min": 2.531
+    },
+    "v6_tiny": {
+      "mean": 1.402,
+      "median": 1.306,
+      "min": 0.541
+    },
+    "v6_small": {
+      "mean": 7.125,
+      "median": 6.738,
+      "min": 2.771
+    }
+  },
+  "lines_per_image": {
+    "legacy_v4": {
+      "mean": 65.8,
+      "median": 60.0,
+      "min": 5.0
+    },
+    "v6_tiny": {
+      "mean": 69.8,
+      "median": 59.0,
+      "min": 5.0
+    },
+    "v6_small": {
+      "mean": 69.9,
+      "median": 59.5,
+      "min": 5.0
+    }
+  },
+  "chars_total": {
+    "legacy_v4": 34880,
+    "v6_tiny": 35604,
+    "v6_small": 35601
+  },
+  "non_gb2312_share_of_cjk": {
+    "legacy_v4": 0.00074,
+    "v6_tiny": 0.00073,
+    "v6_small": 0.00176
+  },
+  "char_agreement": {
+    "legacy_v4~v6_tiny": {
+      "mean": 0.9111,
+      "median": 0.9332,
+      "min": 0.5597
+    },
+    "legacy_v4~v6_small": {
+      "mean": 0.9129,
+      "median": 0.9409,
+      "min": 0.426
+    },
+    "v6_tiny~v6_small": {
+      "mean": 0.9355,
+      "median": 0.9502,
+      "min": 0.5688
+    }
+  },
+  "disagreeing_chars": {
+    "legacy_v4~v6_tiny": 3982,
+    "legacy_v4~v6_small": 3827,
+    "v6_tiny~v6_small": 2841
+  },
+  "non_gb2312_share_of_disagreeing": {
+    "legacy_v4~v6_tiny": 0.0005,
+    "legacy_v4~v6_small": 0.0029,
+    "v6_tiny~v6_small": 0.0039
+  },
+  "note": "只读核对；识别文字未打印、未保存。非 GB2312 汉字 = 繁体或生僻字。"
+}
