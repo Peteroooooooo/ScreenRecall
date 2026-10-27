@@ -22,3 +22,6 @@ web/node_modules/
 web/dist/
 # 编码对照的放大截图只留本机（含屏幕内容），结果数字照常提交
 results/windows/*/codec/crops/
+
+# 大模型等密钥配置，只在本机
+.env
