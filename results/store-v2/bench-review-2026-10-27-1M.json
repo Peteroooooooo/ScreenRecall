@@ -1,0 +1,217 @@
+{
+  "writer": {
+    "stills": 1500,
+    "lines_per_still": 40,
+    "new_lines": 12032,
+    "stills_per_s": 543.5,
+    "new_lines_per_s": 4359,
+    "submit_ms_max": 0.442,
+    "submit_ms_p50": 0.0041,
+    "one_still_roundtrip_ms_p50": 8.04,
+    "one_still_roundtrip_ms_max": 26.16
+  },
+  "build": {
+    "lines": 1000000,
+    "segments": 5800,
+    "build_s": 58.2,
+    "bulk_lines_per_s": 17184,
+    "db_mb": 484.5,
+    "size_mb": {
+      "fts_bigram": 64.1,
+      "fts_trigram": 135.6,
+      "line_indexes": 91.5,
+      "lines": 189.9,
+      "other": 2.0
+    }
+  },
+  "queries": [
+    {
+      "case": "2 字中文·常见",
+      "query_len": 2,
+      "filters": [],
+      "ms_median": 139.32,
+      "ms_max": 146.12,
+      "mode": "recent",
+      "total": 600,
+      "lower_bound": true,
+      "groups": 20
+    },
+    {
+      "case": "2 字中文·较少",
+      "query_len": 2,
+      "filters": [],
+      "ms_median": 4.83,
+      "ms_max": 5.34,
+      "mode": "exact",
+      "total": 500,
+      "lower_bound": false,
+      "groups": 20
+    },
+    {
+      "case": "2 字中文·随机",
+      "query_len": 2,
+      "filters": [],
+      "ms_median": 27.01,
+      "ms_max": 29.03,
+      "mode": "exact",
+      "total": 3468,
+      "lower_bound": false,
+      "groups": 20
+    },
+    {
+      "case": "1 字中文·很少",
+      "query_len": 1,
+      "filters": [],
+      "ms_median": 8.18,
+      "ms_max": 8.71,
+      "mode": "exact",
+      "total": 844,
+      "lower_bound": false,
+      "groups": 20
+    },
+    {
+      "case": "3-4 字中文·少",
+      "query_len": 4,
+      "filters": [],
+      "ms_median": 0.47,
+      "ms_max": 1.67,
+      "mode": "exact",
+      "total": 50,
+      "lower_bound": false,
+      "groups": 20
+    },
+    {
+      "case": "3-4 字中文·随机",
+      "query_len": 4,
+      "filters": [],
+      "ms_median": 0.17,
+      "ms_max": 0.42,
+      "mode": "exact",
+      "total": 1,
+      "lower_bound": false,
+      "groups": 1
+    },
+    {
+      "case": "英文·少",
+      "query_len": 10,
+      "filters": [],
+      "ms_median": 3.72,
+      "ms_max": 4.29,
+      "mode": "exact",
+      "total": 200,
+      "lower_bound": false,
+      "groups": 20
+    },
+    {
+      "case": "英文·中等",
+      "query_len": 8,
+      "filters": [],
+      "ms_median": 21.15,
+      "ms_max": 22.15,
+      "mode": "exact",
+      "total": 2500,
+      "lower_bound": false,
+      "groups": 20
+    },
+    {
+      "case": "常见词 the",
+      "query_len": 3,
+      "filters": [],
+      "ms_median": 40.96,
+      "ms_max": 41.91,
+      "mode": "recent",
+      "total": 600,
+      "lower_bound": true,
+      "groups": 20
+    },
+    {
+      "case": "常见词 the + 最近 1 天",
+      "query_len": 3,
+      "filters": [
+        "time_from"
+      ],
+      "ms_median": 38.29,
+      "ms_max": 41.43,
+      "mode": "recent",
+      "total": 600,
+      "lower_bound": true,
+      "groups": 20
+    },
+    {
+      "case": "常见词 the + 应用筛选",
+      "query_len": 3,
+      "filters": [
+        "app"
+      ],
+      "ms_median": 193.85,
+      "ms_max": 199.98,
+      "mode": "recent",
+      "total": 600,
+      "lower_bound": true,
+      "groups": 20
+    },
+    {
+      "case": "中等词 + 应用 + 7 天",
+      "query_len": 8,
+      "filters": [
+        "app",
+        "time_from"
+      ],
+      "ms_median": 19.97,
+      "ms_max": 23.64,
+      "mode": "exact",
+      "total": 28,
+      "lower_bound": false,
+      "groups": 20
+    },
+    {
+      "case": "两个词 AND",
+      "query_len": 10,
+      "filters": [],
+      "ms_median": 14.35,
+      "ms_max": 15.71,
+      "mode": "exact",
+      "total": 0,
+      "lower_bound": false,
+      "groups": 0
+    },
+    {
+      "case": "跨行短语",
+      "query_len": 6,
+      "filters": [],
+      "ms_median": 0.27,
+      "ms_max": 1.0,
+      "mode": "exact",
+      "total": 1,
+      "lower_bound": false,
+      "groups": 1
+    }
+  ],
+  "writer_on_big_db": {
+    "stills": 500,
+    "lines_per_still": 40,
+    "new_lines": 4032,
+    "stills_per_s": 126.7,
+    "new_lines_per_s": 1021,
+    "submit_ms_max": 0.383,
+    "submit_ms_p50": 0.0036,
+    "one_still_roundtrip_ms_p50": 10.55,
+    "one_still_roundtrip_ms_max": 147.02
+  },
+  "vectors": [
+    {
+      "rows": 200000,
+      "dim": 384,
+      "disk_mb": 293,
+      "append_rows_per_s": 216664,
+      "reader_open_s": 0.185,
+      "search_ms": 8.46,
+      "search_10pct_time_ms": 4.24,
+      "search_best_per_group_ms": 10.44,
+      "search_group_filter_ms": 11.65,
+      "incremental_refresh_1000_ms": 59.06,
+      "delete_1000_ms": 18.22,
+      "refresh_after_delete_ms": 2.58
+    }
+  ]
+}
