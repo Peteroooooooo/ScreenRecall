@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+from dataclasses import replace
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Callable, Sequence
@@ -23,6 +24,7 @@ import numpy as np
 from ..timeutil import local_dates_to_utc_range, utc_ms
 from . import schema
 from .fts import docs, lexical
+from .gate import VectorGate, has_letters
 
 # 向量分支的分数门槛（合成评测 experiments/search 定的，见 Queries._vector_groups）
 MIN_VECTOR_SCORE = 0.45
@@ -86,7 +88,8 @@ class Queries:
     def search(self, query: str, time_from: int | None = None, time_to: int | None = None, app: str | None = None,
                task: str | None = None, limit: int = 20, encoder: Encoder | None = None, *, per_group: int = 3,
                exclude_apps: Sequence[str] = (), exclude_title_keywords: Sequence[str] = (), sort: str = "recent",
-               offset: int = 0, min_score: float = MIN_VECTOR_SCORE, score_margin: float = VECTOR_MARGIN) -> dict:
+               offset: int = 0, min_score: float = MIN_VECTOR_SCORE, score_margin: float = VECTOR_MARGIN,
+               gate: VectorGate | None = None) -> dict:
         """词法 + 可选向量分支，按内容源（segment）分组；返回第 offset 组起的 limit 组。
 
         向量库约定：id > 0 是单行（line_id），id < 0 是段落（text_chunks.chunk_id，一个向量对应几行），
@@ -100,12 +103,18 @@ class Queries:
           字面命中的组只在最近 LEXICAL_POOL 组里按相关度排，更早的接在后面、按最近排，翻页时顺序不变。
         每组带 sources（lexical / vector）、score（relevant 用的分数）、semantic_score（语义分，可能为 None）。
         has_more：后面还有组。
+
+        gate（store.gate.VectorGate）：给了就按命中行的"凑数程度"修正分数再筛（见 gate 模块），
+        只有语义命中的组的 semantic_score 是修正分；纯数字 / 符号的查询不走语义分支。
+        没给就用 min_score / score_margin 的固定门槛（余弦）。
         """
         conn = self.conn()
         offset, limit = max(0, int(offset)), max(1, int(limit))
         filters = lexical.Filters(time_from, time_to, app, task, tuple(exclude_apps), tuple(exclude_title_keywords))
         encoder = encoder or self.encoder
         semantic = encoder is not None and self.text_vectors is not None and bool(query.strip())
+        if semantic and gate is not None and not has_letters(query):
+            semantic = False
         need = offset + limit
         pool = max(need + 1, LEXICAL_POOL) if semantic and sort == "relevant" else need + 1
         lex = lexical.search(conn, query, filters=filters, limit=pool, per_group=per_group)
@@ -121,7 +130,7 @@ class Queries:
                 allowed = self._segment_ids(conn, filters)
             by_seg = {int(g["segment_id"]): g for g in lex_groups}
             for seg_id, (score, rows) in self._vector_groups(conn, qv, allowed, time_from, time_to, per_group,
-                                                             min_score, score_margin).items():
+                                                             min_score, score_margin, gate).items():
                 g = by_seg.get(seg_id)
                 if g is None:
                     g = _vector_group(rows)
@@ -132,7 +141,8 @@ class Queries:
                     g["semantic_score"] = score
             if lex_groups:
                 # 已有字面命中：只有意思很接近的才另外列出（查生僻词、半个词时向量分支多半是凑数）
-                vec_only = [g for g in vec_only if g["semantic_score"] >= SEMANTIC_WITH_LITERAL]
+                bar = SEMANTIC_WITH_LITERAL if gate is None else gate.config.floor_with_literal
+                vec_only = [g for g in vec_only if g["semantic_score"] >= bar]
             self._literal_scores(qv, lex_groups)
             out["mode"] = out["mode"] + "+vector"
         for g in lex_groups:
@@ -153,19 +163,28 @@ class Queries:
 
     def _vector_groups(self, conn, qv: np.ndarray, allowed: list[int] | None, time_from: int | None,
                        time_to: int | None, per_group: int, min_score: float,
-                       margin: float) -> dict[int, tuple[float, list]]:
+                       margin: float, gate: VectorGate | None = None) -> dict[int, tuple[float, list]]:
         """向量分支 → {segment_id: (组里最高的语义分, 要显示的行)}，按分数从高到低。
 
-        只要余弦 >= max(min_score, 最高分 - margin) 的命中：固定门槛挡掉"什么都有点像"的低分，
-        相对门槛挡掉离最好的那条差很远的凑数命中（合成评测：不相关的查询能到 0.4-0.58，
-        相关的大多在 0.45 以上、且离最好的那条不远，见 experiments/search）。
+        有 gate：修正分（余弦 - 命中行的凑数程度）>= max(floor, 最高修正分 - margin)，见 store.gate；
+        没有：余弦 >= max(min_score, 最高分 - margin)。
         组里的行：单行命中就是那一行；段落命中是段落里的行（阅读顺序），按命中分数先后、去重，最多 per_group 行。"""
         # ts = first_seen：first_seen < time_to 可以直接在向量库里筛；time_from 要看 last_seen，只能回表核验
         hits = self.text_vectors.search(qv, k=VECTOR_K, time_to=time_to, groups=allowed)
         if not hits:
             return {}
-        cut = max(float(min_score), float(hits[0].score) - float(margin))
-        hits = [h for h in hits if h.score >= cut]
+        if gate is not None:
+            # 修正分 <= 余弦（凑数程度 >= 0）：余弦不到 floor 的不可能留下，不用取向量
+            cand = [h for h in hits if h.score >= gate.config.floor]
+            vecs = self.text_vectors.vectors([h.id for h in cand]) if cand else {}
+            cand = [h for h in cand if h.id in vecs]
+            if not cand:
+                return {}
+            keep, adj = gate.select([h.score for h in cand], np.stack([vecs[h.id] for h in cand]))
+            hits = [replace(cand[int(i)], score=float(a)) for i, a in zip(keep, adj)]
+        else:
+            cut = max(float(min_score), float(hits[0].score) - float(margin))
+            hits = [h for h in hits if h.score >= cut]
         rows_of = self._vector_rows(conn, [h.id for h in hits], time_from, time_to)
         out: dict[int, tuple[float, list]] = {}
         for h in hits:
