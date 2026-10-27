@@ -350,11 +350,14 @@ RIVAL_MISS_SHARE = 0.15
 SELF_MIN_PERIOD = 8
 SELF_MIN_CELLS = 256
 SELF_MAX_MISS = 0.15
-
-
 # 而且有对不上的格子的行不到有内容的行的这么多：聊天页对不上的只是滚动条滑块两端那几行（实测 0.06–0.18），
 # 表格里窄窄一列各不相同的序号让大多数行都对不上（实测 0.44 以上）
 SELF_MAX_ROWS = 0.3
+# 一条竖带里对不上的行只连成一两整块、不到比较的行的一半：滚动条滑块（每屏只有一个，错开 p 行比自己时总对不上），
+# 先去掉再算上面两个比例
+SELF_UI_RUNS = 2
+SELF_UI_ROWS = 0.5
+
 
 
 def _self_periodic(prev: Fp, keep_rows: np.ndarray, p: int) -> bool:
@@ -367,9 +370,14 @@ def _self_periodic(prev: Fp, keep_rows: np.ndarray, p: int) -> bool:
     if n < SELF_MIN_CELLS:
         return False
     bad = c & (prev.v[:, : h - p] != prev.v[:, p:])
+    n_rows = int(np.count_nonzero(c.any(axis=0)))
+    for s in np.flatnonzero(bad.any(axis=1)):
+        rows = np.flatnonzero(bad[s])
+        if rows.size <= SELF_UI_ROWS * n_rows and int(1 + (np.diff(rows) > _RUN_GAP).sum()) <= SELF_UI_RUNS:
+            bad[s] = False  # 只是一两整块（滚动条滑块）：跟着窗口走、不跟着内容走，不算内容对不上
     if int(np.count_nonzero(bad)) >= SELF_MAX_MISS * n:
         return False
-    return int(np.count_nonzero(bad.any(axis=0))) < SELF_MAX_ROWS * int(np.count_nonzero(c.any(axis=0)))
+    return int(np.count_nonzero(bad.any(axis=0))) < SELF_MAX_ROWS * n_rows
 RIVAL_STRIP_MISS = 2
 RIVAL_STRIPS = 2
 
