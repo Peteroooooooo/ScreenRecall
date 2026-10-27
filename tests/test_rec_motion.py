@@ -199,6 +199,18 @@ def test_repeating_template_lines_do_not_give_a_wrong_shift(head, period, dy):
     assert m.kind == "shift" and m.dy == 40
 
 
+@pytest.mark.parametrize("dy", [530, 600])
+def test_page_jump_with_static_side_panel_is_break_not_inplace(doc, head, dy):
+    """翻页滚了将近一屏（重叠太少认不出偏移），只有固定的侧栏那一条说"没动"：不能当成原地变了
+    （那样新一屏的行会按旧位置写进同一块）→ 接不上。"""
+    side = np.random.default_rng(3).integers(0, 255, size=(VH + 60, 70, 3), dtype=np.uint8)
+    a, b = S.view(doc, 300, VH, head).copy(), S.view(doc, 300 + dy, VH, head).copy()
+    for f in (a, b):
+        f[:, :70] = side[:f.shape[0]]
+    m = M.analyze(M.Fp.from_image(a), M.Fp.from_image(b))
+    assert m.kind == "break", m
+
+
 def test_inplace_change(doc, head):
     a = S.view(doc, 1000, VH, head)
     b = S.write_text(a, 20, 300, "这一行原地改了 changed in place 42")
