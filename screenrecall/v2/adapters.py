@@ -31,7 +31,7 @@ from ..store.vectors import VectorStore
 from ..store.writer import Writer
 from ..timeutil import utc_ms
 from .refs import HIDDEN, ref_piece_id
-from .searchsvc import SearchService, image_vectors_dir, text_vectors_dir
+from .searchsvc import SearchService, image_vectors_dir, text_vector_dirs
 
 log = logging.getLogger("screenrecall.v2.adapters")
 PENDING_VECTOR_DELETES = "vector_deletes_pending.json"
@@ -217,28 +217,34 @@ class Deleter:
             return sum(len(v) for v in self._pending.values())
 
     def _flush_vectors(self) -> tuple[int, int]:
+        # 文字向量：当前布局的库，以及空闲整理进程还没迁移（清零删除）的老布局库
+        roots = {"text": text_vector_dirs(self.data_dir), "image": [image_vectors_dir(self.data_dir)]}
         counts = []
-        for kind, root in (("text", text_vectors_dir(self.data_dir)), ("image", image_vectors_dir(self.data_dir))):
+        for kind in ("text", "image"):
             ids = self._pending[kind]
             n = 0
             if ids:
-                manifest = root / "manifest.json"
-                if not manifest.is_file():
-                    ids.clear()  # 没有向量库：没有要删的
-                else:
+                ok = True
+                for root in roots[kind]:
+                    manifest = root / "manifest.json"
+                    if not manifest.is_file():
+                        continue  # 没有这个向量库：没有要删的
                     for attempt in range(self.vector_retries):
                         try:
                             dim = int(json.loads(manifest.read_text(encoding="utf-8"))["dim"])
                             vs = VectorStore(root, dim)
                             try:
-                                n = vs.delete(sorted(ids))
+                                n += vs.delete(sorted(ids))
                             finally:
                                 vs.close()
-                            ids.clear()
                             break
                         except Exception as exc:  # noqa: BLE001 - 稍后重试，数据库那边已经删了
                             log.warning("删除%s向量失败（第 %d 次）：%s", kind, attempt + 1, type(exc).__name__)
                             time.sleep(self.retry_sleep_s)
+                    else:
+                        ok = False
+                if ok:
+                    ids.clear()
             counts.append(n)
         return counts[0], counts[1]
 
@@ -368,12 +374,16 @@ class StoreQueriesAdapter:
         return {"exclude_apps": tuple(exclude.apps), "exclude_title_keywords": tuple(exclude.title_keywords)}
 
     def search(self, query, *, start_ms, end_ms, app, task, limit, exclude) -> list[ms.Hit]:
+        # 按相关度挑出 limit 组（字面命中在前，再是意思相近的），交给 MCP 时按最后看到的时间排（工具说明的约定）
         res = self.search_service.search(query, time_from=start_ms, time_to=end_ms, app=app, task=task,
-                                         limit=max(1, int(limit)), per_group=3, **self._ex(exclude))
+                                         limit=max(1, int(limit)), per_group=3, sort="relevant",
+                                         **self._ex(exclude))
         conn = self.queries.conn()
-        rows = [(g, ln) for g in res["groups"] for ln in g["lines"]]
+        # 先挑：每组的第 1 行（组按相关度），再每组的第 2 行……挑够 limit 行；再按时间排
+        ranked = [(i, gi, g, ln) for gi, g in enumerate(res["groups"]) for i, ln in enumerate(g["lines"])]
+        ranked.sort(key=lambda r: (r[0], r[1]))
+        rows = [(g, ln) for _, _, g, ln in ranked[:max(1, int(limit))]]
         rows.sort(key=lambda r: -_hit_time(r[1]))
-        rows = rows[:max(1, int(limit))]
         frames = latest_frames(conn, [ln["line_id"] for _, ln in rows])
         pieces: dict[tuple[int, int], tuple[int, str | None] | None] = {}
         hidden = Hidden(exclude.apps, exclude.title_keywords)
