@@ -227,6 +227,54 @@ def test_vector_delete_retried_later(env, monkeypatch):
     assert len(VectorStore(text_vectors_dir(env.data), 8, readonly=True)) == 0
 
 
+def test_pending_vector_deletes_survive_restart(env, monkeypatch):
+    # 向量没删掉时主进程退出：待补删的 id 记在数据目录里，新的 Deleter（下次启动）接着删
+    from screenrecall.app import paths
+    from screenrecall.store.vectors import VectorStore
+    from screenrecall.v2.searchsvc import text_vectors_dir
+
+    vs = VectorStore(text_vectors_dir(env.data), 8)
+    vs.append([env.ids["line2"]], np.eye(8, dtype=np.float32)[:1], [F.day_base() + 5000], [env.ids["segment"]])
+    vs.close()
+    real = VectorStore.delete
+
+    def busy(self, ids):
+        raise TimeoutError("向量库被占用")
+
+    monkeypatch.setattr(VectorStore, "delete", busy)
+    env.stack.deleter.retry_sleep_s = 0
+    base = F.day_base()
+    rep = env.stack.deleter.delete(time_from=base + 4_000, time_to=base + 6_000)
+    assert rep["lines"] == 1 and rep["vectors_pending"] == 1
+    pending = env.data / adapters.PENDING_VECTOR_DELETES
+    assert json.loads(pending.read_text(encoding="utf-8")) == {"text": [env.ids["line2"]], "image": []}
+    assert paths.verify_private(pending) == []
+
+    monkeypatch.setattr(VectorStore, "delete", real)
+    fresh = adapters.Deleter(env.stack.writer, env.data, retry_sleep_s=0)  # 模拟重启后的主进程
+    assert fresh.retry() == 0
+    assert len(VectorStore(text_vectors_dir(env.data), 8, readonly=True)) == 0
+    assert not pending.exists()
+
+
+def test_piece_summary_withheld_when_a_segment_is_hidden(env):
+    # 片段本身（notepad.exe / report.txt）没命中，但它关联的另一个内容源标题含隐藏关键词：
+    # 片段概括是按整段内容写的，不能给 Agent（时间线照样列出片段，只是不带概括）
+    enable(env)
+    w = env.stack.writer
+    t = F.day_base() + 2 * 60_000
+    secret = w.segment_for(F.APP, "网银 对账单.txt - 记事本", t).result(5)
+    w.piece_put(F.day_base() - 1_000, F.day_base() + 10 * 60_000, app=F.APP, title=F.TITLE,
+                segment_ids=[env.ids["segment"], secret], task_label="写报告", piece_id=env.ids["piece"]).result(5)
+    _, mcp = make_mcp(env)
+    key = str(env.ids["piece"])
+    assert "> 整理季度报告" in text_of(call(mcp, "summary", {"level": "piece", "key": key}))
+    env.stack.set_control(hidden_from_agents={"apps": [], "title_keywords": ["网银"]})
+    assert "没有可提供的概括" in text_of(call(mcp, "summary", {"level": "piece", "key": key}))
+    tl = text_of(call(mcp, "timeline", {"time_from": "today"}))
+    assert f"piece={env.ids['piece']}" in tl and "整理季度报告" not in tl
+
+
 # ---------------- 第一次启动、设置文件、令牌 ----------------
 
 def test_seed_control_only_once(tmp_path, monkeypatch):
