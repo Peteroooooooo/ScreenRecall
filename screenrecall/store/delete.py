@@ -317,6 +317,17 @@ def _clip_intervals(conn, table: str, pk: str, app_col: str, lo: int, hi: int, a
         # 被删的那一段：仍在进行的记录（end 为空）最多到现在
         widen(max(start, lo), min(end_v, hi, max(now, start)))
         keep_left = start < lo
+        if end is None:
+            # 仍在进行（窗口还在前台、还在暂停……）：删掉的部分之后接着算，从 min(hi, 现在) 起，不从将来
+            # （"删除今天"的 hi 是明天零点）起。保留原来的编号：录制进程按编号结束缺口，按"没结束的那条"结束活动
+            resume = max(start, min(hi, now))
+            if keep_left:
+                cols = [c for c in r.keys() if c != pk]
+                vals = [lo if c == "end_ms" else r[c] for c in cols]
+                conn.execute(f"INSERT INTO {table} ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})", vals)
+            conn.execute(f"UPDATE {table} SET start_ms = ? WHERE {pk} = ?", (resume, r[pk]))
+            n += 1
+            continue
         keep_right = end_v > hi
         if not keep_left and not keep_right:
             conn.execute(f"DELETE FROM {table} WHERE {pk} = ?", (r[pk],))

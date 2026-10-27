@@ -217,3 +217,36 @@ def test_checkpoint_busy_reported_while_reader_holds_snapshot(tmp_path):
     assert b"busysentinelqq" not in raw.lower()
     r.close()
     w.close()
+
+
+def test_open_intervals_resume_now_not_in_the_future(tmp_path):
+    """仍在进行的活动 / 缺口："删除今天"（范围到明天零点）之后从现在接着算，不变成从明天零点开始；
+    跨过删除起点的那条留下前半段，原来的编号（录制进程按它结束缺口）留给仍在进行的部分。"""
+    w = Writer(tmp_path)
+    act = w.activity_start(5_000, hwnd=1, pid=1, process="a.exe", title="窗口").result(5)
+    gid = w.gap_open(1_000, "minimised", process="b.exe").result(5)
+    w.flush()
+    rep = w.run_raw(lambda conn: delete.delete_data(conn, tmp_path, time_from=2_000, time_to=100_000,
+                                                    now_ms=20_000)).result(30)
+    assert rep.activity == 1 and rep.gaps == 1
+    w.close()
+    c = schema.connect_ro(w.db_path)
+    assert [tuple(r) for r in c.execute("SELECT activity_id, start_ms, end_ms FROM activity")] == [(act, 20_000, None)]
+    gaps = [tuple(r) for r in c.execute("SELECT gap_id, start_ms, end_ms FROM gaps ORDER BY start_ms")]
+    assert gaps[0][1:] == (1_000, 2_000) and gaps[0][0] != gid
+    assert gaps[1] == (gid, 20_000, None) and len(gaps) == 2
+    c.close()
+
+
+def test_recent_minutes_keeps_the_foreground_activity_going(tmp_path):
+    """"删除最近 N 分钟"（没有结束时间）：前台窗口的活动删掉范围里的部分后从现在接着算，不是就此结束
+    （不然直到切换窗口前，"今天"页都没有这个窗口）。"""
+    w = Writer(tmp_path)
+    act = w.activity_start(1_000, hwnd=1, pid=1, process="a.exe", title="窗口").result(5)
+    w.flush()
+    w.run_raw(lambda conn: delete.delete_data(conn, tmp_path, time_from=2_000, now_ms=9_000)).result(30)
+    w.close()
+    c = schema.connect_ro(w.db_path)
+    rows = [tuple(r) for r in c.execute("SELECT activity_id, start_ms, end_ms FROM activity ORDER BY start_ms")]
+    assert rows[0][1:] == (1_000, 2_000) and rows[1] == (act, 9_000, None)
+    c.close()
