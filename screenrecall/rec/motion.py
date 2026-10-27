@@ -7,7 +7,9 @@
   两行很容易撞成同一个指纹；
 - 旧图每 K=4 行取一行，只用在取样里只出现一次的行投票；票数 ≥ 8 且是第二名的 3 倍以上才算数；
 - 再按这个偏移把两张图叠起来复核：重叠部分里"有内容的行"（在旧图里只出现一次）至少六成要完全一样；
-- 至少 2 条给出同一个数、并且占在动的条的多数，才认这个数，否则宁可说"接不上"。
+- 至少 2 条给出同一个数、并且占在动的条的多数，才认这个数，否则宁可说"接不上"；
+- （v2 新增）交叉复核：给不出数的条带按这个数叠起来，若有 2 条以上明显对不上、对不上的行分散在好几处，
+  这个数是重复版式凑出来的（每隔几段同样的首行），也算接不上。
 
 上下已经算出平移时不再算左右。每帧的指纹只算一次，缓存在 Fp 里。
 灰度图存在宽高都补到 32 倍数的缓冲里（补的部分为 0），整行比较、32 像素小块比较都按 uint64 批量做。
@@ -163,19 +165,75 @@ def shift_1d(prev: np.ndarray, cur: np.ndarray, *, prev_mask: np.ndarray | None 
         return None
     d = int(vals[top])
     # 复核：按偏移 d 叠起来，旧图里只出现一次的行有多少完全一样
+    hits, tot = _overlap(prev, cur, d, p.once, prev_mask, cur_mask)
+    if not tot:
+        return None
+    return d if hits / tot >= OVERLAP_MIN else None
+
+
+def _overlap(prev: np.ndarray, cur: np.ndarray, d: int, once_all: np.ndarray,
+             prev_mask: np.ndarray | None, cur_mask: np.ndarray | None) -> tuple[int, int]:
+    """按偏移 d 叠起来：(完全一样的行数, 参与比较的行数)。参与比较的是旧图里只出现一次、没被遮的行。"""
     j0, j1 = max(0, -d), min(len(cur), len(prev) - d)
     if j1 <= j0:
-        return None
-    once = p.once[j0 + d: j1 + d].copy()
+        return 0, 0
+    once = once_all[j0 + d: j1 + d].copy()
     if prev_mask is not None:
         once &= ~prev_mask[j0 + d: j1 + d]
     if cur_mask is not None:
         once &= ~cur_mask[j0:j1]
-    tot = int(once.sum())
-    if not tot:
-        return None
-    hits = int((once & (prev[j0 + d: j1 + d] == cur[j0:j1])).sum())
-    return d if hits / tot >= OVERLAP_MIN else None
+    return int((once & (prev[j0 + d: j1 + d] == cur[j0:j1])).sum()), int(once.sum())
+
+
+# 交叉复核：给不出数的条带，按选出来的偏移叠起来明显对不上（参与比较的行够多、一样的不到这个比例），
+# （不算整行没变的行），至少有这么多条时，这个偏移是被重复的版式"凑"出来的（每隔几段就有一行完全一样的字），不认
+CONTRA_MIN_ROWS = 64
+CONTRA_MAX_RATIO = 0.8  # 真正的偏移下这些行几乎全一样（实测 0.99 以上）
+CONTRA_STRIPS = 2
+
+
+def _contradicting(prev: Fp, cur: Fp, mask: MotionMask | None, dys: list[int | None], d: int,
+                   static: np.ndarray) -> int:
+    """没给出数的竖带里，在偏移 d 下明显对不上的条数。
+
+    例子：网页每 12 段重复同样的首行、只有第二行的数字不同，一次翻页（PgDn）滚了将近一屏、真正的重叠很少。
+    只看到首行的右半边几条竖带会"对上"一个错的偏移（差 12 段），左边几条看得到第二行，在这个偏移下大半对不上。
+    真正滚动时没给出数的条带只是字太少（空白多），叠起来照样一样。
+    static（整行完全没变的行：固定的标题栏、工具栏）不参与：它们在任何非零偏移下都对不上，说明不了什么。"""
+    bad = 0
+    for s, v in enumerate(dys):
+        if v is not None:
+            continue
+        if mask is None:
+            once, pm = prev.prep_v(s).once, static
+        else:
+            once, pm = _prepare(prev.v[s], mask.v[s]).once, mask.v[s] | static
+        cm = pm
+        hits, tot = _overlap(prev.v[s], cur.v[s], d, once, pm, cm)
+        if tot >= CONTRA_MIN_ROWS and hits < CONTRA_MAX_RATIO * tot and \
+                _mismatch_runs(prev.v[s], cur.v[s], d, once, pm, cm) >= CONTRA_RUNS:
+            bad += 1
+    return bad
+
+
+# 对不上的行要分散在好几处（每段的第二行）才算矛盾；集中在一处是滚动中的视频、动画（还没认出是一直在变的小块）
+CONTRA_RUNS = 4
+_RUN_GAP = 8
+
+
+def _mismatch_runs(prev: np.ndarray, cur: np.ndarray, d: int, once_all: np.ndarray,
+                   prev_mask: np.ndarray | None, cur_mask: np.ndarray | None) -> int:
+    """偏移 d 下对不上的行（只看参与比较的行）分成几段（相隔不到 _RUN_GAP 行的算一段）。"""
+    j0, j1 = max(0, -d), min(len(cur), len(prev) - d)
+    once = once_all[j0 + d: j1 + d].copy()
+    if prev_mask is not None:
+        once &= ~prev_mask[j0 + d: j1 + d]
+    if cur_mask is not None:
+        once &= ~cur_mask[j0:j1]
+    rows = np.flatnonzero(once & (prev[j0 + d: j1 + d] != cur[j0:j1]))
+    if rows.size == 0:
+        return 0
+    return int(1 + (np.diff(rows) > _RUN_GAP).sum())
 
 
 def _major(xs: list[int | None]) -> tuple[int | None, int, int]:
@@ -356,6 +414,9 @@ def analyze(prev: Fp, cur: Fp, mask: MotionMask | None = None, *,
         mx, nx, cx = _major(dxs)
     agree = f"上下 {ny}/{cy}/{STRIPS}" + (f"，左右 {nx}/{cx}/{BANDS}" if dxs is not None else "")
     if my not in (None, 0):
+        bad = _contradicting(prev, cur, mask, dys, my, rows_eq)
+        if bad >= CONTRA_STRIPS:  # 宁可接不上也不给错的数：错的偏移会把两屏的行交错着拼进同一块
+            return Motion("break", None, None, f"{agree}，{bad} 条在这个偏移下对不上", same_rows, dys, dxs)
         return Motion("shift", my, 0, agree, same_rows, dys, dxs)
     if mx not in (None, 0):
         return Motion("shift", 0, mx, agree, same_rows, dys, dxs)
