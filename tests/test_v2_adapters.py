@@ -223,7 +223,9 @@ def test_vector_delete_retried_later(env, monkeypatch):
     base = F.day_base()
     rep = env.stack.deleter.delete(time_from=base + 4_000, time_to=base + 6_000)
     assert rep["lines"] == 1 and rep["text_vectors"] == 0 and rep["vectors_pending"] == 1
-    assert env.stack.deleter.retry() == 0
+    assert calls["n"] == 1  # 请求里只试一次（文件锁一次最多等 30 秒），剩下的交给定时补删
+    assert env.stack.deleter.retry() == 1 and env.stack.deleter.retry() == 1
+    assert env.stack.deleter.retry() == 0 and calls["n"] == 4
     assert len(VectorStore(text_vectors_dir(env.data), 8, readonly=True)) == 0
 
 
