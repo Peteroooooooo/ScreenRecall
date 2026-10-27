@@ -107,7 +107,7 @@ export default function AgentPage() {
 
         <Card title={t("agent.tools")} id="tools-h">
           <ul className="grid gap-3 md:grid-cols-2">
-            {([["search", "agent.tSearch"], ["timeline", "agent.tTimeline"], ["summary", "agent.tSummary"], ["get_frame", "agent.tFrame"]] as const).map(([name, k]) => (
+            {([["search", "agent.tSearch"], ["read", "agent.tRead"], ["timeline", "agent.tTimeline"], ["summary", "agent.tSummary"], ["get_frame", "agent.tFrame"]] as const).map(([name, k]) => (
               <li key={name} className="rounded-[11px] border border-rule bg-canvas px-3.5 py-3 text-[13.5px]">
                 <code className="font-mono text-[13px] font-semibold text-ink">{name}</code><br />{t(k)}
               </li>
