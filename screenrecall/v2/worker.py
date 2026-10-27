@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Callable
 
 from ..timeutil import utc_ms
+from . import stdin_eof
 from .work_clip import ClipStep, frame_report
 from .work_common import Ctx, StopFlag, Stopped, log
 from .work_llm import PIECE_JOB, LlmStep
@@ -112,29 +113,10 @@ class InstanceLock:
         self._fh = None
 
 
-def watch_stdin(stop: StopFlag, stream=None) -> threading.Thread | None:
-    """stdin 是管道时，读到 EOF（主进程关了管道或自己退出了）就置停止标志。控制台里手动运行不看 stdin。"""
-    stream = sys.stdin if stream is None else stream
-    if stream is None:
-        return None
-    try:
-        if stream.isatty():
-            return None
-        fd = stream.fileno()
-    except (OSError, ValueError, AttributeError):
-        return None
-
-    def loop():
-        try:
-            while os.read(fd, 4096):
-                pass
-        except OSError:
-            pass
-        stop.set()
-
-    th = threading.Thread(target=loop, name="stdin-eof", daemon=True)
-    th.start()
-    return th
+def watch_stdin(stop: StopFlag, stream=None, *, poll_s: float = stdin_eof.POLL_S) -> threading.Thread | None:
+    """stdin 是管道时，读到 EOF（主进程关了管道或自己退出了）就置停止标志。控制台里手动运行不看 stdin。
+    管道不挂同步读（见 stdin_eof：挂着读会让别的线程加载 numpy / torch 的 DLL 时卡死）。"""
+    return stdin_eof.watch(stop.set, stream, poll_s=poll_s)
 
 
 # ---------------- 整理 ----------------
