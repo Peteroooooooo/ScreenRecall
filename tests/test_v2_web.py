@@ -154,7 +154,7 @@ def test_day(client, env):
 
 def test_piece_detail(client, env):
     r = client.get(f"/api/v2/pieces/{env.ids['piece']}").json()
-    assert keys(r) == {"piece", "summary", "blocks", "unjoined", "frames"}
+    assert keys(r) == {"piece", "summary", "summary_state", "blocks", "unjoined", "frames"}
     assert r["piece"] == {"piece_id": env.ids["piece"], "start_ms": r["piece"]["start_ms"],
                           "end_ms": r["piece"]["end_ms"], "app": F.APP, "title": F.TITLE, "task": "写报告"}
     assert r["summary"] == {"text": "整理季度报告\n第二行细节", "status": "ok", "model": "test-model"}
@@ -176,12 +176,126 @@ def test_piece_detail(client, env):
     assert client.get("/api/v2/pieces/abc").status_code == 400
 
 
-def test_summarize_queues_job(client, env):
+def test_summarize_queues_the_job_the_worker_reads(client, env):
+    """重新生成：已有 ok 概括的片段 → 概括标 stale + 待办 (summary_piece, 片段编号)，空闲整理进程的
+    LlmStep.candidates() 立即能领到（不等片段结束）。"""
+    from screenrecall.v2.work_common import Ctx, StopFlag
+    from screenrecall.v2.work_llm import PIECE_JOB, LlmStep
+
     pid = env.ids["piece"]
-    assert client.post(f"/api/v2/pieces/{pid}/summarize", json={}, headers=F.POST_H).json() == {"queued": True}
-    row = env.stack.queries.conn().execute("SELECT kind, target, status FROM jobs").fetchall()
-    assert [tuple(r) for r in row] == [("summary", f"piece:{pid}", "pending")]
+    assert client.get(f"/api/v2/pieces/{pid}").json()["summary_state"] == "ok"
+    r = client.post(f"/api/v2/pieces/{pid}/summarize", json={}, headers=F.POST_H)
+    assert r.json() == {"queued": True, "summary_state": "queued"}
+    conn = env.stack.queries.conn()
+    assert [tuple(x) for x in conn.execute("SELECT kind, target, status FROM jobs")] == [(PIECE_JOB, str(pid), "pending")]
+    assert conn.execute("SELECT status FROM summaries WHERE level = 'piece' AND key = ?", (str(pid),)).fetchone()[0] \
+        == "stale"
+    assert client.get(f"/api/v2/pieces/{pid}").json()["summary_state"] == "queued"
+    ctx = Ctx(env.stack.cfg, env.stack.writer, StopFlag(), clock=lambda: env.ids["piece_start"] + 60_000)
+    try:
+        assert [int(c["piece_id"]) for c in LlmStep(ctx, None).candidates()] == [pid]  # 片段还没结束也领
+    finally:
+        ctx.close()
     assert client.post("/api/v2/pieces/424242/summarize", json={}, headers=F.POST_H).status_code == 404
+
+
+def test_private_rules_follow_the_control_lists_only(env):
+    """默认排除规则在第一次启动时写进 control；用户从名单里删掉后，不再拦它的概括。"""
+    from screenrecall.v2.work_common import private_rules
+
+    ctrl = env.stack.queries.control()
+    assert "KeePass.exe" in ctrl["excluded_processes"]
+    assert private_rules(ctrl).match("KeePass.exe", "x")
+    env.stack.set_control(excluded_processes=[])
+    assert not private_rules(env.stack.queries.control()).match("KeePass.exe", "x")
+    env.stack.set_control(hidden_from_agents={"apps": [], "title_keywords": ["工资"]})
+    assert private_rules(env.stack.queries.control()).match("excel.exe", "十月工资表")
+
+
+def test_summarize_refuses_private_piece(client, env):
+    pid = env.ids["piece"]
+    env.stack.set_control(hidden_from_agents={"apps": [F.APP], "title_keywords": []})
+    assert client.get(f"/api/v2/pieces/{pid}").json()["summary_state"] == "private"
+    assert client.post(f"/api/v2/pieces/{pid}/summarize", json={}, headers=F.POST_H).status_code == 409
+    assert env.stack.queries.conn().execute("SELECT COUNT(*) FROM jobs").fetchone()[0] == 0
+
+
+class FakeClock:
+    def __init__(self, t: int):
+        self.t = t
+
+    def __call__(self) -> int:
+        return self.t
+
+
+def test_today_shows_activity_before_the_idle_worker(tmp_path, monkeypatch):
+    """主进程每 30 秒切片段（LivePieces）："今天"页面不等空闲整理进程；进行中的片段延长到现在；
+    整理进程之后处理同一批记录，片段编号不变、不会多出一份。"""
+    from screenrecall.store.writer import Writer
+    from screenrecall.v2.work_common import Ctx, FileLock, StopFlag
+    from screenrecall.v2.work_pieces import PIECES_LOCK, PieceStep
+
+    clock = FakeClock(F.day_base() + 2 * 3600_000)
+    e = F.build_env(tmp_path, monkeypatch, fill_data=False, clock=clock)
+    try:
+        w = e.stack.writer
+        t0 = clock.t - 10 * 60_000
+        w.activity_start(t0, hwnd=1, pid=1, process="code.exe", title="main.py").result(5)
+        w.heartbeat(recorder_state="recording").result(5)
+        with TestClient(e.guard, base_url=F.BASE, follow_redirects=False) as c:
+            F.login(c, e)
+            assert [x for x in c.get("/api/v2/day").json()["items"] if x["kind"] == "piece"] == []
+            e.stack.pieces.run()
+            items = [x for x in c.get("/api/v2/day").json()["items"] if x["kind"] == "piece"]
+            assert [(x["app"], x["title"], x["start_ms"], x["end_ms"]) for x in items] == \
+                [("code.exe", "main.py", t0, clock.t)]
+            pid = items[0]["piece_id"]
+            assert c.get(f"/api/v2/pieces/{pid}").json()["summary_state"] == "waiting"
+
+            clock.t += 40_000  # 还在用同一个窗口：片段延长到现在，编号不变
+            w.heartbeat(recorder_state="recording").result(5)
+            e.stack.pieces.run()
+            items = [x for x in c.get("/api/v2/day").json()["items"] if x["kind"] == "piece"]
+            assert [(x["piece_id"], x["end_ms"]) for x in items] == [(pid, clock.t)]
+
+            # 另一个进程拿着锁（整理进程正在切）：这次不切
+            lock = FileLock(e.data / PIECES_LOCK)
+            assert lock.acquire()
+            try:
+                clock.t += 30_000
+                w.activity_start(clock.t, hwnd=2, pid=2, process="tk.exe", title="合成").result(5)
+                assert e.stack.pieces.run() == 0
+            finally:
+                lock.release()
+
+            # 空闲整理进程（自己的写线程）接着切：同一个片段，只多出新窗口的片段
+            with Writer(e.data, e.stack.cfg.writer, clock=clock) as w2:
+                ctx = Ctx(e.stack.cfg, w2, StopFlag(), clock=clock)
+                try:
+                    assert PieceStep(ctx).run() == 1
+                finally:
+                    ctx.close()
+            items = [x for x in c.get("/api/v2/day").json()["items"] if x["kind"] == "piece"]
+            assert sorted((x["app"], x["piece_id"] == pid) for x in items) == [("code.exe", True), ("tk.exe", False)]
+            assert e.stack.queries.conn().execute("SELECT COUNT(*) FROM pieces").fetchone()[0] == 2
+    finally:
+        e.stack.close()
+
+
+def test_piece_put_does_not_bring_back_purged_time(tmp_path):
+    """切片段时先读记录、再写：中间发生的隐私删除不能让删掉的时段作为新片段回来。"""
+    from screenrecall.store.writer import Writer
+
+    with Writer(tmp_path) as w:
+        w.call(lambda c: c.execute("INSERT INTO purges (time_from, time_to, app, created_ms) VALUES (0, 5000, NULL, 1)"))
+        assert w.piece_put(1000, 4000, app="a.exe", title="t", segment_ids=[]).result(5) is None
+        pid = w.piece_put(1000, 9000, app="a.exe", title="t", segment_ids=[]).result(5)
+        conn = schema.connect_ro(schema.db_path(tmp_path))
+        try:
+            assert tuple(conn.execute("SELECT start_ms, end_ms FROM pieces WHERE piece_id = ?", (pid,)).fetchone()) \
+                == (5000, 9000)
+        finally:
+            conn.close()
 
 
 # ---------------- 检索 ----------------

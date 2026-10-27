@@ -1,15 +1,11 @@
 // 片段详情：头部、概括（可重新生成）、按块排好的阅读视图、证据截图条和截图查看器。
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { ChevronLeft, Clock, FileQuestion, Image as ImageIcon, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
-import { ApiError, api, frameThumbUrl, type BlockItem, type PieceDetail } from "../api";
-import { useT } from "../i18n";
+import { ApiError, api, frameThumbUrl, type BlockItem } from "../api";
+import { useT, type Key } from "../i18n";
 import { appName, errText, fmtClock, fmtDuration, fmtMonthDay, fmtWhen, hrefOf, localDate, navigate, useLoad } from "../lib";
 import { Av, Card, ConfirmDialog, Empty, LoadError, PageHeader, Skeleton, useToast, type ConfirmSpec } from "../ui";
 import { FrameViewer, type ViewerState } from "../viewer";
-
-/** 点“重新生成”后每隔多久看一次新概括、最多等多久 */
-export const REGEN_POLL_MS = 3000;
-export const REGEN_MAX_MS = 90_000;
 
 export default function PiecePage({ id }: { id: number }) {
   const { t } = useT();
@@ -17,7 +13,7 @@ export default function PiecePage({ id }: { id: number }) {
   const piece = useLoad((signal) => api.piece(id, signal), [id]);
   const [viewer, setViewer] = useState<ViewerState>(null);
   const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
-  const regen = useRegen(id, piece.data, piece.reload);
+  const regen = useRegen(id, piece.reload);
 
   if (!piece.data) {
     if (piece.error instanceof ApiError && piece.error.status === 404)
@@ -28,6 +24,7 @@ export default function PiecePage({ id }: { id: number }) {
   }
 
   const { piece: p, summary, blocks, frames, unjoined } = piece.data;
+  const state = piece.data.summary_state ?? (summary ? summary.status : "waiting");
   const frameIds = frames.map((f) => f.frame_id);
   const figOf = (fid: string | null) => (fid ? frameIds.indexOf(fid) : -1);
   const open = (fid: string | null, line: number | null = null) => {
@@ -85,16 +82,19 @@ export default function PiecePage({ id }: { id: number }) {
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-4">
           <Card title={t("piece.summary")} id="sum-h"
-            aside={<button className="sr-btn sr-btn-ghost sr-btn-sm" onClick={regen.start} disabled={regen.busy}>
-              {regen.busy ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <RefreshCw size={15} aria-hidden />}
-              {regen.busy ? t("piece.regening") : t("piece.regen")}
-            </button>}>
+            aside={state !== "private" && (
+              <button className="sr-btn sr-btn-ghost sr-btn-sm" onClick={regen.start} disabled={regen.busy || state === "queued"}>
+                {regen.busy ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <RefreshCw size={15} aria-hidden />}
+                {state === "queued" ? t("piece.queued") : t("piece.regen")}
+              </button>
+            )}>
             {summary?.text ? <p className="text-[15px] leading-[1.7] [overflow-wrap:anywhere]">{summary.text}</p>
-              : <p className="text-sm text-graphite">{t("piece.noSummary")}</p>}
-            {summary && (summary.model || summary.status === "stale") && (
+              : <p className="text-sm text-graphite">{t(`piece.sum.${state}` as Key)}</p>}
+            {summary?.text && (summary.model || state !== "ok") && (
               <p className="mt-2 flex flex-wrap items-center gap-2 text-[12.5px] text-faint">
                 {summary.model && <span>{t("piece.model", { x: summary.model })}</span>}
-                {summary.status === "stale" && <span className="sr-tag sr-tag-warn">{t("piece.stale")}</span>}
+                {state === "stale" && <span className="sr-tag sr-tag-warn">{t("piece.stale")}</span>}
+                {state === "queued" && <span className="sr-tag sr-tag-warn">{t("piece.queuedTag")}</span>}
               </p>
             )}
           </Card>
@@ -103,7 +103,7 @@ export default function PiecePage({ id }: { id: number }) {
             {!lineCount && !blocks.some((bl) => bl.items.length) ? <p className="text-sm text-faint">{t("piece.noText")}</p> : (
               <div className="text-[14.5px]">
                 {blocks.map((bl, bi) => (
-                  <div key={bl.block_id}>
+                  <div key={bl.block_id ?? `loose-${bi}`}>
                     {unjoined && bi > 0 && (
                       <div className="sr-hatch my-[18px] rounded-[9px] border border-dashed border-rule-strong px-3 py-2.5 text-[13px] text-graphite">{t("piece.unjoined")}</div>
                     )}
@@ -185,43 +185,22 @@ function BlockRow({ it, fig, open }: { it: BlockItem; fig: (fid: string | null) 
   );
 }
 
-/** 重新生成：POST 后定时重新拉片段，概括变了（或超时）就停 */
-function useRegen(id: number, data: PieceDetail | null, reload: (silent?: boolean) => void) {
+/** 重新生成：只是排队（概括由空闲整理进程写，它只在电脑空闲时运行），不在页面上等结果 */
+function useRegen(id: number, reload: (silent?: boolean) => void) {
   const { t } = useT();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
-  const base = useRef<string | null>(null);
-  const since = useRef(0);
-  const sig = (d: PieceDetail | null) => (d?.summary ? `${d.summary.status}|${d.summary.text}` : "");
-
-  // 概括变了就停
-  useEffect(() => {
-    if (busy && sig(data) !== base.current) {
-      setBusy(false);
-      toast(t("piece.regenDone"));
-    }
-  }, [busy, data, t, toast]);
-  // 定时重新拉：用固定间隔，不靠 data 变化来排下一次（某次拉取失败时 data 不变，按 data 排就会停在“生成中”）
-  useEffect(() => {
-    if (!busy) return;
-    const iv = window.setInterval(() => {
-      if (Date.now() - since.current > REGEN_MAX_MS) {
-        setBusy(false);
-        toast(t("piece.regenQueued"), "info");
-      } else reload(true);
-    }, REGEN_POLL_MS);
-    return () => window.clearInterval(iv);
-  }, [busy, reload, t, toast]);
 
   const start = async () => {
-    base.current = sig(data);
-    since.current = Date.now();
     setBusy(true); // 请求发出时就禁用按钮，连点不会重复排队
     try {
       await api.summarize(id);
+      toast(t("piece.regenQueued"), "info");
+      reload(true);
     } catch (e) {
-      setBusy(false);
       toast(errText(e, t("common.offline")), "alarm");
+    } finally {
+      setBusy(false);
     }
   };
   return { busy, start };

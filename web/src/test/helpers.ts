@@ -77,6 +77,7 @@ export function piece(over: Partial<PieceDetail> = {}): PieceDetail {
   return {
     piece: { piece_id: 11, start_ms: at(9, 12), end_ms: at(9, 48), app: "SampleReader.exe", title: "示例讲义第 3 章.pdf", task: "示例任务 A" },
     summary: { text: "示例概括：先看了定义，然后看了示例公式。", status: "ok", model: "sample-model" },
+    summary_state: "ok",
     blocks: [
       { block_id: 1, items: [
         { kind: "line", line_id: 101, text: "示例标题：第 3 章", source: "uia", first_seen_ms: at(9, 12), frame_id: F1 },
@@ -110,7 +111,7 @@ export function frame(id = F1, over: Partial<FrameDetail> = {}): FrameDetail {
 
 export function search(over: Partial<SearchResult> = {}): SearchResult {
   return {
-    query: "示例词", total_groups: 2,
+    query: "示例词", total_groups: 2, semantic: false,
     groups: [
       { segment_id: 5, app: "SampleReader.exe", title: "示例讲义第 3 章.pdf", first_seen_ms: at(9, 12), last_seen_ms: at(9, 41), hits_total: 4, piece_id: 11,
         hits: [

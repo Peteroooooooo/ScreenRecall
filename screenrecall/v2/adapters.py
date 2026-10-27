@@ -273,6 +273,8 @@ class StoreStack:
                                # 没删掉的记在待补删清单里，主进程每 2 秒补删一次
                                vector_retries=1)
 
+        self.pieces = LivePieces(self)
+
     def seed_control(self) -> bool:
         """第一次用这个数据目录：开始录制，空的排除名单写入默认规则。只做一次（meta control_seeded），
         之后用户暂停了，重启也保持暂停。返回这次是否写了。"""
@@ -286,11 +288,40 @@ class StoreStack:
         self.control.invalidate()
 
     def close(self) -> None:
+        self.pieces.close()
         try:
             self.writer.close()
         finally:
             self.search.close()
             self.queries.close()
+
+
+class LivePieces:
+    """主进程定时切片段（与空闲整理进程同一个 PieceStep：只有 SQL，不用模型，一次几毫秒）。
+    不等电脑空闲："今天"页面一分钟内就能看到正在做的事，进行中的片段一直延长到现在。
+    片段编号稳定：整理进程之后处理同一批记录会找回同一个片段（见 work_pieces）。"""
+
+    def __init__(self, stack: "StoreStack", every_s: float = 30.0, clock: Callable[[], float] = time.monotonic):
+        from .work_common import Ctx, StopFlag
+        from .work_pieces import PieceStep
+
+        self.every_s, self._clock = every_s, clock
+        self.ctx = Ctx(stack.cfg, stack.writer, StopFlag(), clock=stack.clock)
+        self.step = PieceStep(self.ctx)
+        self._next = 0.0
+
+    def run(self) -> int:
+        return self.step.run()
+
+    def tick(self) -> int:
+        now = self._clock()
+        if now < self._next:
+            return 0
+        self._next = now + self.every_s
+        return self.run()
+
+    def close(self) -> None:
+        self.ctx.close()
 
 
 # ---------------- MCP 的 Queries ----------------
@@ -498,13 +529,18 @@ class StoreController:
         self._invalidate()
 
     def tick(self) -> None:
-        """定时调用：暂停到点了把期望状态改回录制（录制进程只看 desired_state 也不会一直停着）；补删向量。"""
+        """定时调用：暂停到点了把期望状态改回录制（录制进程只看 desired_state 也不会一直停着）；补删向量；
+        每 30 秒切一次片段。"""
         ctrl = self.stack.control.get()
         until = ctrl.get("pause_until_ms")
         if ctrl.get("desired_state") == "paused" and until is not None and int(until) <= self.stack.clock():
             self.stack.set_control(desired_state="recording", pause_until_ms=None)
             self._invalidate()
         self.stack.deleter.retry()
+        try:
+            self.stack.pieces.tick()
+        except Exception:  # noqa: BLE001 - 下次再切；别耽误上面的
+            log.warning("切片段出错", exc_info=True)
 
     def _invalidate(self) -> None:
         with self._lock:

@@ -67,11 +67,6 @@ export function post<T>(path: string, body: unknown = {}, signal?: AbortSignal):
   }).then((r) => handle<T>(r));
 }
 
-export function postForm<T>(path: string, form: FormData): Promise<T> {
-  return fetch(path, { method: "POST", headers: { "X-ScreenRecall": "1", "X-Lang": lang }, credentials: "same-origin", body: form })
-    .then((r) => handle<T>(r));
-}
-
 // ---------- 类型（与接口约定一致） ----------
 
 export type RecordingState = "recording" | "paused" | "stopped";
@@ -132,10 +127,16 @@ export interface FrameRef {
   height: number;
 }
 
+/** 片段概括的情况：ok 已写好；stale 内容被删过、要重写；queued 点过“重新生成”、等空闲时写；
+ *  private 不发给大模型（对 Agent 隐藏或排除名单）；failed 多次失败；no_text 没有字可写；waiting 还没写 */
+export type SummaryState = "ok" | "stale" | "queued" | "private" | "failed" | "no_text" | "waiting";
+
 export interface PieceDetail {
   piece: { piece_id: number; start_ms: number; end_ms: number; app: string; title: string; task: string | null };
   summary: Summary | null;
-  blocks: { block_id: number; items: BlockItem[] }[];
+  summary_state: SummaryState;
+  /** block_id 为 null：还没归到块里的划过 / 待识别区域 */
+  blocks: { block_id: number | null; items: BlockItem[] }[];
   unjoined: boolean;
   frames: FrameRef[];
 }
@@ -163,6 +164,8 @@ export interface SearchResult {
   query: string;
   total_groups: number;
   groups: Group[];
+  /** 这次检索用上了语义（向量）分支 */
+  semantic: boolean;
 }
 
 export interface FrameDetail {
@@ -230,18 +233,6 @@ export interface AgentConfigs {
   mcp_url: string;
 }
 
-export interface ImportResult {
-  batch: {
-    batch_id: string;
-    time_known: boolean;
-    resubmitted: boolean;
-    items: { seq: number; name: string; status: "ok" | "failed" | "skipped"; reason: string | null; frame_id: string | null }[];
-  };
-  ok: number;
-  failed: number;
-  skipped: number;
-}
-
 // ---------- 接口 ----------
 
 const V2 = "/api/v2";
@@ -252,7 +243,7 @@ export const api = {
   resume: () => post<Status>(`${V2}/resume`, {}),
   day: (date: string | undefined, s?: AbortSignal) => get<Day>(withQuery(`${V2}/day`, { date }), s),
   piece: (id: number, s?: AbortSignal) => get<PieceDetail>(`${V2}/pieces/${id}`, s),
-  summarize: (id: number) => post<{ queued: boolean }>(`${V2}/pieces/${id}/summarize`, {}),
+  summarize: (id: number) => post<{ queued: boolean; summary_state: SummaryState }>(`${V2}/pieces/${id}/summarize`, {}),
   search: (q: { q: string; from?: number; to?: number; app?: string; task?: string; limit?: number }, s?: AbortSignal) =>
     get<SearchResult>(withQuery(`${V2}/search`, q), s),
   frame: (id: string, s?: AbortSignal) => get<FrameDetail>(`${V2}/frames/${encodeURIComponent(id)}`, s),
