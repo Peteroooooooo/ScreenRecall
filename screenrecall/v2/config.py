@@ -49,6 +49,15 @@ class IdleSettings:
     summaries: bool = True         # 空闲时用大模型写片段 / 天概括
     clip: bool = True              # 空闲时给证据图算 CLIP 向量（内容分类器要用）
     use_gpu: bool = False          # OCR 用显卡（需要单独装 onnxruntime-directml，默认关）
+    # 以下给空闲整理进程（screenrecall.v2.worker）
+    chunk_lines: int = 6           # 文字向量的一个段落最多几行（同一块里阅读顺序相邻）
+    chunk_tokens: int = 100        # 一个段落最多多少 token（模型上限 128）
+    llm_min_interval_s: float = 1.0  # 两次大模型调用至少间隔多久
+    llm_max_calls: int = 200       # 一次空闲整理最多调用大模型几次
+    llm_reasoning_effort: str = "none"  # 思考强度；空 = 用模型默认
+    classifier_dir: str = "results/classifier/v1"  # 内容分类器（CLIP 向量 + 线性模型）；空 = 不预测
+    frame_report_days: int = 30    # 只统计（不删除）早于这么多天、没标"保留"的证据帧，留给以后的保留期设置
+    encoder_threads: int = 4       # 空闲时算文字向量的线程数（实测 3000 行：2 线程 215 行/秒，4 线程 373，8 线程 517）
 
 
 @dataclass(frozen=True)
