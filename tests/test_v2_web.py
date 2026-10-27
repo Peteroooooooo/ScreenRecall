@@ -414,6 +414,30 @@ class FakeEncoder:
         pass
 
 
+def test_hits_without_their_own_frame_fall_back_to_a_frame_of_the_same_block(client, env):
+    """命中的行没有登记在任何证据帧上（UIA 读到字的那一屏没存成证据帧）：用同一块里画面范围盖住这一行的帧；
+    盖不住时用这行出现之后同一块的第一张帧；同一块一张帧都没有时仍是 null（页面不显示缩略图）。"""
+    w = env.stack.writer
+    t0 = F.day_base()
+    b1 = env.ids["blocks"][0]
+    sid = env.ids["segment"]
+    w.record_lines(b1, t0 + 1_000, (140, 170), [LineIn("fallback alpha covered", 20, 150, 600, 164)]).result(5)
+    w.record_lines(b1, t0 + 3_000, (1190, 1220), [LineIn("fallback bravo below", 20, 1200, 600, 1214)]).result(5)
+    f2 = w.save_frame(F.synthetic_frame(seed=2), captured_ms=t0 + 4_000, segment_id=sid, block_id=b1, pos_y=600,
+                      app=F.APP, title=F.TITLE)
+    w.record_lines(b1, t0 + 5_000, (690, 720), [LineIn("fallback charlie second", 20, 700, 600, 714)]).result(5)
+    w.flush()
+    r = client.get("/api/v2/search", params={"q": "fallback"}).json()
+    hits = {h["text"]: h["frame_id"] for g in r["groups"] for h in g["hits"]}
+    assert hits == {"fallback alpha covered": env.ids["frame"], "fallback bravo below": f2,
+                    "fallback charlie second": f2}
+    # 片段阅读视图用同一套
+    items = [x for b in client.get(f"/api/v2/pieces/{env.ids['piece']}").json()["blocks"] for x in b["items"]
+             if x["kind"] == "line"]
+    by = {x["text"]: x["frame_id"] for x in items}
+    assert by["fallback alpha covered"] == env.ids["frame"] and by["another block line"] is None
+
+
 def test_search_semantic_branch(tmp_path, monkeypatch):
     e = np.eye(DIM, dtype=np.float32)
     enc = FakeEncoder(e[0])

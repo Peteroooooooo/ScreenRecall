@@ -34,7 +34,7 @@ from typing import Any, Callable, Sequence
 import numpy as np
 
 from ..timeutil import utc_ms
-from . import schema
+from . import aliases, schema
 from .fts import docs
 
 log = logging.getLogger(__name__)
@@ -352,8 +352,14 @@ class Writer:
         return self._submit(_block_anchor, block_id, anchor)
 
     def block_merge(self, src: int | Future, dst: int | Future, offset_px: int) -> Future:
-        """src 并入 dst：src 坐标 + offset_px = dst 坐标。"""
-        return self._submit(_block_merge, src, dst, int(offset_px))
+        """src 并入 dst：src 坐标 + offset_px = dst 坐标。两边都有的行，src 那份记成 dst 那份的别名
+        （store.aliases；不删历史，检索和阅读视图只显示一份）。返回新标的别名数。"""
+        return self._submit(_block_merge, src, dst, int(offset_px), float(self.cfg.match_dy_px))
+
+    def alias_new_lines(self, segment_id: int, since_line_id: int) -> Future:
+        """合并之后又写进并入的块里的新行（line_id > since_line_id）：重复的记成别名。返回新标的别名数。"""
+        return self._submit(aliases.alias_new_lines, int(segment_id), int(since_line_id),
+                            float(self.cfg.match_dy_px))
 
     # ---------------- 文字行 ----------------
 
@@ -657,7 +663,7 @@ def block_root(conn, block_id: int) -> tuple[int, int]:
         cur = int(row[0])
 
 
-def _block_merge(conn, src, dst, offset) -> None:
+def _block_merge(conn, src, dst, offset, tol: float = 8.0) -> int:
     src, dst = int(_value(src)), int(_value(dst))
     if src == dst:
         raise ValueError("不能把块并入自己")
@@ -666,6 +672,7 @@ def _block_merge(conn, src, dst, offset) -> None:
         raise ValueError("合并会形成环")
     block_root(conn, src)  # 确认存在
     conn.execute("UPDATE blocks SET merged_into = ?, offset_px = ? WHERE block_id = ?", (dst, offset, src))
+    return aliases.alias_merge(conn, src, tol)
 
 
 def _order_key(y0: float, x0: float) -> float:

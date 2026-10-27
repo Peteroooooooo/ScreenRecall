@@ -6,8 +6,11 @@
 3. 要录的窗口 = 前台窗口（系统界面除外）+ 钉住的窗口；逐个看状态和规则：关了 / 最小化 / 被隐藏 / 命中排除
    → 记缺口，不录；
 4. 会话池跟上（前台换走的窗口延迟约 3 秒才停，停时把它的候选帧存下）；
-5. 滚轮事件按光标下的顶层窗口分给对应窗口，滚轮在转的窗口限速放宽到 10 帧/秒，其余 1 帧/秒；
+5. 滚轮事件按光标下的顶层窗口分给对应窗口，滚轮在转的窗口限速放宽到 10 帧/秒，其余 1 帧/秒；按过翻页 /
+   方向键的前台窗口、画面还在一帧帧平移的窗口（平滑滚动）也放宽一会儿；
    按键时间交给前台窗口；暂停 / 锁屏期间的滚轮事件直接丢掉；
+   窗口刚变得能录（刚钉住、缺口刚结束、钉住的窗口第一次跟踪）：拿到它的第一帧就马上做一次静止判断，
+   不等下一次画面变化（画面一直不变的窗口，第一屏也要读字）；
 6. 在录的窗口（前台 + 钉住的）取最新一帧喂给它的 WindowTracker；等着延迟停的会话只在离开那一轮
    收走最后一帧，之后的帧都丢掉（后台、被挡住的画面不录）；再给所有窗口 tick() 做静止判断。
 
@@ -39,6 +42,10 @@ class RecorderConfig:
     normal_fps: float = 1.0        # 平时（含视频）最多几帧/秒
     wheel_fps: float = 10.0        # 滚轮在转时最多几帧/秒
     wheel_boost_ms: int = 1000     # 最后一次滚轮之后多久内算"在转"
+    # 平滑滚动（浏览器的翻页动画、触控板惯性）：按了翻页 / 方向 / 空格键之后这么久、以及画面还在一帧帧平移时
+    # （最后一次判成平移之后这么久）也用 wheel_fps，否则 1 帧/秒只拿到动画前后两帧，整屏的位移接不上
+    nav_boost_ms: int = 600
+    shift_boost_ms: int = 600
     step_ms: int = 40              # 分析线程节拍
     lock_poll_ms: int = 500        # 多久查一次锁屏
     exist_poll_ms: int = 1000      # 多久查一次不在录的窗口还在不在
@@ -87,7 +94,9 @@ class RecorderCore:
         self._last_lock_poll = -10**12
         self._last_exist_poll = -10**12
         self._wheel_at: dict[int, int] = {}
+        self._fast_until: dict[int, int] = {}  # 翻页键 / 一直在平移：这个时间之前用 wheel_fps
         self._last_key_seen: int | None = None
+        self._last_nav_seen: int | None = None
         self._block_ids = itertools.count()
         self._still_ids = itertools.count()
         self._recording: set[int] = set()  # 上一轮真正在录（喂帧）的窗口
@@ -240,6 +249,8 @@ class RecorderCore:
             tr = WindowTracker(hwnd, self.sink, self.config.tracker, block_ids=self._block_ids,
                                still_ids=self._still_ids)
             self.trackers[hwnd] = tr
+            if hwnd in self._pinned:
+                tr.prompt()  # 钉住的窗口常常一直不变：第一屏不能等到下一次变化才读
             self._evict(now)
         self._active[hwnd] = now
         return tr
@@ -284,6 +295,9 @@ class RecorderCore:
                         tr.gap_end(now)
             elif name == "pin" and arg not in self._pinned:
                 self._pinned.append(arg)
+                tr = self.trackers.get(arg)
+                if tr is not None:
+                    tr.prompt()
             elif name == "unpin" and arg in self._pinned:
                 self._pinned.remove(arg)
             elif name == "rules":
@@ -414,6 +428,7 @@ class RecorderCore:
                 continue
             if tr is not None and tr.in_gap:
                 tr.gap_end(now)
+                tr.prompt()  # 又能录了（恢复了最小化、不再命中排除）：拿到画面就读
             wanted.append(h)
         # 不再是候选的窗口：缺口到此为止（之后只是没在看它）
         for h, tr in self.trackers.items():
@@ -453,12 +468,20 @@ class RecorderCore:
             tr = self.trackers.get(fg)
             if tr is not None:
                 tr.on_key(lk)
+        nk = getattr(self.inputs, "last_nav_ms", None)
+        if nk is not None and nk != self._last_nav_seen:
+            self._last_nav_seen = nk
+            if fg in sources:
+                self._fast_until[fg] = max(self._fast_until.get(fg, 0), nk + self.config.nav_boost_ms)
+        for h in [h for h in self._fast_until if h not in sources or self._fast_until[h] <= now]:
+            del self._fast_until[h]
 
         # 帧：只喂真正在录的窗口（前台 + 钉住的）。前台换走后会话还会延迟约 3 秒才停，这期间
         # 它在后台（可能被挡住、用户看不到，也可能刚命中排除规则）的画面一律不要；只在离开的那一轮
         # 收走离开前已经到的最后一帧，并且先重新核对一次排除规则
         for h, src in sources.items():
-            boost = now - self._wheel_at.get(h, -10**12) < self.config.wheel_boost_ms
+            boost = (now - self._wheel_at.get(h, -10**12) < self.config.wheel_boost_ms
+                     or now < self._fast_until.get(h, 0))
             src.set_max_fps(self.config.wheel_fps if boost else self.config.normal_fps)
             tr = self.trackers.get(h)
             if tr is None or tr.in_gap or tr.closed:
@@ -477,6 +500,9 @@ class RecorderCore:
                 self._active[h] = now
                 kind = tr.feed(f)
                 self.feed_kinds[kind] = self.feed_kinds.get(kind, 0) + 1
+                if kind == "shift" and self.config.shift_boost_ms > 0 and h in recording:
+                    # 还在一帧帧平移（平滑滚动、惯性）：接着用快的帧率，直到停下 shift_boost_ms
+                    self._fast_until[h] = max(self._fast_until.get(h, 0), now + self.config.shift_boost_ms)
         self._recording = recording
         for tr in self.trackers.values():
             tr.tick(now)

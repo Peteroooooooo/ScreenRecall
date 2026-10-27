@@ -1,4 +1,5 @@
-"""滚轮和键盘活动监测：只记"什么时候滚了、往哪滚、什么时候按过键"，从不记录按了哪个键。
+"""滚轮和键盘活动监测：只记"什么时候滚了、往哪滚、什么时候按过键（以及是不是翻页 / 方向键）"，
+从不记录按了哪个键。
 
 默认用 Raw Input（RIDEV_INPUTSINK，消息只是排进本线程队列，系统不会因为我们处理慢而卡住
 或摘掉钩子）。部分触控板的双指滚动不经过 Raw Input，可以另开 WH_MOUSE_LL 低级鼠标钩子
@@ -31,6 +32,11 @@ class WheelEvent:
     y: int
 
 
+# 会让画面整屏移动的键：空格、PageUp/PageDown、End/Home、方向键。按下后浏览器等常常平滑滚动几百毫秒，
+# 录制核心据此临时提高截图帧率（RecorderConfig.nav_boost_ms），否则只拿到滚动前后两帧、接不上
+NAV_KEYS = frozenset({0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28})
+
+
 def _signed16(v: int) -> int:
     v &= 0xFFFF
     return v - 0x10000 if v & 0x8000 else v
@@ -48,6 +54,7 @@ class InputMonitor:
         self._use_hook = use_mouse_hook
         self._wheel: deque[WheelEvent] = deque(maxlen=max_events)
         self._last_key_ms: int | None = None
+        self._last_nav_ms: int | None = None
         self.key_downs = 0       # 只有次数，没有键值
         self.wheel_events = 0
         self._hwnd = None
@@ -77,6 +84,11 @@ class InputMonitor:
     @property
     def last_key_ms(self) -> int | None:
         return self._last_key_ms
+
+    @property
+    def last_nav_ms(self) -> int | None:
+        """最后一次按翻页 / 方向 / 空格 / Home / End 键的时间（只有时间）。"""
+        return self._last_nav_ms
 
     def drain_wheel(self) -> list[WheelEvent]:
         out = []
@@ -165,9 +177,13 @@ class InputMonitor:
                 pos = win32.cursor_pos() or (0, 0)
                 self._push(_signed16(s.usButtonData), bool(flags & win32.RI_MOUSE_HWHEEL), pos)
         elif kind == win32.RIM_TYPEKEYBOARD:
-            if buf.data.keyboard.Message in (win32.WM_KEYDOWN, win32.WM_SYSKEYDOWN):
-                self._last_key_ms = self._clock()
+            kb = buf.data.keyboard
+            if kb.Message in (win32.WM_KEYDOWN, win32.WM_SYSKEYDOWN):
+                t = self._clock()
+                self._last_key_ms = t
                 self.key_downs += 1
+                if kb.VKey in NAV_KEYS:  # 只看"是不是翻页 / 方向键"，键值本身不留
+                    self._last_nav_ms = t
 
     def _on_hook(self, code, wparam, lparam):
         if code >= 0 and wparam in (win32.WM_MOUSEWHEEL, win32.WM_MOUSEHWHEEL):
@@ -189,6 +205,7 @@ class FakeInput:
     def __init__(self):
         self._wheel: deque[WheelEvent] = deque()
         self.last_key_ms: int | None = None
+        self.last_nav_ms: int | None = None
         self.idle = 0.0
         self._lock = threading.Lock()
 
@@ -201,8 +218,10 @@ class FakeInput:
     def wheel(self, t_ms: int, delta: int, x: int = 0, y: int = 0, horizontal: bool = False) -> None:
         self._wheel.append(WheelEvent(t_ms, delta, horizontal, x, y))
 
-    def key(self, t_ms: int) -> None:
+    def key(self, t_ms: int, nav: bool = False) -> None:
         self.last_key_ms = t_ms
+        if nav:
+            self.last_nav_ms = t_ms
 
     def drain_wheel(self) -> list[WheelEvent]:
         out = list(self._wheel)
