@@ -1,14 +1,20 @@
-"""第 2、3 步：文字向量（按短段落）与按文字重叠合并块。
+"""第 2、3 步：文字向量（每行一个 + 相邻几行一个短段落）与按文字重叠合并块。
 
-文字向量
-- 新行（line_id 大于游标 worker.text_line_id）按块分组、块内按阅读顺序，相邻的最多 chunk_lines 行 /
-  chunk_tokens 个 token 拼成一个段落；纵向隔得太远的行不拼。一个段落一个向量：
-  id = 段落第一行的 line_id，ts = 段落里最早的 first_seen_ms，group = segment_id（store 约定）；
-  段落成员登记在 text_chunks（store.queries 的向量分支靠它把 id 换回这几行）。
-- 顺序：算向量 → 一个写操作里登记成员 + 推进游标 → 追加向量 → 核对成员还在（期间被隐私删除就把向量清掉）。
+文字向量（布局 2，向量库 <data_dir>/vectors/text2，见 searchsvc.text_vectors_dir）
+- 新行（line_id 大于游标 worker.text_line_id）每行一个向量：id = line_id，ts = first_seen_ms，
+  group = segment_id（store 约定）；很短的行（"}"、"12:30"、"收到"，见 line_worth_a_vector）不单独算。
+- 另外同一块里阅读顺序相邻的 2 到 chunk_lines 行（不超过 chunk_tokens 个 token，纵向隔得太远的不拼）
+  算一个短段落向量，补上一句话折成几行时的上下文：id = 新的负数编号（meta worker.text_chunk_seq），
+  ts = 段落里最早的 first_seen_ms；成员登记在 text_chunks（store.queries 的向量分支靠它把 id 换回这几行）。
+  评测（experiments/search）：6 行一段时近义 / 跨语言的 found@5 只有 0.26 / 0.35，长段落把一句话的意思冲淡了；
+  每行一个 + 3 行短段落是 0.9 左右。
+- 顺序：算向量 → 一个写操作里登记成员 + 推进游标 → 追加向量 → 核对行和成员还在（期间被隐私删除就把向量清掉）。
   崩溃最多丢这一批的向量，不会留下被删文字算出来的向量。
-- 隐私删除删掉段落里的某几行时（store.delete），整段向量被删，剩下的行登记 text_rechunk 待办；
-  这里用新的负数编号（meta worker.text_chunk_seq）重算，不复用已删除的 id（向量库按墓碑屏蔽）。
+- 隐私删除（store.delete）：被删行自己的向量（id = line_id）和含被删行的段落向量都删掉，段落里剩下的行登记
+  text_rechunk 待办；这里给剩下的行重新拼段落（新的负数编号，不复用已删除的 id：向量库按墓碑屏蔽）。
+  剩下的行自己的向量只含它自己的字，不用重算。
+- 迁移：老布局（6 行一段、id = 段落第一行的 line_id，向量库 vectors/text）在第一次运行时整体作废：
+  老向量文件就地清零后删除目录，清空 text_chunks 和老的重组待办，游标归零，所有行按新布局重算。
 
 合并块
 - 同一内容源里两个块（各自换算到根块坐标）有 >= 3 行连续相同（规范化文字）、总字数够、
@@ -18,23 +24,31 @@
 
 from __future__ import annotations
 
+import os
+import shutil
 import statistics
 from collections import defaultdict
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Sequence
 
 import numpy as np
 
+from ..store.fts.docs import is_cjk
 from ..store.queries import _block_roots
 from ..store.vectors import VectorStore
+from .searchsvc import legacy_text_vectors_dir, text_vectors_dir
 from .work_common import Ctx, Stopped, log, timed
 
 TEXT_CURSOR = "worker.text_line_id"
 CHUNK_SEQ = "worker.text_chunk_seq"
+TEXT_LAYOUT = "worker.text_layout"
+LAYOUT = 2
 MERGE_CURSOR = "worker.merge_line_id"
 TEXT_DIM = 384
 LINE_BATCH = 1000
 ENCODE_BATCH = 64
+MIN_LINE_LETTERS = 6
 
 
 @dataclass
@@ -85,43 +99,95 @@ def _chunk(rows: list) -> Chunk:
                  block_id=int(rows[0]["block_id"]), id=int(rows[0]["line_id"]))
 
 
-def _put_chunks(conn, chunks: list[tuple[int, list[int]]], allocate: bool, cursor: tuple[str, int] | None,
-                job_id: int | None, now: int) -> dict:
-    """写线程里：登记段落成员。allocate=True 时为每段分配新的负数编号。
-    成员行已被删除（这期间发生了隐私删除）的段落不追加向量，剩下的行登记重组待办。
-    返回 {'ids': 每段的编号, 'complete': 可以追加向量的段落下标}。"""
-    ids: list[int] = []
-    complete: list[int] = []
-    seq = 0
-    if allocate:
-        r = conn.execute("SELECT value FROM meta WHERE key = ?", (CHUNK_SEQ,)).fetchone()
-        seq = int(r[0]) if r else 0
-    for i, (cid, members) in enumerate(chunks):
-        if allocate:
-            seq += 1
-            cid = -seq
-        ids.append(cid)
-        ph = ", ".join("?" * len(members))
-        present = {int(x[0]) for x in conn.execute(f"SELECT line_id FROM lines WHERE line_id IN ({ph})", members)}
+def line_worth_a_vector(text: str) -> bool:
+    """单独算向量的行：字母至少 MIN_LINE_LETTERS 个（汉字、假名、谚文一个算两个）。
+    很短的行（"}"、"12:30"、"OK 👍"、"收到"、聊天里的"小王 10:02"）单独算出来的向量和什么都有点像，
+    只会给不相关的查询凑命中（合成评测里 "收到" 是好几个查询的头号凑数命中）；它们仍在段落向量里。"""
+    return sum(2 if is_cjk(ch) else 1 for ch in text if ch.isalpha()) >= MIN_LINE_LETTERS
+
+
+def make_units(rows: Sequence, *, max_lines: int = 3, max_tokens: int = 100,
+               count_tokens: Callable[[str], int] | None = None) -> tuple[list[Chunk], list[Chunk]]:
+    """新行 → (单行向量, 段落向量)。单行：id = line_id；段落（2 行及以上）：id 留给写线程分配负数编号。"""
+    lines = [_chunk([r]) for r in sorted(rows, key=lambda r: int(r["line_id"]))
+             if str(r["text"]).strip() and line_worth_a_vector(str(r["text"]))]
+    chunks = [c for c in make_chunks(rows, max_lines=max_lines, max_tokens=max_tokens, count_tokens=count_tokens)
+              if len(c.line_ids) >= 2]
+    return lines, chunks
+
+
+def _put_units(conn, lines: list[int], chunks: list[list[int]], cursor: tuple[str, int] | None,
+               job_id: int | None, now: int, old_chunk: int | None = None) -> dict:
+    """写线程里：为段落分配新的负数编号并登记成员，推进游标 / 完成待办（同一个事务）。
+    old_chunk：重组时先去掉旧段落剩下的成员登记（只剩一行的不再算段落）。
+    行或成员已被删除（这期间发生了隐私删除）的不追加向量；段落只剩部分成员时登记重组待办。
+    返回 {'chunk_ids': 每段的编号, 'chunks_ok': 可以追加的段落下标, 'lines_ok': 可以追加的单行下标}。"""
+    if old_chunk is not None:
+        conn.execute("DELETE FROM text_chunks WHERE chunk_id = ?", (int(old_chunk),))
+    wanted = sorted({int(x) for x in lines} | {int(m) for c in chunks for m in c})
+    present: set[int] = set()
+    for s in range(0, len(wanted), 500):
+        part = wanted[s:s + 500]
+        ph = ", ".join("?" * len(part))
+        present |= {int(x[0]) for x in conn.execute(f"SELECT line_id FROM lines WHERE line_id IN ({ph})", part)}
+    r = conn.execute("SELECT value FROM meta WHERE key = ?", (CHUNK_SEQ,)).fetchone()
+    seq = int(r[0]) if r else 0
+    chunk_ids: list[int] = []
+    chunks_ok: list[int] = []
+    for i, members in enumerate(chunks):
+        seq += 1
+        cid = -seq
+        chunk_ids.append(cid)
         keep = [m for m in members if m in present]
-        if keep:
+        if len(keep) == len(members):
+            chunks_ok.append(i)
+        if len(keep) >= 2:
             conn.executemany("INSERT OR REPLACE INTO text_chunks (line_id, chunk_id) VALUES (?, ?)",
                              [(m, cid) for m in keep])
-        if len(keep) == len(members):
-            complete.append(i)
-        elif keep:
-            conn.execute(
-                "INSERT INTO jobs (kind, target, created_ms, updated_ms) VALUES ('text_rechunk', ?, ?, ?) "
-                "ON CONFLICT (kind, target) DO UPDATE SET status = 'pending', attempts = 0, not_before_ms = 0, "
-                "updated_ms = excluded.updated_ms", (str(cid), now, now))
-    if allocate:
-        Ctx.meta_put_sql(conn, CHUNK_SEQ, seq)
+            if len(keep) < len(members):
+                conn.execute(
+                    "INSERT INTO jobs (kind, target, created_ms, updated_ms) VALUES ('text_rechunk', ?, ?, ?) "
+                    "ON CONFLICT (kind, target) DO UPDATE SET status = 'pending', attempts = 0, not_before_ms = 0, "
+                    "updated_ms = excluded.updated_ms", (str(cid), now, now))
+    Ctx.meta_put_sql(conn, CHUNK_SEQ, seq)
     if cursor is not None:
         Ctx.meta_put_sql(conn, *cursor)
     if job_id is not None:
         conn.execute("UPDATE jobs SET status = 'done', last_error = NULL, updated_ms = ? WHERE job_id = ?",
                      (now, job_id))
-    return {"ids": ids, "complete": complete}
+    return {"chunk_ids": chunk_ids, "chunks_ok": chunks_ok,
+            "lines_ok": [i for i, lid in enumerate(lines) if int(lid) in present]}
+
+
+def _reset_layout(conn) -> None:
+    """迁移到布局 2（写线程里一个事务）：老段落登记和老的重组待办作废，游标归零，记下布局版本。"""
+    conn.execute("DELETE FROM text_chunks")
+    conn.execute("DELETE FROM jobs WHERE kind = 'text_rechunk'")
+    Ctx.meta_put_sql(conn, TEXT_CURSOR, 0)
+    Ctx.meta_put_sql(conn, TEXT_LAYOUT, LAYOUT)
+
+
+def wipe_vector_dir(root: Path) -> bool:
+    """把一个向量库目录里的向量文件就地写零，再整个删掉。返回目录是否已经不在了。
+    删不掉（别的进程还映射着、拿着锁）也没关系：向量已经是零，下次再删。"""
+    if not root.exists():
+        return True
+    for p in root.glob("*.vec"):
+        try:
+            size = p.stat().st_size
+            with open(p, "r+b") as fh:
+                left = size
+                zeros = bytes(min(size, 1 << 20))
+                while left > 0:
+                    n = min(left, len(zeros))
+                    fh.write(zeros[:n])
+                    left -= n
+                fh.flush()
+                os.fsync(fh.fileno())
+        except OSError as exc:
+            log.warning("清零老向量文件失败：%s", type(exc).__name__)
+    shutil.rmtree(root, ignore_errors=True)
+    return not root.exists()
 
 
 class TextVectorStep:
@@ -132,7 +198,7 @@ class TextVectorStep:
         self.ctx = ctx
         self._encoder_factory = encoder_factory
         self._vectors_factory = vectors_factory or (
-            lambda: VectorStore(ctx.data_dir / "vectors" / "text", TEXT_DIM))
+            lambda: VectorStore(text_vectors_dir(ctx.data_dir), TEXT_DIM))
         self._enc = None
         self._enc_failed = False
         self._vs: VectorStore | None = None
@@ -179,6 +245,8 @@ class TextVectorStep:
         return int(n) + int(j)
 
     def run(self) -> int:
+        if not self._migrate():
+            return 0
         if self.backlog() == 0:
             return 0
         enc = self._encoder()
@@ -194,6 +262,28 @@ class TextVectorStep:
                 done += n
         return done
 
+    # ---------------- 布局迁移 ----------------
+
+    def _migrate(self) -> bool:
+        """老布局的向量作废、按新布局从头算（见模块说明）。返回能否接着算向量。"""
+        ctx = self.ctx
+        legacy = legacy_text_vectors_dir(ctx.data_dir)
+        if ctx.meta_get(TEXT_LAYOUT) >= LAYOUT:
+            if legacy.exists():
+                wipe_vector_dir(legacy)  # 上次没删掉（被占用）：再试
+            return True
+        # 先把老向量清零（之后它们对应的段落登记就没了，隐私删除再也找不到它们）
+        wipe_vector_dir(legacy)
+        new = text_vectors_dir(ctx.data_dir)
+        if new.exists():  # 迁移前就有新布局的目录（不该发生）：它的 id 和墓碑对不上新的登记，删掉重来
+            self.close()
+            if not wipe_vector_dir(new):
+                ctx.once("text-layout-busy", "文字向量目录被占用，下次空闲再迁移")
+                return False
+        ctx.writer.call(_reset_layout).result(60)
+        log.info("文字向量迁移到布局 %d：所有行重新计算", LAYOUT)
+        return True
+
     # ---------------- 新行 ----------------
 
     def _new_lines(self, enc, st) -> int:
@@ -205,30 +295,46 @@ class TextVectorStep:
         if not rows:
             return 0
         cfg = ctx.cfg.idle
-        chunks = make_chunks(rows, max_lines=cfg.chunk_lines, max_tokens=cfg.chunk_tokens,
-                             count_tokens=self._count(enc))
-        vecs = self._encode(enc, [c.text for c in chunks])
-        res = ctx.writer.call(_put_chunks, [(c.id, c.line_ids) for c in chunks], False,
+        lines, chunks = make_units(rows, max_lines=cfg.chunk_lines, max_tokens=cfg.chunk_tokens,
+                                   count_tokens=self._count(enc))
+        vecs = self._encode(enc, [u.text for u in lines] + [c.text for c in chunks])
+        res = ctx.writer.call(_put_units, [u.id for u in lines], [c.line_ids for c in chunks],
                               (TEXT_CURSOR, int(rows[-1]["line_id"])), None, ctx.clock()).result(60)
-        self._append(chunks, vecs, res)
+        self._append(lines, chunks, vecs, res)
         st.add(len(rows))
-        st.extra["chunks"] = st.extra.get("chunks", 0) + len(res["complete"])
+        st.extra["line_vectors"] = st.extra.get("line_vectors", 0) + len(res["lines_ok"])
+        st.extra["chunks"] = st.extra.get("chunks", 0) + len(res["chunks_ok"])
         return len(rows)
 
-    def _append(self, chunks: list[Chunk], vecs: np.ndarray, res: dict) -> None:
-        ok = res["complete"]
-        if not ok:
+    def _append(self, lines: list[Chunk], chunks: list[Chunk], vecs: np.ndarray, res: dict) -> None:
+        """vecs：先 lines 后 chunks。追加可以追加的，然后核对：追加前后若有隐私删除，
+        行没了 / 段落成员变少 —— 刚追加的向量就地清零（读取方本来就按墓碑屏蔽，但盘上不能留）。"""
+        n_lines = len(lines)
+        li, ci = res["lines_ok"], res["chunks_ok"]
+        ids = [lines[i].id for i in li] + [res["chunk_ids"][i] for i in ci]
+        if not ids:
             return
-        ids = [res["ids"][i] for i in ok]
-        self.vs.append(ids, vecs[ok], [chunks[i].ts for i in ok], [chunks[i].segment_id for i in ok])
-        # 核对：追加前后若有隐私删除，成员数会变少 —— 这段向量就地清零
-        want = {res["ids"][i]: len(chunks[i].line_ids) for i in ok}
-        ph = ", ".join("?" * len(ids))
-        have = {int(r[0]): int(r[1]) for r in self.ctx.conn.execute(
-            f"SELECT chunk_id, COUNT(*) FROM text_chunks WHERE chunk_id IN ({ph}) GROUP BY chunk_id", ids)}
-        dead = [cid for cid, n in want.items() if have.get(cid, 0) != n]
+        rows = li + [n_lines + i for i in ci]
+        units = [lines[i] for i in li] + [chunks[i] for i in ci]
+        self.vs.append(ids, vecs[rows], [u.ts for u in units], [u.segment_id for u in units])
+        conn = self.ctx.conn
+        dead: list[int] = []
+        line_ids = [lines[i].id for i in li]
+        for s in range(0, len(line_ids), 500):
+            part = line_ids[s:s + 500]
+            ph = ", ".join("?" * len(part))
+            have = {int(r[0]) for r in conn.execute(f"SELECT line_id FROM lines WHERE line_id IN ({ph})", part)}
+            dead += [x for x in part if x not in have]
+        want = {res["chunk_ids"][i]: len(chunks[i].line_ids) for i in ci}
+        cids = list(want)
+        for s in range(0, len(cids), 500):
+            part = cids[s:s + 500]
+            ph = ", ".join("?" * len(part))
+            have_n = {int(r[0]): int(r[1]) for r in conn.execute(
+                f"SELECT chunk_id, COUNT(*) FROM text_chunks WHERE chunk_id IN ({ph}) GROUP BY chunk_id", part)}
+            dead += [c for c in part if have_n.get(c, 0) != want[c]]
         if dead:
-            log.info("%d 段文字在算向量期间被删除，已清掉对应向量", len(dead))
+            log.info("%d 个文字向量在计算期间内容被删除，已清掉", len(dead))
             self.vs.delete(dead)
 
     # ---------------- 隐私删除后的重组 ----------------
@@ -266,12 +372,13 @@ class TextVectorStep:
             ctx.writer.job_done(job["job_id"]).result(30)
             return 0
         cfg = ctx.cfg.idle
-        chunks = make_chunks(rows, max_lines=cfg.chunk_lines, max_tokens=cfg.chunk_tokens,
-                             count_tokens=self._count(enc))
+        # 剩下的行自己的单行向量没受影响；只重拼段落（只剩一行的不再算段落）
+        chunks = [c for c in make_chunks(rows, max_lines=cfg.chunk_lines, max_tokens=cfg.chunk_tokens,
+                                         count_tokens=self._count(enc)) if len(c.line_ids) >= 2]
         vecs = self._encode(enc, [c.text for c in chunks])
-        res = ctx.writer.call(_put_chunks, [(c.id, c.line_ids) for c in chunks], True, None,
-                              int(job["job_id"]), ctx.clock()).result(60)
-        self._append(chunks, vecs, res)
+        res = ctx.writer.call(_put_units, [], [c.line_ids for c in chunks], None, int(job["job_id"]),
+                              ctx.clock(), old).result(60)
+        self._append([], chunks, vecs, res)
         return len(rows)
 
 

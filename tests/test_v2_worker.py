@@ -16,6 +16,7 @@ from screenrecall.store.queries import Queries
 from screenrecall.store.vectors import VectorStore
 from screenrecall.store.writer import Writer
 from screenrecall.v2 import work_text
+from screenrecall.v2.searchsvc import legacy_text_vectors_dir, text_vectors_dir
 from screenrecall.v2.work_common import StopFlag
 from screenrecall.v2.work_llm import PIECE_JOB, clean, parse_reply
 from screenrecall.v2.worker import Worker
@@ -177,32 +178,96 @@ def test_make_chunks_respects_lines_tokens_and_gaps():
     assert [c.line_ids for c in chunks] == [[1, 2], [3, 4]]
 
 
-def test_text_vectors_chunked_and_searchable_through_queries(tmp_path):
+def test_make_units_lines_and_short_paragraphs():
+    rows = [{"line_id": i, "block_id": 1, "segment_id": 9, "text": x, "order_key": i * 30.0, "y0": i * 30.0,
+             "y1": i * 30.0 + 20, "first_seen_ms": 100 + i}
+            for i, x in enumerate(["第一行 内容", "}", "第三行 内容", "第四行 内容", "孤单的一行"], 1)]
+    rows[-1].update(block_id=2)
+    lines, chunks = work_text.make_units(rows, max_lines=3, max_tokens=100, count_tokens=len)
+    assert [u.id for u in lines] == [1, 3, 4, 5]  # "}" 不单独算
+    assert [(c.line_ids, c.ts) for c in chunks] == [([1, 2, 3], 101)]  # [4] 和 [5] 只有一行，不算段落
+    assert [work_text.line_worth_a_vector(s) for s in ("收到", "OK 👍", "小王 10:02", "12:30", "番茄炒蛋",
+                                                       "Display", "import csv")] == [
+        False, False, False, False, True, True, True]
+
+
+def test_text_vectors_per_line_and_short_paragraphs_searchable_through_queries(tmp_path):
     cfg = make_cfg(tmp_path, idle={"clip": False, "chunk_lines": 3})
     t = now_ms() - HOUR
     with Writer(cfg.data_dir) as w:
         s1, b1, ids1 = put_lines(w, "a.exe", "notes", t, ["深度学习入门", "第二章 反向传播", "梯度下降", "练习题"])
-        s2, b2, ids2 = put_lines(w, "b.exe", "other", t + 5000, ["神经网络训练技巧"])
+        s2, b2, ids2 = put_lines(w, "b.exe", "other", t + 5000, ["神经网络训练技巧", "OK"])
     enc = FakeEncoder()
     rep = run(cfg, enc=enc)
     c = db(cfg)
     chunks = {r[0]: r[1] for r in c.execute("SELECT line_id, chunk_id FROM text_chunks")}
-    assert chunks == {ids1[0]: ids1[0], ids1[1]: ids1[0], ids1[2]: ids1[0], ids1[3]: ids1[3], ids2[0]: ids2[0]}
-    assert rep["steps"]["text"]["items"] == 5 and rep["steps"]["text"]["chunks"] == 3
-    vs = VectorStore(cfg.data_dir / "vectors" / "text", DIM, readonly=True)
-    assert len(vs) == 3
+    assert chunks == {ids1[0]: -1, ids1[1]: -1, ids1[2]: -1, ids2[0]: -2, ids2[1]: -2}
+    st = rep["steps"]["text"]
+    assert (st["items"], st["line_vectors"], st["chunks"]) == (6, 5, 2)
+    vs = VectorStore(text_vectors_dir(cfg.data_dir), DIM, readonly=True)
+    assert len(vs) == 7
     hit = vs.search(text_vec("深度学习入门\n第二章 反向传播\n梯度下降"), k=1)[0]
-    assert (hit.id, hit.ts, hit.group) == (ids1[0], t, s1)
+    assert (hit.id, hit.ts, hit.group) == (-1, t, s1)
+    hit = vs.search(text_vec("梯度下降"), k=1)[0]  # 单行向量：store 约定 id = line_id、ts = first_seen、group = 内容源
+    assert (hit.id, hit.ts, hit.group) == (ids1[2], t, s1)
     # 再跑一遍：不重复
     run(cfg, enc=enc)
     vs.refresh()
-    assert len(vs) == 3
-    # 向量分支命中段落：组里给出段落的行（阅读顺序）
+    assert len(vs) == 7
+    # 向量分支命中单行：组里第一行就是那一行；命中段落：给出段落的行（阅读顺序）
     q = Queries(cfg.data_dir, text_vectors=vs)
+    res = q.search("毫不相干", encoder=lambda s: text_vec("梯度下降"), sort="relevant")
+    g = next(g for g in res["groups"] if g["segment_id"] == s1)
+    assert g["sources"] == ["vector"] and g["lines"][0]["line_id"] == ids1[2]
     res = q.search("反向传播 梯度", encoder=lambda s: text_vec("深度学习入门\n第二章 反向传播\n梯度下降"))
     g = next(g for g in res["groups"] if g["segment_id"] == s1)
     assert "vector" in g["sources"]
     q.close()
+
+
+def test_old_layout_vectors_are_wiped_and_everything_reembedded(tmp_path):
+    """老布局（6 行一段、vectors/text、正数段落编号）：第一次运行时老向量清零删除，按新布局重算。"""
+    cfg = make_cfg(tmp_path, idle={"clip": False})
+    t = now_ms() - HOUR
+    with Writer(cfg.data_dir) as w:
+        sid, _, ids = put_lines(w, "a.exe", "notes", t, ["老布局的第一行", "老布局的第二行"])
+        w.call(lambda c: (c.executemany("INSERT INTO text_chunks (line_id, chunk_id) VALUES (?, ?)",
+                                        [(i, ids[0]) for i in ids]),
+                          c.execute("INSERT INTO jobs (kind, target, created_ms, updated_ms) "
+                                    "VALUES ('text_rechunk', '12345', 1, 1)"),
+                          c.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('worker.text_line_id', ?)",
+                                    (str(ids[-1]),)))).result(5)
+    old = legacy_text_vectors_dir(cfg.data_dir)
+    vs = VectorStore(old, DIM)
+    vs.append([ids[0]], text_vec("老布局的第一行\n老布局的第二行")[None, :], [t], [sid])
+    vs.close()
+    rep = run(cfg)
+    assert not old.exists()  # 老目录删掉了（之前先就地清零）
+    c = db(cfg)
+    assert c.execute("SELECT value FROM meta WHERE key = 'worker.text_layout'").fetchone()[0] == "2"
+    assert c.execute("SELECT COUNT(*) FROM jobs WHERE kind = 'text_rechunk'").fetchone()[0] == 0
+    assert sorted(r[0] for r in c.execute("SELECT DISTINCT chunk_id FROM text_chunks")) == [-1]
+    assert rep["steps"]["text"]["items"] == 2
+    new = VectorStore(text_vectors_dir(cfg.data_dir), DIM, readonly=True)
+    assert sorted(h.id for h in new.search(text_vec("老布局的第一行"), k=10)) == [-1, ids[0], ids[1]]
+    # 再跑：不再迁移、不重复
+    run(cfg)
+    new.refresh()
+    assert len(new) == 3
+
+
+def test_old_layout_dir_that_cannot_be_removed_is_zeroed(tmp_path, monkeypatch):
+    cfg = make_cfg(tmp_path, idle={"clip": False})
+    old = legacy_text_vectors_dir(cfg.data_dir)
+    vs = VectorStore(old, DIM)
+    vs.append([7], text_vec("要清零的老向量")[None, :], [1], [1])
+    vs.close()
+    monkeypatch.setattr(work_text.shutil, "rmtree", lambda *a, **k: None)  # 模拟被别的进程占着、删不掉
+    with Writer(cfg.data_dir):
+        pass
+    run(cfg)
+    raw = np.fromfile(next(old.glob("*.vec")), dtype="<f4")
+    assert raw.size == DIM and not raw.any()
 
 
 def test_vector_branch_maps_chunk_id_to_member_lines_and_checks_time(tmp_path):
@@ -778,7 +843,7 @@ def test_config_defaults_for_worker_fields(tmp_path, monkeypatch):
     monkeypatch.delenv("SCREENRECALL_DATA_DIR", raising=False)
     cfg = make_cfg(tmp_path)
     i = cfg.idle
-    assert (i.chunk_lines, i.chunk_tokens, i.llm_min_interval_s, i.llm_max_calls) == (6, 100, 1.0, 200)
+    assert (i.chunk_lines, i.chunk_tokens, i.llm_min_interval_s, i.llm_max_calls) == (3, 100, 1.0, 200)
     assert i.llm_reasoning_effort == "none" and i.classifier_dir == "results/classifier/v1"
     assert i.frame_report_days == 30 and i.encoder_threads == 4
 
