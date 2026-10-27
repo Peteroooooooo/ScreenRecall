@@ -3,7 +3,6 @@
 import sqlite3
 import threading
 import time
-from concurrent.futures import Future
 
 import cv2
 import numpy as np
@@ -398,4 +397,20 @@ def test_close_flushes_pending_frames(tmp_path):
     for fid in fids:
         assert (tmp_path / frame_rel_path(fid, 1000)).parent.exists()
     c.close()
-    assert isinstance(Future(), Future)
+
+
+def test_frame_seen_updates_last_seen_of_frame_and_its_live_lines(w):
+    sid, b = _block(w)
+    ids = w.record_lines(b, 1000, (0, 300), [L("甲", 10), L("乙", 40)])
+    fid = w.save_frame(np.zeros((10, 10, 3), np.uint8), captured_ms=1000, segment_id=sid, block_id=b, pos_y=0,
+                       line_ids=ids, line_rects=[(0, 0, 1, 1), (0, 2, 1, 3)])
+    w.record_lines(b, 1500, (35, 300), [])  # "乙" 消失
+    assert w.frame_seen(fid, 9000).result(5) == 1
+    assert w.frame_seen("missing", 9000).result(5) == 0
+    c = ro(w)
+    a, b2 = ids.result()
+    assert c.execute("SELECT last_seen_ms FROM frames WHERE frame_id = ?", (fid,)).fetchone()[0] == 9000
+    assert c.execute("SELECT last_seen_ms FROM lines WHERE line_id = ?", (a,)).fetchone()[0] == 9000
+    assert c.execute("SELECT last_seen_ms FROM lines WHERE line_id = ?", (b2,)).fetchone()[0] == 1000
+    assert c.execute("SELECT last_seen_ms FROM segments WHERE segment_id = ?", (sid,)).fetchone()[0] == 9000
+    c.close()

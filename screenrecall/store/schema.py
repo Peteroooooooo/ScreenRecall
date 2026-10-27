@@ -131,6 +131,7 @@ CREATE TABLE IF NOT EXISTS frames (
     bytes         INTEGER,
     captured_ms   INTEGER NOT NULL,
     saved_ms      INTEGER,
+    last_seen_ms  INTEGER NOT NULL,          -- 之后又看到像素完全相同的画面时更新（frame_seen）
     segment_id    INTEGER REFERENCES segments (segment_id),
     block_id      INTEGER REFERENCES blocks (block_id),
     pos_y         INTEGER,                  -- 帧顶端在块标尺上的位置

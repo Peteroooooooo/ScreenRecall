@@ -265,6 +265,7 @@ class Queries:
         return {"frame_id": r["frame_id"], "frame_no": r["frame_no"], "status": r["status"],
                 "rel_path": r["image_path"], "path": str(self.data_dir / r["image_path"]),
                 "width": r["width"], "height": r["height"], "bytes": r["bytes"], "captured_ms": r["captured_ms"],
+                "last_seen_ms": r["last_seen_ms"],
                 "segment_id": r["segment_id"], "block_id": r["block_id"], "pos_y": r["pos_y"], "app": r["app"],
                 "title": r["title"], "keep": bool(r["keep"]), "lines": lines}
 
