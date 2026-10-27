@@ -201,9 +201,11 @@ def test_expired_text_is_deleted_like_a_privacy_delete(tmp_path):
         w.activity_start(old, hwnd=1, pid=1, process="a.exe", title="old doc").result(5)
         w.activity_end(old + 60_000).result(5)
         sid2, b2, ids2 = put_lines(w, "a.exe", "new doc", now - HOUR, ["新的一行"])
-    vs = VectorStore(cfg.data_dir / "vectors" / "text", DIM)
-    vs.append([ids[0], ids2[0]], np.stack([text_vec("SECRET"), text_vec("新的")]), [old, now], [sid, sid2])
-    vs.close()
+    # 新布局（text2）和还没迁移的老布局（text）两个文字向量库都要删
+    for name in ("text2", "text"):
+        vs = VectorStore(cfg.data_dir / "vectors" / name, DIM)
+        vs.append([ids[0], ids2[0]], np.stack([text_vec("SECRET"), text_vec("新的")]), [old, now], [sid, sid2])
+        vs.close()
     n, st = cleanup(cfg, text_days=90)
     assert n >= 1 and st["text_lines"] == 1
     c = db(cfg)
@@ -212,13 +214,14 @@ def test_expired_text_is_deleted_like_a_privacy_delete(tmp_path):
     assert c.execute("SELECT COUNT(*) FROM pieces").fetchone()[0] == 0
     assert c.execute("SELECT COUNT(*) FROM activity WHERE start_ms < ?", (cutoff,)).fetchone()[0] == 0
     assert [tuple(r) for r in c.execute("SELECT level, key FROM summaries")] == [("day", today)]
-    vs = VectorStore(cfg.data_dir / "vectors" / "text", DIM)
-    try:
-        q = text_vec("SECRET") + text_vec("新的")
-        left = {h.id for h in vs.search(q / np.linalg.norm(q), k=5) if h.score > 0}
-    finally:
-        vs.close()
-    assert left == {ids2[0]}
+    for name in ("text2", "text"):
+        vs = VectorStore(cfg.data_dir / "vectors" / name, DIM)
+        try:
+            q = text_vec("SECRET") + text_vec("新的")
+            left = {h.id for h in vs.search(q / np.linalg.norm(q), k=5) if h.score > 0}
+        finally:
+            vs.close()
+        assert left == {ids2[0]}, name
     # 库文件里也不留原文（secure_delete + 检查点）
     from screenrecall.store import schema
 
