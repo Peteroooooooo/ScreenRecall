@@ -237,7 +237,10 @@ class StoreStack:
         self.control = ControlCache(self.queries)
         self.deleter = Deleter(self.writer, self.data_dir,
                                keep_recent_segments_ms=cfg.writer.segment_reuse_ms,
-                               on_deleted=self.control.invalidate, clock=clock)
+                               on_deleted=self.control.invalidate, clock=clock,
+                               # 向量库的文件锁一次最多等 30 秒：请求里只试一次（删除页面不用等 90 秒），
+                               # 没删掉的记在待补删清单里，主进程每 2 秒补删一次
+                               vector_retries=1)
 
     def seed_control(self) -> bool:
         """第一次用这个数据目录（界面从没写过 control）：开始录制，写入默认排除规则。返回是否写了。"""
