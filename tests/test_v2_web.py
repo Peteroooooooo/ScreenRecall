@@ -344,6 +344,23 @@ def test_spans_are_case_and_width_insensitive():
     assert web.match_spans("nothing", ["zzz"]) == []
 
 
+def test_identical_hits_in_a_group_are_shown_once():
+    lines = [{"line_id": 3, "text": "Typed note: zebra"}, {"line_id": 2, "text": "typed  NOTE: zebra"},
+             {"line_id": 1, "text": "Typed note: zeb"}]
+    assert [ln["line_id"] for ln in web.unique_lines(lines)] == [3, 1]
+
+
+def test_short_word_terms_only_highlight_word_starts():
+    """字面检索里 a、to 这样的短词是"以它开头的词"：高亮也只认词首，不把 rearranged 里的 a 都标出来。"""
+    text = "The guard rearranged a telescope to the tower"
+    assert web.match_spans(text, [("a", True)]) == [[21, 22]]
+    assert web.match_spans(text, [("to", True)]) == [[33, 35], [40, 42]]
+    assert web.match_spans(text, [("a", False)])[:2] == [[6, 7], [12, 13]]  # 长词（三字组）照旧按子串
+    assert web.match_spans("say to", [("ab", True)]) == []  # 行尾 "a" 不在词首：不当折行命中
+    assert web.match_spans("a b ab", [("abc", True)]) == [[4, 6]]
+    assert web.match_spans("组会 to", [("会", False), ("to", True)]) == [[1, 2], [3, 5]]
+
+
 def test_search_shape_and_spans(client, env):
     r = client.get("/api/v2/search", params={"q": "report"}).json()
     assert keys(r) == {"query", "total_groups", "groups", "semantic"}

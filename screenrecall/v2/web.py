@@ -163,13 +163,16 @@ def _fold_map(text: str) -> tuple[str, list[int]]:
     return "".join(chars), idx
 
 
-def match_spans(text: str, terms: Sequence[str], *, tails: bool = True) -> list[list[int]]:
+def match_spans(text: str, terms: Sequence[str | tuple[str, bool]], *, tails: bool = True) -> list[list[int]]:
     """各检索词（已 norm）在原文里的位置 [start, end)，按字符计；大小写、全半角、空白都不敏感。
+    词可以是 (norm, word_prefix)：word_prefix（字母数字的短词，如 a、to）和字面检索一样只认词首，
+    不然 "a" 会把 rearranged 里的每个 a 都标出来。
     tails=True（字面命中的行）：折到下一行的命中（词的开头在本行末尾）标出本行里的那一截。
     只有语义分支命中的行不是字面命中，tails=False，不然行尾碰巧是词的第一个字也会被标出来。"""
     folded, idx = _fold_map(text)
     spans: list[list[int]] = []
-    for t in terms:
+    for item in terms:
+        t, word_start = (item, False) if isinstance(item, str) else item
         if not t:
             continue
         start, found = 0, False
@@ -177,11 +180,16 @@ def match_spans(text: str, terms: Sequence[str], *, tails: bool = True) -> list[
             j = folded.find(t, start)
             if j < 0:
                 break
+            start = j + 1
+            if word_start and idx[j] > 0 and text[idx[j] - 1].isalnum():
+                continue
             spans.append([idx[j], idx[j + len(t) - 1] + 1])
             found = True
-            start = j + 1
         if not found and tails:
             for k in range(min(len(t) - 1, len(folded)), 0, -1):
+                p = len(folded) - k
+                if word_start and idx[p] > 0 and text[idx[p] - 1].isalnum():
+                    continue
                 if folded.endswith(t[:k]):
                     spans.append([idx[len(folded) - k], len(text)])
                     break
@@ -500,7 +508,7 @@ def api_search(ctx: V2Context, req: dict) -> dict:
     limit = _int(qp.get("limit"), "limit", lo=1, hi=MAX_SEARCH_GROUPS, default=20)
     res = ctx.stack.search.search(query, time_from=t_from, time_to=t_to, app=qp.get("app") or None,
                                   task=qp.get("task") or None, limit=limit, per_group=3)
-    terms = [t.text for t in plan.terms]
+    terms = [(t.text, t.word_prefix) for t in plan.terms]
     conn = ctx.queries.conn()
     seg_ids = [int(g["segment_id"]) for g in res["groups"]]
     first_seen = {int(r[0]): int(r[1]) for r in conn.execute(
@@ -509,7 +517,7 @@ def api_search(ctx: V2Context, req: dict) -> dict:
     frames_of = latest_frames(conn, [ln["line_id"] for g in res["groups"] for ln in g["lines"]])
     groups = []
     for g in res["groups"]:
-        lines = sorted(g["lines"], key=lambda ln: -int(ln["last_seen_ms"]))
+        lines = unique_lines(sorted(g["lines"], key=lambda ln: -int(ln["last_seen_ms"])))
         last = max([int(g["last_seen_ms"])] + [int(ln["last_seen_ms"]) for ln in lines])
         first = first_seen.get(int(g["segment_id"]), min([int(ln["first_seen_ms"]) for ln in lines] or [last]))
         p = piece_of(conn, g["segment_id"], last)
@@ -526,6 +534,20 @@ def api_search(ctx: V2Context, req: dict) -> dict:
     groups.sort(key=lambda g: (-g["last_seen_ms"], -g["segment_id"]))
     total = max(int(res.get("total_groups") or 0), len(groups))
     return {"query": query, "total_groups": total, "groups": groups, "semantic": bool(res.get("semantic"))}
+
+
+def unique_lines(lines: list[dict]) -> list[dict]:
+    """同一组里文字相同（折叠后）的命中只留第一条（已按最近出现排好）。同一段文字在同一个窗口里常有好几行：
+    切走再切回来是新的块、识别过两次、合并后的块两份都在；结果里重复几遍没有用。"""
+    seen: set[str] = set()
+    out = []
+    for ln in lines:
+        k = _fold_map(ln["text"])[0]
+        if k in seen:
+            continue
+        seen.add(k)
+        out.append(ln)
+    return out
 
 
 def _frame_or_404(ctx: V2Context, frame_id: str) -> dict:
