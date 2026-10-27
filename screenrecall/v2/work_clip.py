@@ -54,7 +54,7 @@ def _label_put(conn, labels: list[tuple[str, float, str, str]], cursor: int) -> 
 
 class ClipStep:
     name = "clip"
-    batch = 16
+    batch = 8  # 一批编码不可打断：8 张约 0.7 s（CPU），停止请求最多等这么久
 
     def __init__(self, ctx: Ctx, clip_factory: Callable[[], object],
                  classifier_loader: Callable[[str], object] | None = None,
@@ -119,11 +119,13 @@ class ClipStep:
         ctx = self.ctx
         imgs, keep = [], []
         for r in rows:
+            ctx.stop.check()  # 解码大图也要时间：每张之间看一次停止（这一批还没写库，下次重做）
             try:
                 imgs.append(read_image(str(ctx.data_dir / r["image_path"])))
                 keep.append(r)
             except Exception:  # noqa: BLE001 —— 文件被删 / 损坏：跳过这一帧
                 st.extra["unreadable"] = st.extra.get("unreadable", 0) + 1
+        ctx.stop.check()
         vecs = np.asarray(clip.encode(imgs), dtype=np.float32).reshape(-1, IMAGE_DIM) if imgs else None
         labels = []
         if keep:

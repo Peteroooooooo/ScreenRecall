@@ -28,7 +28,7 @@ class PieceStep:
 
     def backlog(self) -> int:
         cur = self.ctx.meta_get(PIECE_CURSOR)
-        return int(self.ctx.conn.execute("SELECT COUNT(*) FROM activity WHERE activity_id > ?",
+        return int(self.ctx.conn.execute("SELECT COUNT(*) FROM activity WHERE activity_id > ? AND end_ms IS NOT NULL",
                                           (cur,)).fetchone()[0])
 
     def run(self) -> int:
@@ -79,7 +79,9 @@ class PieceStep:
                     if p["dirty"]:
                         self._save(app, title, p)
                 ctx.meta_put(PIECE_CURSOR, new_cur)
-                n = len(rows)
+                # 只数新处理完的已结束记录：仍在进行的那条每轮都会重做（延长到现在），不算"有活"，
+                # 否则录制进程开着（几乎总有一条进行中的记录）时整理进程永远不会自己退出
+                n = sum(1 for r in rows if int(r["activity_id"]) <= new_cur)
                 total += n
                 st.add(n)
                 if open_ids or len(rows) < BATCH:

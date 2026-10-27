@@ -128,6 +128,31 @@ class Ctx:
         return Hidden([a for a in apps if isinstance(a, str)], [k for k in kws if isinstance(k, str)])
 
 
+def interruptible(stop: StopFlag, fn: Callable[..., Any], *args: Any, name: str = "work-item",
+                  poll_s: float = 0.05) -> Any:
+    """在守护线程里跑 fn(*args)，主线程每 poll_s 看一次停止标志：收到停止立即抛 Stopped，不等它算完
+    （模型推理一次可能好几秒，比主进程给的 3 秒宽限还长）。线程是守护线程，进程退出时一起结束；
+    它只做计算，不碰库，调用方负责把这一项的领取放回去。"""
+    stop.check()
+    box: dict[str, Any] = {}
+
+    def call() -> None:
+        try:
+            box["value"] = fn(*args)
+        except BaseException as exc:  # noqa: BLE001
+            box["error"] = exc
+
+    th = threading.Thread(target=call, name=name, daemon=True)
+    th.start()
+    while th.is_alive():
+        th.join(poll_s)
+        if stop.is_set() and th.is_alive():
+            raise Stopped()
+    if "error" in box:
+        raise box["error"]
+    return box.get("value")
+
+
 def timed(ctx: Ctx, name: str):
     """with timed(ctx, 'ocr') as st: ... —— 累计这一步用时。"""
     return _Timed(ctx.stat(name))

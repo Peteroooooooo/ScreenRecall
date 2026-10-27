@@ -92,6 +92,12 @@ def day_key(ms: int) -> str:
 
 def piece_payload(ctx: Ctx, p, cap: int = PROMPT_CHARS) -> dict | None:
     """片段里的行（最新看到的优先，凑够 cap 个字为止，再按阅读顺序排）。没有行返回 None。"""
+    got = _piece_payload(ctx, p, cap)
+    return None if got is None else got[0]
+
+
+def _piece_payload(ctx: Ctx, p, cap: int = PROMPT_CHARS) -> tuple[dict, list[int]] | None:
+    """同 piece_payload，另外返回用到的 line_id（写概括前核对它们还在）。"""
     rows = ctx.conn.execute(
         "SELECT l.line_id, l.block_id, l.order_key, l.text, l.norm, l.last_seen_ms FROM lines l "
         "JOIN piece_segments ps ON ps.segment_id = l.segment_id "
@@ -115,9 +121,16 @@ def piece_payload(ctx: Ctx, p, cap: int = PROMPT_CHARS) -> dict | None:
     if not picked:
         return None
     picked.sort(key=lambda r: (int(r["block_id"]), float(r["order_key"]), int(r["line_id"])))
-    return {"app": clean(p["app"], 80), "title": clean(p["title"], 200),
-            "time": f"{_hm(int(p['start_ms']))}-{_hm(int(p['end_ms']))}",
-            "lines": [clean(r["text"], MAX_LINE_CHARS) for r in picked]}
+    return ({"app": clean(p["app"], 80), "title": clean(p["title"], 200),
+             "time": f"{_hm(int(p['start_ms']))}-{_hm(int(p['end_ms']))}",
+             "lines": [clean(r["text"], MAX_LINE_CHARS) for r in picked]},
+            [int(r["line_id"]) for r in picked])
+
+
+def _err_brief(exc: BaseException) -> str:
+    """日志里只写错误类型和 HTTP 状态码：接口的错误详情可能原样带回发过去的屏幕文字。"""
+    status = getattr(exc, "status", None)
+    return type(exc).__name__ + (f" HTTP {status}" if status else "")
 
 
 class LlmStep:
@@ -130,6 +143,7 @@ class LlmStep:
         self._failed = False
         self._calls = 0
         self._last_call = 0.0
+        self._day_failed: set[str] = set()
         self.model: str | None = None
 
     def client(self):
@@ -213,14 +227,14 @@ class LlmStep:
     def backlog(self) -> int:
         if not self.ctx.cfg.idle.summaries or self._failed:
             return 0
-        return len(self.candidates(limit=50)) + len(self.days_to_update())
+        return len(self.candidates(limit=50)) + len([k for k in self.days_to_update() if k not in self._day_failed])
 
     def run(self) -> int:
         ctx = self.ctx
         if not ctx.cfg.idle.summaries or self._failed:
             return 0
         cands = self.candidates()
-        days = self.days_to_update() if not cands else []
+        days = [k for k in self.days_to_update() if k not in self._day_failed] if not cands else []
         if not cands and not days:
             return 0
         if self.client() is None:
@@ -241,6 +255,8 @@ class LlmStep:
                         return done
                 for key in self.days_to_update():
                     ctx.stop.check()
+                    if key in self._day_failed:
+                        continue
                     if self._day(key):
                         done += 1
                         st.extra["days"] = st.extra.get("days", 0) + 1
@@ -254,7 +270,8 @@ class LlmStep:
         ctx = self.ctx
         job_id = ctx.writer.job_add(PIECE_JOB, str(p["piece_id"])).result(30)
         ctx.writer.call(_job_start, job_id, ctx.clock()).result(30)
-        payload = piece_payload(ctx, p)
+        got = _piece_payload(ctx, p)
+        payload, line_ids = got if got is not None else (None, [])
         if payload is None:
             if p["s_status"] == "stale":  # 片段的字全被删了：旧的空概括也不留
                 ctx.writer.call(lambda c, k: c.execute(
@@ -272,16 +289,18 @@ class LlmStep:
             ctx.writer.call(_job_release, job_id).result(10)  # 没做完不算一次失败
             raise
         except Exception as exc:  # noqa: BLE001 —— LlmError、回答格式不对
-            log.warning("片段 %s 概括失败：%s", p["piece_id"], clean(str(exc), 200))
+            log.warning("片段 %s 概括失败：%s", p["piece_id"], _err_brief(exc))
             ctx.writer.job_fail(job_id, clean(str(exc), 300), retry_ms=10 * 60_000, max_attempts=3).result(30)
             return False
         refs = [{"kind": "piece", "id": int(p["piece_id"]), "app": p["app"]}]
-        ctx.writer.summary_put("piece", str(p["piece_id"]), summary, refs=refs, model=reply.model,
-                               endpoint_host=reply.endpoint_host, start_ms=int(p["start_ms"]),
-                               end_ms=int(p["end_ms"])).result(30)
-        if task:
-            ctx.writer.piece_label(int(p["piece_id"]), task).result(30)
-        ctx.writer.job_done(job_id).result(30)
+        ok = ctx.writer.call(_piece_put_checked, int(p["piece_id"]), line_ids, summary, task,
+                             json.dumps(refs, ensure_ascii=False), reply.model, reply.endpoint_host,
+                             int(p["start_ms"]), int(p["end_ms"]), job_id, ctx.clock()).result(30)
+        if not ok:
+            # 等回答期间发生了隐私删除（片段或用到的行没了）：这份概括可能含被删的字，丢掉；
+            # 待办放回去（不算一次失败），下一轮用剩下的行重写
+            log.info("片段 %s 的内容在概括期间被删除，丢弃这次概括", p["piece_id"])
+            ctx.stat(self.name).extra["discarded"] = ctx.stat(self.name).extra.get("discarded", 0) + 1
         return True
 
     # ---------------- 天 ----------------
@@ -309,7 +328,7 @@ class LlmStep:
         d = datetime.strptime(key, "%Y-%m-%d").date()
         lo, hi = local_dates_to_utc_range(d, d)  # 本地这一天（夏令时那天也对）
         private = ctx.private()
-        items, refs = [], []
+        items, refs, used = [], [], []
         for r in ctx.conn.execute(
             "SELECT p.piece_id, p.start_ms, p.end_ms, p.app, p.title, p.task_label, s.text FROM pieces p "
             "JOIN summaries s ON s.level = 'piece' AND s.key = CAST(p.piece_id AS TEXT) AND s.status = 'ok' "
@@ -319,6 +338,7 @@ class LlmStep:
             items.append({"time": f"{_hm(int(r['start_ms']))}-{_hm(int(r['end_ms']))}", "app": clean(r["app"], 80),
                           "task": clean(r["task_label"] or "", 24), "summary": clean(r["text"], 160)})
             refs.append({"kind": "piece", "id": int(r["piece_id"]), "app": r["app"]})
+            used.append((str(r["piece_id"]), r["text"]))
         if not items:
             return False
         while len(json.dumps(items, ensure_ascii=False)) > 2 * PROMPT_CHARS and len(items) > 1:
@@ -332,12 +352,16 @@ class LlmStep:
         except (Stopped, _Budget):
             raise
         except Exception as exc:  # noqa: BLE001
-            log.warning("%s 的天概括失败：%s", key, clean(str(exc), 200))
+            log.warning("%s 的天概括失败：%s", key, _err_brief(exc))
+            self._day_failed.add(key)  # 这次整理不再试这一天（否则每一轮都重试一次）
             return False
         # created_ms 取开始时间：生成期间新写的片段概括下次还会触发重写
-        ctx.writer.call(_day_put, key, text, json.dumps(refs, ensure_ascii=False), reply.model, reply.endpoint_host,
-                        lo, hi, now).result(30)
-        return True
+        ok = ctx.writer.call(_day_put, key, text, json.dumps(refs, ensure_ascii=False), reply.model,
+                             reply.endpoint_host, lo, hi, now, used).result(30)
+        if not ok:
+            log.info("%s 用到的片段概括在生成期间被删除或改写，丢弃这次天概括", key)
+            ctx.stat(self.name).extra["discarded"] = ctx.stat(self.name).extra.get("discarded", 0) + 1
+        return ok
 
 
 def _job_start(conn, job_id, now) -> None:
@@ -350,13 +374,48 @@ def _job_release(conn, job_id) -> None:
                  "WHERE job_id = ? AND status = 'running'", (job_id,))
 
 
-def _day_put(conn, key, text, refs, model, host, start, end, created) -> None:
+def _piece_put_checked(conn, piece_id, line_ids, summary, task, refs, model, host, start, end, job_id,
+                       now) -> bool:
+    """写片段概括 + 任务标签 + 待办完成，一个写操作。先核对片段和发给大模型的每一行都还在：
+    等回答期间若有隐私删除（store.delete 先删行、后处理片段概括），晚到的概括会把被删的字带回来，
+    这时什么都不写、待办放回 pending（不算一次失败），返回 False。
+    （删除若在这次提交之后才走到片段那一步，它会照常把这份概括清掉。）"""
+    if conn.execute("SELECT 1 FROM pieces WHERE piece_id = ?", (piece_id,)).fetchone() is None:
+        _job_release(conn, job_id)
+        return False
+    have = 0
+    for s in range(0, len(line_ids), 500):
+        part = line_ids[s:s + 500]
+        have += conn.execute(f"SELECT COUNT(*) FROM lines WHERE line_id IN ({', '.join('?' * len(part))})",
+                             part).fetchone()[0]
+    if have != len(line_ids):
+        _job_release(conn, job_id)
+        return False
+    conn.execute(
+        "INSERT INTO summaries (level, key, start_ms, end_ms, text, refs, status, model, endpoint_host, created_ms) "
+        "VALUES ('piece', ?, ?, ?, ?, ?, 'ok', ?, ?, ?) ON CONFLICT (level, key) DO UPDATE SET "
+        "start_ms = excluded.start_ms, end_ms = excluded.end_ms, text = excluded.text, refs = excluded.refs, "
+        "status = 'ok', model = excluded.model, endpoint_host = excluded.endpoint_host, "
+        "created_ms = excluded.created_ms", (str(piece_id), start, end, summary, refs, model, host, now))
+    if task:
+        conn.execute("UPDATE pieces SET task_label = ?, updated_ms = ? WHERE piece_id = ?", (task, now, piece_id))
+    conn.execute("UPDATE jobs SET status = 'done', last_error = NULL, updated_ms = ? WHERE job_id = ?", (now, job_id))
+    return True
+
+
+def _day_put(conn, key, text, refs, model, host, start, end, created, used=()) -> bool:
+    """写天概括。先核对用到的片段概括都还在、内容没变（隐私删除会把它们清空标 stale）；变了就不写，返回 False。"""
+    for pkey, ptext in used:
+        r = conn.execute("SELECT text, status FROM summaries WHERE level = 'piece' AND key = ?", (pkey,)).fetchone()
+        if r is None or r[1] != "ok" or r[0] != ptext:
+            return False
     conn.execute(
         "INSERT INTO summaries (level, key, start_ms, end_ms, text, refs, status, model, endpoint_host, created_ms) "
         "VALUES ('day', ?, ?, ?, ?, ?, 'ok', ?, ?, ?) ON CONFLICT (level, key) DO UPDATE SET "
         "start_ms = excluded.start_ms, end_ms = excluded.end_ms, text = excluded.text, refs = excluded.refs, "
         "status = 'ok', model = excluded.model, endpoint_host = excluded.endpoint_host, "
         "created_ms = excluded.created_ms", (key, start, end, text, refs, model, host, created))
+    return True
 
 
 class _Budget(Exception):
