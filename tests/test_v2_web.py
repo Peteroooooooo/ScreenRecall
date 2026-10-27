@@ -258,6 +258,59 @@ def test_search_semantic_branch(tmp_path, monkeypatch):
         env.stack.close()
 
 
+def test_vector_only_hits_get_no_tail_spans(tmp_path, monkeypatch):
+    # 纯语义命中的行不是字面命中：行尾碰巧是检索词的第一个字（"line" 的 e / "exotic" 的 e）不能标高亮
+    e = np.eye(DIM, dtype=np.float32)
+    env = F.build_env(tmp_path, monkeypatch)
+    try:
+        vs = VectorStore(text_vectors_dir(env.data), DIM)
+        vs.append([env.ids["line2"]], e[0][None, :], [F.day_base() + 5000], [env.ids["segment"]])
+        env.stack.search = SearchService(env.data, encoder=FakeEncoder(e[0]), model_check=lambda: True)
+        with TestClient(env.guard, base_url=F.BASE, follow_redirects=False) as c:
+            F.login(c, env)
+            r = c.get("/api/v2/search", params={"q": "exotic"}).json()
+            assert r["semantic"] is True
+            hit = r["groups"][0]["hits"][0]
+            assert hit["text"] == "another block line" and hit["spans"] == []
+        assert web.match_spans("another block line", ["exotic"], tails=False) == []
+        assert web.match_spans("another block line", ["exotic"]) == [[17, 18]]  # 字面命中的行仍标折行的那一截
+        env.stack.search.close()
+    finally:
+        env.stack.close()
+
+
+def test_vector_score_floor_applies_before_limit(tmp_path, monkeypatch):
+    # 低分的纯语义组不能占掉 limit 的名额：字面命中的两组都要在结果里
+    e = np.eye(DIM, dtype=np.float32)
+    low = (0.1 * e[0] + np.sqrt(0.99) * e[1]).astype(np.float32)  # 与查询向量的余弦 0.1 < 0.45
+    env = F.build_env(tmp_path, monkeypatch)
+    try:
+        w = env.stack.writer
+        t = F.day_base() + 3_600_000
+        lex_b = w.segment_for("tk.exe", "合成文档 B", t).result(5)
+        w.record_lines(w.block_new(lex_b, t).result(5), t, (0, 100),
+                       [LineIn("another REPORT here", 0, 10, 300, 24)]).result(5)
+        vec_ids, vec_segs = [], []
+        for i, title in enumerate(("合成 C", "合成 D")):
+            tv = t + 3_600_000 + i * 1000  # 比字面命中更新：同分时排在前面
+            sid = w.segment_for("tk.exe", title, tv).result(5)
+            ids = w.record_lines(w.block_new(sid, tv).result(5), tv, (0, 100),
+                                 [LineIn(f"unrelated zzz {i}", 0, 10, 300, 24)]).result(5)
+            vec_ids += ids
+            vec_segs.append(sid)
+        vs = VectorStore(text_vectors_dir(env.data), DIM)
+        vs.append(vec_ids, np.stack([low, low]), [t, t], vec_segs)
+        env.stack.search = SearchService(env.data, encoder=FakeEncoder(e[0]), model_check=lambda: True)
+        with TestClient(env.guard, base_url=F.BASE, follow_redirects=False) as c:
+            F.login(c, env)
+            r = c.get("/api/v2/search", params={"q": "report", "limit": 2}).json()
+            assert r["semantic"] is True
+            assert sorted(g["segment_id"] for g in r["groups"]) == sorted([env.ids["segment"], lex_b])
+        env.stack.search.close()
+    finally:
+        env.stack.close()
+
+
 def test_semantic_off_without_model_or_vectors(tmp_path):
     svc = SearchService(tmp_path, model_check=lambda: True, encoder=FakeEncoder(np.ones(DIM, np.float32)))
     schema.connect(schema.db_path(tmp_path)).close()
@@ -281,8 +334,11 @@ def test_frame_detail_image_thumb(client, env):
     img = client.get(f"/api/v2/frames/{fid}/image")
     assert img.status_code == 200 and img.headers["content-type"] == "image/webp"
     assert img.content[:4] == b"RIFF" and "private" in img.headers["cache-control"]
+    # 删除后图片不能还留在浏览器磁盘缓存里
+    assert "no-store" in img.headers["cache-control"] and "max-age" not in img.headers["cache-control"]
     th = client.get(f"/api/v2/frames/{fid}/thumb?w=160")
     assert th.status_code == 200 and th.headers["content-type"] == "image/jpeg" and th.content[:2] == b"\xff\xd8"
+    assert "no-store" in th.headers["cache-control"]
     from PIL import Image
     import io
 
