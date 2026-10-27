@@ -234,6 +234,22 @@ class OnlyWindows:
 
 # ---------------- 进程入口 ----------------
 
+# 只给测试用：逗号分隔的窗口句柄。主进程启动的录制子进程继承主进程的环境变量（supervisor.child_env），
+# 所以端到端测试在启动主进程前设好它，真实的录制进程就只录测试自己开的窗口，不会录到别的窗口。
+# 和隐藏参数 --only-hwnds 合并（两边的句柄都允许）。
+TEST_ONLY_HWNDS_ENV = "SCREENRECALL_TEST_ONLY_HWNDS"
+
+
+def only_hwnds(*specs: str) -> set[int]:
+    """'0x1A2B,1234' 这样的句柄列表（十进制或 0x 十六进制）合并成集合；写错的项直接报错，不悄悄录全部窗口。"""
+    out: set[int] = set()
+    for spec in specs:
+        for x in (spec or "").split(","):
+            if x.strip():
+                out.add(int(x.strip(), 0))
+    return out
+
+
 def _setup_logging(logs_dir: Path) -> None:
     logs_dir.mkdir(parents=True, exist_ok=True)
     h = logging.handlers.RotatingFileHandler(logs_dir / "recorder.log", maxBytes=2_000_000, backupCount=3,
@@ -258,7 +274,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--home", default=None)
     ap.add_argument("--only-hwnds", default="", help=argparse.SUPPRESS)  # 测试隔离：逗号分隔的窗口句柄
     args = ap.parse_args(argv)
-    only = {int(x, 0) for x in args.only_hwnds.split(",") if x.strip()}
+    only = only_hwnds(args.only_hwnds, os.environ.get(TEST_ONLY_HWNDS_ENV, ""))
 
     from .. import winapi
 
