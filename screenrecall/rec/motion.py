@@ -180,15 +180,13 @@ def _sort_strips(v: np.ndarray) -> _Sorted:
     n = sk.size
     if n == 0:
         return _Sorted(sk, order, np.zeros(v.shape, dtype=bool))
-    new = np.empty(n, dtype=bool)
-    new[0] = True
-    np.not_equal(sk[1:], sk[:-1], out=new[1:])
-    starts = np.flatnonzero(new)
-    run_len = np.diff(np.append(starts, n))
-    once_sorted = np.repeat(run_len == 1, run_len)
+    ne = sk[1:] != sk[:-1]
+    once_sorted = np.ones(n, dtype=bool)  # 和前后都不一样 = 只出现一次
+    once_sorted[1:] &= ne
+    once_sorted[:-1] &= ne
     once = np.empty(n, dtype=bool)
     once[order] = once_sorted
-    return _Sorted(sk, (order % h).astype(np.int64), once.reshape(v.shape))
+    return _Sorted(sk, order % h, once.reshape(v.shape))
 
 
 def shift_1d(prev: np.ndarray, cur: np.ndarray, *, prev_mask: np.ndarray | None = None,
@@ -357,6 +355,7 @@ SELF_MAX_ROWS = 0.3
 # 先去掉再算上面两个比例
 SELF_UI_RUNS = 2
 SELF_UI_ROWS = 0.5
+SELF_QUICK_MISS = 0.4  # 连滑块一起算对不上的已经这么多：不可能是周期的（滑块最多占几成）
 
 
 
@@ -370,6 +369,8 @@ def _self_periodic(prev: Fp, keep_rows: np.ndarray, p: int) -> bool:
     if n < SELF_MIN_CELLS:
         return False
     bad = c & (prev.v[:, : h - p] != prev.v[:, p:])
+    if int(np.count_nonzero(bad)) >= SELF_QUICK_MISS * n:
+        return False  # 大半对不上（绝大多数 p 都是这样）：不用再细看
     n_rows = int(np.count_nonzero(c.any(axis=0)))
     for s in np.flatnonzero(bad.any(axis=1)):
         rows = np.flatnonzero(bad[s])
@@ -538,7 +539,7 @@ class Fp:
     gp 是宽高补到 32 倍数的灰度缓冲（补的部分为 0），g 是其中真正的画面 (高, 宽)。
     """
 
-    __slots__ = ("gp", "g", "_v", "_h", "_prep_v", "_prep_h", "_u64", "_content", "_vs", "_hs")
+    __slots__ = ("gp", "g", "_v", "_h", "_prep_v", "_prep_h", "_u64", "_content", "_vs")
 
     def __init__(self, g: np.ndarray, *, padded: np.ndarray | None = None):
         h, w = g.shape[:2]
@@ -554,7 +555,6 @@ class Fp:
         self._u64: np.ndarray | None = None
         self._content: np.ndarray | None = None
         self._vs: _Sorted | None = None
-        self._hs: _Sorted | None = None
 
     @classmethod
     def from_image(cls, img: np.ndarray) -> Fp:
@@ -620,9 +620,7 @@ class Fp:
             self._prep_h = [None] * BANDS
         p = self._prep_h[b]
         if p is None:
-            if self._hs is None:
-                self._hs = _sort_strips(self.h)
-            p = self._prep_h[b] = _prepare(self.h[b], once=self._hs.once[b])
+            p = self._prep_h[b] = _prepare(self.h[b])
         return p
 
 
