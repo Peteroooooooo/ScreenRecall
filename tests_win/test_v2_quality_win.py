@@ -4,7 +4,8 @@
 - 刚钉住、画面一直不变的 Edge 窗口：第一屏的字马上存下（录制子进程 + --only-hwnds 隔离）；
 - 文本光标那样的一条细竖线不被 OCR 成一行，表格里一个字的格子照收（真实截图 + 真实 OCR 模型）；
 - 平滑翻页 / 滚轮下的位移：模板化的内容（日志、表格、头像相同的聊天、重复行很多的代码）在 tkinter 和 Edge 里
-  按滚轮和翻页滚动，统计接上的比例和偏移错的比例（必须为 0），对比翻页 / 平移时提高帧率前后。
+  按滚轮和翻页滚动，统计接上的比例和偏移错的比例（必须为 0），对比翻页 / 平移时提高帧率前后；
+  提高帧率之后接上的至少三分之一。
 只输出计数、比例和耗时；不打印屏幕文字和窗口标题。临时目录、窗口、进程都在结束时清掉。
 """
 
@@ -513,8 +514,6 @@ def _merge(acc: dict, res: dict) -> None:
 
 
 @pytest.mark.skipif(not EDGE.exists(), reason="本机没有 Edge")
-@pytest.mark.xfail(strict=False, reason="已知未修：Edge 里模板化内容的滚轮步仍有偏移错（2026-10-27 实测 before/after 各 2/12），"
-                                        "交叉校验阈值待按证据调整")
 def test_templated_content_smooth_page_down_and_wheel_in_edge(work):
     base, procs = work
     before = replace(RecorderConfig(), nav_boost_ms=0, shift_boost_ms=0)
@@ -537,6 +536,9 @@ def test_templated_content_smooth_page_down_and_wheel_in_edge(work):
     for name, (acc, _) in out.items():
         assert all(v[1] == 0 for v in acc.values()), f"{name}: 有偏移错的步"
     assert out["after"][0]["pd"][0] >= out["before"][0]["pd"][0]
+    # 整屏复核之后（2026-10-27 实测）：日志、表格、代码大多接得上；完全周期的聊天页一律接不上（没法知道滚了多少）
+    for k, (ok, wrong, broke, miss) in out["after"][0].items():
+        assert ok * 3 >= ok + wrong + broke + miss, f"after {k}: 接上的不到三分之一"
 
 
 class _TkTemplated:
@@ -669,3 +671,5 @@ def test_templated_content_smooth_page_down_and_wheel_in_tk(work):
     for name, acc in out.items():
         assert all(v[1] == 0 for v in acc.values()), f"{name}: 有偏移错的步"
     assert out["after"]["pd"][0] >= out["before"]["pd"][0]
+    for k, (ok, wrong, broke, miss) in out["after"].items():
+        assert ok * 3 >= ok + wrong + broke + miss, f"after tk {k}: 接上的不到三分之一"
