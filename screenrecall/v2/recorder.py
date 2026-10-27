@@ -106,6 +106,8 @@ class RecorderProcess:
                            excluded_title_keywords=row["excluded_title_keywords"])
         self.core = RecorderCore(self.sink, cfg.recorder, rules=rules, clock=self.clock, **self.core_kwargs)
         self.sink.describe = self.core.windows.describe
+        self.sink.excluded = self.core.title_excluded
+        self.sink.frame_height = self.core.frame_height
         self.text.core = self.core
         self.text.sink = self.sink
         self.control = ControlLoop(self.writer, self.core, self.sink, self.gaps, cfg.db_path, pid=self.pid,
