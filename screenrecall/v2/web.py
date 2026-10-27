@@ -37,6 +37,7 @@ from ..store.writer import _job_add
 from ..timeutil import local_dates_to_utc_range
 from . import config as v2config
 from .adapters import StoreStack, effective_state, latest_frames, piece_of, recorder_running
+from .rec_sink import EXCLUDED_TITLE, NOT_RUNNING_DETAIL, STOPPED_DETAIL
 from .work_common import private_rules
 from .work_llm import PIECE_JOB
 
@@ -52,8 +53,6 @@ MAX_THUMB_CACHE = 256
 STORAGE_CACHE_S = 30.0
 LLM_TEST_PROMPT = "Reply with the single word OK."
 _FRAME_ID = re.compile(r"^[0-9a-f]{32}$")
-GAP_REASONS = {"locked": "locked", "paused": "paused", "excluded": "excluded", "minimised": "minimized",
-               "error": "error"}  # closed（窗口关了）不是"没有记录"的时段
 
 
 class ApiError(Exception):
@@ -204,19 +203,24 @@ def api_status(ctx: V2Context, _req: dict) -> dict:
     now = stack.clock()
     state, until = effective_state(ctrl, now)
     current = None
-    alive = recorder_running(ctrl)
-    if alive and state == "recording" and ctrl.get("current_process"):
+    running = recorder_running(ctrl)
+    if running and state == "recording" and ctrl.get("current_process"):
         title = ctrl.get("current_title")
-        kws = [k.casefold() for k in ctrl.get("excluded_title_keywords") or ()]
-        procs = {p.casefold() for p in ctrl.get("excluded_processes") or ()}
-        if ctrl["current_process"].casefold() in procs or any(k in (title or "").casefold() for k in kws):
+        if private_rules({"excluded_processes": ctrl.get("excluded_processes"),
+                          "excluded_title_keywords": ctrl.get("excluded_title_keywords")}).match(
+                ctrl["current_process"], title):
             title = None  # 命中排除规则的窗口：不显示标题
-        current = {"app": ctrl["current_process"], "title": title}
+        current = {"app": ctrl["current_process"], "title": title, "excluded": False}
+    elif running and state == "recording" and ctrl.get("current_title") == EXCLUDED_TITLE:
+        # 前台是排除的窗口：录制进程只写了占位标题（不写进程名和标题）
+        current = {"app": None, "title": None, "excluded": True}
     conn = ctx.queries.conn()
     pending = int(conn.execute("SELECT COUNT(*) FROM ocr_regions WHERE status IN ('pending', 'running')")
                   .fetchone()[0])
     rev = conn.execute("SELECT value FROM meta WHERE key = 'revision'").fetchone()
-    return {"recording": state, "pause_until_ms": until, "recorder_alive": alive,
+    # recorder_alive：心跳新鲜（15 秒内）。正常停下时心跳还新鲜、recording = stopped，页面显示"没在录制"；
+    # 心跳断了才是"录制程序没在运行"
+    return {"recording": state, "pause_until_ms": until, "recorder_alive": bool(ctrl.get("recorder_alive")),
             "current": current, "pending_ocr": pending,
             "idle_work": "running" if ctx.idle_running() else "idle",
             "agent_enabled": bool(ctrl.get("agent_enabled")), "revision": int(rev[0]) if rev else 0}
@@ -283,7 +287,7 @@ def api_day(ctx: V2Context, req: dict) -> dict:
         "app": p["app"], "title": p["title"], "task": p["task_label"],
         "summary_line": _first_line(summaries.get(int(p["id"]))), "pending_ocr": int(p["id"]) in pending,
     } for p in pieces]
-    items += _day_gaps(conn, tl["items"], pieces, lo, hi, now)
+    items += _day_gaps(conn, tl["items"], lo, hi, now)
     items.sort(key=lambda x: (x["start_ms"], 0 if x["kind"] == "piece" else 1), reverse=True)
     apps = [{"app": a["process"], "ms": int(a["ms"])} for a in ov["apps"] if a["process"]]
     return {"date": d.isoformat(),
@@ -292,24 +296,81 @@ def api_day(ctx: V2Context, req: dict) -> dict:
             "summary": _summary_out(ov["summary"]), "items": items[:MAX_DAY_ITEMS]}
 
 
-def _day_gaps(conn, tl_items: list[dict], pieces: list[dict], lo: int, hi: int, now: int) -> list[dict]:
-    """"没有记录"的时段：同一原因、时间重叠的合并（锁屏时每个窗口各记一条）；
-    完全落在一个片段里面的（另一个窗口最小化之类）不算整天的空档。"""
+def gap_reason(reason: str, detail: str | None) -> str | None:
+    """库里的缺口（录制进程写的 reason + detail）→ 页面上的原因；None = 不算"没有记录"的时段。
+    locked / paused / stopped（正常退出或没在运行）是整台电脑的；minimized / cloaked / excluded 是某个窗口的。"""
+    if reason == "closed":
+        return "stopped" if detail == STOPPED_DETAIL else None  # 别的 closed：窗口关了，不是空档
+    if reason == "error":
+        return "stopped" if detail == NOT_RUNNING_DETAIL else "error"
+    if reason == "minimised":
+        return "cloaked" if detail == "cloaked" else "minimized"
+    return reason if reason in ("locked", "paused", "excluded") else None
+
+
+WINDOW_GAP_REASONS = ("minimized", "cloaked", "excluded")
+MIN_WINDOW_GAP_MS = 60_000
+
+
+def _subtract(start: int, end: int, spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """[start, end) 去掉 spans（已排序、已合并）覆盖的部分。"""
+    out, cur = [], start
+    for a, b in spans:
+        if b <= cur:
+            continue
+        if a >= end:
+            break
+        if a > cur:
+            out.append((cur, a))
+        cur = max(cur, b)
+        if cur >= end:
+            break
+    if cur < end:
+        out.append((cur, end))
+    return out
+
+
+def _recorded_spans(conn, lo: int, hi: int, now: int) -> list[tuple[int, int]]:
+    """这一天里前台有可录窗口（没被排除）的时段，合并好。"""
+    spans: list[tuple[int, int]] = []
+    for a, b in conn.execute(
+            "SELECT MAX(start_ms, ?), MIN(COALESCE(end_ms, ?), ?) FROM activity WHERE excluded = 0 "
+            "AND COALESCE(end_ms, ?) > ? AND start_ms < ? ORDER BY start_ms", (lo, now, hi, now, lo, hi)):
+        a, b = int(a), int(b)
+        if b <= a:
+            continue
+        if spans and a <= spans[-1][1]:
+            spans[-1] = (spans[-1][0], max(spans[-1][1], b))
+        else:
+            spans.append((a, b))
+    return spans
+
+
+def _day_gaps(conn, tl_items: list[dict], lo: int, hi: int, now: int) -> list[dict]:
+    """"没有记录"的时段：同一原因、时间重叠的合并（锁屏时每个窗口各记一条）。
+    某个窗口的缺口（固定的窗口最小化了、排除的窗口）只算前台没有在录别的窗口的那部分：用户在别的应用里
+    工作的时间是录了的，不能显示成整天的空档；剩下不到一分钟的不显示。"""
     procs = {int(r[0]): r[1] for r in conn.execute(
         "SELECT gap_id, process FROM gaps WHERE COALESCE(end_ms, ?) > ? AND start_ms < ?", (now, lo, hi))}
+    recorded: list[tuple[int, int]] | None = None
     raw = []
     for g in tl_items:
-        if g["kind"] != "gap" or g["reason"] not in GAP_REASONS:
+        if g["kind"] != "gap":
+            continue
+        reason = gap_reason(g["reason"], g.get("detail"))
+        if reason is None:
             continue
         start = max(int(g["start_ms"]), lo)
         end = min(int(g["end_ms"]) if g["end_ms"] is not None else now, hi)
         if end <= start:
             continue
-        if any(p["start_ms"] <= start and end <= p["end_ms"] for p in pieces):
-            continue
-        reason = GAP_REASONS[g["reason"]]
-        note = procs.get(int(g["id"])) if reason == "excluded" else g.get("detail")
-        raw.append({"kind": "gap", "start_ms": start, "end_ms": end, "reason": reason, "note": note})
+        parts = [(start, end)]
+        if reason in WINDOW_GAP_REASONS:
+            if recorded is None:
+                recorded = _recorded_spans(conn, lo, hi, now)
+            parts = [(a, b) for a, b in _subtract(start, end, recorded) if b - a >= MIN_WINDOW_GAP_MS]
+        note = procs.get(int(g["id"])) if reason == "excluded" else None
+        raw += [{"kind": "gap", "start_ms": a, "end_ms": b, "reason": reason, "note": note} for a, b in parts]
     raw.sort(key=lambda x: (x["reason"], x["start_ms"]))
     out: list[dict] = []
     for g in raw:
@@ -575,9 +636,13 @@ def api_settings(ctx: V2Context, _req: dict) -> dict:
     except Exception:  # noqa: BLE001 - 读注册表失败只当没开
         log.warning("读取开机自启状态失败", exc_info=True)
         auto = False
+    pinned = [p for p in (ctrl.get("pinned_windows") or []) if isinstance(p, dict)]
     return {
-        "pinned": [{"process": p.get("process") or "", "title": p.get("title") or ""}
-                   for p in (ctrl.get("pinned_windows") or []) if isinstance(p, dict)],
+        # hwnd 原样带回（页面改名单时整份写回，不带的话下次保存就丢了；录制进程优先按它找窗口，标题会变）；
+        # found：现在能不能找到这个窗口（同 rec_control.resolve_pins 的规则；列不出窗口时为 null）
+        "pinned": [{"process": p.get("process") or "", "title": p.get("title") or "",
+                    "hwnd": p.get("hwnd") if isinstance(p.get("hwnd"), int) else None, "found": f}
+                   for p, f in zip(pinned, _pins_found(ctx, pinned))],
         "excluded_processes": list(ctrl.get("excluded_processes") or []),
         "excluded_title_keywords": list(ctrl.get("excluded_title_keywords") or []),
         "hidden_from_agents": {"apps": list(hidden.get("apps") or []),
@@ -589,6 +654,26 @@ def api_settings(ctx: V2Context, _req: dict) -> dict:
         "llm": _llm_info(ctx),
         "data_dir": str(ctx.data_dir),
     }
+
+
+def _pins_found(ctx: V2Context, pinned: list[dict]) -> list[bool | None]:
+    if not pinned:
+        return []
+    from .rec_control import _pins, resolve_pins
+
+    try:
+        wins = [(int(w.hwnd), w.process or "", w.title or "") for w in _window_list(ctx)()]
+    except Exception:  # noqa: BLE001 - 列不出窗口：不知道
+        log.warning("列出窗口失败", exc_info=True)
+        return [None] * len(pinned)
+    return [h is not None for h in resolve_pins(_pins(pinned), wins)]
+
+
+def _window_list(ctx: V2Context) -> Callable[[], list]:
+    if ctx.list_windows is not None:
+        return ctx.list_windows
+    from .. import winapi
+    return winapi.list_windows
 
 
 _SETTING_KEYS = {"pinned", "excluded_processes", "excluded_title_keywords", "hidden_from_agents", "agent_enabled",
@@ -719,12 +804,8 @@ def api_settings_llm_test(ctx: V2Context, _req: dict) -> dict:
 
 
 def api_windows(ctx: V2Context, _req: dict) -> dict:
-    fn = ctx.list_windows
-    if fn is None:
-        from .. import winapi
-        fn = winapi.list_windows
     try:
-        wins = fn()
+        wins = _window_list(ctx)()
     except Exception as exc:  # noqa: BLE001
         log.warning("列出窗口失败", exc_info=True)
         raise ApiError(503, f"无法列出窗口：{type(exc).__name__}") from None

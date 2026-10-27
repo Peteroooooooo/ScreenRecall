@@ -51,7 +51,11 @@ function Hero() {
   const title = { recording: t("rec.recording"), paused: t("rec.paused"), stopped: t("rec.stopped"), dead: t("rec.dead"), lost: t("st.lost"), unknown: t("st.connecting") }[v.state];
   let sub: string | null = null;
   const cur = status?.current;
-  if (v.state === "recording") sub = cur ? t("rec.watching", { x: cur.title ? `${cur.title} — ${appName(cur.app)}` : appName(cur.app) }) : t("rec.noForeground");
+  if (v.state === "recording") {
+    if (cur?.excluded) sub = t("rec.excludedFg");
+    else if (cur?.app) sub = t("rec.watching", { x: cur.title ? `${cur.title} — ${appName(cur.app)}` : appName(cur.app) });
+    else sub = t("rec.noForeground");
+  }
   else if (v.state === "paused") sub = status?.pause_until_ms ? t("rec.pausedUntil", { t: until(status.pause_until_ms) }) : t("rec.pausedOpen");
   else if (v.state === "dead") sub = t("rec.deadNote");
   else if (v.state === "lost") sub = t("common.offlineHint");
@@ -134,7 +138,7 @@ function Pinned({ s, save }: { s: Settings; save: Save }) {
       return;
     }
     const pinned = await save((cur) => cur.pinned.length >= MAX_PINNED || cur.pinned.some((p) => samePin(p, w)) ? null
-      : { pinned: [...cur.pinned, { process: w.process, title: w.title }] }, t("rec.pinDone", { x: w.title || w.process }));
+      : { pinned: [...cur.pinned, { process: w.process, title: w.title, hwnd: w.hwnd }] }, t("rec.pinDone", { x: w.title || w.process }));
     if (pinned) setPick("");
   };
   return (
@@ -146,7 +150,10 @@ function Pinned({ s, save }: { s: Settings; save: Save }) {
               <Av app={p.process} small />
               <div className="min-w-0 flex-1">
                 <div className="truncate">{p.title || appName(p.process)}</div>
-                <div className="truncate text-[12.5px] text-faint">{appName(p.process)}</div>
+                <div className="truncate text-[12.5px] text-faint">
+                  {appName(p.process)}
+                  {p.found === false && <> · <span className="text-marker-ink">{t("rec.pinMissing")}</span></>}
+                </div>
               </div>
               <button className="sr-btn sr-btn-ghost sr-btn-sm" aria-label={t("rec.unpinX", { x: p.title || p.process })}
                 onClick={() => save((cur) => ({ pinned: cur.pinned.filter((x) => !samePin(x, p)) }), t("rec.unpinDone", { x: p.title || p.process }))}>

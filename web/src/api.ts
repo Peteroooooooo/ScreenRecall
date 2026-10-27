@@ -75,7 +75,8 @@ export interface Status {
   recording: RecordingState;
   pause_until_ms: number | null;
   recorder_alive: boolean;
-  current: { app: string; title: string } | null;
+  /** 前台窗口；excluded = 前台是排除的窗口（这时 app / title 都是 null）。命中排除规则的标题是 null */
+  current: { app: string | null; title: string | null; excluded?: boolean } | null;
   pending_ocr: number;
   idle_work: "idle" | "running";
   agent_enabled: boolean;
@@ -180,7 +181,8 @@ export interface FrameDetail {
 }
 
 export interface Settings {
-  pinned: { process: string; title: string }[];
+  /** hwnd：钉住时的窗口句柄（标题会变，录制程序优先按它找）；found：现在能不能找到这个窗口（null = 不知道） */
+  pinned: { process: string; title: string; hwnd?: number | null; found?: boolean | null }[];
   excluded_processes: string[];
   excluded_title_keywords: string[];
   hidden_from_agents: { apps: string[]; title_keywords: string[] };
