@@ -381,6 +381,18 @@ def test_ocr_window_saves_evidence_now_with_regions_once(env):
     assert pos == [0, 240]
 
 
+def test_ocr_region_starts_below_the_system_caption(env):
+    """窗口有系统画的标题栏（客户区顶边比可见边框低）：待 OCR 的区域从标题栏下面开始，标题不再被识别成正文行。"""
+    env.proc.text.caption_px = lambda hwnd: 30 if hwnd == 3 else 0
+    w = Win(env, 3, "python.exe", "Tk 文档", Doc(seed=5), uia_text=False)
+    env.win.fg = 3
+    env.run(40)
+    w.show(0)
+    env.run(1300)
+    reg = env.db().execute("SELECT x0, y0, x1, y1 FROM ocr_regions").fetchall()
+    assert [tuple(r) for r in reg] == [(0, 30, W, HEAD + VH)]
+
+
 def test_busy_or_timeout_uia_means_ocr(env):
     w = Win(env, 1, "msedge.exe", "综述 - Edge", Doc())
     env.reader.status = "timeout"

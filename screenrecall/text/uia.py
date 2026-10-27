@@ -353,29 +353,32 @@ def has_ink(img, *, edge_level: int = 48, min_edges: int = 24) -> bool:
 
 
 def ocr_regions(res: UiaResult, frame, frame_origin: tuple[int, int] | None = None,
-                *, min_gap_px: int = 48) -> list[Rect]:
+                *, min_gap_px: int = 48, top: int = 0) -> list[Rect]:
     """录制进程用：这一帧里哪些区域要登记待 OCR（帧坐标 (l, t, r, b)），空列表表示 UIA 已经够了。
 
     - 读取失败 / 超时 / 窗口给不出可用文字：整帧（若整帧都是空白则不登记）；
     - 读到了可用文字：只取 uncovered 横条里"有像字的东西"的那些（空白的段落间距、底部留白不登记）。
     frame：这一帧的像素（BGR(A) 或绿色通道）；frame_origin 默认是 res.window_rect 的左上角
     （窗口可见边框 = WGC 帧范围）。
+    top：帧里这一行以上是系统画的标题栏（见 caption_height），不登记：标题已经记在内容源里，
+    识别出来只多了"标题、□、X"这样的行。
     """
     import numpy as np
 
     a = np.asarray(frame)
     fh, fw = a.shape[0], a.shape[1]
-    whole = [(0, 0, fw, fh)]
+    top = max(0, min(int(top), fh))
+    whole = [(0, top, fw, fh)] if top == 0 or fh - top >= min_gap_px else []
     if res.status not in ("ok", "empty") or not res.usable:
-        return whole if has_ink(a) else []
+        return whole if whole and has_ink(a[top:]) else []
     if frame_origin is None:
         if res.window_rect is None:
-            return whole if has_ink(a) else []
+            return whole if whole and has_ink(a[top:]) else []
         frame_origin = (res.window_rect[0], res.window_rect[1])
     out = []
     for band in res.uncovered:
         l, t, r, b = to_frame_rect(band, frame_origin)
-        l, t, r, b = max(0, l), max(0, t), min(fw, r), min(fh, b)
+        l, t, r, b = max(0, l), max(top, t), min(fw, r), min(fh, b)
         if b - t < min_gap_px or r <= l:
             continue
         if has_ink(a[t:b, l:r]):
@@ -425,6 +428,17 @@ class _Win32:
                 return None
         return (r.left, r.top, r.right, r.bottom)
 
+    def client_top(self, hwnd: int) -> int | None:
+        """客户区左上角的屏幕 y（物理像素）。"""
+        from ctypes import wintypes
+
+        pt = wintypes.POINT(0, 0)
+        u = ctypes.windll.user32
+        u.ClientToScreen.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.POINT)]
+        if not u.ClientToScreen(hwnd, ctypes.byref(pt)):
+            return None
+        return int(pt.y)
+
     def window_key(self, hwnd: int) -> tuple[int, str]:
         """同一程序的近似标识：(进程号, 窗口类名)。"""
         from ctypes import wintypes
@@ -434,6 +448,24 @@ class _Win32:
         buf = ctypes.create_unicode_buffer(256)
         self._GetClassNameW(hwnd, buf, 256)
         return int(pid.value), buf.value
+
+
+MAX_CAPTION_PX = 200  # 比这还高的"标题栏"不当标题栏（怪异的窗口），整帧照常识别
+
+
+def caption_height(hwnd: int) -> int:
+    """系统画的标题栏有多高（物理像素）：客户区顶边 - 可见边框顶边。自己画标题栏的程序（Edge、VS Code、
+    新版记事本）客户区就是整个窗口，得 0；取不到也是 0（照旧整帧识别）。"""
+    try:
+        w = _win32()
+        fr = w.frame_rect(hwnd)
+        ct = w.client_top(hwnd)
+    except Exception:  # noqa: BLE001
+        return 0
+    if fr is None or ct is None:
+        return 0
+    h = ct - fr[1]
+    return h if 0 < h <= MAX_CAPTION_PX else 0
 
 
 _WIN32: _Win32 | None = None

@@ -28,7 +28,7 @@ import time
 from collections import OrderedDict, deque
 from concurrent.futures import TimeoutError as FutureTimeout
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 from ..rec.tracker import StillEvent
 from ..store.writer import BlockGone, LineIn, Writer
@@ -122,7 +122,7 @@ def covered_spans(top: int, bottom: int, holes: list[tuple[int, int]]) -> list[t
 class TextWorker:
     def __init__(self, writer: Writer, reader, *, core: CoreLink | None = None, sink: StoreSink | None = None,
                  max_pending_stills: int = 8, keep_stills: int = 256, db_timeout_s: float = 10.0,
-                 min_gap_px: int = 48):
+                 min_gap_px: int = 48, caption_px: Callable[[int], int] | None = None):
         self.writer = writer
         self.reader = reader
         self.core = core
@@ -131,6 +131,8 @@ class TextWorker:
         self.keep_stills = keep_stills
         self.db_timeout_s = db_timeout_s
         self.min_gap_px = min_gap_px
+        # 系统画的标题栏高度（屏幕物理像素）：待 OCR 的区域从它下面开始（见 uia.ocr_regions 的 top）
+        self.caption_px = caption_px if caption_px is not None else (lambda _hwnd: 0)
         self.stats = TextStats()
         self._q: deque[tuple[str, Any, Any]] = deque()
         self._cv = threading.Condition()
@@ -284,7 +286,7 @@ class TextWorker:
         if res is not None and res.status in ("ok", "empty"):
             uncovered = self._uncovered_frame(res, fmap)
             res_f = dataclasses.replace(res, uncovered=tuple(uncovered))
-            regions = uia.ocr_regions(res_f, bgr, (0, 0), min_gap_px=self.min_gap_px)
+            regions = uia.ocr_regions(res_f, bgr, (0, 0), min_gap_px=self.min_gap_px, top=self._top(ev))
             if res.usable:
                 self.stats.uia_usable += 1
                 try:
@@ -292,9 +294,9 @@ class TextWorker:
                 except Exception:  # noqa: BLE001 - 字没写进去：这一帧整帧待 OCR，别把文字丢了
                     self.stats.errors += 1
                     log.exception("写文字行失败，改为整帧待 OCR")
-                    regions = uia.ocr_regions(_NO_READ, bgr, (0, 0), min_gap_px=self.min_gap_px)
+                    regions = uia.ocr_regions(_NO_READ, bgr, (0, 0), min_gap_px=self.min_gap_px, top=self._top(ev))
         else:
-            regions = uia.ocr_regions(_NO_READ, bgr, (0, 0), min_gap_px=self.min_gap_px)
+            regions = uia.ocr_regions(_NO_READ, bgr, (0, 0), min_gap_px=self.min_gap_px, top=self._top(ev))
         self._info[ev.still_id] = StillInfo(line_ids, rects, [tuple(map(int, r)) for r in regions],
                                             ctx.app, ctx.title, ctx.ref)
         while len(self._info) > self.keep_stills:
@@ -305,6 +307,15 @@ class TextWorker:
                 self.core.request_evidence(ev.hwnd, ev.still_id)
                 self.stats.evidence_requested += 1
         self.stats.add("still_ms", (time.perf_counter() - t_start) * 1000)
+
+    def _top(self, ev) -> int:
+        """帧里系统标题栏以下从第几行开始（帧像素）；取不到时 0。"""
+        try:
+            px = int(self.caption_px(ev.hwnd) or 0)
+        except Exception:  # noqa: BLE001
+            return 0
+        scale = getattr(ev.fmap, "scale_y", 1.0) or 1.0
+        return max(0, int(px / scale))
 
     def _hint(self, hwnd: int) -> bool:
         fn = getattr(self.reader, "has_text_hint", None)
@@ -439,7 +450,7 @@ class TextWorker:
                 self.stats.excluded_drops += 1
                 return
             regions = [tuple(map(int, r)) for r in uia.ocr_regions(_NO_READ, ev.bgr, (0, 0),
-                                                                   min_gap_px=self.min_gap_px)]
+                                                                   min_gap_px=self.min_gap_px, top=self._top(ev))]
             info = StillInfo([], [], regions, app, title, ref)
         ref = info.ref
         if _failed(ref) and self.sink is not None:
@@ -449,7 +460,7 @@ class TextWorker:
                 self.stats.excluded_drops += 1
                 return
             info = StillInfo([], [], [tuple(map(int, r)) for r in uia.ocr_regions(
-                _NO_READ, ev.bgr, (0, 0), min_gap_px=self.min_gap_px)], info.app, info.title, ref)
+                _NO_READ, ev.bgr, (0, 0), min_gap_px=self.min_gap_px, top=self._top(ev))], info.app, info.title, ref)
         fid = self.writer.save_frame(
             ev.bgr, captured_ms=ev.t_ms, segment_id=ref.segment, block_id=ref.db_block, pos_y=ev.pos_y,
             hwnd=ev.hwnd, app=info.app, title=info.title,

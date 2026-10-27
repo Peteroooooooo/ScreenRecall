@@ -90,8 +90,11 @@ class RecorderProcess:
         self.writer.heartbeat(recorder_state="starting", recorder_pid=self.pid, recorder_note=None,
                               current_hwnd=None, current_process=None, current_title=None, current_since_ms=None)
 
+        caption_px = None  # 测试注入了假的读取器：窗口也是假的，不问系统标题栏
         if self.reader is None:
             from dataclasses import replace
+
+            from ..text.uia import caption_height as caption_px
 
             from ..text.uia import UiaReader
 
@@ -100,7 +103,7 @@ class RecorderProcess:
                 ucfg = replace(ucfg, comtypes_cache_dir=str(Path(cfg.home) / "comtypes_cache"))
             self.reader = UiaReader(ucfg)
         self.gaps = GlobalGaps(self.writer)
-        self.text = TextWorker(self.writer, self.reader, min_gap_px=cfg.uia.min_gap_px)
+        self.text = TextWorker(self.writer, self.reader, min_gap_px=cfg.uia.min_gap_px, caption_px=caption_px)
         self.sink = StoreSink(self.writer, self.text, self.gaps)
         rules = make_rules(excluded_processes=row["excluded_processes"],
                            excluded_title_keywords=row["excluded_title_keywords"])
