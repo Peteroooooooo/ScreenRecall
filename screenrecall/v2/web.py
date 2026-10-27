@@ -212,16 +212,20 @@ def api_status(ctx: V2Context, _req: dict) -> dict:
     state, until = effective_state(ctrl, now)
     current = None
     running = recorder_running(ctrl)
+    excluded_fg = {"app": None, "title": None, "excluded": True}
     if running and state == "recording" and ctrl.get("current_process"):
         title = ctrl.get("current_title")
         if private_rules({"excluded_processes": ctrl.get("excluded_processes"),
                           "excluded_title_keywords": ctrl.get("excluded_title_keywords")}).match(
                 ctrl["current_process"], title):
-            title = None  # 命中排除规则的窗口：不显示标题
-        current = {"app": ctrl["current_process"], "title": title, "excluded": False}
+            # 刚加的排除规则命中前台窗口（录制进程下一次心跳才换成占位标题）：它已经不录了，
+            # 和排除的前台一样说，不显示进程名和标题
+            current = excluded_fg
+        else:
+            current = {"app": ctrl["current_process"], "title": title, "excluded": False}
     elif running and state == "recording" and ctrl.get("current_title") == EXCLUDED_TITLE:
         # 前台是排除的窗口：录制进程只写了占位标题（不写进程名和标题）
-        current = {"app": None, "title": None, "excluded": True}
+        current = excluded_fg
     conn = ctx.queries.conn()
     pending = int(conn.execute("SELECT COUNT(*) FROM ocr_regions WHERE status IN ('pending', 'running')")
                   .fetchone()[0])

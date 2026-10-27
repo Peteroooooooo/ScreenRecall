@@ -75,7 +75,7 @@ export interface Status {
   recording: RecordingState;
   pause_until_ms: number | null;
   recorder_alive: boolean;
-  /** 前台窗口；excluded = 前台是排除的窗口（这时 app / title 都是 null）。命中排除规则的标题是 null */
+  /** 前台窗口；excluded = 前台是排除的窗口或命中了排除规则（这时 app / title 都是 null） */
   current: { app: string | null; title: string | null; excluded?: boolean } | null;
   pending_ocr: number;
   idle_work: "idle" | "running";
