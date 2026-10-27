@@ -7,8 +7,9 @@
    → 记缺口，不录；
 4. 会话池跟上（前台换走的窗口延迟约 3 秒才停，停时把它的候选帧存下）；
 5. 滚轮事件按光标下的顶层窗口分给对应窗口，滚轮在转的窗口限速放宽到 10 帧/秒，其余 1 帧/秒；
-   按键时间交给前台窗口；
-6. 每个会话取最新一帧喂给它的 WindowTracker，再给所有窗口 tick() 做静止判断。
+   按键时间交给前台窗口；暂停 / 锁屏期间的滚轮事件直接丢掉；
+6. 在录的窗口（前台 + 钉住的）取最新一帧喂给它的 WindowTracker；等着延迟停的会话只在离开那一轮
+   收走最后一帧，之后的帧都丢掉（后台、被挡住的画面不录）；再给所有窗口 tick() 做静止判断。
 
 块号、静止编号由核心统一分配（整个录制进程内唯一）。所有事件都在分析线程里同步发给 sink，
 sink 只应入队；模型、数据库、编码都不在这个线程里。测试时注入时钟、窗口系统、输入和截图来源，直接调 step()。
@@ -88,6 +89,8 @@ class RecorderCore:
         self._last_key_seen: int | None = None
         self._block_ids = itertools.count()
         self._still_ids = itertools.count()
+        self._recording: set[int] = set()  # 上一轮真正在录（喂帧）的窗口
+        self._step_lock = threading.RLock()  # step() / shutdown() 和别的线程调的 stats() 互斥
         self._thread: threading.Thread | None = None
         self._stop_evt = threading.Event()
         self.steps = 0
@@ -139,23 +142,30 @@ class RecorderCore:
         self._thread.start()
 
     def stop(self) -> None:
+        """停下分析线程；收尾（关会话、存候选帧、记"stopped"缺口）在分析线程自己退出前做，不和 step() 并发。"""
         self._stop_evt.set()
         self.wake()
-        if self._thread is not None:
-            self._thread.join(5.0)
-            self._thread = None
-        self.shutdown()
+        th, self._thread = self._thread, None
+        if th is not None:
+            th.join(5.0)
+            if th.is_alive():
+                log.warning("录制核心分析线程 5 秒内没有退出")
+        else:
+            self.shutdown()
         self.inputs.stop()
         if self._watcher is not None:
             self._watcher.stop()
 
     def shutdown(self, now: int | None = None) -> None:
         """关掉所有会话；每个窗口存下候选帧并记"stopped"缺口。"""
-        now = self.clock() if now is None else now
-        self.pool.close_all()
-        for tr in self.trackers.values():
-            tr.close(now, "stopped")
-        self.trackers.clear()
+        with self._step_lock:
+            now = self.clock() if now is None else now
+            self.pool.close_all()
+            for tr in self.trackers.values():
+                tr.close(now, "stopped")
+            self.trackers.clear()
+            self._active.clear()
+            self._recording = set()
 
     def _loop(self) -> None:
         while not self._stop_evt.is_set():
@@ -165,6 +175,10 @@ class RecorderCore:
                 log.exception("录制核心这一轮出错")
             self._wake_evt.wait(self.config.step_ms / 1000)
             self._wake_evt.clear()
+        try:
+            self.shutdown()
+        except Exception:  # noqa: BLE001
+            log.exception("录制核心收尾出错")
 
     # ---------- 一轮 ----------
 
@@ -255,12 +269,16 @@ class RecorderCore:
         return "excluded" if rule_reason(desc[0], desc[1], self._rules) else None
 
     def step(self, now: int | None = None) -> None:
-        now = self.clock() if now is None else now
+        with self._step_lock:
+            self._step(self.clock() if now is None else now)
+
+    def _step(self, now: int) -> None:
         self.steps += 1
         self._apply_commands(now)
-        if self._paused:
-            return
-        if self._check_lock(now):
+        # 滚轮事件每一轮都取走：暂停 / 锁屏期间积压的旧事件留到之后，会被当成"滚轮在转、画面不动"误报到顶 / 到底
+        wheel = [ev for ev in self.inputs.drain_wheel() if now - ev.t_ms <= self.config.tracker.wheel_recent_ms]
+        if self._paused or self._check_lock(now):
+            self._recording = set()
             return
         if self._watcher is not None:
             self._watcher.drain()  # 钩子只用来叫醒；状态每一轮都直接查
@@ -310,14 +328,19 @@ class RecorderCore:
             if tr is not None and not tr.in_gap:
                 tr.suspend(now)
 
-        # 输入
+        # 输入（只有在录的窗口才收滚轮；_wheel_at 只记有会话的窗口，不会越积越多）
         sources = self.pool.sources()
-        for ev in self.inputs.drain_wheel():
+        recording = set(wanted)
+        for ev in wheel:
             h = self.windows.root_at(ev.x, ev.y)
+            if h not in sources:
+                continue
             self._wheel_at[h] = ev.t_ms
             tr = self.trackers.get(h)
-            if tr is not None and h in sources:
+            if tr is not None and h in recording:
                 tr.on_wheel(ev)
+        for h in [h for h in self._wheel_at if h not in sources]:
+            del self._wheel_at[h]
         lk = self.inputs.last_key_ms
         if lk is not None and lk != self._last_key_seen:
             self._last_key_seen = lk
@@ -325,7 +348,9 @@ class RecorderCore:
             if tr is not None:
                 tr.on_key(lk)
 
-        # 帧
+        # 帧：只喂真正在录的窗口（前台 + 钉住的）。前台换走后会话还会延迟约 3 秒才停，这期间
+        # 它在后台（可能被挡住、用户看不到，也可能刚命中排除规则）的画面一律不要；只在离开的那一轮
+        # 收走离开前已经到的最后一帧，并且先重新核对一次排除规则
         for h, src in sources.items():
             boost = now - self._wheel_at.get(h, -10**12) < self.config.wheel_boost_ms
             src.set_max_fps(self.config.wheel_fps if boost else self.config.normal_fps)
@@ -333,22 +358,33 @@ class RecorderCore:
             if tr is None or tr.in_gap or tr.closed:
                 src.discard()
                 continue
-            f = src.take(now)
+            if h in recording:
+                f = src.take(now)
+            elif h in self._recording and self._reason(h) is None:
+                f = src.take(now, force=True)
+                src.discard()
+            else:
+                src.discard()
+                continue
             if f is not None:
                 self.frames_fed += 1
                 self._active[h] = now
                 tr.feed(f)
+        self._recording = recording
         for tr in self.trackers.values():
             tr.tick(now)
 
     def stats(self) -> dict:
-        return {
-            "steps": self.steps,
-            "frames_fed": self.frames_fed,
-            "sessions": {h: self.pool.kind_of(h) for h in self.pool.sources()},
-            "trackers": {h: {"block": t.block, "pos_y": t.pos_y, "frames": t.frames, "dropped": t.dropped,
-                             "saved": t.saved_count, "gap": t.in_gap} for h, t in self.trackers.items()},
-            "pinned": list(self._pinned),
-            "paused": self._paused,
-            "locked": self._locked,
-        }
+        """当前状态（任何线程都可以调；会等当前这一轮 step 做完）。"""
+        with self._step_lock:
+            return {
+                "steps": self.steps,
+                "frames_fed": self.frames_fed,
+                "sessions": {h: self.pool.kind_of(h) for h in self.pool.sources()},
+                "recording": sorted(self._recording),
+                "trackers": {h: {"block": t.block, "pos_y": t.pos_y, "frames": t.frames, "dropped": t.dropped,
+                                 "saved": t.saved_count, "gap": t.in_gap} for h, t in self.trackers.items()},
+                "pinned": list(self._pinned),
+                "paused": self._paused,
+                "locked": self._locked,
+            }

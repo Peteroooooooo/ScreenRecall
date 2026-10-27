@@ -314,6 +314,18 @@ def test_excluded_gap_forgets_latest_frame(rig):
     assert [b["block"] for b in rig.sink.of("block_started")] == [0, 1]
 
 
+def test_wheel_during_gap_is_ignored(rig):
+    """缺口里转的滚轮，缺口结束后不能被当成"滚轮在转、画面不动"而误报到顶。"""
+    rig.feed(rig.img(0))
+    rig.wait(1100)
+    rig.tr.gap_start(rig.t, "locked")
+    for _ in range(3):
+        rig.wheel(120)
+    rig.tr.gap_end(rig.t)
+    rig.wait(1000)
+    assert rig.sink.of("block_anchor") == []
+
+
 def test_close_saves_candidate(rig):
     rig.feed(rig.img(0))
     rig.wait(1100)

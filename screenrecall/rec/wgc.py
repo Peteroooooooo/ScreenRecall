@@ -57,6 +57,21 @@ def keep_mta_alive() -> bool:
         return True
 
 
+def _free_refcount() -> int:
+    """没人用的缓冲在 _BufferPool.get 的循环里看到的引用数。
+
+    不同 Python 版本 getrefcount 的计数方式不一样（3.14 起借用引用不再计数），
+    所以用和 get() 完全相同的写法现场量一次，而不是写死 3。
+    """
+    bufs = [np.empty(1, dtype=np.uint8)]
+    for b in bufs:
+        return sys.getrefcount(b)
+    return 3  # pragma: no cover
+
+
+_FREE_REFS = _free_refcount()
+
+
 class _BufferPool:
     """几块同尺寸的 BGRA 缓冲轮流用。别人（某个 Frame）还拿着的缓冲不会被覆盖。"""
 
@@ -67,8 +82,8 @@ class _BufferPool:
     def get(self, shape: tuple[int, ...]) -> np.ndarray:
         self._bufs = [b for b in self._bufs if b.shape == shape]
         for b in self._bufs:
-            # 引用：列表 1 + 循环变量 1 + getrefcount 参数 1；再多就是有帧还在用
-            if sys.getrefcount(b) <= 3:
+            # 引用：列表 + 循环变量 (+ getrefcount 参数)；比没人用时多就是有帧还在用
+            if sys.getrefcount(b) <= _FREE_REFS:
                 return b
         buf = np.empty(shape, dtype=np.uint8)
         if len(self._bufs) < self._keep:
@@ -122,11 +137,14 @@ class _SlotSource:
     def pending(self) -> bool:
         return self._slot is not None
 
-    def take(self, now: int | None = None) -> Frame | None:
-        """取走最新一帧（限速：距离上次取走不到 1/max_fps 秒时先不给，下次再取）。"""
+    def take(self, now: int | None = None, *, force: bool = False) -> Frame | None:
+        """取走最新一帧（限速：距离上次取走不到 1/max_fps 秒时先不给，下次再取）。
+
+        force=True 时不管限速（窗口不再录之前，收走最后一帧）。
+        """
         now = self._clock() if now is None else now
         with self._lock:
-            if self._slot is None or now - self._last_take < self._min_gap_ms:
+            if self._slot is None or (not force and now - self._last_take < self._min_gap_ms):
                 return None
             pixels, t, bounds, is_bgra = self._slot
             self._slot = None

@@ -268,7 +268,8 @@ class WindowTracker:
         self._last_key = t_ms if self._last_key is None else max(self._last_key, t_ms)
 
     def on_wheel(self, ev: WheelEvent) -> None:
-        if ev.horizontal or ev.delta == 0:
+        # 缺口里的滚轮不算：否则缺口结束后，这些旧滚轮会被当成"滚轮在转、画面不动"，误报到顶 / 到底
+        if ev.horizontal or ev.delta == 0 or self.closed or self._gap is not None:
             return
         self._wheel_t = ev.t_ms
         self._wheel_dir = "up" if ev.delta > 0 else "down"

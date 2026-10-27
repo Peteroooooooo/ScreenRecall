@@ -141,6 +141,64 @@ def test_buffer_pool_reuses_only_free_buffers():
     assert d is c or d.shape == (4, 4, 4)
 
 
+def test_buffer_pool_free_refcount_is_measured():
+    from screenrecall.rec import wgc
+
+    pool = _BufferPool(keep=1)
+    a = pool.get((2, 2, 4))
+    slot = (a, 1)  # 槽里拿着
+    del a
+    b = pool.get((2, 2, 4))
+    assert b is not slot[0]
+    del slot, b
+    assert pool.get((2, 2, 4)) is pool._bufs[0]
+    assert wgc._FREE_REFS >= 1
+
+
+class _Fake:
+    def __init__(self, v):
+        self.v = v
+
+    def __call__(self):
+        return self.v
+
+
+def test_clock_follows_forward_jumps_and_never_goes_back():
+    from screenrecall.rec.clock import _UtcClock
+
+    mono, wall = _Fake(1_000), _Fake(1_700_000_000_000)
+    c = _UtcClock(mono, wall)
+    assert c() == 1_700_000_000_000
+    # 睡眠：单调时钟没走、系统时间走了 1 小时 → 追上
+    wall.v += 3_600_000
+    assert c() == 1_700_003_600_000
+    # 小的差（< 1 秒）不管
+    mono.v += 10_000
+    wall.v += 10_500
+    assert c() == 1_700_003_610_000
+    # 系统时间往回调 1 小时：不倒退，也不停住，只是每秒少走 1 毫秒
+    wall.v -= 3_600_000
+    t0 = c()
+    assert t0 == 1_700_003_610_000
+    seen = [t0]
+    for _ in range(100):
+        mono.v += 1_000
+        wall.v += 1_000
+        seen.append(c())
+    assert all(b > a for a, b in zip(seen, seen[1:]))
+    assert seen[-1] - t0 == 100 * 1_000 - 100
+
+
+def test_clock_real_is_monotonic_and_close_to_utc():
+    import time
+
+    from screenrecall.rec.clock import now_ms
+
+    xs = [now_ms() for _ in range(2000)]
+    assert all(b >= a for a, b in zip(xs, xs[1:]))
+    assert abs(xs[-1] - time.time() * 1000) < 1500
+
+
 def test_frame_map_conversions():
     m = FrameMap.from_bounds((100, 50, 900, 650), 800, 600)
     assert (m.scale_x, m.scale_y) == (1.0, 1.0)
@@ -425,6 +483,144 @@ def test_block_and_still_ids_unique_across_windows(env):
     blocks = [b["block"] for b in env.sink.of("block_started")]
     stills = [s["ev"].still_id for s in env.sink.of("still")]
     assert len(set(blocks)) == len(blocks) == 2 and len(set(stills)) == len(stills) == 2
+
+
+def _events_for(sink, hwnd, names=("block_started", "still", "skim", "block_anchor")):
+    out = []
+    for n, d in sink.events:
+        if n not in names:
+            continue
+        h = d["ev"].hwnd if "ev" in d else d["hwnd"]
+        if h == hwnd:
+            out.append(n)
+    return out
+
+
+def test_excluded_window_is_not_recorded_after_losing_foreground(env):
+    """命中排除规则的窗口被切到后台后，会话还要延迟约 3 秒才停：这期间它的画面不能被录进来。"""
+    env.core.set_rules(make_rules(excluded_title_keywords=["InPrivate"]))
+    env.core.step()
+    env.show(1, env.img(0))
+    env.run(1200)
+    env.win.windows[1]["title"] = "银行 - InPrivate"
+    env.run(40)
+    assert env.sink.of("gap")[-1]["reason"] == "excluded"
+    before = _events_for(env.sink, 1)
+    env.win.fg = 2
+    env.run(40)
+    assert 1 in env.core.pool  # 会话还没停
+    env.show(1, env.img(900))  # 后台的排除窗口还在变
+    env.run(1500)
+    env.show(1, env.img(1200))
+    env.run(1500)
+    assert _events_for(env.sink, 1) == before
+    assert env.core.trackers[1].frames == 1
+
+
+def test_background_window_during_delayed_stop_is_not_fed(env):
+    """前台换走后，旧窗口在后台（可能被挡住、用户看不到）的新画面不录。"""
+    env.core.step()
+    env.show(1, env.img(0))
+    env.run(1200)
+    env.win.fg = 2
+    env.run(80)
+    n = env.core.trackers[1].frames
+    env.show(1, env.img(700))
+    env.run(1500)
+    assert env.core.trackers[1].frames == n
+    assert _events_for(env.sink, 1, ("still",)) == ["still"]
+    assert env.core.stats()["recording"] == [2]
+
+
+def test_last_frame_before_leaving_foreground_is_kept(env):
+    """离开前台前刚到的一帧（还在限速里没取走）在离开那一轮收走，不丢。"""
+    env.core.step()
+    env.show(1, env.img(0))
+    env.run(1200)
+    env.show(1, env.img(120))
+    env.run(40)
+    assert env.core.trackers[1].pos_y == 120
+    env.show(1, env.img(240))  # 上一帧刚取走，1 帧/秒限速下这一帧要等将近 1 秒
+    env.run(40)
+    assert env.core.trackers[1].pos_y == 120
+    env.win.fg = 2
+    env.run(40)
+    assert env.core.trackers[1].pos_y == 240
+    assert [e["reason"] for e in env.sink.of("evidence")] == ["leaving"]
+
+
+def test_last_frame_is_dropped_if_window_became_excluded(env):
+    env.core.set_rules(make_rules(excluded_title_keywords=["InPrivate"]))
+    env.core.step()
+    env.show(1, env.img(0))
+    env.run(1200)
+    env.show(1, env.img(120))
+    env.run(40)
+    env.show(1, env.img(240))  # 还在限速里
+    env.win.windows[1]["title"] = "银行 - InPrivate"  # 同一瞬间改了标题又切走
+    env.win.fg = 2
+    env.run(40)
+    assert env.core.trackers[1].pos_y == 120
+    env.run(1500)  # 会话延迟停的这段时间里也不能再取走它
+    assert env.core.trackers[1].pos_y == 120
+
+
+def test_stale_wheel_events_after_pause_do_not_make_anchor(env):
+    env.core.step()
+    env.show(1, env.img(0))
+    env.run(1200)
+    env.core.pause()
+    env.run(40)
+    for _ in range(3):
+        env.inp.wheel(env.clock.t, 120)
+    env.run(2000)
+    env.core.resume()
+    env.run(1500)
+    assert env.sink.of("block_anchor") == []
+
+
+def test_wheel_map_only_keeps_windows_with_sessions(env):
+    env.core.step()
+    for h in range(100, 140):
+        env.win.under_cursor = h
+        env.inp.wheel(env.clock.t, -120)
+        env.run(40)
+    assert set(env.core._wheel_at) <= set(env.core.pool.sources())
+
+
+def test_stats_from_another_thread_while_stepping(env):
+    import threading
+
+    env.core.pin(2)
+    errors = []
+    done = threading.Event()
+
+    def reader():
+        while not done.is_set():
+            try:
+                env.core.stats()
+            except Exception as exc:  # noqa: BLE001
+                errors.append(exc)
+
+    th = threading.Thread(target=reader)
+    th.start()
+    try:
+        for i in range(30):
+            env.win.add(10 + i, "x.exe", f"窗口 {i}")
+            env.win.fg = 10 + i
+            env.run(40)
+    finally:
+        done.set()
+        th.join()
+    assert errors == []
+
+
+def test_stop_without_start_still_shuts_down(env):
+    env.core.step()
+    env.show(1, env.img(0))
+    env.run(1200)
+    env.core.stop()
+    assert env.sink.of("gap")[-1]["reason"] == "stopped" and not env.core.trackers
 
 
 def test_shutdown_closes_everything(env):
