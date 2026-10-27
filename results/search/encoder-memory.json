@@ -1,0 +1,122 @@
+{
+ "old: arena on, prepack on, 2 threads": {
+  "base": {
+   "ws_mib": 47.1,
+   "private_mib": 512.5
+  },
+  "first_query_ms": 1446.3,
+  "loaded": {
+   "ws_mib": 884.9,
+   "private_mib": 1543.0
+  },
+  "warm_ms_p50": 6.56,
+  "after_warm": {
+   "ws_mib": 885.2,
+   "private_mib": 1543.0
+  },
+  "unloaded": {
+   "ws_mib": 81.5,
+   "private_mib": 545.7
+  },
+  "unloaded_2nd_cycle": {
+   "ws_mib": 82.5,
+   "private_mib": 550.1
+  }
+ },
+ "arena off": {
+  "base": {
+   "ws_mib": 46.9,
+   "private_mib": 512.3
+  },
+  "first_query_ms": 1453.7,
+  "loaded": {
+   "ws_mib": 790.2,
+   "private_mib": 1254.5
+  },
+  "warm_ms_p50": 5.63,
+  "after_warm": {
+   "ws_mib": 790.3,
+   "private_mib": 1254.5
+  },
+  "unloaded": {
+   "ws_mib": 79.8,
+   "private_mib": 538.1
+  },
+  "unloaded_2nd_cycle": {
+   "ws_mib": 80.9,
+   "private_mib": 540.1
+  }
+ },
+ "arena off, prepack off": {
+  "base": {
+   "ws_mib": 46.9,
+   "private_mib": 512.3
+  },
+  "first_query_ms": 1445.5,
+  "loaded": {
+   "ws_mib": 785.7,
+   "private_mib": 1257.2
+  },
+  "warm_ms_p50": 7.96,
+  "after_warm": {
+   "ws_mib": 786.1,
+   "private_mib": 1257.2
+  },
+  "unloaded": {
+   "ws_mib": 80.1,
+   "private_mib": 539.1
+  },
+  "unloaded_2nd_cycle": {
+   "ws_mib": 81.6,
+   "private_mib": 541.0
+  }
+ },
+ "arena off, prepack off, 1 thread": {
+  "base": {
+   "ws_mib": 47.0,
+   "private_mib": 512.3
+  },
+  "first_query_ms": 1397.4,
+  "loaded": {
+   "ws_mib": 782.4,
+   "private_mib": 1251.3
+  },
+  "warm_ms_p50": 11.66,
+  "after_warm": {
+   "ws_mib": 783.6,
+   "private_mib": 1253.6
+  },
+  "unloaded": {
+   "ws_mib": 84.5,
+   "private_mib": 549.7
+  },
+  "unloaded_2nd_cycle": {
+   "ws_mib": 85.0,
+   "private_mib": 546.2
+  }
+ },
+ "arena off, prepack off, 4 threads": {
+  "base": {
+   "ws_mib": 47.0,
+   "private_mib": 512.4
+  },
+  "first_query_ms": 1449.2,
+  "loaded": {
+   "ws_mib": 785.5,
+   "private_mib": 1256.9
+  },
+  "warm_ms_p50": 5.72,
+  "after_warm": {
+   "ws_mib": 786.2,
+   "private_mib": 1256.9
+  },
+  "unloaded": {
+   "ws_mib": 81.2,
+   "private_mib": 542.7
+  },
+  "unloaded_2nd_cycle": {
+   "ws_mib": 81.3,
+   "private_mib": 539.8
+  }
+ }
+}
