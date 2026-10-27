@@ -56,6 +56,7 @@ class InputMonitor:
         self._hookproc = None
         self._class_name = ""
         self._hinst = None
+        self._rb = None  # 消息线程复用的 Raw Input 缓冲
         self._thread = win32.MessageThread("sr-inputmon", self._setup, self._teardown)
 
     # ---- 对外 ----
@@ -144,22 +145,29 @@ class InputMonitor:
         return win32.DefWindowProcW(hwnd, msg, wparam, lparam)
 
     def _handle_raw(self, lparam) -> None:
-        size = ctypes.c_uint(ctypes.sizeof(win32.RAWINPUT))
-        buf = win32.RAWINPUT()
-        got = win32.GetRawInputData(lparam, win32.RID_INPUT, ctypes.byref(buf), ctypes.byref(size),
-                                    ctypes.sizeof(win32.RAWINPUTHEADER))
+        # 每次鼠标移动都会来一条（游戏鼠标 1000 Hz 以上），所以缓冲和参数都预先建好、只在本线程里复用
+        rb = self._rb
+        if rb is None:
+            buf = win32.RAWINPUT()
+            size = ctypes.c_uint(0)
+            rb = self._rb = (buf, size, ctypes.byref(buf), ctypes.byref(size), ctypes.sizeof(buf),
+                             ctypes.sizeof(win32.RAWINPUTHEADER))
+        buf, size, buf_ref, size_ref, full, hdr = rb
+        size.value = full
+        got = win32.GetRawInputData(lparam, win32.RID_INPUT, buf_ref, size_ref, hdr)
         if got == 0xFFFFFFFF or got == 0:
             return
         kind = buf.header.dwType
-        if kind == win32.RIM_TYPEKEYBOARD:
+        if kind == win32.RIM_TYPEMOUSE:
+            s = buf.data.mouse.u.s
+            flags = s.usButtonFlags
+            if flags & (win32.RI_MOUSE_WHEEL | win32.RI_MOUSE_HWHEEL):
+                pos = win32.cursor_pos() or (0, 0)
+                self._push(_signed16(s.usButtonData), bool(flags & win32.RI_MOUSE_HWHEEL), pos)
+        elif kind == win32.RIM_TYPEKEYBOARD:
             if buf.data.keyboard.Message in (win32.WM_KEYDOWN, win32.WM_SYSKEYDOWN):
                 self._last_key_ms = self._clock()
                 self.key_downs += 1
-        elif kind == win32.RIM_TYPEMOUSE:
-            flags = buf.data.mouse.u.s.usButtonFlags
-            if flags & (win32.RI_MOUSE_WHEEL | win32.RI_MOUSE_HWHEEL):
-                pos = win32.cursor_pos() or (0, 0)
-                self._push(_signed16(buf.data.mouse.u.s.usButtonData), bool(flags & win32.RI_MOUSE_HWHEEL), pos)
 
     def _on_hook(self, code, wparam, lparam):
         if code >= 0 and wparam in (win32.WM_MOUSEWHEEL, win32.WM_MOUSEHWHEEL):

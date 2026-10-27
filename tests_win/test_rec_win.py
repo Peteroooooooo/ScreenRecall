@@ -223,7 +223,11 @@ def test_input_monitor_wheel_and_key(doc, hook):
     mon = InputMonitor(use_mouse_hook=hook)
     assert mon.start(), mon.error
     old = win32.cursor_pos()
+    # 用户自己的窗口可能盖在测试窗口上面：临时置顶，保证滚轮落在自己的窗口上（下面的断言仍会先核对）
+    doc.root.attributes("-topmost", True)
+    doc.root.lift()
     try:
+        doc.pump(0.2)
         b = win32.frame_bounds(doc.hwnd)
         cx, cy = (b[0] + b[2]) // 2, (b[1] + b[3]) // 2
         ctypes.windll.user32.SetCursorPos(cx, cy)
@@ -242,7 +246,20 @@ def test_input_monitor_wheel_and_key(doc, hook):
     finally:
         if old:
             ctypes.windll.user32.SetCursorPos(*old)
+        doc.root.attributes("-topmost", False)
         mon.stop()
+
+
+def test_message_threads_restart_cleanly():
+    """停掉再启动：输入监测和前台钩子都能重新装上，停的时候消息线程真的退出。"""
+    for mk in (lambda: InputMonitor(), lambda: ForegroundWatcher()):
+        obj = mk()
+        for _ in range(2):
+            assert obj.start()
+            th = obj._thread._thread
+            assert th is not None and th.is_alive()
+            obj.stop()
+            assert not th.is_alive()
 
 
 _CHURN = r"""

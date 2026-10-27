@@ -152,6 +152,12 @@ class MessageThread:
         self.error: str | None = None
 
     def start(self, timeout: float = 5.0) -> bool:
+        """启动（已经在跑时直接返回）。停掉之后可以再启动。"""
+        if self._thread is not None and self._thread.is_alive():
+            return self.error is None and self._ready.is_set()
+        self._ready.clear()
+        self.error = None
+        self._tid = 0
         self._thread = threading.Thread(target=self._run, name=self._name, daemon=True)
         self._thread.start()
         self._ready.wait(timeout)
@@ -166,6 +172,11 @@ class MessageThread:
         except Exception as exc:  # noqa: BLE001 - 安装失败要报告给调用方
             self.error = f"{type(exc).__name__}: {exc}"
             log.warning("%s 启动失败：%s", self._name, self.error)
+            if self._teardown:  # 装了一半的钩子 / 窗口也要拆掉
+                try:
+                    self._teardown()
+                except Exception:  # noqa: BLE001
+                    log.exception("%s 清理失败", self._name)
             self._ready.set()
             return
         self._ready.set()
