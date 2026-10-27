@@ -40,7 +40,8 @@ def test_default_toml_documents_every_v2_setting_with_its_default():
 
     raw = tomllib.loads((REPO_ROOT / "config.default.toml").read_text(encoding="utf-8"))["v2"]
     for name, cls in (("app", v2config.AppSettings), ("ocr", v2config.OcrSettings),
-                      ("encoder", v2config.EncoderSettings), ("idle", v2config.IdleSettings)):
+                      ("encoder", v2config.EncoderSettings), ("idle", v2config.IdleSettings),
+                      ("retention", v2config.RetentionSettings)):
         sec = raw.get(name, {})
         for f in dataclasses.fields(cls):
             assert f.name in sec, f"[v2.{name}] 缺 {f.name}"
