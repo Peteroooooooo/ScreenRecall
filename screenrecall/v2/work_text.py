@@ -12,8 +12,10 @@
 
 合并块
 - 同一内容源里两个块（各自换算到根块坐标）有 >= 3 行连续相同（规范化文字）、总字数够、
-  y 差一致（不超过 match_dy_px）→ 新块并入旧块：writer.block_merge(新, 旧, y 差的中位数)。
-- 增量：只看 line_id 大于游标 worker.merge_line_id 的新行所在的内容源。
+  y 差一致（不超过 match_dy_px）→ 新块并入旧块：writer.block_merge(新, 旧, y 差的中位数)；
+  两边都有的行，新块那份记成旧块那份的别名（store.aliases，检索和阅读视图只显示一份）；
+- 增量：只看 line_id 大于游标 worker.merge_line_id 的新行所在的内容源；这些新行落在合并树里、和别的块重复的
+  也记成别名（writer.alias_new_lines）。
 """
 
 from __future__ import annotations
@@ -342,6 +344,9 @@ class MergeStep:
             for sid in segs:
                 ctx.stop.check()
                 merged += self._segment(sid)
+                # 合并之后录制进程还往并入的块里写的新行：与同一棵合并树里别的块重复的记成别名
+                st.extra["aliases"] = st.extra.get("aliases", 0) + int(
+                    ctx.writer.alias_new_lines(sid, cur).result(30) or 0)
             ctx.meta_put(MERGE_CURSOR, int(top))
             st.add(merged)
             st.extra["segments"] = st.extra.get("segments", 0) + len(segs)
