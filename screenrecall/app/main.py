@@ -1,11 +1,12 @@
-"""v2 主进程骨架：python -m screenrecall.app [--data-dir D] [--port P] [--no-tray] [--no-browser] [--fake-queries]
+"""v2 主进程：python -m screenrecall.app [--data-dir D] [--port P] [--no-tray] [--no-browser] [--fake-queries]
 
-做的事（按顺序）：单实例检查 → 建好只有本人能读的目录 → 令牌与 endpoint.json → 绑定端口 →
-拼网页应用（旧版 webapi + /mcp + 登录入口，外面包 AuthGuard）并在线程里运行 → 写 MCP 工具缓存 →
-启动子进程看护（录制进程、空闲整理进程在集成阶段接入，现在是空列表）→ 空闲监视 → 托盘（主线程）→ 退出时依次收尾。
+做的事（按顺序）：单实例检查 → 建好只有本人能读的目录 → v2 存储（写线程、只读查询、检索服务；第一次用的数据目录
+写入默认规则并开始录制）→ 令牌与 endpoint.json → 绑定端口 → 拼网页应用（/api/v2 + 旧版 webapi + /mcp +
+登录入口，外面包 AuthGuard）并在线程里运行 → 写 MCP 工具缓存 → 启动子进程看护（录制进程一直在；
+空闲整理进程只在电脑空闲时运行）→ 空闲监视 → 托盘（主线程）→ 退出时依次收尾。
 
 已经有一个实例在运行时，第二次启动只是让它打开主页，然后退出。
-数据层、录制控制都还没接：MCP 默认用 NotReadyQueries（--fake-queries 改用合成数据），托盘动作用 PlaceholderController。
+--fake-queries（测试 / 演示）：不接 v2 存储、不启动子进程，MCP 用合成数据，托盘动作用 PlaceholderController。
 """
 from __future__ import annotations
 
@@ -15,13 +16,15 @@ import hashlib
 import logging
 import logging.handlers
 import os
+import secrets
 import sys
 import threading
+import time
 import webbrowser
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 import anyio
 import httpx
@@ -32,7 +35,12 @@ from starlette.routing import Route
 from . import auth, idle, mcp_server, mcp_shim, paths, server, supervisor, tray
 
 DEFAULT_PORT = 8611
+RECORDER_CHILD = "recorder"
 IDLE_CHILD = "idle-worker"
+RECORDER_MODULE = "screenrecall.v2.recorder"
+WORKER_MODULE = "screenrecall.v2.worker"
+V2_NOTICE = "页面只在本机访问（127.0.0.1），需要从托盘图标的“打开主页”登录。"
+HOUSEKEEPING_S = 2.0
 log = logging.getLogger("screenrecall.app")
 
 
@@ -117,6 +125,22 @@ class AppOptions:
     extra_origins: tuple[str, ...] = ()
     children: list[supervisor.ChildSpec] = field(default_factory=list)
     idle_threshold_s: float = 300.0
+    store: bool = False             # 接 v2 存储（/api/v2、MCP 查询、托盘控制）；命令行在没有 --fake-queries 时打开
+    cfg: Any = None                 # v2.config.V2Config；store=True 且没给时按 data_dir / home 读
+
+
+def build_children(cfg, *, home: Path, recorder_module: str = RECORDER_MODULE,
+                   worker_module: str | None = WORKER_MODULE) -> list[supervisor.ChildSpec]:
+    """录制进程（一直运行，退出就重启）+ 空闲整理进程（空闲时才启动，出错才重启，低优先级）。"""
+    args = ("--data-dir", str(cfg.data_dir), "--home", str(home))
+    logs = Path(cfg.logs_dir)
+    specs = [supervisor.ChildSpec(RECORDER_CHILD, supervisor.python_child(recorder_module, *args), restart="always",
+                                  env=supervisor.child_env(), log_path=logs / "recorder.out.log")]
+    if worker_module:
+        specs.append(supervisor.ChildSpec(IDLE_CHILD, supervisor.python_child(worker_module, *args),
+                                          restart="on-failure", autostart=False, below_normal=True,
+                                          env=supervisor.child_env(), log_path=logs / "idle-worker.out.log"))
+    return specs
 
 
 class MainApp:
@@ -124,10 +148,14 @@ class MainApp:
                  controller: Controller | None = None, policy: mcp_server.AgentPolicy | None = None):
         self.opts = opts
         self.home = opts.home or paths.app_home()
-        self.data_dir = opts.data_dir or (self.home / "data")
+        self.data_dir = Path(opts.cfg.data_dir) if opts.cfg is not None else (opts.data_dir or (self.home / "data"))
+        self._given = (queries, controller, policy)
         self.queries = queries or (mcp_server.FakeQueries() if opts.fake_queries else mcp_server.NotReadyQueries())
         self.controller = controller or PlaceholderController()
         self.policy = policy or mcp_server.AgentPolicy()
+        self.stack = None               # v2.adapters.StoreStack（store=True 时）
+        self.guard: auth.AuthGuard | None = None
+        self._housekeeping: threading.Thread | None = None
         self.nonces = auth.NonceStore()
         self.instance = SingleInstance(self.home)
         self.stopped = threading.Event()
@@ -145,11 +173,32 @@ class MainApp:
         from .. import webapi
         from ..config import load_config
 
-        return webapi.create_app(load_config(self.data_dir), port=port, extra_origins=self.opts.extra_origins)
+        notice = V2_NOTICE if self.opts.store else webapi.NO_AUTH_NOTICE
+        return webapi.create_app(load_config(self.data_dir), port=port, extra_origins=self.opts.extra_origins,
+                                 notice=notice)
+
+    def _start_store(self) -> list:
+        """v2 存储与 /api/v2 路由；返回要挂上的路由。"""
+        from ..v2 import adapters, web
+        from ..v2.config import load_v2
+
+        cfg = self.opts.cfg or load_v2(self.data_dir, home=self.home)
+        self.stack = adapters.StoreStack(cfg)
+        if self.stack.seed_control():
+            log.info("新的数据目录：已写入默认排除规则并开始录制")
+        queries, controller, policy = self._given
+        self.queries = queries or adapters.StoreQueriesAdapter(self.stack.queries, self.stack.search)
+        self.controller = controller or adapters.StoreController(self.stack)
+        self.policy = policy or adapters.agent_policy(self.stack.control)
+        ctx = web.V2Context(self.stack, self.home, idle_running=self._idle_running, rotate_token=self._rotate_token,
+                            on_settings=self._on_settings)
+        return web.routes(ctx)
 
     def start(self) -> "MainApp":
+        t0 = time.perf_counter()
         paths.ensure_private_dir(self.home)
         paths.ensure_private_dir(self.data_dir)
+        v2_routes = self._start_store() if self.opts.store else []
         token = auth.load_or_create_token(self.home)
         sock = server.bind_socket(self.opts.port)
         port = sock.getsockname()[1]
@@ -160,17 +209,49 @@ class MainApp:
             threading.Thread(target=self.request_stop, daemon=True).start()
             return JSONResponse({"message": "正在退出"})
 
-        app = server.build_app(port=port, token=token, nonces=self.nonces, mcp=mcp, legacy=self._legacy_app(port),
-                               extra_routes=[Route("/api/app/quit", quit_route, methods=["POST"])],
-                               extra_origins=self.opts.extra_origins)
-        self.web = server.ServerThread(app, sock).start()
+        self.guard = server.build_app(port=port, token=token, nonces=self.nonces, mcp=mcp,
+                                      legacy=self._legacy_app(port),
+                                      extra_routes=[Route("/api/app/quit", quit_route, methods=["POST"]), *v2_routes],
+                                      extra_origins=self.opts.extra_origins)
+        self.web = server.ServerThread(self.guard, sock).start()
         self.endpoint = auth.Endpoint(port, token, os.getpid())
         auth.write_endpoint(self.endpoint, self.home)  # 服务已经能接请求后再公布端口
-        log.info("主进程已启动：http://127.0.0.1:%d（数据目录 %s）", port, self.data_dir)
+        log.info("主进程已启动：http://127.0.0.1:%d（数据目录 %s，用时 %.2f 秒）", port, self.data_dir,
+                 time.perf_counter() - t0)
         self.sup = supervisor.Supervisor(self.opts.children).start()
-        self.idle = idle.IdleWatcher(self.opts.idle_threshold_s, on_idle_start=self._on_idle,
-                                     on_idle_end=self._on_active).start()
+        threshold = self.stack.cfg.idle.threshold_s if self.stack is not None else self.opts.idle_threshold_s
+        self.idle = idle.IdleWatcher(threshold, on_idle_start=self._on_idle, on_idle_end=self._on_active).start()
+        if hasattr(self.controller, "tick"):
+            self._housekeeping = threading.Thread(target=self._housekeep, name="screenrecall-housekeeping",
+                                                  daemon=True)
+            self._housekeeping.start()
         return self
+
+    def _housekeep(self) -> None:
+        """暂停到点改回录制、补删没删掉的向量（StoreController.tick）。"""
+        while not self.stopped.wait(HOUSEKEEPING_S):
+            try:
+                self.controller.tick()
+            except Exception:  # noqa: BLE001 - 定时任务不能停
+                log.warning("定时检查出错", exc_info=True)
+
+    def _idle_running(self) -> bool:
+        return bool(self.sup and IDLE_CHILD in self.sup.status() and self.sup.pid(IDLE_CHILD) is not None)
+
+    def _on_settings(self, changes: dict) -> None:
+        if "idle_minutes" in changes and self.idle is not None:
+            self.idle.threshold_s = float(changes["idle_minutes"]) * 60.0
+
+    def _rotate_token(self) -> str:
+        """"重置访问令牌"：新令牌写进 endpoint.json（转发程序每次调用现读），旧令牌和旧 Cookie 立即失效。
+        返回给当前浏览器的新 Set-Cookie 值。"""
+        assert self.endpoint is not None and self.guard is not None
+        token = secrets.token_urlsafe(32)
+        self.guard.set_token(token)
+        self.endpoint = auth.Endpoint(self.endpoint.port, token, os.getpid())
+        auth.write_endpoint(self.endpoint, self.home)
+        log.info("访问令牌已重置")
+        return auth.session_cookie(self.endpoint.port, token)
 
     def _on_idle(self, reason: str) -> None:
         log.info("电脑进入空闲（%s）", reason)
@@ -227,6 +308,13 @@ class MainApp:
             self.sup.stop_all()
         if self.web:
             self.web.stop()
+        if self._housekeeping is not None:
+            self._housekeeping.join(5)
+        if self.stack is not None:
+            try:
+                self.stack.close()
+            except Exception:  # noqa: BLE001
+                log.warning("关闭存储出错", exc_info=True)
         if self.endpoint:
             try:
                 auth.write_endpoint(auth.Endpoint(self.endpoint.port, self.endpoint.token, None), self.home)
@@ -272,18 +360,36 @@ def _setup_logging(home: Path) -> None:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m screenrecall.app", description="ScreenRecall v2 主进程")
     ap.add_argument("--data-dir", help="数据目录（默认 %%LOCALAPPDATA%%\\ScreenRecall\\data）")
-    ap.add_argument("--port", type=int, default=DEFAULT_PORT, help="优先使用的端口（被占用时自动换一个）")
+    ap.add_argument("--port", type=int, default=None,
+                    help=f"优先使用的端口（默认取配置 [v2.app] port，即 {DEFAULT_PORT}；被占用时自动换一个；0 = 任意）")
     ap.add_argument("--no-tray", action="store_true", help="不显示托盘图标（按 Ctrl+C 退出）")
     ap.add_argument("--no-browser", action="store_true", help="启动后不打开主页")
     ap.add_argument("--autostart", action="store_true", help="开机自启时使用：不打开主页")
     ap.add_argument("--fake-queries", action="store_true", help="MCP 用合成数据（开发 / 演示）")
     ap.add_argument("--no-legacy-web", action="store_true", help="不挂旧版 webapi")
     ap.add_argument("--dev-origin", action="append", default=[], help="开发时允许的前端地址")
+    ap.add_argument("--no-children", action="store_true", help="不启动录制进程和空闲整理进程（只开网页和 MCP）")
+    # 测试用：换掉子进程模块（真实窗口测试用替身，不录用户自己的屏幕）
+    ap.add_argument("--recorder-module", default=RECORDER_MODULE, help=argparse.SUPPRESS)
+    ap.add_argument("--worker-module", default=WORKER_MODULE, help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
     home = paths.app_home()
     paths.ensure_private_dir(home)
     _setup_logging(home)
-    opts = AppOptions(home=home, data_dir=Path(a.data_dir) if a.data_dir else None, port=a.port,
-                      tray=not a.no_tray, open_browser=not (a.no_browser or a.autostart),
-                      fake_queries=a.fake_queries, legacy_web=not a.no_legacy_web, extra_origins=tuple(a.dev_origin))
+    store = not a.fake_queries
+    cfg = None
+    children: list[supervisor.ChildSpec] = []
+    if store:
+        from ..v2.config import load_v2
+
+        cfg = load_v2(a.data_dir, home=home)
+        if not a.no_children:
+            children = build_children(cfg, home=home, recorder_module=a.recorder_module,
+                                      worker_module=a.worker_module or None)
+    port = a.port if a.port is not None else (cfg.app.port if cfg is not None else DEFAULT_PORT)
+    opts = AppOptions(home=home, data_dir=Path(cfg.data_dir) if cfg else (Path(a.data_dir) if a.data_dir else None),
+                      port=port, tray=not a.no_tray, open_browser=not (a.no_browser or a.autostart),
+                      fake_queries=a.fake_queries, legacy_web=not a.no_legacy_web, extra_origins=tuple(a.dev_origin),
+                      children=children, store=store, cfg=cfg,
+                      idle_threshold_s=cfg.idle.threshold_s if cfg else 300.0)
     return MainApp(opts).run()
