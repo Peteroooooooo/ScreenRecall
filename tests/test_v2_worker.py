@@ -603,6 +603,158 @@ def test_full_pass_then_exit_when_nothing_left(tmp_path):
     assert rep["rss_mb"] is None or rep["rss_mb"] > 0
 
 
+def test_open_activity_does_not_keep_the_worker_alive(tmp_path):
+    """录制进程开着时总有一条进行中的焦点记录：每轮都会延长它，但这不算"有活"，整理进程照样自己退出。"""
+    cfg = make_cfg(tmp_path, idle={"clip": False})
+    with Writer(cfg.data_dir) as w:
+        w.activity_start(now_ms() - 600_000, hwnd=1, pid=1, process="code.exe", title="a.py").result(5)
+        w.heartbeat(recorder_state="recording").result(5)
+    stop = StopFlag()
+    guard = threading.Timer(8.0, stop.set)
+    guard.start()
+    try:
+        rep = run(cfg, once=False, stop=stop)
+    finally:
+        guard.cancel()
+    assert not rep["stopped"] and rep["passes"] == 1
+    assert db(cfg).execute("SELECT COUNT(*) FROM pieces").fetchone()[0] == 1
+
+
+class _HookLlm(FakeLlm):
+    """第 n 次调用时（等回答期间）先执行 hook —— 模拟主进程这时做了隐私删除。"""
+
+    def __init__(self, hook, at=1, **kw):
+        super().__init__(**kw)
+        self.hook, self.at = hook, at
+
+    def chat(self, messages, **kw):
+        if len(self.calls) + 1 == self.at:
+            self.hook()
+        return super().chat(messages, **kw)
+
+
+def _raw(cfg, sql, *args):
+    from screenrecall.store import schema
+
+    c = schema.connect(schema.db_path(cfg.data_dir))
+    try:
+        c.execute("BEGIN IMMEDIATE")
+        c.execute(sql, args)
+        c.execute("COMMIT")
+    finally:
+        c.close()
+
+
+def test_piece_summary_is_dropped_when_its_lines_are_deleted_during_the_call(tmp_path):
+    """store.delete 先删行、后清片段概括：大模型回答晚于删行到达时，不能把含被删文字的概括写回去。"""
+    cfg = make_cfg(tmp_path, idle={"clip": False, "llm_min_interval_s": 0})
+    _piece_with_lines(cfg, texts=("本周完成：接口联调", "秘密：工资条"))
+    llm = _HookLlm(lambda: _raw(cfg, "DELETE FROM lines WHERE text = ?", "秘密：工资条"))
+    rep = run(cfg, llm=llm)
+    c = db(cfg)
+    assert c.execute("SELECT COUNT(*) FROM summaries").fetchone()[0] == 0
+    assert c.execute("SELECT task_label FROM pieces").fetchone()[0] is None
+    assert tuple(c.execute("SELECT status, attempts FROM jobs WHERE kind = ?", (PIECE_JOB,)).fetchone()) == (
+        "pending", 0)
+    assert rep["steps"]["llm"]["discarded"] == 1
+    llm2 = FakeLlm()
+    run(cfg, llm=llm2)  # 下一次：用剩下的行重写
+    sent = " ".join(m["content"] for call in llm2.calls for m in call)
+    assert "工资条" not in sent and "接口联调" in sent
+    assert c.execute("SELECT status FROM summaries WHERE level = 'piece'").fetchone()[0] == "ok"
+
+
+def test_piece_summary_is_dropped_when_the_piece_is_deleted_during_the_call(tmp_path):
+    cfg = make_cfg(tmp_path, idle={"clip": False, "llm_min_interval_s": 0})
+    _piece_with_lines(cfg)
+    run(cfg, llm=_HookLlm(lambda: _raw(cfg, "DELETE FROM pieces")))
+    assert db(cfg).execute("SELECT COUNT(*) FROM summaries").fetchone()[0] == 0
+
+
+def test_day_summary_is_dropped_when_a_piece_summary_is_cleared_during_the_call(tmp_path):
+    cfg = make_cfg(tmp_path, idle={"clip": False, "llm_min_interval_s": 0})
+    _piece_with_lines(cfg)
+    clear = lambda: _raw(cfg, "UPDATE summaries SET text = '', status = 'stale' WHERE level = 'piece'")  # noqa: E731
+    run(cfg, llm=_HookLlm(clear, at=2))  # 第 2 次调用 = 天概括
+    c = db(cfg)
+    assert c.execute("SELECT COUNT(*) FROM summaries WHERE level = 'day'").fetchone()[0] == 0
+    run(cfg, llm=FakeLlm())  # 片段概括重写后天概括照常补上
+    assert c.execute("SELECT status FROM summaries WHERE level = 'day'").fetchone()[0] == "ok"
+
+
+def test_failed_day_summary_is_not_retried_on_every_pass(tmp_path):
+    cfg = make_cfg(tmp_path, idle={"clip": False, "llm_min_interval_s": 0})
+    _piece_with_lines(cfg)
+    _piece_with_lines(cfg, app="excel.exe", title="预算.xlsx", texts=("第二季度预算表",))
+
+    class DayFails(FakeLlm):
+        def chat(self, messages, **kw):
+            if '"task"' not in messages[0]["content"]:
+                self.calls.append(messages)
+                raise LlmError("天概括失败")
+            return super().chat(messages, **kw)
+
+    llm = DayFails()
+    rep = run(cfg, llm=llm, once=False)
+    days = [m for m in llm.calls if '"task"' not in m[0]["content"]]
+    assert len(days) == 1 and rep["passes"] >= 2
+
+
+def test_llm_error_details_stay_out_of_the_log(tmp_path, caplog):
+    """接口的错误详情可能原样带回发过去的屏幕文字：日志里只记错误类型和状态码。"""
+    from screenrecall.app.llm import LlmHttpError
+
+    cfg = make_cfg(tmp_path, idle={"clip": False, "llm_min_interval_s": 0})
+    _piece_with_lines(cfg)
+    caplog.set_level(logging.DEBUG)
+    run(cfg, llm=FakeLlm(fail=LlmHttpError(400, "bad request: '本周完成：接口联调' is not allowed")))
+    text = "\n".join(caplog.messages)
+    assert "接口联调" not in text and "LlmHttpError HTTP 400" in text
+
+
+def test_stop_during_a_slow_ocr_call_returns_quickly_without_using_an_attempt(tmp_path):
+    cfg = make_cfg(tmp_path, idle={"clip": False})
+    t = now_ms() - HOUR
+    with Writer(cfg.data_dir) as w:
+        sid = w.segment_for("a.exe", "doc", t).result(5)
+        b = w.block_new(sid, t).result(5)
+        frame_with_region(w, sid, b, t)
+
+    class SlowOcr(FakeOcr):
+        def recognize(self, img, *, crop=False):
+            time.sleep(5.0)  # 整帧 small 复查要好几秒
+            return super().recognize(img, crop=crop)
+
+    stop = StopFlag()
+    threading.Timer(0.3, stop.set).start()
+    t0 = time.monotonic()
+    rep = run(cfg, ocr=SlowOcr(), stop=stop)
+    assert time.monotonic() - t0 < 2.0 and rep["stopped"]
+    r = db(cfg).execute("SELECT status, attempts FROM ocr_regions").fetchone()
+    assert tuple(r) == ("pending", 0)
+
+
+def test_clip_checks_stop_between_small_batches(tmp_path):
+    cfg = make_cfg(tmp_path)
+    t = now_ms() - HOUR
+    with Writer(cfg.data_dir) as w:
+        for i in range(20):
+            w.save_frame(np.full((20, 20, 3), i, np.uint8), captured_ms=t + i)
+        w.flush()
+    stop = StopFlag()
+
+    class StopClip(FakeClip):
+        def encode(self, images):
+            stop.set()
+            return super().encode(images)
+
+    clip = StopClip()
+    rep = run(cfg, clip=clip, stop=stop)
+    assert rep["stopped"] and clip.encoded <= 8 and clip.exited == 1
+    vs = VectorStore(cfg.data_dir / "vectors" / "image", 512, readonly=True)
+    assert len(vs) == clip.encoded
+
+
 def test_config_defaults_for_worker_fields(tmp_path, monkeypatch):
     monkeypatch.delenv("SCREENRECALL_DATA_DIR", raising=False)
     cfg = make_cfg(tmp_path)

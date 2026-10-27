@@ -13,7 +13,7 @@ import logging
 from typing import Callable
 
 from ..store.writer import LineIn
-from .work_common import Ctx, Stopped, log, read_image, timed
+from .work_common import Ctx, Stopped, interruptible, log, read_image, timed
 
 OcrFactory = Callable[[str], object]  # model -> 有 recognize(bgr, crop=True) 的引擎
 
@@ -71,7 +71,11 @@ class OcrStep:
                     if ctx.stop.is_set():
                         _release(ctx, [x["region_id"] for x in regions[i:]])
                         raise Stopped()
-                    self._one(engine, r, cache, st)
+                    try:
+                        self._one(engine, r, cache, st)
+                    except Stopped:  # 识别到一半收到停止：这一块和后面的都放回去，不算尝试
+                        _release(ctx, [x["region_id"] for x in regions[i:]])
+                        raise
                     done += 1
                     st.add()
         return done
@@ -92,7 +96,7 @@ class OcrStep:
             lines: list[LineIn] = []
             if x1 - x0 >= 2 and y1 - y0 >= 2:
                 crop = img[y0:y1, x0:x1]
-                found = engine.recognize(crop, crop=True)
+                found = self._recognize(engine, crop)
                 found = self._second_pass(crop, found, st)
                 for ln in found:
                     text = str(ln.text).strip()
@@ -115,6 +119,11 @@ class OcrStep:
             else:
                 ctx.writer.call(_defer, rid, err, ctx.clock()).result(30)
 
+    def _recognize(self, engine, crop) -> list:
+        """整帧区域用 small 复查一次要好几秒：放到守护线程里，收到停止马上返回（Stopped），
+        不会被主进程在宽限期后强杀（强杀会白白用掉一次尝试）。"""
+        return interruptible(self.ctx.stop, lambda: engine.recognize(crop, crop=True), name="ocr")
+
     def _second_pass(self, crop, found: list, st) -> list:
         cfg = self.ctx.cfg.ocr
         if not cfg.second_pass or not found or cfg.model == "small":
@@ -126,7 +135,7 @@ class OcrStep:
         if small is None:
             return found
         st.extra["second_pass"] = st.extra.get("second_pass", 0) + 1
-        better = small.recognize(crop, crop=True)
+        better = self._recognize(small, crop)
         if not better:
             return found
         mean2 = sum(float(x.confidence) for x in better) / len(better)
