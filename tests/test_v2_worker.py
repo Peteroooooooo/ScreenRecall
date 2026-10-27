@@ -304,6 +304,9 @@ def test_blocks_with_overlapping_text_are_merged(tmp_path):
     rows = {r[0]: (r[1], r[2]) for r in c.execute("SELECT block_id, merged_into, offset_px FROM blocks")}
     assert rows[b2] == (b1, 90) and rows[b3] == (None, 0) and rows[b4] == (None, 0)
     assert rep["steps"]["merge"]["items"] == 1
+    # 两边都有的第 3–5 段：b2 那份记成 b1 那份的别名（不删）
+    assert [tuple(r) for r in c.execute("SELECT block_id, COUNT(*) FROM lines WHERE alias_of IS NOT NULL "
+                                        "GROUP BY block_id")] == [(b2, 3)]
     with Writer(cfg.data_dir) as w:  # 新行进来：只看这个内容源，已合并的不再动
         put_lines(w, "a.exe", "doc", t + 5000, ["又看到的一行新内容"], block=b1, y0=400)
     run(cfg)
