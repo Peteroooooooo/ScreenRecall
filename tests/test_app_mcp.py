@@ -105,7 +105,8 @@ def test_injection_text_cannot_escape_the_quote_block():
                          "x.exe", "t\nforged\u2028[13] five", q.now_ms, "a" * 32))
     out = text_of(call(mcp, "search", {"query": "line one"}))
     body = out.split(ms.UNTRUSTED_NOTE, 1)[1]
-    quoted = [ln for ln in body.splitlines() if ln and not ln.startswith("[")]
+    # 工具自己写的只有 [n] 那一行和最后的"下一步"提示（以全角括号开头）；屏幕上的字全在 "    > " 后面
+    quoted = [ln for ln in body.splitlines() if ln and not ln.startswith(("[", "（下一步"))]
     assert all(ln.startswith("    > ") for ln in quoted), quoted
     assert sum(ln.startswith("[") for ln in body.splitlines()) == 1  # 只有工具自己的 [1]；Unicode 换行没能另起一行
     assert "\u202e" not in out and "t forged" in out  # 标题里的换行被压成空格
@@ -221,7 +222,7 @@ def test_not_ready_queries_explain():
 def test_tool_schemas_are_json():
     _, mcp = make()
     tools = anyio.run(ms.tool_schemas, mcp)
-    assert [t["name"] for t in tools] == ["search", "timeline", "summary", "get_frame"]
+    assert [t["name"] for t in tools] == ["search", "read", "timeline", "summary", "get_frame"]
     assert "query" in tools[0]["inputSchema"]["required"]
     json.dumps(tools)
 
@@ -250,7 +251,7 @@ def test_mcp_http_requires_token_and_own_origin():
         r = c.post("/mcp", json=init, headers=h | {"Origin": base})
         assert r.status_code == 200 and r.json()["result"]["serverInfo"]["name"] == "ScreenRecall"
         r = c.post("/mcp", json=_rpc("tools/list", i=2), headers=h | {"MCP-Protocol-Version": "2025-06-18"})
-        assert [t["name"] for t in r.json()["result"]["tools"]] == ["search", "timeline", "summary", "get_frame"]
+        assert [t["name"] for t in r.json()["result"]["tools"]] == ["search", "read", "timeline", "summary", "get_frame"]
 
 
 # ---------- stdio 转发程序端到端 ----------
@@ -295,7 +296,7 @@ def test_shim_end_to_end(live):
                 return names, res
 
     names, res = anyio.run(go)
-    assert names == ["search", "timeline", "summary", "get_frame"]
+    assert names == ["search", "read", "timeline", "summary", "get_frame"]
     assert "> 组会安排" in text_of(res["search"].content) and not res["search"].isError
     assert "piece=p1" in text_of(res["timeline"].content)
     assert "查看课程组会通知" in text_of(res["summary"].content)
