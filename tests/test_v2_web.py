@@ -620,6 +620,65 @@ def test_delete_recent_really_removes_sentinel(client, env):
     assert client.get("/api/v2/search", params={"q": "report"}).json()["total_groups"] == 1
 
 
+def test_delete_removes_paragraph_vectors_built_from_deleted_lines(tmp_path, monkeypatch):
+    """文字向量按段落算（id = 段落第一行，或重组后的负数编号）：删掉段落里不是第一行的那一行，
+    段落向量也要删掉（它是用被删的字算的），语义检索不能再用它把剩下的行排上来。"""
+    e = np.eye(DIM, dtype=np.float32)
+    env = F.build_env(tmp_path, monkeypatch, fill_data=False)
+    try:
+        w = env.stack.writer
+        t = utc_ms() - 3 * 3600_000
+        sid = w.segment_for("tk.exe", "para", t).result(5)
+        b = w.block_new(sid, t).result(5)
+        ids = []
+        for i, text in enumerate(["first line", "secret middle", "last line"]):
+            ids += w.record_lines(b, t + i * 600_000, (0, 1000), [LineIn(text, 0, 10 + i * 30, 300, 24 + i * 30)]
+                                  ).result(5)
+        neg = -7  # 重组过的段落
+        w.call(lambda c: c.executemany("INSERT INTO text_chunks (line_id, chunk_id) VALUES (?, ?)",
+                                       [(ids[0], ids[0]), (ids[1], ids[0])])).result(5)
+        w.call(lambda c: c.execute("INSERT INTO text_chunks (line_id, chunk_id) VALUES (?, ?)", (ids[2], neg))).result(5)
+        vs = VectorStore(text_vectors_dir(env.data), DIM)
+        vs.append([ids[0], neg], e[:2], [t, t + 1_200_000], [sid, sid])
+        vs.close()
+        env.stack.search = SearchService(env.data, encoder=FakeEncoder(e[0]), model_check=lambda: True)
+        with TestClient(env.guard, base_url=F.BASE, follow_redirects=False) as c:
+            F.login(c, env)
+            r = c.get("/api/v2/search", params={"q": "zzzz"}).json()
+            assert sorted(h["line_id"] for g in r["groups"] for h in g["hits"]) == ids[:2]  # 段落向量命中
+            # 只删中间那一行（时间范围只盖住它）
+            d = c.post("/api/v2/delete", json={"from_ms": t + 500_000, "to_ms": t + 700_000}, headers=F.POST_H).json()
+            assert d["deleted"]["lines"] == 1 and d["deleted"]["text_vectors"] == 1
+            assert c.get("/api/v2/search", params={"q": "zzzz"}).json()["groups"] == []
+        vs2 = VectorStore(text_vectors_dir(env.data), DIM, readonly=True)
+        assert len(vs2) == 1  # 只剩没碰到的那个段落
+        vs2.close()
+        assert not env.stack.deleter.pending_path.exists()
+        env.stack.search.close()
+    finally:
+        env.stack.close()
+
+
+def test_delete_bumps_revision_and_retries_busy_checkpoint(client, env, monkeypatch):
+    from screenrecall.store import delete as store_delete
+
+    conn = env.stack.queries.conn()
+    rev = lambda: int(conn.execute("SELECT value FROM meta WHERE key = 'revision'").fetchone()[0])  # noqa: E731
+    before = rev()
+    real = store_delete.checkpoint
+    monkeypatch.setattr(store_delete, "checkpoint", lambda c, tries=5: True)  # 有读者占着
+    r = client.post("/api/v2/delete", json={"recent_minutes": 5}, headers=F.POST_H).json()
+    assert r["deleted"]["checkpoint_busy"] is True
+    assert rev() > before  # 开着的"今天"页面据此刷新
+    dl = env.stack.deleter
+    assert json.loads(dl.pending_path.read_text(encoding="utf-8"))["checkpoint"] is True
+    dl.retry()
+    assert dl.pending_path.exists()  # 还是忙
+    monkeypatch.setattr(store_delete, "checkpoint", real)
+    dl.retry()
+    assert not dl.pending_path.exists()
+
+
 def test_delete_by_app_and_range(client, env):
     base = F.day_base()
     r = client.post("/api/v2/delete", json={"from_ms": base + 4_000, "to_ms": base + 6_000}, headers=F.POST_H)

@@ -136,10 +136,11 @@ class Deleter:
         self.on_deleted, self.clock = on_deleted, clock
         self.vector_retries, self.retry_sleep_s = vector_retries, retry_sleep_s
         self._pending: dict[str, set[int]] = {"text": set(), "image": set()}
+        self._checkpoint_pending = False
         self._lock = threading.Lock()  # 删除一次一个
         self._load_pending()
 
-    # 没删掉的向量 id 记在数据目录里（只有 id，没有内容）：主进程在补删成功前退出，下次启动接着删
+    # 没删掉的向量 id（只有 id，没有内容）和"检查点没做完"记在数据目录里：主进程在补做成功前退出，下次启动接着做
     @property
     def pending_path(self) -> Path:
         return self.data_dir / PENDING_VECTOR_DELETES
@@ -155,13 +156,16 @@ class Deleter:
         if isinstance(raw, dict):
             for kind in self._pending:
                 self._pending[kind].update(int(x) for x in raw.get(kind, ()) if isinstance(x, int))
+            self._checkpoint_pending = raw.get("checkpoint") is True
 
     def _save_pending(self) -> None:
         try:
-            if any(self._pending.values()):
+            if any(self._pending.values()) or self._checkpoint_pending:
                 from ..app.paths import write_private_file
 
-                data = {k: sorted(v) for k, v in self._pending.items()}
+                data: dict[str, Any] = {k: sorted(v) for k, v in self._pending.items()}
+                if self._checkpoint_pending:
+                    data["checkpoint"] = True
                 write_private_file(self.pending_path, json.dumps(data).encode("utf-8"))
             else:
                 self.pending_path.unlink(missing_ok=True)
@@ -177,20 +181,38 @@ class Deleter:
                 keep_recent_segments_ms=self.keep_recent_segments_ms))
             rep = fut.result(timeout_s)
             out = rep.to_dict()
+            # 文字向量有两种 id：单行（line_id）和段落（chunk_id，段落里任何一行被删，整段向量都是用被删的字算的）
             self._pending["text"].update(rep.line_ids)
+            self._pending["text"].update(rep.chunk_ids)
             self._pending["image"].update(rep.frame_nos)
             out["text_vectors"], out["image_vectors"] = self._flush_vectors()
+            # 有读者占着、WAL 没截断：被删内容的旧页面还在 -wal 里，定时再做（retry）
+            self._checkpoint_pending = self._checkpoint_pending or bool(rep.checkpoint_busy)
             self._save_pending()
             out["vectors_pending"] = sum(len(v) for v in self._pending.values())
+            # 删除走的是事务之外的写操作，不会顺带加 revision：补一个空操作，开着的页面据此刷新
+            self.writer.call(_noop).result(30)
         if self.on_deleted:
             self.on_deleted()
         return out
 
     def retry(self) -> int:
-        """补删上次没删掉的向量；返回还剩多少。"""
+        """补删上次没删掉的向量、补做没做完的检查点；返回还剩多少个向量。"""
         with self._lock:
+            changed = False
             if any(self._pending.values()):
                 self._flush_vectors()
+                changed = True
+            if self._checkpoint_pending:
+                try:
+                    busy = self.writer.run_raw(store_delete.checkpoint, 1).result(30)
+                except Exception:  # noqa: BLE001 - 下次再试
+                    log.warning("删除后的检查点出错", exc_info=True)
+                    busy = True
+                if not busy:
+                    self._checkpoint_pending = False
+                    changed = True
+            if changed:
                 self._save_pending()
             return sum(len(v) for v in self._pending.values())
 
@@ -219,6 +241,10 @@ class Deleter:
                             time.sleep(self.retry_sleep_s)
             counts.append(n)
         return counts[0], counts[1]
+
+
+def _noop(_conn) -> None:
+    return None
 
 
 # ---------------- 第一次使用 ----------------
