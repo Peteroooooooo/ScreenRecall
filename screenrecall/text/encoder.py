@@ -140,7 +140,11 @@ class OnnxTextEncoder:
 
 
 class LazyTextEncoder:
-    """主进程查询用：第一次 encode 时加载，闲置 idle_unload_s 秒后卸载释放内存。"""
+    """主进程查询用：第一次 encode 时加载，闲置 idle_unload_s 秒后卸载释放内存。
+
+    实测（10 轮加载 / 卸载）：工作集 880 MiB -> 卸载后约 85 MiB；但进程的已提交内存（private）
+    停在约 550 MiB 不再增长（分配器留着的堆，系统可以换出），不随轮数增加。
+    """
 
     def __init__(self, idle_unload_s: float = 300.0, **kwargs):
         self._kwargs = kwargs
@@ -149,6 +153,7 @@ class LazyTextEncoder:
         self._last = 0.0
         self._lock = threading.Lock()
         self._timer: threading.Timer | None = None
+        self._max_tokens: int | None = None
         spec = kwargs.get("spec", DEFAULT_MODELS.text)
         self.model_id = spec.model_id
         self.dim = DIM
@@ -161,13 +166,17 @@ class LazyTextEncoder:
         with self._lock:
             if self._enc is None:
                 self._enc = OnnxTextEncoder(**self._kwargs)
+                self._max_tokens = self._enc.max_tokens
             self._last = time.monotonic()
             self._arm()
             return self._enc
 
     @property
     def max_tokens(self) -> int:
-        return self._get().max_tokens
+        # 只读一个配置值：加载过一次就记住，卸载后再问不重新加载模型
+        if self._max_tokens is None:
+            self._get()
+        return int(self._max_tokens)
 
     def encode(self, texts: Sequence[str]) -> np.ndarray:
         return self._get().encode(texts)
