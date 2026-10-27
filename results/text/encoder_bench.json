@@ -1,0 +1,60 @@
+{
+  "note": "i5-12600KF (AVX2, no AVX-512); fresh process per mode; synthetic zh/en texts",
+  "runs": [
+    {
+      "mode": "onnx",
+      "threads": 2,
+      "load_s": 1.82,
+      "rss_base_mib": 18,
+      "rss_loaded_mib": 879,
+      "private_loaded_mib": 1474,
+      "rss_peak_encoding_mib": 941,
+      "texts_per_s_batch16": 28.2,
+      "single_query_ms": 32.9
+    },
+    {
+      "mode": "onnx_noarena",
+      "threads": 2,
+      "load_s": 1.86,
+      "rss_base_mib": 18,
+      "rss_loaded_mib": 790,
+      "private_loaded_mib": 1255,
+      "rss_peak_encoding_mib": 844,
+      "texts_per_s_batch16": 21.6,
+      "single_query_ms": 33.4
+    },
+    {
+      "mode": "torch",
+      "threads": 2,
+      "load_s": 16.8,
+      "rss_base_mib": 18,
+      "rss_loaded_mib": 1170,
+      "private_loaded_mib": 2137,
+      "rss_peak_encoding_mib": 1234,
+      "texts_per_s_batch16": 22.1,
+      "single_query_ms": 52.7
+    },
+    {
+      "mode": "onnx",
+      "threads": 4,
+      "load_s": 1.96,
+      "rss_base_mib": 18,
+      "rss_loaded_mib": 880,
+      "private_loaded_mib": 1476,
+      "rss_peak_encoding_mib": 944,
+      "texts_per_s_batch16": 54.3,
+      "single_query_ms": 19.5
+    },
+    {
+      "mode": "torch",
+      "threads": 4,
+      "load_s": 16.82,
+      "rss_base_mib": 18,
+      "rss_loaded_mib": 1171,
+      "private_loaded_mib": 2136,
+      "rss_peak_encoding_mib": 1247,
+      "texts_per_s_batch16": 39.0,
+      "single_query_ms": 35.3
+    }
+  ]
+}
