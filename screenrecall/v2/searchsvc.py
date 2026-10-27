@@ -3,8 +3,8 @@
 - 查询模型 LazyTextEncoder：第一次语义检索时加载，闲置 cfg.encoder.idle_unload_s 秒后卸载；
 - 文字向量库 <data_dir>/vectors/text（空闲整理进程写，这里只读）：每次检索增量刷新（只读新增的行和墓碑）；
 - 模型没下载、向量库还不存在或是空的、编码出错：只走词法分支，结果里 semantic = False；
-- 只有语义分支命中（字面上没命中）的内容源，余弦低于 min_vector_score 的不要：
-  随便输个词向量分支总能凑出 k 条，太不相关的放进结果只会干扰。
+- 向量命中余弦低于 min_vector_score 的不要（在融合和 limit 截断之前就丢掉）：
+  随便输个词向量分支总能凑出 k 条，太不相关的放进结果只会干扰，还会把字面命中挤出前 limit。
 """
 from __future__ import annotations
 
@@ -34,6 +34,22 @@ def text_vectors_dir(data_dir: Path | str) -> Path:
 
 def image_vectors_dir(data_dir: Path | str) -> Path:
     return Path(data_dir).joinpath(*IMAGE_VECTORS)
+
+
+class _ScoreFloor:
+    """包一层向量库：search() 只返回余弦 >= floor 的命中。
+
+    门槛必须在 Queries.search 融合、按 limit 截断之前生效：截断之后再丢低分的纯语义组，
+    会把本来排得进前 limit 的字面命中挤掉（结果比实际少）。"""
+
+    def __init__(self, store: VectorStore, floor: float):
+        self.store, self.floor = store, floor
+
+    def search(self, qv, **kw):
+        return [h for h in self.store.search(qv, **kw) if float(h.score) >= self.floor]
+
+    def __getattr__(self, name: str):
+        return getattr(self.store, name)
 
 
 def _default_model_check() -> bool:
@@ -146,7 +162,7 @@ class SearchService:
                     raise ValueError(f"查询向量维度 {v.size} 与向量库 {dim} 不符")
                 return v
 
-            self.queries.text_vectors = self._vectors
+            self.queries.text_vectors = _ScoreFloor(self._vectors, self.min_vector_score)
             semantic = True
         kwargs = dict(time_from=time_from, time_to=time_to, app=app, task=task, limit=limit, per_group=per_group,
                       exclude_apps=tuple(exclude_apps), exclude_title_keywords=tuple(exclude_title_keywords))
@@ -157,9 +173,6 @@ class SearchService:
                 raise
             log.warning("语义检索失败，只用词法检索", exc_info=True)
             out, semantic = self._lexical(query, **kwargs), False
-        if semantic:
-            out["groups"] = [g for g in out["groups"] if "lexical" in g.get("sources", ())
-                             or float(g.get("vector_score", 0.0)) >= self.min_vector_score]
         out["semantic"] = semantic
         return out
 

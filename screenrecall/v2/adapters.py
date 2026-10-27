@@ -35,6 +35,7 @@ from ..timeutil import utc_ms
 from .searchsvc import SearchService, image_vectors_dir, text_vectors_dir
 
 log = logging.getLogger("screenrecall.v2.adapters")
+PENDING_VECTOR_DELETES = "vector_deletes_pending.json"
 
 
 # ---------------- 小工具（网页 API 也用） ----------------
@@ -132,6 +133,36 @@ class Deleter:
         self.vector_retries, self.retry_sleep_s = vector_retries, retry_sleep_s
         self._pending: dict[str, set[int]] = {"text": set(), "image": set()}
         self._lock = threading.Lock()  # 删除一次一个
+        self._load_pending()
+
+    # 没删掉的向量 id 记在数据目录里（只有 id，没有内容）：主进程在补删成功前退出，下次启动接着删
+    @property
+    def pending_path(self) -> Path:
+        return self.data_dir / PENDING_VECTOR_DELETES
+
+    def _load_pending(self) -> None:
+        try:
+            raw = json.loads(self.pending_path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return
+        except (OSError, ValueError):
+            log.warning("读取待补删向量清单失败", exc_info=True)
+            return
+        if isinstance(raw, dict):
+            for kind in self._pending:
+                self._pending[kind].update(int(x) for x in raw.get(kind, ()) if isinstance(x, int))
+
+    def _save_pending(self) -> None:
+        try:
+            if any(self._pending.values()):
+                from ..app.paths import write_private_file
+
+                data = {k: sorted(v) for k, v in self._pending.items()}
+                write_private_file(self.pending_path, json.dumps(data).encode("utf-8"))
+            else:
+                self.pending_path.unlink(missing_ok=True)
+        except OSError:
+            log.warning("保存待补删向量清单失败", exc_info=True)
 
     def delete(self, *, time_from: int | None = None, time_to: int | None = None, app: str | None = None,
                timeout_s: float = 600.0) -> dict:
@@ -145,6 +176,7 @@ class Deleter:
             self._pending["text"].update(rep.line_ids)
             self._pending["image"].update(rep.frame_nos)
             out["text_vectors"], out["image_vectors"] = self._flush_vectors()
+            self._save_pending()
             out["vectors_pending"] = sum(len(v) for v in self._pending.values())
         if self.on_deleted:
             self.on_deleted()
@@ -155,6 +187,7 @@ class Deleter:
         with self._lock:
             if any(self._pending.values()):
                 self._flush_vectors()
+                self._save_pending()
             return sum(len(v) for v in self._pending.values())
 
     def _flush_vectors(self) -> tuple[int, int]:
@@ -266,7 +299,9 @@ class StoreQueriesAdapter:
     def timeline(self, *, start_ms, end_ms, app, limit, exclude) -> list[ms.Piece]:
         tl = self.queries.timeline(start_ms, end_ms, app, **self._ex(exclude))
         items = [x for x in tl["items"] if x["kind"] == "piece"][:max(1, int(limit))]
-        texts = self._piece_summaries([x["id"] for x in items])
+        ids = [int(x["id"]) for x in items]
+        withheld = _pieces_touching_hidden(self.queries.conn(), ids, Hidden(exclude.apps, exclude.title_keywords))
+        texts = self._piece_summaries([i for i in ids if i not in withheld])
         return [ms.Piece(piece_id=str(x["id"]), app=x["app"] or "", title=x["title"] or "", start_ms=x["start_ms"],
                          end_ms=x["end_ms"], task=x["task_label"], summary=texts.get(int(x["id"])))
                 for x in items]
@@ -289,6 +324,8 @@ class StoreQueriesAdapter:
             s = self.queries.summary("piece", str(pid), **self._ex(exclude))
             p = conn.execute("SELECT app, title, start_ms, end_ms FROM pieces WHERE piece_id = ?", (pid,)).fetchone()
             if s is None or p is None or s["status"] != "ok" or not s["text"]:
+                return None
+            if _pieces_touching_hidden(conn, [pid], Hidden(exclude.apps, exclude.title_keywords)):
                 return None
             return ms.Summary("piece", str(pid), s["text"], p["start_ms"], p["end_ms"],
                               tuple(a for a in (p["app"],) if a), p["title"])
@@ -341,6 +378,20 @@ class StoreQueriesAdapter:
                 app, title = app or seg["app"], title if title is not None else seg["title"]
         return ms.Frame(fr["frame_id"], buf.getvalue(), im.width, im.height, app or "", title or "",
                         int(fr["captured_ms"]), tuple(lines))
+
+
+def _pieces_touching_hidden(conn, piece_ids: Sequence[int], hidden: Hidden) -> set[int]:
+    """片段里有命中隐藏名单的内容源：这些片段的概括不给 Agent。
+
+    片段本身（应用 + 标题）没命中时，它关联的某个内容源仍可能命中（例如同一应用里标题含隐藏关键词的那一页）；
+    片段概括是按整段内容写的，没法把那一部分拆出去，所以整条不给。"""
+    if not hidden or not piece_ids:
+        return set()
+    rows = conn.execute(
+        "SELECT ps.piece_id, s.app, s.title FROM piece_segments ps JOIN segments s ON s.segment_id = ps.segment_id "
+        "WHERE ps.piece_id IN (SELECT CAST(value AS INTEGER) FROM json_each(?))",
+        (json.dumps([int(i) for i in piece_ids]),))
+    return {int(pid) for pid, app, title in rows if hidden.match(app, title)}
 
 
 def _generated_without(refs: list, hidden: Hidden) -> bool:

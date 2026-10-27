@@ -161,9 +161,10 @@ def _fold_map(text: str) -> tuple[str, list[int]]:
     return "".join(chars), idx
 
 
-def match_spans(text: str, terms: Sequence[str]) -> list[list[int]]:
+def match_spans(text: str, terms: Sequence[str], *, tails: bool = True) -> list[list[int]]:
     """各检索词（已 norm）在原文里的位置 [start, end)，按字符计；大小写、全半角、空白都不敏感。
-    折到下一行的命中（词的开头在本行末尾）标出本行里的那一截。"""
+    tails=True（字面命中的行）：折到下一行的命中（词的开头在本行末尾）标出本行里的那一截。
+    只有语义分支命中的行不是字面命中，tails=False，不然行尾碰巧是词的第一个字也会被标出来。"""
     folded, idx = _fold_map(text)
     spans: list[list[int]] = []
     for t in terms:
@@ -177,7 +178,7 @@ def match_spans(text: str, terms: Sequence[str]) -> list[list[int]]:
             spans.append([idx[j], idx[j + len(t) - 1] + 1])
             found = True
             start = j + 1
-        if not found:
+        if not found and tails:
             for k in range(min(len(t) - 1, len(folded)), 0, -1):
                 if folded.endswith(t[:k]):
                     spans.append([idx[len(folded) - k], len(text)])
@@ -415,12 +416,13 @@ def api_search(ctx: V2Context, req: dict) -> dict:
         last = max([int(g["last_seen_ms"])] + [int(ln["last_seen_ms"]) for ln in lines])
         first = first_seen.get(int(g["segment_id"]), min([int(ln["first_seen_ms"]) for ln in lines] or [last]))
         p = piece_of(conn, g["segment_id"], last)
+        literal = "lexical" in g.get("sources", ("lexical",))
         groups.append({
             "segment_id": int(g["segment_id"]), "app": g["app"], "title": g["title"],
             "first_seen_ms": first, "last_seen_ms": last,
             "hits_total": int(g["hits"]) if g.get("hits") else len(lines),
             "piece_id": None if p is None else p[0],
-            "hits": [{"line_id": int(ln["line_id"]), "text": ln["text"], "spans": match_spans(ln["text"], terms),
+            "hits": [{"line_id": int(ln["line_id"]), "text": ln["text"], "spans": match_spans(ln["text"], terms, tails=literal),
                       "last_seen_ms": int(ln["last_seen_ms"]), "frame_id": frames_of.get(int(ln["line_id"]))}
                      for ln in lines],
         })
@@ -461,7 +463,8 @@ def api_frame(ctx: V2Context, req: dict) -> dict:
                        "x1": ln["rect"][2], "y1": ln["rect"][3]} for ln in fr["lines"]]}
 
 
-IMAGE_CACHE = "private, max-age=86400"
+# no-store：证据图不能留在浏览器的磁盘缓存里，不然"删除"之后图片还在（隐私删除要真删）
+IMAGE_CACHE = "private, no-store"
 
 
 def api_frame_image(ctx: V2Context, req: dict) -> Response:
