@@ -49,7 +49,46 @@ def test_once_on_empty_data_dir_exits_zero(tmp_path):
             p.kill()
     text = err.decode("utf-8", "replace")
     assert p.returncode == 0, text[-2000:]
-    assert "整理结束" in text and (tmp_path / "data" / "recall.sqlite3").exists()
+    assert "整理结束" not in text  # 标准错误只留警告和出错（主进程把它追加到 idle-worker.out.log）
+    assert "整理结束" in _log(tmp_path) and (tmp_path / "data" / "recall.sqlite3").exists()
+
+
+def _log(tmp_path) -> str:
+    p = tmp_path / "home" / "logs" / "idle-worker.log"
+    return p.read_text("utf-8", "replace") if p.exists() else ""
+
+
+CHILD_LOG = r"""
+import logging, sys
+from pathlib import Path
+import httpx
+from screenrecall.v2.worker import setup_logging
+from screenrecall.app.llm import LlmClient
+setup_logging(Path(sys.argv[1]))
+n = [0]
+def h(req):
+    n[0] += 1
+    if n[0] == 1:
+        return httpx.Response(503, json={"error": {"message": "echo SCREEN-TEXT-SENTINEL"}})
+    return httpx.Response(200, json={"model": "m", "choices": [{"message": {"content": "OK"}}]})
+c = LlmClient("http://relay.invalid/secret-path-XYZ/v1", "k", "m", transport=httpx.MockTransport(h), sleep=lambda s: None)
+c.chat([{"role": "user", "content": "x"}])
+logging.getLogger("screenrecall.v2.worker").info("an info line")
+logging.getLogger("screenrecall.v2.worker").warning("a warning line")
+"""
+
+
+def test_worker_logging_goes_to_its_file_without_llm_url_or_error_detail(tmp_path):
+    logs = tmp_path / "logs"
+    r = subprocess.run([PY, "-c", CHILD_LOG, str(logs)], cwd=str(ROOT), env=_env(tmp_path), capture_output=True,
+                       timeout=60)
+    err = r.stderr.decode("utf-8", "replace")
+    assert r.returncode == 0, err[-2000:]
+    text = (logs / "idle-worker.log").read_text("utf-8")
+    assert "an info line" in text and "a warning line" in text and "LlmHttpError HTTP 503" in text
+    assert "an info line" not in err and "a warning line" in err
+    for out in (text, err):
+        assert "secret-path-XYZ" not in out and "SCREEN-TEXT-SENTINEL" not in out
 
 
 class HangingLlm:
@@ -97,8 +136,8 @@ def test_stdin_eof_stops_a_busy_worker_within_a_second_and_lock_blocks_a_second_
         assert llm.got_request.wait(90), "子进程没走到大模型这一步"
         # 第二个整理进程：同一数据目录已被占用，直接退出 0
         p2 = _start(tmp_path, "--once", env=env)
-        _, err2 = p2.communicate(timeout=60)
-        assert p2.returncode == 0 and "已有一个空闲整理进程" in err2.decode("utf-8", "replace")
+        p2.communicate(timeout=60)
+        assert p2.returncode == 0 and "已有一个空闲整理进程" in _log(tmp_path)
         t0 = time.monotonic()
         p.stdin.close()
         p.wait(timeout=5)
@@ -106,7 +145,7 @@ def test_stdin_eof_stops_a_busy_worker_within_a_second_and_lock_blocks_a_second_
         err = p.stderr.read().decode("utf-8", "replace")
         assert p.returncode == 0, err[-2000:]
         assert elapsed < 2.0, f"stdin 关闭后 {elapsed:.2f} s 才退出"
-        assert '"stopped": true' in err
+        assert '"stopped": true' in _log(tmp_path)
         print(f"\nEOF -> exit: {elapsed * 1000:.0f} ms")
     finally:
         if p.poll() is None:
