@@ -1,91 +1,69 @@
 import { describe, expect, it } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
-import App from "../App";
-import { hang, mockFetch, result, searchResponse, shellReply, type Reply } from "../test/helpers";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { F1, mockFetch, queryOf, search } from "../test/helpers";
+import { renderAt } from "../test/render";
 
-const models = (text: object, image: object = { state: "idle", elapsed_ms: null, reason: null }): Reply =>
-  ({ body: { text: { elapsed_ms: null, reason: null, ...text }, image } });
+const searchCalls = (calls: { path: string }[]) => calls.filter((c) => c.path.startsWith("/api/v2/search"));
 
 describe("search page", () => {
-  it("asks for input when searching with an empty query", async () => {
-    window.location.hash = "#/";
-    const calls = mockFetch((c) => shellReply(c) ?? { status: 404 });
-    render(<App />);
-    fireEvent.click(await screen.findByRole("button", { name: "搜索" }));
-    expect(screen.getByText("请输入要查找的文字")).toBeTruthy();
-    expect(calls.some((c) => c.path === "/api/search")).toBe(false);
-    // 输入内容后提示消失
-    fireEvent.change(screen.getByRole("textbox", { name: "搜索内容" }), { target: { value: "pytest" } });
-    expect(screen.queryByText("请输入要查找的文字")).toBeNull();
+  it("renders grouped results with the matched spans highlighted", async () => {
+    mockFetch();
+    renderAt(`#/search?q=${encodeURIComponent("示例词")}`);
+    const groups = await screen.findAllByRole("article");
+    expect(groups).toHaveLength(2);
+    const marks = Array.from(groups[0].querySelectorAll("mark")).map((m) => m.textContent);
+    expect(marks).toEqual(["示例词", "示例词"]);
+    expect(groups[0].querySelector("li")?.textContent).toContain("示例定义：这里提到了示例词，后面是占位文字。");
+    expect(within(groups[0]).getByText("4 处命中")).toBeTruthy();
+    expect(within(groups[0]).getByText("另有 2 处没列出")).toBeTruthy();
+    expect(within(groups[0]).getByRole("link", { name: "打开片段" }).getAttribute("href")).toBe("#/piece/11");
+    expect(within(groups[1]).queryByRole("link", { name: "打开片段" })).toBeNull();
+    expect(Array.from(groups[1].querySelectorAll("mark")).map((m) => m.textContent)).toEqual(["示例词"]);
+    expect(screen.getByText("“示例词” · 找到 2 个内容段")).toBeTruthy();
   });
 
-  it("renders results with the matched fragments tag and the rank basis", async () => {
-    window.location.hash = "#/?q=pytest%20conftest";
-    mockFetch((c) => {
-      if (c.path === "/api/search")
-        return { body: searchResponse([result({ matched_terms: ["pytest", "conftest"] }), result({ frame_id: "f".repeat(32), matched_terms: [] })]) };
-      return shellReply(c) ?? { status: 404 };
-    });
-    render(<App />);
-    expect(await screen.findByText("命中片段：pytest、conftest")).toBeTruthy();
-    expect(screen.getAllByText(/^命中片段：/)).toHaveLength(1); // 没有命中片段的卡片不显示
-    expect(screen.getByText(/按词法与语义排名融合（RRF）排序/)).toBeTruthy();
+  it("sends q, a 7-day from and the limit; filters update the request", async () => {
+    const calls = mockFetch();
+    const before = Date.now();
+    renderAt("#/search?q=abc");
+    await screen.findAllByRole("article");
+    const q0 = queryOf(searchCalls(calls)[0].path);
+    expect(q0.get("q")).toBe("abc");
+    expect(q0.get("limit")).toBe("30");
+    expect(Math.abs(Number(q0.get("from")) - (before - 7 * 86_400_000))).toBeLessThan(120_000);
+
+    fireEvent.click(screen.getByRole("radio", { name: "全部" }));
+    await waitFor(() => expect(queryOf(searchCalls(calls).at(-1)!.path).has("from")).toBe(false));
+
+    fireEvent.change(await screen.findByRole("combobox", { name: "应用" }), { target: { value: "SampleChat.exe" } });
+    await waitFor(() => expect(queryOf(searchCalls(calls).at(-1)!.path).get("app")).toBe("SampleChat.exe"));
+    expect(window.location.hash).toContain("app=SampleChat.exe");
+
+    const task = screen.getByRole("textbox", { name: "任务" });
+    fireEvent.change(task, { target: { value: "示例任务 A" } });
+    fireEvent.blur(task);
+    await waitFor(() => expect(queryOf(searchCalls(calls).at(-1)!.path).get("task")).toBe("示例任务 A"));
   });
 
-  it("falls back to the server's rank basis label for an unknown basis", async () => {
-    window.location.hash = "#/?q=pytest";
-    mockFetch((c) => {
-      if (c.path === "/api/search") return { body: searchResponse([result()], { rank_basis: "newthing", rank_basis_label: "某种新依据" }) };
-      return shellReply(c) ?? { status: 404 };
-    });
-    render(<App />);
-    expect(await screen.findByText(/按某种新依据排序/)).toBeTruthy();
+  it("no results shows the empty state; no query shows the prompt and does not search", async () => {
+    const calls = mockFetch((c) => (c.path.startsWith("/api/v2/search") ? { body: search({ total_groups: 0, groups: [] }) } : null));
+    renderAt("#/search");
+    expect(await screen.findByText("输入要找的内容")).toBeTruthy();
+    expect(searchCalls(calls)).toHaveLength(0);
+    const box = screen.getByRole("searchbox", { name: "搜索词" });
+    fireEvent.change(box, { target: { value: "没有的词" } });
+    fireEvent.submit(box.closest("form")!);
+    expect(await screen.findByText("没找到“没有的词”")).toBeTruthy();
   });
 
-  it("shows the model loading state with elapsed seconds", async () => {
-    window.location.hash = "#/";
-    mockFetch((c) => (c.path === "/api/models" ? models({ state: "loading", elapsed_ms: 3000 }) : shellReply(c) ?? { status: 404 }));
-    render(<App />);
-    expect(await screen.findByText(/文字语义模型加载中（3 秒）/)).toBeTruthy();
-  });
-
-  it("shows the reason when the model is unavailable", async () => {
-    window.location.hash = "#/";
-    mockFetch((c) => (c.path === "/api/models" ? models({ state: "unavailable", reason: "模型未下载（minilm）" }) : shellReply(c) ?? { status: 404 }));
-    render(<App />);
-    expect(await screen.findByText(/文字语义模型不可用。 模型未下载（minilm）/)).toBeTruthy();
-  });
-
-  it("keeps the old hint on an old backend and lets the user stop waiting", async () => {
-    window.location.hash = "#/?q=pytest";
-    let searchSignal: AbortSignal | null | undefined;
-    mockFetch((c) => {
-      if (c.path === "/api/search") {
-        searchSignal = c.signal;
-        return hang(c.signal);
-      }
-      return shellReply(c) ?? { status: 404 }; // /api/models → 404
-    });
-    render(<App />);
-    expect(await screen.findByText("正在搜索…第一次查询要加载模型，约需十几秒")).toBeTruthy();
-    expect(screen.getByText(/已等待 \d+ 秒/)).toBeTruthy();
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /停止等待/ }));
-    });
-    expect(searchSignal?.aborted).toBe(true);
-    expect(screen.getByText(/已停止等待这次搜索/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "重新搜索" })).toBeTruthy();
-  });
-
-  it("shows a plain searching label once the model is ready", async () => {
-    window.location.hash = "#/?q=pytest";
-    mockFetch((c) => {
-      if (c.path === "/api/search") return hang(c.signal);
-      if (c.path === "/api/models") return models({ state: "ready" });
-      return shellReply(c) ?? { status: 404 };
-    });
-    render(<App />);
-    expect(await screen.findByText("正在搜索…")).toBeTruthy();
-    expect(await screen.findByText("文字语义模型已就绪")).toBeTruthy();
+  it("看截图 opens the viewer with the hit line highlighted and a link to its piece", async () => {
+    mockFetch();
+    renderAt("#/search?q=x");
+    const groups = await screen.findAllByRole("article");
+    fireEvent.click(within(groups[0]).getByRole("button", { name: /看截图/ }));
+    const dlg = await screen.findByRole("dialog");
+    await waitFor(() => expect(dlg.querySelector("rect[data-on]")?.getAttribute("data-line")).toBe("102"));
+    expect(within(dlg).getByRole("img").getAttribute("src")).toBe(`/api/v2/frames/${F1}/image`);
+    expect(within(dlg).getByRole("link", { name: "打开所在片段" }).getAttribute("href")).toBe("#/piece/11");
   });
 });

@@ -18,8 +18,8 @@ describe("i18n dictionaries", () => {
 
   it("formats placeholders and checks runtime keys", () => {
     expect(format("{a} / {b}", { a: 1, b: "x" })).toBe("1 / x");
-    expect(hasKey("basis.rrf")).toBe(true);
-    expect(hasKey("basis.nope")).toBe(false);
+    expect(hasKey("gap.locked")).toBe(true);
+    expect(hasKey("gap.nope")).toBe(false);
     expect(hasKey("toString")).toBe(false);
   });
 });
