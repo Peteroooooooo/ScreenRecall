@@ -190,6 +190,9 @@ def _overlap(prev: np.ndarray, cur: np.ndarray, d: int, once_all: np.ndarray,
 CONTRA_MIN_ROWS = 64
 CONTRA_MAX_RATIO = 0.8  # 真正的偏移下这些行几乎全一样（实测 0.99 以上）
 CONTRA_STRIPS = 2
+# "原地变了"至少要这么多条竖带说没动，或者至少这么多行完全没变
+INPLACE_MIN_STRIPS = 3
+INPLACE_SAME_ROWS = 0.5
 
 
 def _contradicting(prev: Fp, cur: Fp, mask: MotionMask | None, dys: list[int | None], d: int,
@@ -420,6 +423,10 @@ def analyze(prev: Fp, cur: Fp, mask: MotionMask | None = None, *,
         return Motion("shift", my, 0, agree, same_rows, dys, dxs)
     if mx not in (None, 0):
         return Motion("shift", 0, mx, agree, same_rows, dys, dxs)
-    if my == 0:
+    if my == 0 and (ny >= INPLACE_MIN_STRIPS or same_rows >= INPLACE_SAME_ROWS):
         return Motion("inplace", 0, 0, agree, same_rows, dys, dxs)
+    if my == 0:
+        # 大半画面都变了，说"没动"的只有一两条（多半是页边、滚动条）：说不准是原地变了还是滚了一大截
+        # （翻页时真正的偏移认不出来），当成接不上（新块），不把新一屏的行按旧位置写进同一块
+        return Motion("break", None, None, f"{agree}，只有 {ny} 条说没动", same_rows, dys, dxs)
     return Motion("break", None, None, agree, same_rows, dys, dxs)
