@@ -210,8 +210,9 @@ def segment_filter_sql(f: Filters, params: dict) -> str | None:
         seg.append(f"instr(s.title_fold, :xk{i}) = 0")
     if f.task and f.task.strip():
         # 任务标签是大模型写的短语：页面 / Agent 给的是自由文字，按 NFKC + casefold 包含匹配
-        params["task"] = docs.fold(f.task.strip())
-        cond = ["instr(sr_fold(COALESCE(p.task_label, '')), :task) > 0"]
+        # 空白也不算（"示例任务 A" 与 "示例任务A"）：两边都按 docs.norm 去掉空白（标签里只会有普通空格）
+        params["task"] = docs.norm(f.task)
+        cond = ["instr(REPLACE(sr_fold(COALESCE(p.task_label, '')), ' ', ''), :task) > 0"]
         # 有隐藏名单时：任务标签是按整个片段写的，片段本身或它关联的任一内容源命中名单，就不能拿它的标签来匹配
         # （否则按任务查能查出隐藏内容所在片段的其他内容源，标签本身也可能就是隐藏的内容）
         hid = [f"sr_fold(COALESCE({{t}}.app, '')) = :xa{i}" for i, a in enumerate(x for x in f.exclude_apps if x)]
