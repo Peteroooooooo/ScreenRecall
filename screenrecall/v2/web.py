@@ -44,6 +44,9 @@ from .work_llm import PIECE_JOB
 log = logging.getLogger("screenrecall.v2.web")
 
 MAX_SEARCH_GROUPS = 50
+MAX_SEARCH_OFFSET = 1000
+SEARCH_SORTS = ("relevant", "recent")
+MAX_TASKS = 200
 MAX_DAY_ITEMS = 2000
 MAX_PIECE_LINES = 5000
 MAX_PINNED = 2
@@ -510,8 +513,12 @@ def api_search(ctx: V2Context, req: dict) -> dict:
     if t_from is not None and t_to is not None and t_to <= t_from:
         raise ApiError(400, "结束时间必须晚于开始时间")
     limit = _int(qp.get("limit"), "limit", lo=1, hi=MAX_SEARCH_GROUPS, default=20)
+    offset = _int(qp.get("offset"), "offset", lo=0, hi=MAX_SEARCH_OFFSET, default=0)
+    sort = qp.get("sort") or "relevant"
+    if sort not in SEARCH_SORTS:
+        raise ApiError(400, "sort 应为 relevant 或 recent")
     res = ctx.stack.search.search(query, time_from=t_from, time_to=t_to, app=qp.get("app") or None,
-                                  task=qp.get("task") or None, limit=limit, per_group=3)
+                                  task=qp.get("task") or None, limit=limit, per_group=3, sort=sort, offset=offset)
     terms = [(t.text, t.word_prefix) for t in plan.terms]
     conn = ctx.queries.conn()
     seg_ids = [int(g["segment_id"]) for g in res["groups"]]
@@ -520,24 +527,41 @@ def api_search(ctx: V2Context, req: dict) -> dict:
         "(SELECT CAST(value AS INTEGER) FROM json_each(?))", (json.dumps(seg_ids),))} if seg_ids else {}
     frames_of = frames_for_lines(conn, [ln["line_id"] for g in res["groups"] for ln in g["lines"]])
     groups = []
-    for g in res["groups"]:
-        lines = unique_lines(sorted(g["lines"], key=lambda ln: -int(ln["last_seen_ms"])))
+    for g in res["groups"]:  # 顺序由检索服务按 sort 排好（翻页时前后页不重叠）
+        literal = "lexical" in g.get("sources", ("lexical",))
+        # 字面命中：组里最近看到的几行；只有语义命中：按相似度从高到低（第一行最像）
+        lines = unique_lines(sorted(g["lines"], key=lambda ln: -int(ln["last_seen_ms"])) if literal else g["lines"])
         last = max([int(g["last_seen_ms"])] + [int(ln["last_seen_ms"]) for ln in lines])
         first = first_seen.get(int(g["segment_id"]), min([int(ln["first_seen_ms"]) for ln in lines] or [last]))
         p = piece_of(conn, g["segment_id"], last)
-        literal = "lexical" in g.get("sources", ("lexical",))
         groups.append({
             "segment_id": int(g["segment_id"]), "app": g["app"], "title": g["title"],
             "first_seen_ms": first, "last_seen_ms": last,
             "hits_total": int(g["hits"]) if g.get("hits") else len(lines),
             "piece_id": None if p is None else p[0],
+            "match": "literal" if literal else "semantic",
             "hits": [{"line_id": int(ln["line_id"]), "text": ln["text"], "spans": match_spans(ln["text"], terms, tails=literal),
                       "last_seen_ms": int(ln["last_seen_ms"]), "frame_id": frames_of.get(int(ln["line_id"]))}
                      for ln in lines],
         })
-    groups.sort(key=lambda g: (-g["last_seen_ms"], -g["segment_id"]))
-    total = max(int(res.get("total_groups") or 0), len(groups))
-    return {"query": query, "total_groups": total, "groups": groups, "semantic": bool(res.get("semantic"))}
+    has_more = bool(res.get("has_more"))
+    total = max(int(res.get("total_groups") or 0), offset + len(groups) + (1 if has_more else 0))
+    return {"query": query, "sort": sort, "offset": offset, "total_groups": total, "groups": groups,
+            "has_more": has_more, "next_offset": offset + len(groups) if has_more else None,
+            "semantic": bool(res.get("semantic"))}
+
+
+def api_search_warm(ctx: V2Context, _req: dict) -> dict:
+    """搜索页打开时调用：语义检索能用就在后台先把查询模型加载好（不等它加载完）。"""
+    return {"semantic": bool(ctx.stack.search.warm())}
+
+
+def api_tasks(ctx: V2Context, req: dict) -> dict:
+    qp = req["query"]
+    t_from, t_to = _int(qp.get("from"), "from"), _int(qp.get("to"), "to")
+    if t_from is not None and t_to is not None and t_to <= t_from:
+        raise ApiError(400, "结束时间必须晚于开始时间")
+    return {"tasks": [{"task": t["task"], "n": t["n"]} for t in ctx.queries.tasks(t_from, t_to, limit=MAX_TASKS)]}
 
 
 def frames_for_lines(conn, line_ids: Sequence[int]) -> dict[int, str]:
@@ -1019,6 +1043,8 @@ def routes(ctx: V2Context) -> list[BaseRoute]:
         Route("/pieces/{piece_id}", e(api_piece), methods=["GET"]),
         Route("/pieces/{piece_id}/summarize", e(api_summarize, mutation=True), methods=["POST"]),
         Route("/search", e(api_search), methods=["GET"]),
+        Route("/search/warm", e(api_search_warm), methods=["GET"]),
+        Route("/tasks", e(api_tasks), methods=["GET"]),
         Route("/frames/{frame_id}", e(api_frame), methods=["GET"]),
         Route("/frames/{frame_id}/image", e(api_frame_image), methods=["GET"]),
         Route("/frames/{frame_id}/thumb", e(api_frame_thumb), methods=["GET"]),
