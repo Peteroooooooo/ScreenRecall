@@ -2,7 +2,8 @@
 
 ocr_claim → 按区域裁剪证据图 → OcrEngine(tiny).recognize(crop, crop=True) → 加回裁剪偏移
 → writer.ocr_result(region_id, 帧像素坐标的行)。tiny 的平均置信度低于 second_pass_below 时用 small 再读一遍，
-取平均置信度高的那一份。失败 → 记下错误，这次整理不再试（下次整理进程启动时再试）；
+取平均置信度高的那一份。只有一个字符的噪声行（文本光标、低置信度的单个符号，见 glyph_noise）不存。
+失败 → 记下错误，这次整理不再试（下次整理进程启动时再试）；
 到 ocr_max_attempts 次 → ocr_complete(ok=False)，标 failed。
 缺 OCR 模型：记一条中文提示，跳过整步（不领取区域，不消耗重试次数）。
 """
@@ -11,6 +12,8 @@ from __future__ import annotations
 
 import logging
 from typing import Callable
+
+import numpy as np
 
 from ..store.writer import LineIn
 from .work_common import Ctx, Stopped, interruptible, log, read_image, timed
@@ -102,6 +105,9 @@ class OcrStep:
                     text = str(ln.text).strip()
                     if not text:
                         continue
+                    if glyph_noise(text, float(ln.confidence), crop, (ln.x0, ln.y0, ln.x1, ln.y1)):
+                        st.extra["noise"] = st.extra.get("noise", 0) + 1
+                        continue
                     lines.append(LineIn(text, ln.x0 + x0, ln.y0 + y0, ln.x1 + x0, ln.y1 + y0, "ocr",
                                         float(ln.confidence)))
             ctx.writer.ocr_result(rid, lines).result(30)
@@ -140,6 +146,49 @@ class OcrStep:
             return found
         mean2 = sum(float(x.confidence) for x in better) / len(better)
         return better if mean2 >= mean else found
+
+
+# 单独成行时多半是识别噪声的单个符号（光标、分隔线、残缺的笔画）：置信度低于 NOISE_CONF 就不要
+NOISE_CONF = 0.75
+_BAR_MAX_W = 3  # 一整条竖线：墨迹最宽这么多像素（或高度的 1/5）、填得几乎满 —— 文本光标的样子
+_INK_LEVEL = 60
+
+
+def _ink(crop, box) -> np.ndarray | None:
+    """box（裁剪图坐标）里"和底色不一样"的像素（布尔数组）；底色取框边上像素的中位数，深字浅底、浅字深底都行。"""
+    a = np.asarray(crop)
+    if a.ndim == 3:
+        a = a[:, :, :3].mean(axis=2)
+    h, w = a.shape[:2]
+    x0, y0, x1, y1 = (int(round(v)) for v in box)
+    x0, y0, x1, y1 = max(0, x0), max(0, y0), min(w, x1), min(h, y1)
+    if x1 - x0 < 2 or y1 - y0 < 2:
+        return None
+    sub = a[y0:y1, x0:x1].astype(np.float32)
+    edge = np.concatenate([sub[0], sub[-1], sub[:, 0], sub[:, -1]])
+    return np.abs(sub - float(np.median(edge))) > _INK_LEVEL
+
+
+def glyph_noise(text: str, conf: float, crop, box) -> bool:
+    """OCR 出来的一行是不是噪声（只看单个字符的行，通用规则，不认程序）：
+    - 框里的墨迹只是一条细而满的竖线（文本光标；会被识别成 '|'、'一'、'l'、'1' 之类）；
+    - 单个标点 / 符号，置信度又低。
+    真正一个字的行（表格里的数字 1、7、单个汉字）笔画不是一整条竖线、置信度也高，照收。"""
+    if len(text) != 1:
+        return False
+    import unicodedata
+
+    if unicodedata.category(text)[0] in "PS" and conf < NOISE_CONF:
+        return True
+    ink = _ink(crop, box)
+    if ink is None or not ink.any():
+        return unicodedata.category(text)[0] in "PS"  # 框里什么都没有：只可能是噪声符号
+    ys, xs = np.nonzero(ink)
+    ih, iw = int(ys.max() - ys.min() + 1), int(xs.max() - xs.min() + 1)
+    if ih < 8 or iw > max(_BAR_MAX_W, ih // 5):
+        return False
+    filled = ink[ys.min():ys.max() + 1, xs.min():xs.max() + 1].mean()
+    return bool(filled >= 0.85)
 
 
 def _defer(conn, region_id: int, error: str, now: int) -> None:
