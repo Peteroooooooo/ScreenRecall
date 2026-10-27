@@ -95,5 +95,35 @@ def test_fake_queries_mode_keeps_skeleton(tmp_path, monkeypatch):
         a.shutdown()
 
 
+def test_windows_list_follows_test_only_hwnds(tmp_path, monkeypatch):
+    """测试隔离：SCREENRECALL_TEST_ONLY_HWNDS 设了时，/api/v2/windows 只列这些窗口（端到端测试打开固定窗口的
+    选择列表时不能露出别的窗口的标题）；没设时 V2Context 用默认的全部窗口。"""
+    from types import SimpleNamespace
+
+    from screenrecall import winapi
+
+    fake = [SimpleNamespace(hwnd=11, process="mine.exe", title="synthetic mine"),
+            SimpleNamespace(hwnd=22, process="other.exe", title="other window")]
+    monkeypatch.setattr(winapi, "list_windows", lambda: list(fake))
+    monkeypatch.delenv("SCREENRECALL_TEST_ONLY_HWNDS", raising=False)
+    assert main.isolated_window_list() is None
+    monkeypatch.setenv("SCREENRECALL_TEST_ONLY_HWNDS", "11")
+    home = tmp_path / "home"
+    monkeypatch.setenv("SCREENRECALL_HOME", str(home))
+    cfg = load_v2(tmp_path / "data", home=home)
+    opts = main.AppOptions(home=home, port=0, tray=False, open_browser=False, legacy_web=False, store=True, cfg=cfg)
+    a = main.MainApp(opts).start()
+    try:
+        h = auth.bearer_headers(a.endpoint)
+        with httpx.Client(base_url=a.endpoint.base_url, trust_env=False, timeout=10) as c:
+            wins = c.get("/api/v2/windows", headers=h).json()["windows"]
+            assert [w["hwnd"] for w in wins] == [11]
+            r = c.post("/api/v2/settings", json={"pinned": [{"process": "other.exe", "title": "other window"}]},
+                       headers={**h, "X-ScreenRecall": "1"})
+            assert r.json()["pinned"][0]["found"] is False  # 别的窗口当作找不到
+    finally:
+        a.shutdown()
+
+
 def test_supervisor_python_child_matches():
     assert supervisor.python_child("m", "a")[1:] == ["-m", "m", "a"]
