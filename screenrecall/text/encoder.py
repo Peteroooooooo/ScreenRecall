@@ -68,7 +68,7 @@ class OnnxTextEncoder:
     """与 screenrecall.models.StText 同接口：model_id / max_tokens / dim / count_tokens / encode。"""
 
     def __init__(self, spec: ModelSpec = DEFAULT_MODELS.text, *, threads: int = 2, batch_size: int = 16,
-                 local_files_only: bool = True, mem_arena: bool = True):
+                 local_files_only: bool = True, mem_arena: bool = True, prepack: bool = True):
         import onnxruntime as ort
         from tokenizers import Tokenizer
 
@@ -97,6 +97,9 @@ class OnnxTextEncoder:
         so.log_severity_level = 3
         # 内存池：开着推理略快；关掉常驻内存少约 90 MiB（见 results/text/encoder_bench.json）
         so.enable_cpu_mem_arena = bool(mem_arena)
+        if not prepack:
+            # 预打包：MatMul 的权重再按 CPU 指令重排存一份，常驻内存多一份权重
+            so.add_session_config_entry("session.disable_prepacking", "1")
         self._sess = ort.InferenceSession(str(d / ONNX_FILE), sess_options=so, providers=["CPUExecutionProvider"])
         self._inputs = {i.name for i in self._sess.get_inputs()}
         self._lock = threading.Lock()  # 多会话共享同一实例时串行推理
@@ -142,8 +145,10 @@ class OnnxTextEncoder:
 class LazyTextEncoder:
     """主进程查询用：第一次 encode 时加载，闲置 idle_unload_s 秒后卸载释放内存。
 
-    实测（10 轮加载 / 卸载）：工作集 880 MiB -> 卸载后约 85 MiB；但进程的已提交内存（private）
-    停在约 550 MiB 不再增长（分配器留着的堆，系统可以换出），不随轮数增加。
+    实测（results/search/encoder-memory.json）：加载 + 第一次查询约 1.4-1.5 s；工作集 mem_arena=True 时
+    约 880 MiB、False 时约 790 MiB（模型权重约 470 MiB + XLM-R 分词器约 250 MiB），卸载后回到约 80 MiB。
+    卸载后 private 只比加载前多约 30 MiB：以前看到的"卸载后还剩约 500 MiB private"是 numpy 的 OpenBLAS
+    导入时按线程提交的缓冲（见 screenrecall/__init__.py），不是模型留下的。
     """
 
     def __init__(self, idle_unload_s: float = 300.0, **kwargs):
