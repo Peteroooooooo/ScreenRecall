@@ -127,22 +127,40 @@ class PieceStep:
             return
         for r in rows:
             ctx.stop.check()
-            app, title, end = r["app"], r["title"], int(r["last_seen_ms"])
+            app, title, last = r["app"], r["title"], int(r["last_seen_ms"])
             covered = r["covered"]
-            start = int(r["first_seen_ms"]) if covered is None else max(int(r["first_seen_ms"]), int(covered))
-            if covered is not None and end <= int(covered):
+            lo = int(r["first_seen_ms"]) if covered is None else max(int(r["first_seen_ms"]), int(covered))
+            if covered is not None and last <= int(covered):
                 continue  # 已经被片段盖住
-            p = self._find(app, title, start, end, gap)
-            if p is not None and _near(p, start, end, gap):
-                if start < p["start_ms"] or end > p["end_ms"]:
-                    p["start_ms"], p["end_ms"] = min(p["start_ms"], start), max(p["end_ms"], end)
-                elif covered is not None:
-                    continue
-                self._save(app, title, p)  # 没关联过的内容源：存一次就关联上
-            else:
-                self._save(app, title, {"piece_id": None, "start_ms": start, "end_ms": max(start, end),
-                                        "task_label": None, "dirty": True})
+            # 按真正录到东西的时刻（证据帧、新出现的行）分段：中间超过 gap 没有新内容就是另一个片段，
+            # 和前台的规则一样。只看内容源的 first_seen..last_seen 的话，钉了一整天的窗口会变成一个跨过
+            # 空闲时间、甚至跨过隐私删除范围的大片段
+            for start, end in self._bursts(int(r["segment_id"]), lo, last, gap):
+                p = self._find(app, title, start, end, gap)
+                if p is not None and _near(p, start, end, gap):
+                    if start < p["start_ms"] or end > p["end_ms"]:
+                        p["start_ms"], p["end_ms"] = min(p["start_ms"], start), max(p["end_ms"], end)
+                    elif covered is not None:
+                        continue
+                    self._save(app, title, p)  # 没关联过的内容源：存一次就关联上
+                else:
+                    self._save(app, title, {"piece_id": None, "start_ms": start, "end_ms": max(start, end),
+                                            "task_label": None, "dirty": True})
         ctx.meta_put(SEG_CURSOR, int(rows[-1]["last_seen_ms"]))
+
+    def _bursts(self, segment_id: int, lo: int, hi: int, gap: int) -> list[tuple[int, int]]:
+        """内容源在 [lo, hi] 里录到东西的时刻（证据帧的截图时间、行第一次出现的时间），间隔不超过 gap 的连成一段。"""
+        times = sorted(int(t) for (t,) in self.ctx.conn.execute(
+            "SELECT captured_ms FROM frames WHERE segment_id = ? AND captured_ms BETWEEN ? AND ? "
+            "UNION SELECT first_seen_ms FROM lines WHERE segment_id = ? AND first_seen_ms BETWEEN ? AND ?",
+            (segment_id, lo, hi, segment_id, lo, hi)))
+        out: list[tuple[int, int]] = []
+        for t in times:
+            if out and t - out[-1][1] <= gap:
+                out[-1] = (out[-1][0], t)
+            else:
+                out.append((t, t))
+        return out
 
     def _find(self, app: str, title: str, start: int, end: int, gap: int) -> dict | None:
         """库里与这条记录相邻（间隔不超过 gap）的同应用同标题片段（重跑同一批记录时找回已建的片段）。"""
