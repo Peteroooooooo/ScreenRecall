@@ -207,8 +207,9 @@ def test_page_jump_with_static_side_panel_is_break_not_inplace(doc, head, dy):
     a, b = S.view(doc, 300, VH, head).copy(), S.view(doc, 300 + dy, VH, head).copy()
     for f in (a, b):
         f[:, :70] = side[:f.shape[0]]
+        f[:, -70:] = side[:f.shape[0]]
     m = M.analyze(M.Fp.from_image(a), M.Fp.from_image(b))
-    assert m.kind == "break", m
+    assert m.kind == "break" and "说没动" in m.agree, m
 
 
 def test_inplace_change(doc, head):
