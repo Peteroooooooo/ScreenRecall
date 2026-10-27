@@ -943,8 +943,19 @@ def _skim(conn, segment_id, block_id, start, end, y_from, y_to) -> int | None:
     return int(cur.lastrowid)
 
 
-def _piece_put(conn, start, end, app, title, segment_ids, task_label, piece_id, now) -> int:
+def _piece_put(conn, start, end, app, title, segment_ids, task_label, piece_id, now) -> int | None:
+    if piece_id is not None and conn.execute("SELECT 1 FROM pieces WHERE piece_id = ?",
+                                             (piece_id,)).fetchone() is None:
+        piece_id = None  # 片段被隐私删除了：按新片段处理（下面按删除范围裁剪）
     if piece_id is None:
+        # 切片段的进程先读焦点记录再写：中间发生的隐私删除不能让删掉的时段（和窗口标题）作为新片段回来
+        while (cut := _purge_end(conn, start, app)) is not None:
+            start = cut
+        if start > end:
+            return None
+        segment_ids = [s for (s,) in conn.execute(
+            "SELECT segment_id FROM segments WHERE segment_id IN (SELECT CAST(value AS INTEGER) FROM json_each(?))",
+            (json.dumps([int(s) for s in segment_ids]),))]
         cur = conn.execute(
             "INSERT INTO pieces (start_ms, end_ms, app, title, task_label, created_ms, updated_ms) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)", (start, max(start, end), app, title, task_label, now, now))

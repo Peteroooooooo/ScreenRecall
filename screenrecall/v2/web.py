@@ -33,9 +33,12 @@ from ..app import paths
 from ..app import tray as tray_mod
 from ..store.fts import lexical
 from ..store.queries import _block_roots
+from ..store.writer import _job_add
 from ..timeutil import local_dates_to_utc_range
 from . import config as v2config
 from .adapters import StoreStack, effective_state, latest_frames, piece_of, recorder_running
+from .work_common import private_rules
+from .work_llm import PIECE_JOB
 
 log = logging.getLogger("screenrecall.v2.web")
 
@@ -373,18 +376,50 @@ def api_piece(ctx: V2Context, req: dict) -> dict:
     real_blocks = [b for b in blocks if b["block_id"] is not None and b["items"]]
     return {"piece": {"piece_id": p["piece_id"], "start_ms": p["start_ms"], "end_ms": p["end_ms"], "app": p["app"],
                       "title": p["title"], "task": p["task_label"]},
-            "summary": _summary_out(p["summary"]), "blocks": [b for b in blocks if b["items"]],
+            "summary": _summary_out(p["summary"]), "summary_state": summary_state(ctx, p, p["summary"]),
+            "blocks": [b for b in blocks if b["items"]],
             "unjoined": len(real_blocks) > 1,
             "frames": [{"frame_id": f["frame_id"], "captured_ms": f["captured_ms"], "width": f["width"],
                         "height": f["height"]} for f in p["frames"]]}
 
 
+def summary_state(ctx: V2Context, piece: dict, summary: dict | None) -> str:
+    """片段概括现在的情况（页面据此说明）：
+    ok 已写好；stale 内容被删过、要重写；queued 点过"重新生成"、等电脑空闲时写；private 命中对 Agent 隐藏
+    或录制排除规则，不发给大模型；failed 大模型多次失败；no_text 片段里没有字可写；waiting 还没写
+    （片段还在进行，或等电脑空闲时整理）。"""
+    if private_rules(ctx.stack.control.get()).match(piece.get("app"), piece.get("title")):
+        return "private"
+    job = ctx.queries.conn().execute("SELECT status FROM jobs WHERE kind = ? AND target = ?",
+                                     (PIECE_JOB, str(piece["piece_id"]))).fetchone()
+    js = job[0] if job else None
+    if js in ("pending", "running"):
+        return "queued"
+    if summary is not None and summary.get("text"):
+        return "stale" if summary.get("status") == "stale" else "ok"
+    if js == "failed":
+        return "failed"
+    if js == "done":
+        return "no_text"
+    return "waiting"
+
+
 def api_summarize(ctx: V2Context, req: dict) -> dict:
+    """重新生成：概括标为 stale + 登记空闲整理进程的片段概括待办（同一个约定：kind = PIECE_JOB，
+    target = 片段编号）。整理进程只在电脑空闲时运行，所以只是排队；页面说"空闲时重写"。"""
     pid = _int(req["path"]["piece_id"], "piece_id", lo=1)
-    if ctx.queries.conn().execute("SELECT 1 FROM pieces WHERE piece_id = ?", (pid,)).fetchone() is None:
+    p = ctx.queries.conn().execute("SELECT piece_id, app, title FROM pieces WHERE piece_id = ?", (pid,)).fetchone()
+    if p is None:
         raise ApiError(404, "找不到这个片段：可能已被删除")
-    ctx.stack.writer.job_add("summary", f"piece:{pid}").result(10)
-    return {"queued": True}
+    if private_rules(ctx.stack.control.get()).match(p["app"], p["title"]):
+        raise ApiError(409, "这个应用或窗口在“对 Agent 隐藏”或排除名单里，不发给大模型")
+    ctx.stack.writer.call(_queue_summary, pid, ctx.stack.clock()).result(10)
+    return {"queued": True, "summary_state": "queued"}
+
+
+def _queue_summary(conn, pid: int, now: int) -> None:
+    conn.execute("UPDATE summaries SET status = 'stale' WHERE level = 'piece' AND key = ?", (str(pid),))
+    _job_add(conn, PIECE_JOB, str(pid), 0, now)
 
 
 def api_search(ctx: V2Context, req: dict) -> dict:

@@ -107,7 +107,8 @@ def fill(stack: StoreStack, t0: int) -> dict:
     w.activity_start(t0, hwnd=10, pid=1, process=APP, title=TITLE).result(5)
     w.activity_end(t0 + 10 * 60_000).result(5)
     w.flush()
-    return {"segment": sid, "blocks": (b1, b2), "lines": line_ids, "line2": l2[0], "frame": fid, "piece": pid}
+    return {"segment": sid, "blocks": (b1, b2), "lines": line_ids, "line2": l2[0], "frame": fid, "piece": pid,
+            "piece_start": t0 - 1_000}
 
 
 def build_env(tmp_path: Path, monkeypatch, *, search: SearchService | None = None, fill_data: bool = True,

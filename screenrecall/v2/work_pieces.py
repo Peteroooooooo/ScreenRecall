@@ -6,13 +6,19 @@
 
 增量：游标 worker.piece_activity_id = 已处理完的最后一条已结束记录。仍在进行的记录（end_ms 为空，
 最多一条）每次都重新处理，把它所在的片段延长到现在（录制进程没心跳时只到最后一次心跳）。
+
+谁来切：主进程每 30 秒切一次（adapters.LivePieces，"今天"页面一分钟内就能看到正在做的事，进行中的片段
+一直延长到现在），空闲整理进程整理时也切一次（主进程没开时的兜底）。两边用同一个游标和同一把跨进程锁
+（data_dir/pieces.lock，拿不到就这次不切），不会同时切出两份；_find() 让重跑同一批记录时找回已建的片段，
+片段编号不变，整理进程之后写的概括、任务标签都挂在同一个片段上。
 """
 
 from __future__ import annotations
 
-from .work_common import Ctx, timed
+from .work_common import Ctx, FileLock, timed
 
 PIECE_CURSOR = "worker.piece_activity_id"
+PIECES_LOCK = "pieces.lock"
 BATCH = 5000
 
 
@@ -32,6 +38,15 @@ class PieceStep:
                                           (cur,)).fetchone()[0])
 
     def run(self) -> int:
+        lock = FileLock(self.ctx.data_dir / PIECES_LOCK)
+        if not lock.acquire():
+            return 0  # 另一个进程正在切，下次再来
+        try:
+            return self._run()
+        finally:
+            lock.release()
+
+    def _run(self) -> int:
         ctx = self.ctx
         conn = ctx.conn
         gap = int(ctx.cfg.idle.piece_gap_ms)
@@ -78,7 +93,8 @@ class PieceStep:
                 for (app, title), p in pieces.items():
                     if p["dirty"]:
                         self._save(app, title, p)
-                ctx.meta_put(PIECE_CURSOR, new_cur)
+                if new_cur != cur:  # 主进程每 30 秒来一次：没变就不写（写一次就多一个 revision）
+                    ctx.meta_put(PIECE_CURSOR, new_cur)
                 # 只数新处理完的已结束记录：仍在进行的那条每轮都会重做（延长到现在），不算"有活"，
                 # 否则录制进程开着（几乎总有一条进行中的记录）时整理进程永远不会自己退出
                 n = sum(1 for r in rows if int(r["activity_id"]) <= new_cur)
@@ -103,6 +119,8 @@ class PieceStep:
         segs = [int(r[0]) for r in self.ctx.conn.execute(
             "SELECT segment_id FROM segments WHERE app = ? AND title = ? AND last_seen_ms >= ? AND first_seen_ms <= ?",
             (app, title, p["start_ms"], p["end_ms"]))]
+        # 读记录和写片段之间可能发生了隐私删除：写线程里会按删除范围裁掉 / 丢弃（返回 None），不会把删掉的
+        # 时段和标题再变回来
         p["piece_id"] = self.ctx.writer.piece_put(p["start_ms"], p["end_ms"], app=app, title=title, segment_ids=segs,
                                                   task_label=p["task_label"], piece_id=p["piece_id"]).result(30)
         p["dirty"] = False

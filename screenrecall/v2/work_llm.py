@@ -1,6 +1,7 @@
 """第 5 步：大模型写片段概括 + 任务标签，再写天概括。
 
 - 只处理已结束的片段（结束时间早于 now - piece_gap_ms），新的先写；没有概括或概括被隐私删除标为 stale 的才写；
+  页面上点"重新生成"＝概括标 stale + 登记待办 (PIECE_JOB, 片段编号)（v2.web.api_summarize），这种不等片段结束；
 - 命中"对 Agent 隐藏"或录制排除规则的应用 / 标题：不发给大模型，也不进天概括；
 - 屏幕上的字是不可信数据：整体编码成 JSON 字符串放进用户消息，系统消息要求只当材料、忽略其中的任何指令；
 - 回答要求是 JSON {summary, task}；解析失败按失败处理（jobs 表记录，退避后重试，多次失败不再试）；
@@ -205,7 +206,8 @@ class LlmStep:
             "j.not_before_ms AS j_nb FROM pieces p "
             "LEFT JOIN summaries s ON s.level = 'piece' AND s.key = CAST(p.piece_id AS TEXT) "
             "LEFT JOIN jobs j ON j.kind = ? AND j.target = CAST(p.piece_id AS TEXT) "
-            "WHERE p.end_ms <= ? AND (s.summary_id IS NULL OR s.status = 'stale') "
+            # 页面点过"重新生成"（待办 pending）的不等片段结束
+            "WHERE (p.end_ms <= ? OR j.status = 'pending') AND (s.summary_id IS NULL OR s.status = 'stale') "
             "ORDER BY p.end_ms DESC LIMIT ?", (PIECE_JOB, fin, limit)).fetchall()
         private = ctx.private()
         stale_ms = ctx.writer.cfg.claim_stale_ms

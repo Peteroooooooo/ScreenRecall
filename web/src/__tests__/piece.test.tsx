@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { REGEN_POLL_MS } from "../pages/PiecePage";
 import { F1, F2, mockFetch, piece } from "../test/helpers";
 import { renderAt, toasts } from "../test/render";
 
@@ -42,48 +41,39 @@ describe("piece page", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
-  it("重新生成 posts summarize and waits for the new summary", async () => {
-    let n = 0;
+  it("重新生成 only queues: says it runs when idle, shows the queued state, a double click queues once", async () => {
+    let queued = false;
     const calls = mockFetch((c) => {
-      if (c.path === "/api/v2/pieces/11/summarize") return { body: { queued: true } };
-      if (c.path === "/api/v2/pieces/11") {
-        n += 1;
-        return { body: n >= 2 ? piece({ summary: { text: "新的概括", status: "ok", model: "sample-model" } }) : piece() };
+      if (c.path === "/api/v2/pieces/11/summarize") {
+        queued = true;
+        return { body: { queued: true, summary_state: "queued" } };
       }
-      return null;
-    });
-    renderAt("#/piece/11");
-    fireEvent.click(await screen.findByRole("button", { name: "重新生成" }));
-    await waitFor(() => expect(calls.find((c) => c.path === "/api/v2/pieces/11/summarize")?.headers["X-ScreenRecall"]).toBe("1"));
-    expect(await screen.findByRole("button", { name: "生成中…" })).toBeTruthy();
-    expect(await screen.findByText("新的概括", {}, { timeout: 8000 })).toBeTruthy();
-    await waitFor(() => expect(toasts().join()).toContain("概括已更新"));
-  }, 12000);
-
-  it("重新生成 keeps polling after a failed re-fetch, and a double click queues once", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ["setInterval", "clearInterval"] });
-    let n = 0;
-    const calls = mockFetch((c) => {
-      if (c.path === "/api/v2/pieces/11/summarize") return { body: { queued: true } };
-      if (c.path === "/api/v2/pieces/11") {
-        n += 1;
-        if (n === 2) return { status: 500, body: { error: "暂时忙" } }; // 第一次重新拉取失败
-        return { body: n >= 3 ? piece({ summary: { text: "新的概括", status: "ok", model: "sample-model" } }) : piece() };
-      }
+      if (c.path === "/api/v2/pieces/11") return { body: piece(queued ? { summary: { text: "示例概括：先看了定义，然后看了示例公式。", status: "stale", model: "sample-model" }, summary_state: "queued" } : {}) };
       return null;
     });
     renderAt("#/piece/11");
     const btn = await screen.findByRole("button", { name: "重新生成" });
     fireEvent.click(btn);
     fireEvent.click(btn);
-    await waitFor(() => expect(n).toBe(1));
-    await vi.advanceTimersByTimeAsync(REGEN_POLL_MS);
-    await waitFor(() => expect(n).toBe(2));
-    expect(screen.getByRole("button", { name: "生成中…" })).toBeTruthy();
-    await vi.advanceTimersByTimeAsync(REGEN_POLL_MS);
-    expect(await screen.findByText("新的概括")).toBeTruthy();
-    await waitFor(() => expect(screen.getByRole("button", { name: "重新生成" })).toBeTruthy());
+    await waitFor(() => expect(calls.find((c) => c.path === "/api/v2/pieces/11/summarize")?.headers["X-ScreenRecall"]).toBe("1"));
+    await waitFor(() => expect(toasts().join()).toContain("电脑空闲时会重写"));
+    expect(await screen.findByRole("button", { name: "已排队" })).toHaveProperty("disabled", true);
+    expect(screen.getByText("等空闲时重写")).toBeTruthy();
     expect(calls.filter((c) => c.path === "/api/v2/pieces/11/summarize")).toHaveLength(1);
+  });
+
+  it("explains why there is no summary", async () => {
+    mockFetch((c) => (c.path === "/api/v2/pieces/11" ? { body: piece({ summary: null, summary_state: "private" }) } : null));
+    renderAt("#/piece/11");
+    expect(await screen.findByText(/不发给大模型，所以没有概括/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "重新生成" })).toBeNull();
+  });
+
+  it("a piece still waiting for the idle worker says so", async () => {
+    mockFetch((c) => (c.path === "/api/v2/pieces/11" ? { body: piece({ summary: null, summary_state: "waiting" }) } : null));
+    renderAt("#/piece/11");
+    expect(await screen.findByText(/电脑空闲时会生成/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "重新生成" })).toBeTruthy();
   });
 
   it("删除这个片段 needs confirmation, then deletes its time range for that app", async () => {
