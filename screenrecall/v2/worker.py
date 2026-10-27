@@ -6,10 +6,11 @@
 1. OCR：UIA 读不到字的待识别区域（work_ocr）；
 2. 文字向量：新行按短段落算向量（work_text）；
 3. 合并块：同一内容源里文字连续重叠的块并成一块（work_text）；
-4. 片段：从窗口焦点记录切片段（work_pieces）；
-5. 概括：大模型写片段概括 + 任务标签、天概括（work_llm）；
-6. 图片向量：新证据帧的 CLIP 向量 + 内容分类（work_clip）；
-7. 旧证据帧只统计不删（work_clip.frame_report）。
+4. 清理截图 + 保留期 + 空间上限：删多余的旧截图、到期的截图和文字（work_frames）；
+5. 片段：从窗口焦点记录切片段（work_pieces）；
+6. 概括：大模型写片段概括 + 任务标签、天概括（work_llm）；
+7. 图片向量：新证据帧的 CLIP 向量 + 内容分类（work_clip）；
+8. 旧证据帧统计（work_clip.frame_report，只记日志）。
 
 停止：stdin 读到 EOF（主进程发现用户回来了会关掉管道）后在当前这一项做完时停下（约 1 秒内），退出码 0；
 没有活可干时自己退出（退出码 0）；--once 只做一轮（测试用）。
@@ -34,6 +35,7 @@ from ..timeutil import utc_ms
 from . import stdin_eof
 from .work_clip import ClipStep, frame_report
 from .work_common import Ctx, FileLock, StopFlag, Stopped, log
+from .work_frames import FrameCleanup
 from .work_llm import PIECE_JOB, LlmStep
 from .work_ocr import OcrStep, default_ocr_factory
 from .work_pieces import PieceStep
@@ -117,7 +119,7 @@ class Worker:
             text = TextVectorStep(ctx, self._encoder_factory)
             try:
                 writer.call(_recover).result(30)
-                steps = [OcrStep(ctx, self._ocr_factory), text, MergeStep(ctx), PieceStep(ctx),
+                steps = [OcrStep(ctx, self._ocr_factory), text, MergeStep(ctx), FrameCleanup(ctx), PieceStep(ctx),
                          LlmStep(ctx, self._llm_factory)]
                 if self.cfg.idle.clip:
                     steps.append(ClipStep(ctx, self._clip_factory, self._classifier_loader))
