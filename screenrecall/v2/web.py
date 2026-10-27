@@ -74,6 +74,9 @@ class V2Context:
     llm_environ: dict[str, str] | None = None               # None = os.environ
     llm_transport: Any = None
     on_settings: Callable[[dict], None] | None = None       # 设置改了之后（如空闲阈值立即生效）
+    run_idle: Callable[[], bool] | None = None              # "现在就整理"：马上启动空闲整理进程，返回是否在运行
+    open_folder: Callable[[Path], None] | None = None       # "打开文件夹"（None = 用资源管理器打开）
+    summaries: Any = None                                   # summarize_now.SummaryRunner：马上写概括（None = 只排队）
     _thumbs: OrderedDict = field(default_factory=OrderedDict, init=False, repr=False)
     _thumb_lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
     _storage: tuple[float, dict] | None = field(default=None, init=False, repr=False)
@@ -227,15 +230,45 @@ def api_status(ctx: V2Context, _req: dict) -> dict:
         # 前台是排除的窗口：录制进程只写了占位标题（不写进程名和标题）
         current = excluded_fg
     conn = ctx.queries.conn()
-    pending = int(conn.execute("SELECT COUNT(*) FROM ocr_regions WHERE status IN ('pending', 'running')")
-                  .fetchone()[0])
+    queue = queue_counts(conn, ctx.stack.cfg, ctrl, now)
     rev = conn.execute("SELECT value FROM meta WHERE key = 'revision'").fetchone()
     # recorder_alive：心跳新鲜（15 秒内）。正常停下时心跳还新鲜、recording = stopped，页面显示"没在录制"；
     # 心跳断了才是"录制程序没在运行"
     return {"recording": state, "pause_until_ms": until, "recorder_alive": bool(ctrl.get("recorder_alive")),
-            "current": current, "pending_ocr": pending,
-            "idle_work": "running" if ctx.idle_running() else "idle",
+            "current": current, "pending_ocr": queue["ocr"],
+            "idle_work": "running" if ctx.idle_running() else "idle", "queue": queue,
             "agent_enabled": bool(ctrl.get("agent_enabled")), "revision": int(rev[0]) if rev else 0}
+
+
+MAX_QUEUE_PIECES = 1000
+
+
+def queue_counts(conn, cfg, ctrl: dict, now: int) -> dict:
+    """空闲整理还有多少活（只有数量）：ocr 待识别区域、vectors 还没算文字向量的行（+ 待重组的段落）、
+    summaries 等着写概括的片段（已结束或点过"重新生成"，没有概括或概括被删过；不发给大模型的不算）。
+    都走索引，页面每几秒轮询一次也不贵。"""
+    from .work_text import TEXT_CURSOR
+
+    ocr = int(conn.execute("SELECT COUNT(*) FROM ocr_regions WHERE status IN ('pending', 'running')").fetchone()[0])
+    cur = conn.execute("SELECT value FROM meta WHERE key = ?", (TEXT_CURSOR,)).fetchone()
+    try:
+        cur_id = int(cur[0]) if cur else 0
+    except (TypeError, ValueError):
+        cur_id = 0
+    vectors = int(conn.execute("SELECT COUNT(*) FROM lines WHERE line_id > ?", (cur_id,)).fetchone()[0])
+    vectors += int(conn.execute("SELECT COUNT(*) FROM jobs WHERE kind = 'text_rechunk' AND status = 'pending'")
+                   .fetchone()[0])
+    fin = now - int(cfg.idle.piece_gap_ms)
+    rows = conn.execute(
+        "SELECT p.app, p.title FROM pieces p "
+        "LEFT JOIN summaries s ON s.level = 'piece' AND s.key = CAST(p.piece_id AS TEXT) "
+        "LEFT JOIN jobs j ON j.kind = ? AND j.target = CAST(p.piece_id AS TEXT) "
+        "WHERE (p.end_ms <= ? OR j.status IN ('pending', 'running')) AND (s.summary_id IS NULL OR s.status = 'stale') "
+        "AND NOT (COALESCE(j.status, '') IN ('done', 'failed') AND j.updated_ms >= p.updated_ms) "
+        "ORDER BY p.end_ms DESC LIMIT ?", (PIECE_JOB, fin, MAX_QUEUE_PIECES)).fetchall()
+    private = private_rules(ctrl)
+    summaries = sum(1 for r in rows if not private.match(r["app"], r["title"]))
+    return {"ocr": ocr, "vectors": vectors, "summaries": summaries}
 
 
 def api_pause(ctx: V2Context, req: dict) -> dict:
@@ -302,10 +335,14 @@ def api_day(ctx: V2Context, req: dict) -> dict:
     items += _day_gaps(conn, tl["items"], lo, hi, now)
     items.sort(key=lambda x: (x["start_ms"], 0 if x["kind"] == "piece" else 1), reverse=True)
     apps = [{"app": a["process"], "ms": int(a["ms"])} for a in ov["apps"] if a["process"]]
+    # summary_state：当天概括现在的情况（见 day_summary_state）；summary_refresh：能不能点"重新生成"马上写
     return {"date": d.isoformat(),
             "overview": {"active_ms": sum(a["ms"] for a in apps), "apps": apps, "lines_new": ov["lines_new"],
                          "frames": ov["frames"]},
-            "summary": _summary_out(ov["summary"]), "items": items[:MAX_DAY_ITEMS]}
+            "summary": _summary_out(ov["summary"]),
+            "summary_state": day_summary_state(ctx, d.isoformat(), ov["summary"]),
+            "summary_refresh": ctx.summaries is not None and _llm_info(ctx)["configured"],
+            "items": items[:MAX_DAY_ITEMS]}
 
 
 def gap_reason(reason: str, detail: str | None) -> str | None:
@@ -463,6 +500,11 @@ def summary_state(ctx: V2Context, piece: dict, summary: dict | None) -> str:
     （片段还在进行，或等电脑空闲时整理）。"""
     if private_rules(ctx.stack.control.get()).match(piece.get("app"), piece.get("title")):
         return "private"
+    now_state = ctx.summaries.state(("piece", piece["piece_id"])) if ctx.summaries is not None else None
+    if now_state in ("running", "queued"):
+        return "generating"  # 主进程正在马上写（或排在马上写的队列里）
+    if now_state == "failed":
+        return "failed"      # 这次马上写没写成（待办已按空闲整理的规则退避重试）
     job = ctx.queries.conn().execute("SELECT status FROM jobs WHERE kind = ? AND target = ?",
                                      (PIECE_JOB, str(piece["piece_id"]))).fetchone()
     js = job[0] if job else None
@@ -479,7 +521,8 @@ def summary_state(ctx: V2Context, piece: dict, summary: dict | None) -> str:
 
 def api_summarize(ctx: V2Context, req: dict) -> dict:
     """重新生成：概括标为 stale + 登记空闲整理进程的片段概括待办（同一个约定：kind = PIECE_JOB，
-    target = 片段编号）。整理进程只在电脑空闲时运行，所以只是排队；页面说"空闲时重写"。"""
+    target = 片段编号），然后交给主进程的 SummaryRunner 马上写（一次一个，页面显示"生成中"，写完 revision 变、
+    页面刷新）。没配置大模型或没有 SummaryRunner 时只排队，等电脑空闲时写。"""
     pid = _int(req["path"]["piece_id"], "piece_id", lo=1)
     p = ctx.queries.conn().execute("SELECT piece_id, app, title FROM pieces WHERE piece_id = ?", (pid,)).fetchone()
     if p is None:
@@ -487,7 +530,36 @@ def api_summarize(ctx: V2Context, req: dict) -> dict:
     if private_rules(ctx.stack.control.get()).match(p["app"], p["title"]):
         raise ApiError(409, "这个应用或窗口在“对 Agent 隐藏”或排除名单里，不发给大模型")
     ctx.stack.writer.call(_queue_summary, pid, ctx.stack.clock()).result(10)
+    if ctx.summaries is not None and _llm_info(ctx)["configured"]:
+        ctx.summaries.submit(("piece", pid))
+        return {"queued": True, "summary_state": "generating"}
     return {"queued": True, "summary_state": "queued"}
+
+
+def day_summary_state(ctx: V2Context, key: str, summary: dict | None) -> str:
+    """当天概括：generating 正在马上写；failed 这次没写成；stale 记录删过一部分、概括已清空或过时；ok；none 还没有。"""
+    st = ctx.summaries.state(("day", key)) if ctx.summaries is not None else None
+    if st in ("running", "queued"):
+        return "generating"
+    if st == "failed":
+        return "failed"
+    if summary is None:
+        return "none"
+    return "stale" if summary.get("status") == "stale" else ("ok" if summary.get("text") else "none")
+
+
+def api_day_summarize(ctx: V2Context, req: dict) -> dict:
+    """当天概括的"重新生成"：先把这一天没写好的片段概括写了，再写天概括（SummaryRunner，主进程后台线程）。"""
+    d = _parse_day(req["body"].get("date"))
+    if d > datetime.now().date():
+        raise ApiError(400, "不能概括还没到的日子")
+    if ctx.summaries is None:
+        raise ApiError(503, "这个版本不能马上生成概括")
+    if not _llm_info(ctx)["configured"]:
+        raise ApiError(400, "还没有配置大模型：先在设置里填好接口地址、模型和密钥")
+    key = d.isoformat()
+    ctx.summaries.submit(("day", key))
+    return {"date": key, "summary_state": "generating"}
 
 
 def _queue_summary(conn, pid: int, now: int) -> None:
@@ -679,6 +751,10 @@ def api_settings(ctx: V2Context, _req: dict) -> dict:
         "autostart": auto,
         "llm": _llm_info(ctx),
         "data_dir": str(ctx.data_dir),
+        # 保留期（0 = 一直保留 / 不限）：空闲整理时执行，空间上限主进程也定时查
+        "image_days": us.get("image_days", cfg.retention.image_days),
+        "text_days": us.get("text_days", cfg.retention.text_days),
+        "storage_cap_gb": us.get("storage_cap_gb", cfg.retention.storage_cap_gb),
     }
 
 
@@ -703,7 +779,7 @@ def _window_list(ctx: V2Context) -> Callable[[], list]:
 
 
 _SETTING_KEYS = {"pinned", "excluded_processes", "excluded_title_keywords", "hidden_from_agents", "agent_enabled",
-                 "idle_minutes", "ocr_model", "autostart"}
+                 "idle_minutes", "ocr_model", "autostart", "image_days", "text_days", "storage_cap_gb"}
 
 
 def api_settings_post(ctx: V2Context, req: dict) -> dict:
@@ -752,6 +828,12 @@ def api_settings_post(ctx: V2Context, req: dict) -> dict:
         if body["ocr_model"] not in v2config.OCR_MODELS:
             raise ApiError(400, "ocr_model 只能是 tiny 或 small")
         user["ocr_model"] = body["ocr_model"]
+    for k in ("image_days", "text_days", "storage_cap_gb"):
+        if k in body:
+            try:
+                user[k] = v2config.check_user_setting(k, body[k])
+            except ValueError as exc:
+                raise ApiError(400, str(exc)) from None
     if "autostart" in body and not isinstance(body["autostart"], bool):
         raise ApiError(400, "autostart 应为 true / false")
     # 全部校验通过才开始写
@@ -774,12 +856,14 @@ def api_settings_post(ctx: V2Context, req: dict) -> dict:
 
 
 def _autostart_command(ctx: V2Context) -> str | None:
-    """默认数据目录时用默认命令；自定义数据目录把 --data-dir 带上。"""
+    """默认位置时用默认命令（和桌面快捷方式同一个启动方式，见 autostart.launch_argv）；
+    应用目录（SCREENRECALL_HOME）或数据目录不是默认的，把 --home / --data-dir 带上（注册表里的命令没有环境变量）。"""
     from ..app import autostart
 
-    if ctx.data_dir.resolve() == (paths.app_home() / "data").resolve():
+    extra = autostart.location_args(ctx.home, ctx.data_dir)
+    if not extra:
         return None
-    return autostart.default_command(args=("--autostart", "--data-dir", str(ctx.data_dir)))
+    return autostart.default_command(args=("--autostart", *extra))
 
 
 def _origin(url: str) -> tuple:
@@ -921,6 +1005,35 @@ def api_delete(ctx: V2Context, req: dict) -> dict:
     return {"deleted": rep}
 
 
+def api_idle_run(ctx: V2Context, req: dict) -> dict:
+    """"现在就整理"：马上启动空闲整理进程（不等键鼠空闲）。它低优先级运行，做完自己退出；
+    你一直在用电脑时它也会做完再退（只有"空闲 → 回来"才会叫停它）。返回最新状态。"""
+    if ctx.run_idle is None:
+        raise ApiError(503, "这个版本不能手动开始整理")
+    if not ctx.run_idle():
+        raise ApiError(503, "空闲整理进程没能启动，详情见日志")
+    return api_status(ctx, req)
+
+
+def _open_in_explorer(path: Path) -> None:
+    import subprocess
+
+    # 参数数组、不经过 shell；路径是我们自己的数据目录
+    subprocess.Popen(["explorer.exe", str(path)], close_fds=True)
+
+
+def api_storage_open(ctx: V2Context, _req: dict) -> dict:
+    """在资源管理器里打开数据文件夹（只开这一个，不接受别的路径）。"""
+    d = ctx.data_dir
+    if not d.is_dir():
+        raise ApiError(404, "数据文件夹不存在")
+    try:
+        (ctx.open_folder or _open_in_explorer)(d)
+    except OSError as exc:
+        raise ApiError(500, f"打不开文件夹：{type(exc).__name__}") from None
+    return {"ok": True}
+
+
 def api_reset_token(ctx: V2Context, _req: dict) -> Response:
     if ctx.rotate_token is None:
         raise ApiError(503, "这个版本不支持重置访问令牌")
@@ -975,6 +1088,9 @@ def routes(ctx: V2Context) -> list[BaseRoute]:
         Route("/pause", e(api_pause, mutation=True), methods=["POST"]),
         Route("/resume", e(api_resume, mutation=True), methods=["POST"]),
         Route("/day", e(api_day), methods=["GET"]),
+        Route("/day/summarize", e(api_day_summarize, mutation=True), methods=["POST"]),
+        Route("/idle/run", e(api_idle_run, mutation=True), methods=["POST"]),
+        Route("/storage/open", e(api_storage_open, mutation=True), methods=["POST"]),
         Route("/pieces/{piece_id}", e(api_piece), methods=["GET"]),
         Route("/pieces/{piece_id}/summarize", e(api_summarize, mutation=True), methods=["POST"]),
         Route("/search", e(api_search), methods=["GET"]),
