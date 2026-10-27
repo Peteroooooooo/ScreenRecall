@@ -56,6 +56,7 @@ def main() -> None:
         segs = [s for s in vs._segments.values() if s.rows]
         V = np.concatenate([s.vec[s.alive] for s in segs])
         ids = np.concatenate([s.ids[s.alive] for s in segs])
+        del segs  # drop the memory maps so the temp dir can be deleted on Windows
         db = sqlite3.connect(str(schema.db_path(cfg.data_dir)))
         members: dict[int, list[int]] = {}
         for cid, lid in db.execute("SELECT chunk_id, line_id FROM text_chunks"):
