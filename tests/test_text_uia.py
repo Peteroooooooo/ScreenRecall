@@ -75,6 +75,26 @@ def test_textpattern_lines_preferred_and_whole_doc_value_dropped():
     assert second.rect[2] == WIN[2]
 
 
+def test_wrapped_paragraph_name_is_not_stored_next_to_its_visible_lines():
+    """网页的 <p> 在 UIA 里是 Text 元素，Name 是整段；TextPattern 按显示的行给出折行后的几行。
+    整段不能再收一遍（不然每段文字存三次）；只露出一半的段落，屏幕外那半也不能经 Name 收进来。"""
+    para = "A patient locksmith weighed forty paper cranes next to the bakery oven during week 72, then wrote 24 notes."
+    half = "The radio operator counted a box of glass marbles under the stone bridge during week 73, then wrote 37."
+    elems = [
+        Elem(-1, "Window", rect=WIN),
+        Elem(0, "Document", name="页面", rect=(100, 130, 900, 700), has_tp=True),
+        Elem(1, "Text", name=para, rect=(110, 140, 880, 200)),
+        Elem(1, "Text", name=half, rect=(110, 660, 880, 720)),
+        Elem(1, "Image", name="合成图片的说明文字", rect=(110, 300, 400, 400)),
+    ]
+    tps = [TpLines(1, [("A patient locksmith weighed forty paper cranes next to the bakery oven during week", [(110, 140, 880, 170)]),
+                       ("72, then wrote 24 notes.", [(110, 170, 400, 200)]),
+                       ("The radio operator counted a box of glass marbles under the stone bridge during", [(110, 660, 880, 690)])])]
+    got = _texts(collect_lines(elems, tps, WIN))
+    assert para not in got and half not in got
+    assert len(got) == 4 and "合成图片的说明文字" in got  # 文档里不在可见行中的字照收
+
+
 def test_textpattern_without_lines_falls_back_to_short_value():
     elems = [Elem(-1, "Window", rect=WIN), Elem(0, "Edit", name="", value="单行短值", rect=(110, 110, 300, 130), has_tp=True)]
     got = _texts(collect_lines(elems, [TpLines(1, [])], WIN))
