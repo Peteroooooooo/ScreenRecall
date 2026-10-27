@@ -175,21 +175,28 @@ def test_edge_visible_only(reader, tmp_path):
         assert p1.role == "text"
         print(f"edge: lines={len(texts)} elements={res.element_count} ms={res.elapsed_ms}")
     finally:
-        # 只关本测试启动、用临时配置目录的 Edge 进程
-        tag = str(profile)
-        for p in psutil.process_iter(["name", "cmdline"]):
-            try:
-                if (p.info["name"] or "").lower() == "msedge.exe" and any(tag in (c or "") for c in p.info["cmdline"] or []):
-                    p.kill()
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                pass
-        _kill_tree(proc.pid)
-        for _ in range(20):
-            try:
-                shutil.rmtree(profile)
-                break
-            except OSError:
-                time.sleep(0.5)
+        _close_edge(proc, profile)
+
+
+def _close_edge(proc: subprocess.Popen, profile: Path) -> None:
+    """只关本测试启动、用临时配置目录的 Edge 进程；等它们真正退出后再删配置目录。"""
+    tag = str(profile)
+    killed = []
+    for p in psutil.process_iter(["name", "cmdline"]):
+        try:
+            if (p.info["name"] or "").lower() == "msedge.exe" and any(tag in (c or "") for c in p.info["cmdline"] or []):
+                p.kill()
+                killed.append(p)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    psutil.wait_procs(killed, timeout=10)
+    _kill_tree(proc.pid)
+    for _ in range(40):
+        try:
+            shutil.rmtree(profile)
+            break
+        except OSError:
+            time.sleep(0.5)
 
 
 @pytest.mark.skipif(not EDGE.exists(), reason="本机没有 Edge")
@@ -235,20 +242,7 @@ def test_edge_first_touch_page_not_lost(comtypes_cache, tmp_path):
         print(f"edge first touch: status={first.status} usable={first.usable} page-lines={first_hits} "
               f"uncovered={len(first.uncovered)}; later page-lines={len(page_lines)} uncovered={len(later.uncovered)}")
     finally:
-        tag = str(profile)
-        for p in psutil.process_iter(["name", "cmdline"]):
-            try:
-                if (p.info["name"] or "").lower() == "msedge.exe" and any(tag in (c or "") for c in p.info["cmdline"] or []):
-                    p.kill()
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                pass
-        _kill_tree(proc.pid)
-        for _ in range(20):
-            try:
-                shutil.rmtree(profile)
-                break
-            except OSError:
-                time.sleep(0.5)
+        _close_edge(proc, profile)
 
 
 def test_tk_no_usable_text_and_hint(tmp_path):
