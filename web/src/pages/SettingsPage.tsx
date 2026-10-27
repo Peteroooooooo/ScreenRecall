@@ -1,6 +1,6 @@
 // 设置：大模型接口（掩码密钥 + 测试）、空闲整理、OCR 模型、语言与外观、开机启动、高级（旧版导入）。
 import { useState, type FormEvent, type ReactNode } from "react";
-import { Check, FolderUp, LoaderCircle } from "lucide-react";
+import { Check, LoaderCircle } from "lucide-react";
 import { api, type Settings } from "../api";
 import { useT, type Lang } from "../i18n";
 import { errText, fmtInt, useTheme, type Theme } from "../lib";
@@ -92,13 +92,6 @@ export default function SettingsPage() {
               <div>
                 <b>{t("set.dataDir")}</b>
                 <p className="mt-1 rounded-lg border border-rule bg-well px-2.5 py-2 font-mono text-[13px] [overflow-wrap:anywhere]">{s.data_dir}</p>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-rule pt-3.5">
-                <div className="min-w-0 flex-1">
-                  <b>{t("set.import")}</b>
-                  <p className="mt-0.5 text-[13px] text-graphite">{t("set.importNote")}</p>
-                </div>
-                <a className="sr-btn sr-btn-line sr-btn-sm" href="#/import"><FolderUp size={15} aria-hidden />{t("set.importGo")}</a>
               </div>
             </div>
           </details>

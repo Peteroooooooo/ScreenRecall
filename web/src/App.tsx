@@ -12,7 +12,6 @@ import RecorderPage from "./pages/RecorderPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import AgentPage from "./pages/AgentPage";
 import SettingsPage from "./pages/SettingsPage";
-import ImportPage from "./pages/ImportPage";
 
 /** 顶栏状态的轮询间隔；页面在后台时 usePoll 自动放慢 */
 export const STATUS_POLL_MS = 2000;
@@ -38,7 +37,6 @@ function resolve(path: string, params: URLSearchParams): Route {
     case "/privacy": return { page: <PrivacyPage />, nav: "/privacy", title: "nav.privacy" };
     case "/agent": return { page: <AgentPage />, nav: "/agent", title: "nav.agent" };
     case "/settings": return { page: <SettingsPage />, nav: "/settings", title: "nav.settings" };
-    case "/import": return { page: <ImportPage />, nav: "/settings", title: "title.import" };
     default: return { page: <TodayPage params={params} />, nav: "/", title: "nav.today" };
   }
 }
