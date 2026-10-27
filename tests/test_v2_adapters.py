@@ -303,6 +303,59 @@ def test_seed_control_only_once(tmp_path, monkeypatch):
         assert e.stack.queries.control()["desired_state"] == "paused"
     finally:
         e.stack.close()
+    # 重启（新的一套存储对象）：用户的暂停保持
+    stack = adapters.StoreStack(e.stack.cfg, search=F.SearchService(e.stack.cfg.data_dir, model_check=lambda: False))
+    try:
+        assert stack.seed_control() is False
+        assert stack.queries.control()["desired_state"] == "paused"
+    finally:
+        stack.close()
+
+
+def _fresh_cfg(tmp_path, monkeypatch):
+    home, data = tmp_path / "home", tmp_path / "data"
+    monkeypatch.setenv("SCREENRECALL_HOME", str(home))
+    home.mkdir(parents=True, exist_ok=True)
+    return v2config.load_v2(data, home=home)
+
+
+def test_seed_control_after_recorder_ran_first(tmp_path, monkeypatch):
+    """录制进程先在新库上跑过（只填排除规则、request_seq = 1）：主进程第一次打开仍要开始录制。"""
+    from screenrecall.store.writer import Writer
+    from screenrecall.v2 import recorder
+
+    cfg = _fresh_cfg(tmp_path, monkeypatch)
+    with Writer(cfg.data_dir, cfg.writer) as w:
+        w.call(recorder._recover, utc_ms(), ["a.exe"], ["secret"]).result(10)
+    stack = adapters.StoreStack(cfg, search=F.SearchService(cfg.data_dir, model_check=lambda: False))
+    try:
+        assert stack.queries.control()["desired_state"] == "paused"
+        assert stack.seed_control() is True
+        ctrl = stack.queries.control()
+        assert ctrl["desired_state"] == "recording" and ctrl["pause_until_ms"] is None
+        assert ctrl["excluded_processes"] == ["a.exe"]  # 录制进程填过的名单不换
+        stack.set_control(desired_state="paused")
+        assert stack.seed_control() is False
+        assert stack.queries.control()["desired_state"] == "paused"
+    finally:
+        stack.close()
+
+
+def test_seed_control_leaves_older_used_db_alone(tmp_path, monkeypatch):
+    """标记出现之前就用过的库（主进程写过 + 录制进程填过，request_seq = 2）：只补标记，不改暂停状态。"""
+    from screenrecall.store.writer import Writer
+    from screenrecall.v2 import recorder
+
+    cfg = _fresh_cfg(tmp_path, monkeypatch)
+    with Writer(cfg.data_dir, cfg.writer) as w:
+        w.control_set(desired_state="paused", excluded_processes=[]).result(10)
+        w.call(recorder._recover, utc_ms(), [], []).result(10)
+    stack = adapters.StoreStack(cfg, search=F.SearchService(cfg.data_dir, model_check=lambda: False))
+    try:
+        assert stack.seed_control() is False
+        assert stack.queries.control()["desired_state"] == "paused"
+    finally:
+        stack.close()
 
 
 def test_user_settings_file(tmp_path):
