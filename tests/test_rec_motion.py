@@ -193,10 +193,118 @@ def test_repeating_template_lines_do_not_give_a_wrong_shift(head, period, dy):
     doc = _templated(W, 80, period, 84)
     m = M.analyze(M.Fp.from_image(S.view(doc, 300, VH, head)), M.Fp.from_image(S.view(doc, 300 + dy, VH, head)))
     assert m.kind == "break" or (m.kind == "shift" and m.dy == dy), m
-    assert m.kind == "break" and "对不上" in m.agree
+    # 交叉复核（别的条带对不上）或整屏复核（独特的行在别的偏移下对上 / 几个偏移都说得通）拦下
+    assert m.kind == "break" and any(k in m.agree for k in ("对不上", "都说得通", "别的偏移")), m
     # 同一页面小步滚动照样认得出
     m = M.analyze(M.Fp.from_image(S.view(doc, 300, VH, head)), M.Fp.from_image(S.view(doc, 340, VH, head)))
     assert m.kind == "shift" and m.dy == 40
+
+
+def _mono(size: int = 18):
+    from pathlib import Path
+
+    from PIL import ImageFont
+
+    p = Path(r"C:\Windows\Fonts\consola.ttf")
+    return ImageFont.truetype(str(p), size) if p.exists() else S.font(size)
+
+
+def _page(width: int, rows: list[str], line_h: int, *, font=None) -> np.ndarray:
+    from PIL import Image, ImageDraw
+
+    img = Image.new("RGB", (width, len(rows) * line_h + 40), "white")
+    d = ImageDraw.Draw(img)
+    f = font or _mono()
+    for i, t in enumerate(rows):
+        d.text((14, 10 + i * line_h), t, fill="black", font=f)
+    return np.ascontiguousarray(np.array(img)[:, :, ::-1])
+
+
+def _log_page(n: int = 400) -> np.ndarray:
+    """日志：每行的日期、时、分一样，只有秒和毫秒那几个字不同，后半段按 4 / 9 / 7 行循环。"""
+    return _page(W, [f"2026-10-27 10:{(i // 60) % 60:02d}:{i % 60:02d}.{(i * 37) % 1000:03d} INFO  [worker-{i % 4}] "
+                     f"GET /api/items?page={i % 9} 200 {12 + i % 7} ms" for i in range(n)], 33)
+
+
+def _chat_page(n: int = 200) -> np.ndarray:
+    """头像、气泡一样的聊天，每 10 条完全重复（整页是严格周期的，周期 480 像素）。"""
+    from PIL import Image, ImageDraw
+
+    msgs = ["ok", "收到", "好的，我看一下", "明天再说", "ok"]
+    img = Image.new("RGB", (W, n * 48 + 40), "white")
+    d = ImageDraw.Draw(img)
+    f = S.font(18)
+    for i in range(n):
+        y, left = 10 + i * 48, i % 2 == 0
+        ax = 14 if left else W - 54
+        d.ellipse((ax, y, ax + 36, y + 36), fill=(68, 170, 136))
+        d.text((ax + 12, y + 6), "A", fill="white", font=f)
+        tx = 62 if left else W - 260
+        d.rectangle((tx, y + 2, tx + 190, y + 34), fill=(238, 238, 238))
+        d.text((tx + 10, y + 6), msgs[i % len(msgs)], fill="black", font=f)
+    return np.ascontiguousarray(np.array(img)[:, :, ::-1])
+
+
+def _chrome(width: int, height: int = 120) -> np.ndarray:
+    """浏览器那样的静止顶栏：几行横跨整个宽度、各不相同的字（每条竖带里都有十几行只出现一次的行）。"""
+    from PIL import Image, ImageDraw
+
+    img = Image.new("RGB", (width, height), (235, 238, 242))
+    d = ImageDraw.Draw(img)
+    f = S.font(18)
+    for k, y in enumerate(range(8, height - 24, 28)):
+        d.text((8, y), " ".join(f"tab{k}{j} 地址栏{j * 7 + k}" for j in range(12)), fill=(30, 30, 30), font=f)
+    return np.asarray(img)[:, :, ::-1].copy()
+
+
+@pytest.mark.parametrize("dy", [37, 122, 306, 490])
+def test_log_with_one_distinctive_strip_joins_at_the_true_offset(dy):
+    """只有一两条竖带看得到各不相同的字（秒），其余竖带的行在屏幕里都重复：
+    单靠条带多数给不出数（原来一律接不上）；整屏复核在所有竖带一起看时站得住 → 接上，数是对的。"""
+    doc, top = _log_page(), _chrome(W)
+    a, b = S.view(doc, 300, VH, top), S.view(doc, 300 + dy, VH, top)
+    m = M.analyze(M.Fp.from_image(a), M.Fp.from_image(b))
+    assert m.kind == "shift" and m.dy == dy, m
+
+
+@pytest.mark.parametrize("dy", [40, 153, 275, 490])
+def test_strictly_periodic_chat_never_gives_a_number(dy):
+    """完全周期的页面（每 10 条一样）：错开整段的偏移和真偏移一样说得通，没法知道真正滚了多少 → 接不上。
+    静止的顶栏让好几条竖带说"没动"，也不能当成原地变了。"""
+    doc, top = _chat_page(), _chrome(W)
+    a, b = S.view(doc, 300, VH, top), S.view(doc, 300 + dy, VH, top)
+    m = M.analyze(M.Fp.from_image(a), M.Fp.from_image(b))
+    assert m.kind == "break", m
+
+
+@pytest.mark.parametrize("dy", [92, 214])
+def test_static_chrome_votes_do_not_make_a_scroll_inplace(dy):
+    """表格：只有最左边一列的序号各不相同；高高的静止顶栏让每条竖带都有十几行"只出现一次"的行说"没动"。
+    原来判成原地变了（位置不动，新一屏按旧位置写进同一块 = 偏移错）；现在整屏复核按在动的行算 → 平移 dy。"""
+    rows = [f"{i:4d}   合成条目 Item     OK     2026-10-27" for i in range(300)]
+    doc = _page(W, rows, 34, font=S.font(20))
+    top = _chrome(W, 200)
+    a, b = S.view(doc, 300, VH, top), S.view(doc, 300 + dy, VH, top)
+    m = M.analyze(M.Fp.from_image(a), M.Fp.from_image(b))
+    assert m.kind != "inplace", m
+    assert m.kind == "shift" and m.dy == dy, m
+
+
+def test_jump_without_overlap_under_static_chrome_is_break_not_inplace():
+    """翻过了一整屏（没有重叠，认不出偏移）：每条竖带都因为静止的顶栏说"没动"，空白行也都没变，
+    但在变的行里没有一张"没动"的票 → 接不上，不当成原地变了。"""
+    doc, top = _log_page(), _chrome(W, 200)
+    m = M.analyze(M.Fp.from_image(S.view(doc, 300, VH, top)), M.Fp.from_image(S.view(doc, 300 + VH + 40, VH, top)))
+    assert m.kind == "break", m
+
+
+def test_title_text_change_under_static_content_is_inplace():
+    """只有顶栏里的一段字变了（网页标题、标签页）：照样是原地变了。"""
+    doc, top = _log_page(), _chrome(W, 120)
+    a = S.view(doc, 300, VH, top)
+    b = S.write_text(a.copy(), 300, 8, "新的标题 new title 2026", size=18)
+    m = M.analyze(M.Fp.from_image(a), M.Fp.from_image(b))
+    assert m.kind == "inplace", m
 
 
 @pytest.mark.parametrize("dy", [530, 600])
@@ -209,7 +317,7 @@ def test_page_jump_with_static_side_panel_is_break_not_inplace(doc, head, dy):
         f[:, :70] = side[:f.shape[0]]
         f[:, -70:] = side[:f.shape[0]]
     m = M.analyze(M.Fp.from_image(a), M.Fp.from_image(b))
-    assert m.kind == "break" and "说没动" in m.agree, m
+    assert m.kind == "break" and ("说没动" in m.agree or "站不住" in m.agree), m
 
 
 def test_inplace_change(doc, head):
