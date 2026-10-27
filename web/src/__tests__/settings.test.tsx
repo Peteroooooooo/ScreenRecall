@@ -42,6 +42,16 @@ describe("settings page", () => {
     await waitFor(() => expect(calls.filter((c) => c.path === "/api/v2/settings/llm")).toHaveLength(2));
     expect((calls.filter((c) => c.path === "/api/v2/settings/llm")[1].body as { api_key?: string }).api_key).toBe("sk-test-synthetic");
     await waitFor(() => expect(key.value).toBe(""));
+
+    // 只有空白 = 留空（不会把已存的密钥换成空白）；带空白的密钥去掉首尾空白再发
+    fireEvent.change(key, { target: { value: "   " } });
+    fireEvent.submit(key.closest("form")!);
+    await waitFor(() => expect(calls.filter((c) => c.path === "/api/v2/settings/llm")).toHaveLength(3));
+    expect(calls.filter((c) => c.path === "/api/v2/settings/llm")[2].body).not.toHaveProperty("api_key");
+    fireEvent.change(key, { target: { value: " sk-test-synthetic2\n" } });
+    fireEvent.submit(key.closest("form")!);
+    await waitFor(() => expect(calls.filter((c) => c.path === "/api/v2/settings/llm")).toHaveLength(4));
+    expect((calls.filter((c) => c.path === "/api/v2/settings/llm")[3].body as { api_key?: string }).api_key).toBe("sk-test-synthetic2");
   });
 
   it("测试连接 reports latency and model", async () => {

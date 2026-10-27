@@ -50,7 +50,8 @@ function Hero() {
   const v = recView(status, lost, t);
   const title = { recording: t("rec.recording"), paused: t("rec.paused"), stopped: t("rec.stopped"), dead: t("rec.dead"), lost: t("st.lost"), unknown: t("st.connecting") }[v.state];
   let sub: string | null = null;
-  if (v.state === "recording") sub = status?.current ? t("rec.watching", { x: `${status.current.title} — ${appName(status.current.app)}` }) : t("rec.noForeground");
+  const cur = status?.current;
+  if (v.state === "recording") sub = cur ? t("rec.watching", { x: cur.title ? `${cur.title} — ${appName(cur.app)}` : appName(cur.app) }) : t("rec.noForeground");
   else if (v.state === "paused") sub = status?.pause_until_ms ? t("rec.pausedUntil", { t: until(status.pause_until_ms) }) : t("rec.pausedOpen");
   else if (v.state === "dead") sub = t("rec.deadNote");
   else if (v.state === "lost") sub = t("common.offlineHint");
@@ -87,6 +88,7 @@ const until = (ms: number) => {
 };
 
 type Save = ReturnType<typeof useSettings>["save"];
+const samePin = (a: { process: string; title: string }, b: { process: string; title: string }) => a.process === b.process && a.title === b.title;
 
 function AddRow({ id, label, placeholder, onAdd, button, icon }: {
   id: string; label: string; placeholder: string; onAdd: (v: string) => Promise<boolean>; button?: string; icon?: boolean;
@@ -131,7 +133,9 @@ function Pinned({ s, save }: { s: Settings; save: Save }) {
       toast(t("rec.pinFull", { n: MAX_PINNED }), "warn");
       return;
     }
-    if (await save({ pinned: [...s.pinned, { process: w.process, title: w.title }] }, t("rec.pinDone", { x: w.title || w.process }))) setPick("");
+    const pinned = await save((cur) => cur.pinned.length >= MAX_PINNED || cur.pinned.some((p) => samePin(p, w)) ? null
+      : { pinned: [...cur.pinned, { process: w.process, title: w.title }] }, t("rec.pinDone", { x: w.title || w.process }));
+    if (pinned) setPick("");
   };
   return (
     <Card title={t("rec.pinned")} id="pin-h" aside={<span className="text-[12.5px] text-faint">{t("rec.pinMax", { n: MAX_PINNED })}</span>}>
@@ -145,7 +149,7 @@ function Pinned({ s, save }: { s: Settings; save: Save }) {
                 <div className="truncate text-[12.5px] text-faint">{appName(p.process)}</div>
               </div>
               <button className="sr-btn sr-btn-ghost sr-btn-sm" aria-label={t("rec.unpinX", { x: p.title || p.process })}
-                onClick={() => save({ pinned: s.pinned.filter((_, j) => j !== i) }, t("rec.unpinDone", { x: p.title || p.process }))}>
+                onClick={() => save((cur) => ({ pinned: cur.pinned.filter((x) => !samePin(x, p)) }), t("rec.unpinDone", { x: p.title || p.process }))}>
                 {t("rec.unpin")}
               </button>
             </li>
@@ -178,18 +182,22 @@ function Hidden({ s, save }: { s: Settings; save: Save }) {
   ];
   const remove = (key: string) => {
     const v = key.slice(2);
-    const next = key.startsWith("a:") ? { apps: h.apps.filter((x) => x !== v), title_keywords: h.title_keywords }
-      : { apps: h.apps, title_keywords: h.title_keywords.filter((x) => x !== v) };
-    void save({ hidden_from_agents: next }, t("common.removed", { x: v }));
+    const isApp = key.startsWith("a:");
+    void save(({ hidden_from_agents: c }) => ({
+      hidden_from_agents: isApp ? { ...c, apps: c.apps.filter((x) => x !== v) } : { ...c, title_keywords: c.title_keywords.filter((x) => x !== v) },
+    }), t("common.removed", { x: v }));
   };
   const add = async (v: string) => {
-    const list = kind === "app" ? h.apps : h.title_keywords;
-    if (hasItem(list, v)) {
+    const isApp = kind === "app";
+    if (hasItem(isApp ? h.apps : h.title_keywords, v)) {
       toast(t("common.dup", { x: v }), "warn");
       return false;
     }
-    const next = kind === "app" ? { ...h, apps: [...h.apps, v] } : { ...h, title_keywords: [...h.title_keywords, v] };
-    return !!(await save({ hidden_from_agents: next }, t("common.added", { x: v })));
+    return !!(await save(({ hidden_from_agents: c }) => {
+      const list = isApp ? c.apps : c.title_keywords;
+      if (hasItem(list, v)) return null;
+      return { hidden_from_agents: isApp ? { ...c, apps: [...list, v] } : { ...c, title_keywords: [...list, v] } };
+    }, t("common.added", { x: v })));
   };
   return (
     <Card title={t("rec.hidden")} id="hid-h" aside={<EyeOff size={15} className="text-faint" aria-hidden />}>
@@ -217,13 +225,13 @@ function Exclusions({ s, save }: { s: Settings; save: Save }) {
         toast(t("common.dup", { x: v }), "warn");
         return false;
       }
-      return !!(await save({ [field]: [...xs, v] }, t("common.added", { x: v })));
+      return !!(await save((cur) => (hasItem(cur[field], v) ? null : { [field]: [...cur[field], v] }), t("common.added", { x: v })));
     };
     return (
       <div className="min-w-0">
         <p className="sr-label mb-2">{label}</p>
         <Chips items={xs.map((x) => ({ key: x, label: x }))} empty={t("rec.exNone")}
-          onRemove={(k) => void save({ [field]: xs.filter((x) => x !== k) }, t("common.removed", { x: k }))} />
+          onRemove={(k) => void save((cur) => ({ [field]: cur[field].filter((x) => x !== k) }), t("common.removed", { x: k }))} />
         <AddRow id={id} label={label} placeholder={ph} onAdd={add} />
       </div>
     );

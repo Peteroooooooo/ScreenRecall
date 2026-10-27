@@ -71,6 +71,26 @@ describe("privacy page", () => {
     await waitFor(() => expect(calls.find((c) => c.path === "/api/v2/delete")?.body).toEqual({ app: "SampleChat.exe" }));
     await waitFor(() => expect(calls.find((c) => c.path === "/api/v2/settings" && c.method === "POST")?.body)
       .toEqual({ excluded_processes: ["SamplePasswords.exe", "SampleChat.exe"] }));
+    // 先排除、再删除：两步之间不会又记下这个应用
+    const ex = calls.findIndex((c) => c.path === "/api/v2/settings" && c.method === "POST");
+    const del = calls.findIndex((c) => c.path === "/api/v2/delete");
+    expect(ex).toBeLessThan(del);
+  });
+
+  it("delete by app still deletes when adding the exclusion fails", async () => {
+    const calls = mockFetch((c) => {
+      if (c.path === "/api/v2/delete") return deleted;
+      if (c.path === "/api/v2/settings" && c.method === "POST") return { status: 500, body: { error: "写不进设置" } };
+      return null;
+    });
+    renderAt("#/privacy");
+    const sel = await screen.findByRole("combobox", { name: "应用" });
+    await waitFor(() => expect(within(sel).getAllByRole("option").length).toBe(3));
+    fireEvent.change(sel, { target: { value: "SampleChat.exe" } });
+    fireEvent.click(screen.getByRole("button", { name: "删除这个应用的全部记录" }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "删除" }));
+    await waitFor(() => expect(calls.find((c) => c.path === "/api/v2/delete")?.body).toEqual({ app: "SampleChat.exe" }));
+    await waitFor(() => expect(toasts().join()).toContain("写不进设置"));
   });
 
   it("shows where the data lives and how big it is", async () => {
