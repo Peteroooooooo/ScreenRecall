@@ -175,7 +175,7 @@ def test_agent_configs_endpoint_needs_login_and_has_no_token(client):
     r = client.get("/api/app/agent-configs", headers=bearer())
     assert r.status_code == 200
     body = r.json()
-    assert set(body["configs"]) == {"claude_desktop", "claude_code", "cursor"}
+    assert set(body["configs"]) == {"claude_desktop", "claude_code", "codex", "cursor"}
     assert body["mcp_url"] == f"{BASE}/mcp" and TOKEN not in r.text
 
 

@@ -11,7 +11,7 @@ describe("agent page", () => {
     renderAt("#/agent");
     expect(await screen.findByText("http://127.0.0.1:8611/mcp")).toBeTruthy();
     const tabs = screen.getAllByRole("tab").map((x) => x.textContent);
-    expect(tabs).toEqual(["Claude Desktop", "Claude Code", "Cursor"]);
+    expect(tabs).toEqual(["Claude Desktop", "Claude Code", "Codex", "Cursor"]);
     const panel = screen.getByRole("tabpanel");
     expect(panel.textContent).toContain('"mcpServers"');
     expect(panel.textContent).toContain("screenrecall.app.mcp_shim");
@@ -24,6 +24,9 @@ describe("agent page", () => {
     fireEvent.keyDown(screen.getAllByRole("tab")[0], { key: "ArrowRight" });
     expect(screen.getAllByRole("tab")[1].getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("tabpanel").textContent).toContain("claude mcp add screenrecall");
+    // Codex：config.toml 的 [mcp_servers.screenrecall] 块
+    fireEvent.click(screen.getByRole("tab", { name: "Codex" }));
+    expect(screen.getByRole("tabpanel").textContent).toContain("[mcp_servers.screenrecall]");
 
     expect(screen.queryByText(/查询记录|最近查过/)).toBeNull();
     expect(screen.getByText("get_frame")).toBeTruthy();
