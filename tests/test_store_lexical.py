@@ -208,3 +208,12 @@ def test_planner_picks_by_cost(env):
     put(w, "x.exe", "y", 5000, ["rarexyz term"])
     assert S(c, "rarexyz").mode == "exact"
     assert S(c, "the", app="rare.exe").mode in ("segment", "exact")
+
+
+def test_short_word_prefix_same_in_every_plan(env):
+    w, c = env
+    _, _, ids = put(w, "a.exe", "t", 1000, ["rain gauge machine", "AI machine", "again"])
+    for m in ("exact", "segment", "recent"):
+        kw = {"app": "a.exe"} if m == "segment" else {}
+        assert all_line_ids(S(c, "ai", mode=m, **kw)) == [ids[1]], m
+        assert all_line_ids(S(c, "ai machine", mode=m, **kw)) == [ids[1]], m

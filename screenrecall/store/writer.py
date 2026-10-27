@@ -371,6 +371,10 @@ class Writer:
             return
         self._submit(_frame_done, frame_id, len(data), self.clock(), str(path))
 
+    def frame_seen(self, frame_id: str, t_ms: int) -> Future:
+        """又看到与这张证据帧像素完全相同的画面：只更新帧和帧上各行（仍在的）的 last_seen，不再读字。"""
+        return self._submit(_frame_seen, frame_id, int(t_ms))
+
     def link_lines(self, frame_id: str, line_ids: Sequence[int | None] | Future, rects: Sequence[Rect]) -> Future:
         return self._submit(_link_lines, frame_id, line_ids, list(rects))
 
@@ -685,11 +689,11 @@ def _frame_insert(conn, frame_id, rel, w, h, captured, segment_id, block_id, pos
         "UPDATE meta SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = 'frame_seq' RETURNING value"
     ).fetchone()[0])
     conn.execute(
-        "INSERT INTO frames (frame_id, frame_no, image_path, width, height, captured_ms, segment_id, block_id, "
-        "pos_y, hwnd, app, title, keep, pixel_hash, status) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'encoding')",
-        (frame_id, frame_no, rel, w, h, captured, _opt_int(segment_id), _opt_int(block_id), pos_y, hwnd, app,
-         title, keep, pixel_hash),
+        "INSERT INTO frames (frame_id, frame_no, image_path, width, height, captured_ms, last_seen_ms, segment_id, "
+        "block_id, pos_y, hwnd, app, title, keep, pixel_hash, status) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'encoding')",
+        (frame_id, frame_no, rel, w, h, captured, captured, _opt_int(segment_id), _opt_int(block_id), pos_y, hwnd,
+         app, title, keep, pixel_hash),
     )
     return frame_id
 
@@ -707,6 +711,21 @@ def _frame_done(conn, frame_id, nbytes, now, abs_path) -> None:
         from .delete import wipe_file
 
         wipe_file(Path(abs_path))
+
+
+def _frame_seen(conn, frame_id, t) -> int:
+    row = conn.execute("SELECT segment_id, block_id FROM frames WHERE frame_id = ?", (frame_id,)).fetchone()
+    if row is None:
+        return 0
+    conn.execute("UPDATE frames SET last_seen_ms = max(last_seen_ms, ?) WHERE frame_id = ?", (t, frame_id))
+    n = conn.execute(
+        "UPDATE lines SET last_seen_ms = max(last_seen_ms, ?) WHERE disappeared_ms IS NULL AND line_id IN "
+        "(SELECT line_id FROM line_in_frame WHERE frame_id = ?)", (t, frame_id)).rowcount
+    if row[1] is not None:
+        conn.execute("UPDATE blocks SET last_seen_ms = max(last_seen_ms, ?) WHERE block_id = ?", (t, row[1]))
+    if row[0] is not None:
+        conn.execute("UPDATE segments SET last_seen_ms = max(last_seen_ms, ?) WHERE segment_id = ?", (t, row[0]))
+    return n
 
 
 def _frame_failed(conn, frame_id) -> None:
