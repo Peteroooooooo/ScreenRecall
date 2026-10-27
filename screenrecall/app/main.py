@@ -166,9 +166,11 @@ def build_children(cfg, *, home: Path, recorder_module: str = RECORDER_MODULE,
     specs = [supervisor.ChildSpec(RECORDER_CHILD, supervisor.python_child(recorder_module, *args), restart="always",
                                   env=supervisor.child_env(), log_path=logs / "recorder.out.log")]
     if worker_module:
+        # 模型加载 / 批量编码的 tqdm 进度条写在标准错误上，会堆进 idle-worker.out.log（本该只有警告和崩溃信息）
+        quiet = {"TQDM_DISABLE": "1", "HF_HUB_DISABLE_PROGRESS_BARS": "1"}
         specs.append(supervisor.ChildSpec(IDLE_CHILD, supervisor.python_child(worker_module, *args),
                                           restart="on-failure", autostart=False, below_normal=True,
-                                          env=supervisor.child_env(), log_path=logs / "idle-worker.out.log"))
+                                          env=supervisor.child_env(quiet), log_path=logs / "idle-worker.out.log"))
     return specs
 
 
