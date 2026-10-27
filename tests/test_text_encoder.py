@@ -66,6 +66,23 @@ def test_count_tokens_and_truncation(enc):
 
 
 @needs_model
+def test_session_options_do_not_change_vectors(enc):
+    # 主进程查询用 mem_arena=False（省常驻内存）；prepack=False 只是可选项：向量必须与默认一致
+    texts = ["今天下午三点开组会", "meeting at 3pm"]
+    ref = enc.encode(texts)
+    for kw in ({"mem_arena": False}, {"mem_arena": False, "prepack": False}):
+        other = encoder.OnnxTextEncoder(batch_size=4, threads=1, **kw)
+        assert np.abs(other.encode(texts) - ref).max() < 1e-4, kw
+
+
+def test_openblas_threads_capped_before_numpy_loads():
+    # screenrecall/__init__.py 在 numpy 导入前限制 OpenBLAS 线程数（每个线程一导入就提交一块缓冲）
+    import os
+
+    assert os.environ.get("OPENBLAS_NUM_THREADS")
+
+
+@needs_model
 def test_lazy_encoder_loads_and_unloads():
     lazy = encoder.LazyTextEncoder(idle_unload_s=0.3)
     assert not lazy.loaded and lazy.model_id == models.DEFAULT_MODELS.text.model_id

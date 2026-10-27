@@ -1,7 +1,8 @@
 """只读查询接口：网页和 MCP 共用，返回可直接 JSON 序列化的 dict / list。
 
 - 每个线程自己的只读连接（schema.connect_ro），录制进程没运行时也能打开；
-- search：词法分支（fts.lexical）+ 可选向量分支，按内容源分组后用 RRF（k = 60）融合；
+- search：词法分支（fts.lexical）+ 可选向量分支，按内容源分组；按最近或按相关度排序，可翻页；
+- tasks：任务标签与片段数（搜索页的任务下拉框）；
 - timeline：窗口焦点、片段、缺口按开始时间排好；
 - piece：片段里各块的文字按阅读顺序排列（合并过的块换算到根块坐标），并标出划过与缺口；
 - summary / frame / day_overview / control / apps。
@@ -23,7 +24,12 @@ from ..timeutil import local_dates_to_utc_range, utc_ms
 from . import schema
 from .fts import docs, lexical
 
-RRF_K = 60
+# 向量分支的分数门槛（合成评测 experiments/search 定的，见 Queries._vector_groups）
+MIN_VECTOR_SCORE = 0.45
+VECTOR_MARGIN = 0.15
+SEMANTIC_WITH_LITERAL = 0.55  # 有字面命中时，只有语义命中的组要达到的分数
+VECTOR_K = 400         # 向量库一次取多少条候选（之后按门槛筛、回表核验）
+LEXICAL_POOL = 200      # relevant 排序时，最近多少组字面命中参与按相关度排
 Encoder = Callable[[str], np.ndarray]
 
 
@@ -79,58 +85,159 @@ class Queries:
 
     def search(self, query: str, time_from: int | None = None, time_to: int | None = None, app: str | None = None,
                task: str | None = None, limit: int = 20, encoder: Encoder | None = None, *, per_group: int = 3,
-               exclude_apps: Sequence[str] = (), exclude_title_keywords: Sequence[str] = ()) -> dict:
-        """词法 + 可选向量分支（RRF 融合）。
+               exclude_apps: Sequence[str] = (), exclude_title_keywords: Sequence[str] = (), sort: str = "recent",
+               offset: int = 0, min_score: float = MIN_VECTOR_SCORE, score_margin: float = VECTOR_MARGIN) -> dict:
+        """词法 + 可选向量分支，按内容源（segment）分组；返回第 offset 组起的 limit 组。
 
-        向量库约定：id = line_id 或段落编号 text_chunks.chunk_id（一个向量对应几行），group = segment_id，
-        ts = 行（段落里最早一行）的 first_seen_ms（不变）。
-        向量分支先按内容源（筛选 + 时间与内容源的存在区间重叠）限定组，再逐条在 SQL 里核验行的存在区间，
-        与词法分支的时间语义一致（行的 [first_seen, last_seen] 与 [time_from, time_to) 重叠）。
+        向量库约定：id > 0 是单行（line_id），id < 0 是段落（text_chunks.chunk_id，一个向量对应几行），
+        group = segment_id，ts = 行（段落里最早一行）的 first_seen_ms（不变）。
+        向量命中先按分数筛（见 _vector_groups）；再在 SQL 里核验行的存在区间，与词法分支的时间语义一致
+        （行的 [first_seen, last_seen] 与 [time_from, time_to) 重叠），也挡掉已删除（墓碑还没读到）的行。
+
+        sort：
+        - recent：按组里最后一次看到排（新的在前）；
+        - relevant：字面命中的组在前（组的语义分 + 1，同分按最近），之后是只有语义命中的组（按语义分）。
+          字面命中的组只在最近 LEXICAL_POOL 组里按相关度排，更早的接在后面、按最近排，翻页时顺序不变。
+        每组带 sources（lexical / vector）、score（relevant 用的分数）、semantic_score（语义分，可能为 None）。
+        has_more：后面还有组。
         """
         conn = self.conn()
+        offset, limit = max(0, int(offset)), max(1, int(limit))
         filters = lexical.Filters(time_from, time_to, app, task, tuple(exclude_apps), tuple(exclude_title_keywords))
-        lex = lexical.search(conn, query, filters=filters, limit=limit, per_group=per_group)
-        out = lex.to_dict()
-        for g in out["groups"]:
-            g["sources"] = ["lexical"]
         encoder = encoder or self.encoder
-        if encoder is None or self.text_vectors is None or not query.strip():
-            return out
+        semantic = encoder is not None and self.text_vectors is not None and bool(query.strip())
+        need = offset + limit
+        pool = max(need + 1, LEXICAL_POOL) if semantic and sort == "relevant" else need + 1
+        lex = lexical.search(conn, query, filters=filters, limit=pool, per_group=per_group)
+        out = lex.to_dict()
+        lex_groups = out["groups"]
+        for g in lex_groups:
+            g["sources"], g["semantic_score"] = ["lexical"], None
+        vec_only: list[dict] = []
+        if semantic:
+            qv = np.asarray(encoder(query), dtype=np.float32)
+            allowed = None
+            if app or task or exclude_apps or exclude_title_keywords or time_from is not None or time_to is not None:
+                allowed = self._segment_ids(conn, filters)
+            by_seg = {int(g["segment_id"]): g for g in lex_groups}
+            for seg_id, (score, rows) in self._vector_groups(conn, qv, allowed, time_from, time_to, per_group,
+                                                             min_score, score_margin).items():
+                g = by_seg.get(seg_id)
+                if g is None:
+                    g = _vector_group(rows)
+                    g["semantic_score"] = score
+                    vec_only.append(g)
+                else:
+                    g["sources"].append("vector")
+                    g["semantic_score"] = score
+            if lex_groups:
+                # 已有字面命中：只有意思很接近的才另外列出（查生僻词、半个词时向量分支多半是凑数）
+                vec_only = [g for g in vec_only if g["semantic_score"] >= SEMANTIC_WITH_LITERAL]
+            self._literal_scores(qv, lex_groups)
+            out["mode"] = out["mode"] + "+vector"
+        for g in lex_groups:
+            g["score"] = 1.0 + (g["semantic_score"] or 0.0)
+        for g in vec_only:
+            g["score"] = float(g["semantic_score"])
+        recency = lambda g: (-int(g["last_seen_ms"]), -int(g["segment_id"]))  # noqa: E731
+        if sort == "relevant":
+            head = sorted(lex_groups[:LEXICAL_POOL] + vec_only, key=lambda g: (-g["score"],) + recency(g))
+            ordered = head + lex_groups[LEXICAL_POOL:]
+        else:
+            ordered = sorted(lex_groups + vec_only, key=recency)
+        out["groups"] = ordered[offset:need]
+        out["has_more"] = len(ordered) > need
+        out["total_groups"] = int(out["total_groups"]) + len(vec_only)
+        out["offset"], out["sort"] = offset, sort
+        return out
 
-        allowed = None
-        if app or task or exclude_apps or exclude_title_keywords or time_from is not None or time_to is not None:
-            allowed = self._segment_ids(conn, filters)
-        qv = np.asarray(encoder(query), dtype=np.float32)
+    def _vector_groups(self, conn, qv: np.ndarray, allowed: list[int] | None, time_from: int | None,
+                       time_to: int | None, per_group: int, min_score: float,
+                       margin: float) -> dict[int, tuple[float, list]]:
+        """向量分支 → {segment_id: (组里最高的语义分, 要显示的行)}，按分数从高到低。
+
+        只要余弦 >= max(min_score, 最高分 - margin) 的命中：固定门槛挡掉"什么都有点像"的低分，
+        相对门槛挡掉离最好的那条差很远的凑数命中（合成评测：不相关的查询能到 0.4-0.58，
+        相关的大多在 0.45 以上、且离最好的那条不远，见 experiments/search）。
+        组里的行：单行命中就是那一行；段落命中是段落里的行（阅读顺序），按命中分数先后、去重，最多 per_group 行。"""
         # ts = first_seen：first_seen < time_to 可以直接在向量库里筛；time_from 要看 last_seen，只能回表核验
-        hits = self.text_vectors.search(qv, k=max(limit * 3, 30), time_to=time_to, groups=allowed,
-                                        best_per_group=True)
-        fused: dict[int, float] = {}
-        for rank, g in enumerate(out["groups"], 1):
-            fused[g["segment_id"]] = fused.get(g["segment_id"], 0.0) + 1.0 / (RRF_K + rank)
-        by_seg = {g["segment_id"]: g for g in out["groups"]}
-        rank = 0
+        hits = self.text_vectors.search(qv, k=VECTOR_K, time_to=time_to, groups=allowed)
+        if not hits:
+            return {}
+        cut = max(float(min_score), float(hits[0].score) - float(margin))
+        hits = [h for h in hits if h.score >= cut]
+        rows_of = self._vector_rows(conn, [h.id for h in hits], time_from, time_to)
+        out: dict[int, tuple[float, list]] = {}
         for h in hits:
-            rows = self._vector_lines(conn, h.id, time_from, time_to)
+            rows = rows_of.get(int(h.id))
             if not rows:  # 行已删除（墓碑还没读到），或存在区间不在范围里
                 continue
-            row = rows[0]
-            rank += 1
-            if rank > limit:
-                break
-            seg_id = int(row["segment_id"])
-            fused[seg_id] = fused.get(seg_id, 0.0) + 1.0 / (RRF_K + rank)
-            g = by_seg.get(seg_id)
-            if g is None:
-                g = by_seg[seg_id] = _vector_group(rows[:max(1, per_group)])
-            elif "vector" not in g["sources"]:
-                g["sources"].append("vector")
-            g["vector_score"] = h.score
-        groups = [g for s, g in by_seg.items() if s in fused]
+            seg_id = int(rows[0]["segment_id"])
+            score, shown = out.get(seg_id, (float(h.score), []))
+            have = {int(r["line_id"]) for r in shown}
+            for r in rows:
+                if len(shown) < max(1, per_group) and int(r["line_id"]) not in have:
+                    shown.append(r)
+                    have.add(int(r["line_id"]))
+            out[seg_id] = (score, shown)
+        return out
+
+    def _literal_scores(self, qv: np.ndarray, groups: list[dict]) -> None:
+        """字面命中的行自己的语义分（单行向量 id = line_id）：同是字面命中，意思更贴近的组排前面。"""
+        ids = [int(ln["line_id"]) for g in groups for ln in g["lines"]]
+        if not ids:
+            return
+        best = {int(h.id): float(h.score) for h in self.text_vectors.search(qv, k=len(ids), ids=ids)}
         for g in groups:
-            g["score"] = fused[g["segment_id"]]
-        groups.sort(key=lambda g: (-g["score"], -g["last_seen_ms"]))
-        out["groups"] = groups[:limit]
-        out["mode"] = out["mode"] + "+vector"
+            s = max((best[int(ln["line_id"])] for ln in g["lines"] if int(ln["line_id"]) in best), default=None)
+            if s is not None and (g["semantic_score"] is None or s > g["semantic_score"]):
+                g["semantic_score"] = s
+
+    @staticmethod
+    def _vector_rows(conn, vec_ids: Sequence[int], time_from: int | None, time_to: int | None) -> dict[int, list]:
+        """向量 id → 行（阅读顺序）。id < 0：段落，text_chunks 里登记的成员；id > 0：单行（id = line_id）；
+        老布局的段落 id 是正数，同样先查 text_chunks。只返回存在区间与 [time_from, time_to) 重叠的行。"""
+        if not vec_ids:
+            return {}
+        ids = json.dumps(sorted({int(x) for x in vec_ids}))
+        rows = conn.execute(
+            "WITH v(id) AS (SELECT CAST(value AS INTEGER) FROM json_each(:ids)), "
+            "m(id, line_id) AS (SELECT c.chunk_id, c.line_id FROM text_chunks c JOIN v ON v.id = c.chunk_id "
+            "UNION SELECT v.id, v.id FROM v WHERE v.id > 0 AND NOT EXISTS "
+            "(SELECT 1 FROM text_chunks c WHERE c.chunk_id = v.id)) "
+            "SELECT m.id AS vec_id, l.line_id, l.block_id, l.text, l.x0, l.y0, l.x1, l.y1, l.source, l.confidence, "
+            "l.first_seen_ms, l.last_seen_ms, l.disappeared_ms, s.segment_id, s.app, s.title "
+            "FROM m JOIN lines l ON l.line_id = m.line_id JOIN segments s ON s.segment_id = l.segment_id "
+            "WHERE l.last_seen_ms >= :lo AND l.first_seen_ms < :hi ORDER BY m.id, l.order_key, l.line_id",
+            {"ids": ids, "lo": -(2 ** 62) if time_from is None else int(time_from),
+             "hi": 2 ** 62 if time_to is None else int(time_to)},
+        ).fetchall()
+        out: dict[int, list] = {}
+        for r in rows:
+            out.setdefault(int(r["vec_id"]), []).append(r)
+        return out
+
+    def tasks(self, time_from: int | None = None, time_to: int | None = None, limit: int = 200) -> list[dict]:
+        """时间范围内片段的任务标签（大模型写的短语）与片段数，给搜索页的"任务"下拉框用。
+        大小写、全半角、空白不同的写法算同一个任务，显示最常用（同样多时最近）的写法。"""
+        lo = -(2 ** 62) if time_from is None else int(time_from)
+        hi = 2 ** 62 if time_to is None else int(time_to)
+        rows = self.conn().execute(
+            "SELECT task_label, COUNT(*) AS n, MAX(end_ms) AS last FROM pieces "
+            "WHERE task_label IS NOT NULL AND TRIM(task_label) != '' AND end_ms >= ? AND start_ms < ? "
+            "GROUP BY task_label", (lo, hi)).fetchall()
+        groups: dict[str, dict] = {}
+        for r in rows:
+            label = str(r["task_label"]).strip()
+            key = docs.norm(label)
+            g = groups.setdefault(key, {"task": label, "n": 0, "last_ms": 0, "_best": (-1, 0)})
+            g["n"] += int(r["n"])
+            g["last_ms"] = max(g["last_ms"], int(r["last"]))
+            if (int(r["n"]), int(r["last"])) > g["_best"]:
+                g["task"], g["_best"] = label, (int(r["n"]), int(r["last"]))
+        out = sorted(groups.values(), key=lambda g: (-g["n"], -g["last_ms"], g["task"]))[:max(1, int(limit))]
+        for g in out:
+            g.pop("_best")
         return out
 
     def _segment_ids(self, conn, f: lexical.Filters) -> list[int]:
@@ -143,20 +250,6 @@ class Queries:
             params["seg_to"] = int(f.time_to)
             sql += " AND s.first_seen_ms < :seg_to"
         return [int(r[0]) for r in conn.execute(sql, params)]
-
-    @staticmethod
-    def _vector_lines(conn, vec_id: int, time_from: int | None, time_to: int | None) -> list:
-        """向量 id → 行（阅读顺序）。空闲整理进程按段落算向量：id = text_chunks.chunk_id，对应段落的全部行；
-        没有段落登记的 id 按单行（id = line_id）处理。只返回存在区间与 [time_from, time_to) 重叠的行。"""
-        return conn.execute(
-            "SELECT l.line_id, l.block_id, l.text, l.x0, l.y0, l.x1, l.y1, l.source, l.confidence, l.first_seen_ms, "
-            "l.last_seen_ms, l.disappeared_ms, s.segment_id, s.app, s.title "
-            "FROM lines l JOIN segments s ON s.segment_id = l.segment_id WHERE l.line_id IN "
-            "(SELECT line_id FROM text_chunks WHERE chunk_id = :id UNION SELECT :id) "
-            "AND l.last_seen_ms >= :lo AND l.first_seen_ms < :hi ORDER BY l.order_key, l.line_id",
-            {"id": int(vec_id), "lo": -(2 ** 62) if time_from is None else int(time_from),
-             "hi": 2 ** 62 if time_to is None else int(time_to)},
-        ).fetchall()
 
     # ---------------- 时间线 ----------------
 

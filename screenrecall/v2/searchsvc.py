@@ -1,10 +1,12 @@
 """主进程的检索服务：词法 + 语义（向量）两路，给网页 /api/v2/search 和 MCP 的 search 共用。
 
-- 查询模型 LazyTextEncoder：第一次语义检索时加载，闲置 cfg.encoder.idle_unload_s 秒后卸载；
-- 文字向量库 <data_dir>/vectors/text（空闲整理进程写，这里只读）：每次检索增量刷新（只读新增的行和墓碑）；
+- 查询模型 LazyTextEncoder：第一次语义检索（或 warm()）时加载，闲置 cfg.encoder.idle_unload_s 秒后卸载；
+  不开 onnxruntime 的内存池（常驻少约 95 MiB，推理一样快，见 results/search/encoder-memory.json）；
+- warm()：搜索页打开时在后台线程里先把模型加载好，用户打完字时第一次检索不用再等约 1.4 秒；
+- 文字向量库 <data_dir>/vectors/text2（空闲整理进程写，这里只读，布局见 work_text）：每次检索增量刷新；
+  老布局的 vectors/text 不再读（整理进程迁移时清零删除；在那之前只有词法检索）；
 - 模型没下载、向量库还不存在或是空的、编码出错：只走词法分支，结果里 semantic = False；
-- 向量命中余弦低于 min_vector_score 的不要（在融合和 limit 截断之前就丢掉）：
-  随便输个词向量分支总能凑出 k 条，太不相关的放进结果只会干扰，还会把字面命中挤出前 limit。
+- 向量命中的分数门槛（固定 + 相对最高分）在 Queries.search 里、在排序和截断之前生效。
 """
 from __future__ import annotations
 
@@ -17,39 +19,34 @@ from typing import Any, Callable, Sequence
 
 import numpy as np
 
-from ..store.queries import Queries
+from ..store.queries import MIN_VECTOR_SCORE, VECTOR_MARGIN, Queries
 from ..store.vectors import VectorStore
 
 log = logging.getLogger("screenrecall.v2.search")
 
-TEXT_VECTORS = ("vectors", "text")
+TEXT_VECTORS = ("vectors", "text2")
+LEGACY_TEXT_VECTORS = ("vectors", "text")
 IMAGE_VECTORS = ("vectors", "image")
-MIN_VECTOR_SCORE = 0.45
 MODEL_CHECK_TTL_S = 60.0
+SORTS = ("relevant", "recent")
 
 
 def text_vectors_dir(data_dir: Path | str) -> Path:
     return Path(data_dir).joinpath(*TEXT_VECTORS)
 
 
+def legacy_text_vectors_dir(data_dir: Path | str) -> Path:
+    """老布局（6 行一段）的文字向量库：只等空闲整理进程清零删除；隐私删除在那之前也要删它。"""
+    return Path(data_dir).joinpath(*LEGACY_TEXT_VECTORS)
+
+
+def text_vector_dirs(data_dir: Path | str) -> list[Path]:
+    """隐私删除要处理的全部文字向量库（当前的 + 还没删掉的老布局）。"""
+    return [text_vectors_dir(data_dir), legacy_text_vectors_dir(data_dir)]
+
+
 def image_vectors_dir(data_dir: Path | str) -> Path:
     return Path(data_dir).joinpath(*IMAGE_VECTORS)
-
-
-class _ScoreFloor:
-    """包一层向量库：search() 只返回余弦 >= floor 的命中。
-
-    门槛必须在 Queries.search 融合、按 limit 截断之前生效：截断之后再丢低分的纯语义组，
-    会把本来排得进前 limit 的字面命中挤掉（结果比实际少）。"""
-
-    def __init__(self, store: VectorStore, floor: float):
-        self.store, self.floor = store, floor
-
-    def search(self, qv, **kw):
-        return [h for h in self.store.search(qv, **kw) if float(h.score) >= self.floor]
-
-    def __getattr__(self, name: str):
-        return getattr(self.store, name)
 
 
 def _default_model_check() -> bool:
@@ -68,16 +65,19 @@ class SearchService:
     def __init__(self, data_dir: Path | str, *, idle_unload_s: float = 300.0, threads: int = 2,
                  batch_size: int = 16, encoder: Any = None, vectors: VectorStore | None = None,
                  model_check: Callable[[], bool] | None = None, min_vector_score: float = MIN_VECTOR_SCORE,
-                 clock: Callable[[], int] | None = None):
+                 vector_margin: float = VECTOR_MARGIN, clock: Callable[[], int] | None = None):
         self.data_dir = Path(data_dir)
         self.min_vector_score = float(min_vector_score)
-        self._enc_kwargs = {"idle_unload_s": idle_unload_s, "threads": threads, "batch_size": batch_size}
+        self.vector_margin = float(vector_margin)
+        self._enc_kwargs = {"idle_unload_s": idle_unload_s, "threads": threads, "batch_size": batch_size,
+                            "mem_arena": False}
         self._encoder = encoder              # 测试注入；否则第一次需要时建 LazyTextEncoder
         self._vectors = vectors
         self._model_check = model_check or _default_model_check
         self._model_ok: bool | None = None if encoder is None else True
         self._model_checked_at = 0.0
         self._lock = threading.Lock()
+        self._warming: threading.Thread | None = None
         kw = {"clock": clock} if clock else {}
         self.queries = Queries(self.data_dir, text_vectors=None, **kw)
 
@@ -144,11 +144,36 @@ class SearchService:
     def encoder_loaded(self) -> bool:
         return bool(getattr(self._encoder, "loaded", False))
 
+    def warm(self) -> bool:
+        """语义检索能用时在后台线程里加载查询模型（已经加载 / 正在加载就什么都不做）。返回语义检索能不能用。
+        加载约 1.4 秒、几百 MiB：只在用户打开搜索页时做，不在启动时做（不拖慢启动，不用搜索就不占内存）。"""
+        if not self.semantic_ready():
+            return False
+        with self._lock:
+            if self._warming is not None and self._warming.is_alive():
+                return True
+        if self.encoder_loaded:
+            return True
+        enc = self._get_encoder()
+
+        def load() -> None:
+            try:
+                enc.encode(["warm up"])
+            except Exception:  # noqa: BLE001 - 真检索时会退回词法并记日志
+                log.warning("预先加载查询模型失败", exc_info=True)
+
+        th = threading.Thread(target=load, name="search-warm", daemon=True)
+        with self._lock:
+            self._warming = th
+        th.start()
+        return True
+
     # ---------------- 检索 ----------------
 
     def search(self, query: str, *, time_from: int | None = None, time_to: int | None = None,
                app: str | None = None, task: str | None = None, limit: int = 20, per_group: int = 3,
-               exclude_apps: Sequence[str] = (), exclude_title_keywords: Sequence[str] = ()) -> dict:
+               exclude_apps: Sequence[str] = (), exclude_title_keywords: Sequence[str] = (),
+               sort: str = "recent", offset: int = 0) -> dict:
         """Queries.search 的结果（dict），另加 semantic: bool。"""
         semantic = False
         encoder = None
@@ -162,12 +187,17 @@ class SearchService:
                     raise ValueError(f"查询向量维度 {v.size} 与向量库 {dim} 不符")
                 return v
 
-            self.queries.text_vectors = _ScoreFloor(self._vectors, self.min_vector_score)
+            self.queries.text_vectors = self._vectors
             semantic = True
         kwargs = dict(time_from=time_from, time_to=time_to, app=app, task=task, limit=limit, per_group=per_group,
-                      exclude_apps=tuple(exclude_apps), exclude_title_keywords=tuple(exclude_title_keywords))
+                      exclude_apps=tuple(exclude_apps), exclude_title_keywords=tuple(exclude_title_keywords),
+                      sort=sort if sort in SORTS else "recent", offset=offset)
         try:
-            out = self.queries.search(query, encoder=encoder, **kwargs) if semantic else self._lexical(query, **kwargs)
+            if semantic:
+                out = self.queries.search(query, encoder=encoder, min_score=self.min_vector_score,
+                                          score_margin=self.vector_margin, **kwargs)
+            else:
+                out = self._lexical(query, **kwargs)
         except Exception:  # noqa: BLE001 - 语义分支出错（模型加载失败等）：退回只用词法
             if not semantic:
                 raise
