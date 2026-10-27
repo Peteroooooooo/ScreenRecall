@@ -173,6 +173,33 @@ def _memory_mb() -> tuple[float | None, float | None]:
         return None, None
 
 
+LOG_NAME = "idle-worker.log"
+LOG_MAX_BYTES = 2_000_000
+
+
+def setup_logging(logs_dir: Path, level: int = logging.INFO) -> None:
+    """日志写 <home>/logs/idle-worker.log（滚动，最多约 8 MB）；标准错误（主进程把它接到 idle-worker.out.log）
+    只留警告和出错。httpx 每次请求都在 INFO 记完整地址（大模型接口地址里可能带密钥），压到 WARNING。"""
+    import logging.handlers
+
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    fmt = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    fh = logging.handlers.RotatingFileHandler(logs_dir / LOG_NAME, maxBytes=LOG_MAX_BYTES, backupCount=3,
+                                              encoding="utf-8", delay=True)
+    fh.setFormatter(fmt)
+    fh.setLevel(level)
+    root = logging.getLogger()
+    root.addHandler(fh)
+    if sys.stderr is not None:
+        eh = logging.StreamHandler(sys.stderr)
+        eh.setFormatter(fmt)
+        eh.setLevel(max(level, logging.WARNING))
+        root.addHandler(eh)
+    root.setLevel(level)
+    for name in ("httpx", "httpcore"):
+        logging.getLogger(name).setLevel(logging.WARNING)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m screenrecall.v2.worker", description="空闲整理进程")
     ap.add_argument("--data-dir", default=None, help="v2 数据目录（默认按配置）")
@@ -180,13 +207,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--once", action="store_true", help="只做一轮（测试用）")
     ap.add_argument("--log-level", default="INFO")
     args = ap.parse_args(argv)
-    logging.basicConfig(level=getattr(logging, str(args.log_level).upper(), logging.INFO), stream=sys.stderr,
-                        format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     if args.home:
         os.environ["SCREENRECALL_HOME"] = str(Path(args.home).resolve())
     from .config import load_v2
 
     cfg = load_v2(args.data_dir, home=Path(args.home).resolve() if args.home else None)
+    setup_logging(cfg.logs_dir, getattr(logging, str(args.log_level).upper(), logging.INFO))
     stop = StopFlag()
     watch_stdin(stop)
     lock = InstanceLock(cfg.data_dir)
