@@ -1,0 +1,100 @@
+{
+ "max_fp": 0.03,
+ "settings_tried": 576,
+ "budgets": {
+  "0.0": {
+   "config": {
+    "floor": 0.56,
+    "margin": 0.1,
+    "floor_with_literal": 0.56,
+    "k": 10
+   },
+   "tune": {
+    "found@5": 0.397,
+    "MRR": 0.39,
+    "fp": 0.0,
+    "junk_groups": 0.0
+   },
+   "heldout": {
+    "found@5": 0.433,
+    "MRR": 0.418,
+    "fp": 0.0,
+    "junk_groups": 0.0
+   }
+  },
+  "0.03": {
+   "config": {
+    "floor": 0.44,
+    "margin": 0.1,
+    "floor_with_literal": 0.44,
+    "k": 5
+   },
+   "tune": {
+    "found@5": 0.662,
+    "MRR": 0.625,
+    "fp": 0.02,
+    "junk_groups": 0.04
+   },
+   "heldout": {
+    "found@5": 0.657,
+    "MRR": 0.632,
+    "fp": 0.0,
+    "junk_groups": 0.04
+   }
+  },
+  "0.05": {
+   "config": {
+    "floor": 0.44,
+    "margin": 0.1,
+    "floor_with_literal": 0.44,
+    "k": 5
+   },
+   "tune": {
+    "found@5": 0.662,
+    "MRR": 0.625,
+    "fp": 0.02,
+    "junk_groups": 0.04
+   },
+   "heldout": {
+    "found@5": 0.657,
+    "MRR": 0.632,
+    "fp": 0.0,
+    "junk_groups": 0.04
+   }
+  },
+  "0.1": {
+   "config": {
+    "floor": 0.36,
+    "margin": 0.1,
+    "floor_with_literal": 0.36,
+    "k": 10
+   },
+   "tune": {
+    "found@5": 0.765,
+    "MRR": 0.713,
+    "fp": 0.061,
+    "junk_groups": 0.09
+   },
+   "heldout": {
+    "found@5": 0.821,
+    "MRR": 0.769,
+    "fp": 0.125,
+    "junk_groups": 0.13
+   }
+  }
+ },
+ "fixed_rule": {
+  "tune": {
+   "found@5": 0.868,
+   "MRR": 0.776,
+   "fp": 0.449,
+   "junk_groups": 0.57
+  },
+  "heldout": {
+   "found@5": 0.881,
+   "MRR": 0.838,
+   "fp": 0.542,
+   "junk_groups": 0.37
+  }
+ }
+}
