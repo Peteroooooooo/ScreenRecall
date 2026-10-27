@@ -576,8 +576,14 @@ def test_llm_settings_never_echo_key(client, env):
     env_file = env.home / ".env"
     assert paths.verify_private(env_file) == []
     assert f"LLM_API_KEY={key}" in env_file.read_text(encoding="utf-8")
-    # 不给 api_key = 保留原来的
-    client.post("/api/v2/settings/llm", json={"base_url": "https://other.example.test/v1", "model": "m2"},
+    # 换了服务器（或 https → http）却不给 api_key：拒绝，旧密钥不能发给新地址；原配置不动
+    for other in ["https://other.example.test/v1", "http://llm.example.test/v1", "https://llm.example.test:8443/v1"]:
+        r = client.post("/api/v2/settings/llm", json={"base_url": other, "model": "m2"}, headers=F.POST_H)
+        assert r.status_code == 400 and "密钥" in r.json()["error"], other
+    text = env_file.read_text(encoding="utf-8")
+    assert "LLM_BASE_URL=https://llm.example.test/v1" in text and "m2" not in text
+    # 同一服务器只换路径 / 模型，不给 api_key = 保留原来的
+    client.post("/api/v2/settings/llm", json={"base_url": "https://LLM.example.test/v2", "model": "m2"},
                 headers=F.POST_H)
     text = env_file.read_text(encoding="utf-8")
     assert f"LLM_API_KEY={key}" in text and "m2" in text
