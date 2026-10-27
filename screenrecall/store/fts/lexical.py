@@ -6,7 +6,8 @@
   可以从行尾延伸到下一行开头（最多 docs.TAIL_CHARS 个字）；只落在下一行里的不算本行；
 - 不少于 3 个字的词：lines_tri 三元组出候选；
   1-2 个字的词：lines_bi 出候选（中日韩两字 = 二元组词元，单字 = 前缀 "字"*；
-  字母数字 = 以它开头的词，例如 "ai" 能搜到 AI、AIGC，但搜不到 rain）；
+  纯字母数字 = 以它开头的词，例如 "ai" 能搜到 AI、AIGC，但搜不到 rain；
+  中日韩字 + 字母数字混合（"1号"）= 普通子串，"21号" 也算）；
   有三字以上的词时只用三元组出候选，短词只做核验；
 - 所有候选最后都用 SQL 里的 instr() 核验，结果是精确的；
 - 排序 = 最近一次看到（last_seen_ms），不用 rowid（空闲 OCR 会晚插入，重看到的行保留旧 id）。
@@ -120,13 +121,19 @@ def _trigrams(t: str) -> list[str]:
 
 
 def _short_tokens(t: str) -> list[str]:
+    """1-2 个字的词在 lines_bi 里的查询词元。
+
+    含中日韩字时只用中日韩词元出候选（instr 核验是精确的子串匹配）：
+    混合词如 "1号" 里的 "1" 若按"以它开头的词"查，就搜不到 "21号"。
+    """
     toks: list[str] = []
     for run in docs.cjk_runs(t):
         if len(run) >= 2:
             toks.extend(_quote(run[i:i + 2]) for i in range(len(run) - 1))
         else:
             toks.append(_quote(run) + "*")
-    toks.extend(_quote(w) + "*" for w in docs.words(t))
+    if not toks:
+        toks.extend(_quote(w) + "*" for w in docs.words(t))
     return list(dict.fromkeys(toks))
 
 
@@ -147,7 +154,8 @@ def plan(raw: str) -> Plan:
         else:
             toks = _short_tokens(t)
             if toks:
-                terms.append(Term(t, "short", tuple(toks), bool(docs.words(t))))
+                word_prefix = not docs.cjk_runs(t) and bool(docs.words(t))
+                terms.append(Term(t, "short", tuple(toks), word_prefix))
             else:
                 dropped.append(p)
     return Plan(raw, tuple(terms), tuple(dropped))
@@ -192,13 +200,14 @@ def segment_filter_sql(f: Filters, params: dict) -> str | None:
     if f.app:
         params["app"] = f.app
         seg.append("s.app = :app COLLATE NOCASE")
-    for i, a in enumerate(f.exclude_apps):
-        params[f"xa{i}"] = a
-        seg.append(f"s.app != :xa{i} COLLATE NOCASE")
-    for i, kw in enumerate(f.exclude_title_keywords):
-        if kw:
-            params[f"xk{i}"] = kw.casefold()
-            seg.append(f"instr(lower(s.title), :xk{i}) = 0")
+    # 隐藏名单按 NFKC + casefold 比较（segments.app_fold / title_fold 写入时算好）：
+    # lower()/NOCASE 只认 ASCII，"БАНК" 与 "банк"、全角 "ＢＡＮＫ" 与 "bank" 会漏
+    for i, a in enumerate(x for x in f.exclude_apps if x):
+        params[f"xa{i}"] = docs.fold(a)
+        seg.append(f"s.app_fold != :xa{i}")
+    for i, kw in enumerate(x for x in f.exclude_title_keywords if x):
+        params[f"xk{i}"] = docs.fold(kw)
+        seg.append(f"instr(s.title_fold, :xk{i}) = 0")
     if f.task:
         params["task"] = f.task
         seg.append(
