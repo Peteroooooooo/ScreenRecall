@@ -17,7 +17,7 @@ export default function RecorderPage() {
     <div>
       <PageHeader title={t("rec.title")} sub={t("rec.sub")} />
       <div className="space-y-4">
-        <Hero />
+        <Hero pinned={st.data ? st.data.pinned.filter((p) => p.found !== false).length : 0} />
         <Card title={t("rec.how")} id="how-h">
           <ol className="grid gap-3 md:grid-cols-3">
             {(["1", "2", "3"] as const).map((n) => (
@@ -43,7 +43,8 @@ export default function RecorderPage() {
   );
 }
 
-function Hero() {
+/** pinned：现在找得到的固定窗口数（前台没有可录的窗口时，它们仍在后台录） */
+function Hero({ pinned }: { pinned: number }) {
   const { t } = useT();
   const { status, lost } = useStatus();
   const { pause, resume } = usePauseActions();
@@ -54,7 +55,7 @@ function Hero() {
   if (v.state === "recording") {
     if (cur?.excluded) sub = t("rec.excludedFg");
     else if (cur?.app) sub = t("rec.watching", { x: cur.title ? `${cur.title} — ${appName(cur.app)}` : appName(cur.app) });
-    else sub = t("rec.noForeground");
+    else sub = pinned > 0 ? t("rec.noForegroundPinned", { n: fmtInt(pinned) }) : t("rec.noForeground");
   }
   else if (v.state === "paused") sub = status?.pause_until_ms ? t("rec.pausedUntil", { t: until(status.pause_until_ms) }) : t("rec.pausedOpen");
   else if (v.state === "dead") sub = t("rec.deadNote");

@@ -89,6 +89,23 @@ describe("recorder page", () => {
     expect(await screen.findByText("前台是排除的窗口，不记录。")).toBeTruthy();
   });
 
+  it("no recordable foreground but a pinned window: says the pin is still recorded", async () => {
+    mockFetch((c) => (c.path === "/api/v2/status" ? { body: status({ current: null }) } : null));
+    renderAt("#/recorder");
+    expect(await screen.findByText("前台没有可记的窗口；1 个固定的窗口仍在后台记录。")).toBeTruthy();
+  });
+
+  it("no recordable foreground and the only pin can't be found: plain note", async () => {
+    mockFetch((c) => {
+      if (c.path === "/api/v2/status") return { body: status({ current: null }) };
+      if (c.path === "/api/v2/settings") return { body: settings({ pinned: [{ process: "SampleChat.exe", title: "示例小组群聊", hwnd: null, found: false }] }) };
+      return null;
+    });
+    renderAt("#/recorder");
+    expect(await screen.findByText(/找不到这个窗口/)).toBeTruthy();
+    expect(screen.getByText("现在前台没有可记的窗口。")).toBeTruthy();
+  });
+
   it("hidden-from-agents: adds a title keyword and removes an app", async () => {
     const { posts } = settingsServer();
     renderAt("#/recorder");
