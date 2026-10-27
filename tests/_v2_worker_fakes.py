@@ -19,8 +19,10 @@ from screenrecall.timeutil import utc_ms
 from screenrecall.v2.config import load_v2
 
 
-def make_cfg(tmp_path: Path, *, idle=None, ocr=None, **top):
+def make_cfg(tmp_path: Path, *, idle=None, ocr=None, retention=None, **top):
+    """retention 默认关掉到期删除（不少测试用很早的合成时间）；测保留期的测试显式给。"""
     cfg = load_v2(tmp_path / "data", home=tmp_path / "home")
+    cfg = replace(cfg, retention=replace(cfg.retention, **({"text_days": 0, "image_days": 0} | (retention or {}))))
     if idle:
         cfg = replace(cfg, idle=replace(cfg.idle, **idle))
     if ocr:

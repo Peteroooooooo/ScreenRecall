@@ -585,8 +585,8 @@ def test_clip_disabled_or_unavailable(tmp_path, caplog):
     assert not (cfg.data_dir / "vectors" / "image").exists()
 
 
-def test_old_frames_are_only_counted(tmp_path):
-    cfg = make_cfg(tmp_path, idle={"clip": False, "frame_report_days": 30})
+def test_old_frames_are_only_counted_when_retention_is_off(tmp_path):
+    cfg = make_cfg(tmp_path, idle={"clip": False, "frame_report_days": 30})  # make_cfg 默认关掉保留期
     old = now_ms() - 40 * 86_400_000
     with Writer(cfg.data_dir) as w:
         a = w.save_frame(np.zeros((20, 20, 3), np.uint8), captured_ms=old)

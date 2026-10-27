@@ -105,6 +105,9 @@ idle_unload_s = 300.0       # 查询模型多久不用就卸载（省内存）
 [v2.idle]
 threshold_s = 300.0         # 键鼠 5 分钟没动（或锁屏）开始空闲整理（设置页可改）
 piece_gap_ms = 120000       # 同应用同标题、离开不超过 2 分钟算同一个片段
+# 钉住的窗口在后台录到的内容：超过 10 分钟没有新内容才算另一个片段（聊天窗口隔几分钟来一条消息，
+# 用上面前台的 2 分钟会切成一串很短的片段）
+background_piece_gap_ms = 600000
 summaries = true            # 空闲时用大模型写片段 / 天概括（大模型在 .env 里配置）
 clip = true                 # 空闲时给证据图算 CLIP 向量（内容分类器要用）
 chunk_lines = 6             # 文字向量的一个段落最多几行（同一块里阅读顺序相邻）
@@ -115,6 +118,16 @@ llm_reasoning_effort = "none"  # 思考强度；空 = 用模型默认
 classifier_dir = "results/classifier/v1"  # 内容分类器（CLIP 向量 + 线性模型）；空 = 不预测
 frame_report_days = 30      # 只统计（不删除）早于这么多天、没标"保留"的证据帧
 encoder_threads = 4         # 空闲时算文字向量的线程数（用户不在，进程又是低优先级）
+
+[v2.retention]
+# 保留期与空间上限：空闲整理时执行（screenrecall/v2/work_frames.py）。隐私与删除页改的值存在
+# <数据目录>/user_settings.json，比这里优先。标了"保留"（keep）的截图不随到期或上限删除
+image_days = 30             # 截图保留 30 天；0 = 一直保留。过期的截图删掉，文字还在，仍能搜到
+text_days = 90              # 文字记录保留 90 天；0 = 一直保留。过期的整段删掉（同隐私删除：文字、截图、片段、概括、向量）
+storage_cap_gb = 0.0        # 数据目录最多占多少 GB（数据库 + 截图 + 向量）；0 = 不限。超了从最旧的截图删起
+dedupe_frames = true        # 删掉多余的旧截图：它的每一行，后面另一张留着的截图里都有
+dedupe_min_age_s = 1800.0   # 存下不到 30 分钟的截图先不看（录制进程可能还在往上面登记行）
+cap_check_s = 600.0         # 主进程每 10 分钟查一次空间上限（只读几个数）
 
 [classify]
 # 内容分类器训练产物目录（python -m screenrecall.classify train 的 --out），相对路径以仓库根目录为基准。
