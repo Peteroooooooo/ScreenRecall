@@ -1,7 +1,7 @@
 // 今天：换日期、当天概括与统计、时间线（片段 + 没有记录的时间段，最新在上）。
 import { useEffect, useRef } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Play } from "lucide-react";
-import { api, type Day, type GapItem, type PieceItem } from "../api";
+import { api, type Day, type GapItem, type PieceItem, type Status } from "../api";
 import { hasKey, useT } from "../i18n";
 import {
   addDays, appName, errText, fmtClock, fmtDuration, fmtInt, fmtMonthDay, hrefOf, localDate, navigate, parseLocalDate, useLoad, weekday,
@@ -9,7 +9,7 @@ import {
 import { usePauseActions } from "../recording";
 import { Av, Empty, LoadError, PageHeader, Skeleton, useStatus } from "../ui";
 
-/** 进行中的判定：今天最新的片段，结束时间离现在不到 2 分钟，且正在录制 */
+/** 进行中的判定：今天结束得最晚的片段，结束时间离现在不到 2 分钟，正在录制且前台是它的应用 */
 const LIVE_MS = 120_000;
 
 export default function TodayPage({ params }: { params: URLSearchParams }) {
@@ -68,7 +68,7 @@ export default function TodayPage({ params }: { params: URLSearchParams }) {
           <ol className="mt-[18px]" aria-label={t("today.timeline")}>
             {data.items.map((it, i) =>
               it.kind === "gap" ? <GapRow key={`g${it.start_ms}-${i}`} gap={it} />
-                : <PieceRow key={it.piece_id} p={it} live={isToday && i === firstPiece(data) && status?.recording === "recording" && Date.now() - it.end_ms < LIVE_MS} />,
+                : <PieceRow key={it.piece_id} p={it} live={isToday && i === liveIndex(data, status)} />,
             )}
           </ol>
         </>
@@ -77,7 +77,19 @@ export default function TodayPage({ params }: { params: URLSearchParams }) {
   );
 }
 
-const firstPiece = (d: Day) => d.items.findIndex((x) => x.kind === "piece");
+/** 进行中的片段：结束得最晚的那个（片段按开始时间排，来回切换窗口时最上面的不一定是最近在用的），
+ * 而且前台正是它的应用（前台没有可录的窗口或是排除的窗口时，没有进行中的片段）。没有就返回 -1。 */
+export function liveIndex(d: Day, status: Status | null | undefined, now = Date.now()): number {
+  const cur = status?.current;
+  if (status?.recording !== "recording" || !cur?.app || cur.excluded) return -1;
+  let best = -1;
+  d.items.forEach((x, i) => {
+    if (x.kind === "piece" && (best < 0 || x.end_ms > (d.items[best] as PieceItem).end_ms)) best = i;
+  });
+  if (best < 0) return -1;
+  const p = d.items[best] as PieceItem;
+  return now - p.end_ms < LIVE_MS && p.app.toLowerCase() === cur.app.toLowerCase() ? best : -1;
+}
 
 function Overview({ day }: { day: Day }) {
   const { t } = useT();
