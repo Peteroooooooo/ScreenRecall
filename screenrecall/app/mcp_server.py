@@ -114,7 +114,8 @@ class Frame:
 
 class Queries(Protocol):
     """存储模块实现的只读查询。时间都是 UTC 毫秒，区间 [start_ms, end_ms)；None 表示不限。
-    exclude 必须在查询里就排除（数量限制之前），服务端返回前还会再过滤一次。"""
+    exclude 必须在查询里就排除（数量限制之前），服务端返回前还会再过滤一次。
+    timeline 返回范围里最新的 limit 段（按开始时间从早到晚排）。"""
 
     def search(self, query: str, *, start_ms: int | None, end_ms: int | None, app: str | None, task: str | None,
                limit: int, exclude: Exclusion) -> list[Hit]: ...
@@ -348,10 +349,16 @@ def build_mcp(queries: Queries, policy: AgentPolicy | None = None, *, port: int 
             b = parse_time(datetime.fromtimestamp(a / 1000).date().isoformat(), end=True, now=now)
         if b <= a:
             raise ToolError("结束时间必须晚于开始时间")
-        pieces = await call(queries.timeline, start_ms=a, end_ms=b, app=app or None, limit=policy.max_hits,
+        # 多要一段：拿到 max_hits + 1 段说明还有更早的没列出
+        pieces = await call(queries.timeline, start_ms=a, end_ms=b, app=app or None, limit=policy.max_hits + 1,
                             exclude=ex)
-        pieces = [p for p in pieces if not ex.hides(p.app, p.title)][:policy.max_hits]
+        pieces = sorted((p for p in pieces if not ex.hides(p.app, p.title)), key=lambda p: (p.start_ms, p.end_ms))
+        older = len(pieces) > policy.max_hits
+        pieces = pieces[-policy.max_hits:]  # 留最新的
         head = f"ScreenRecall 时间线{_describe_filters(a, b, app, None)}：{len(pieces)} 段。"
+        if older:
+            head += (f"片段太多，只列出最新的 {len(pieces)} 段（{fmt_time(pieces[0].start_ms)} 起），更早的没有列出："
+                     "要看更早的请把结束时间设到那之前，或指定应用。")
         if not pieces:
             return head + "这段时间没有记录。"
         blocks = []
@@ -468,8 +475,10 @@ class FakeQueries:
 
     def timeline(self, *, start_ms, end_ms, app, limit, exclude):
         self.calls.append(("timeline", {"start_ms": start_ms, "end_ms": end_ms, "app": app, "limit": limit}))
-        return [p for p in self.pieces if p.end_ms > start_ms and p.start_ms < end_ms
-                and (not app or p.app.lower() == app.lower()) and not exclude.hides(p.app, p.title)][:limit]
+        got = sorted((p for p in self.pieces if p.end_ms > start_ms and p.start_ms < end_ms
+                      and (not app or p.app.lower() == app.lower()) and not exclude.hides(p.app, p.title)),
+                     key=lambda p: p.start_ms)
+        return got[-limit:] if limit > 0 else []
 
     def summary(self, level, key, *, exclude):
         self.calls.append(("summary", {"level": level, "key": key}))

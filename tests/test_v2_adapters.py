@@ -277,6 +277,17 @@ def test_piece_summary_withheld_when_a_segment_is_hidden(env):
     assert f"piece={env.ids['piece']}" in tl and "整理季度报告" not in tl
 
 
+def test_timeline_adapter_returns_newest_pieces_in_time_order(env):
+    w = env.stack.writer
+    base = F.day_base() + 3600_000
+    ids = [w.piece_put(base + i * 60_000, base + i * 60_000 + 30_000, app="tk.exe", title=f"t{i}",
+                       segment_ids=[]).result(5) for i in range(4)]
+    q, _ = make_mcp(env)
+    lo, hi = F.day_base() - 3600_000, F.day_base() + 6 * 3600_000
+    got = q.timeline(start_ms=lo, end_ms=hi, app=None, limit=2, exclude=ms.Exclusion())
+    assert [p.piece_id for p in got] == [str(ids[2]), str(ids[3])]
+
+
 def test_search_hit_does_not_name_a_hidden_piece(env):
     # 内容源没命中隐藏名单、它所属的片段命中了：命中照常给，但不报片段号和任务名
     w = env.stack.writer

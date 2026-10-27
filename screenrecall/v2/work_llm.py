@@ -20,7 +20,8 @@ from datetime import datetime
 from typing import Callable
 
 from ..timeutil import local_dates_to_utc_range
-from .work_common import Ctx, Stopped, log, timed
+from .refs import hidden_ref, piece_ref
+from .work_common import Ctx, Stopped, log, private_rules, timed
 
 PIECE_JOB = "summary_piece"
 PROMPT_CHARS = 3000
@@ -302,7 +303,7 @@ class LlmStep:
             log.warning("片段 %s 概括失败：%s", p["piece_id"], _err_brief(exc))
             ctx.writer.job_fail(job_id, _err_brief(exc), retry_ms=10 * 60_000, max_attempts=3).result(30)
             return False
-        refs = [{"kind": "piece", "id": int(p["piece_id"]), "app": p["app"]}]
+        refs = [piece_ref(p["piece_id"], p["app"]), hidden_ref(ctx.control().get("hidden_from_agents"))]
         ok = ctx.writer.call(_piece_put_checked, int(p["piece_id"]), line_ids, summary, task,
                              json.dumps(refs, ensure_ascii=False), reply.model, reply.endpoint_host,
                              int(p["start_ms"]), int(p["end_ms"]), job_id, ctx.clock()).result(30)
@@ -337,8 +338,10 @@ class LlmStep:
         ctx = self.ctx
         d = datetime.strptime(key, "%Y-%m-%d").date()
         lo, hi = local_dates_to_utc_range(d, d)  # 本地这一天（夏令时那天也对）
-        private = ctx.private()
-        items, refs, used = [], [], []
+        ctrl = ctx.control()
+        private = private_rules(ctrl)
+        # 生成时排除的"对 Agent 隐藏"名单记进 refs：MCP 据此判断这份天概括能不能给 Agent（见 v2.refs）
+        items, refs, used = [], [hidden_ref(ctrl.get("hidden_from_agents"))], []
         for r in ctx.conn.execute(
             "SELECT p.piece_id, p.start_ms, p.end_ms, p.app, p.title, p.task_label, s.text FROM pieces p "
             "JOIN summaries s ON s.level = 'piece' AND s.key = CAST(p.piece_id AS TEXT) AND s.status = 'ok' "
@@ -347,7 +350,7 @@ class LlmStep:
                 continue
             items.append({"time": f"{_hm(int(r['start_ms']))}-{_hm(int(r['end_ms']))}", "app": clean(r["app"], 80),
                           "task": clean(r["task_label"] or "", 24), "summary": clean(r["text"], 160)})
-            refs.append({"kind": "piece", "id": int(r["piece_id"]), "app": r["app"]})
+            refs.append(piece_ref(r["piece_id"], r["app"]))
             used.append((str(r["piece_id"]), r["text"]))
         if not items:
             return False

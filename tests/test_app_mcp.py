@@ -165,6 +165,22 @@ def test_timeline_and_summaries():
         call(mcp, "summary", {"level": "week", "key": "x"})
 
 
+def test_timeline_keeps_the_newest_pieces_and_says_older_ones_were_left_out():
+    q = ms.FakeQueries(now_ms=ms_of(NOW))
+    t = ms_of(datetime(2026, 10, 27, 8))
+    q.pieces = [ms.Piece(f"n{i}", "Code.exe", f"file{i}.py", t + i * 60_000, t + i * 60_000 + 30_000)
+                for i in range(30)]
+    _, mcp = make(q, max_hits=5)
+    tl = text_of(call(mcp, "timeline", {"time_from": "today"}))
+    shown = [f"piece=n{i}" for i in range(30) if f"piece=n{i} " in tl or tl.count(f"piece=n{i}\n")]
+    assert shown == [f"piece=n{i}" for i in range(25, 30)]  # 最新的 5 段，按时间先后
+    assert tl.index("piece=n25") < tl.index("piece=n29")
+    assert "更早的没有列出" in tl and "5 段" in tl
+    assert q.calls[-1][1]["limit"] == 6
+    q.pieces = q.pieces[:5]
+    assert "更早的没有列出" not in text_of(call(mcp, "timeline", {"time_from": "today"}))
+
+
 def test_day_summary_touching_hidden_app_is_withheld():
     _, mcp = make(exclusion=lambda: ms.Exclusion(apps=("code.exe",)))
     assert "没有可提供的概括" in text_of(call(mcp, "summary", {"level": "day", "key": "today"}))

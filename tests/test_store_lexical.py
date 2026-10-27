@@ -154,6 +154,21 @@ def test_filters(env):
     assert seg(task="报价") == [s2]
     assert seg(exclude_apps=["CHROME.exe"]) == [s1]
     assert seg(exclude_title_keywords=["银行"]) == [s3, s1]
+    assert seg(task="报") == [s2] and seg(task="  ") != []  # 任务标签按包含匹配；空白不算筛选
+
+
+def test_task_filter_skips_pieces_touching_hidden_content(env):
+    """有隐藏名单时，任务标签是按整个片段写的：片段或它关联的任一内容源命中名单，按任务就查不到它的内容源。"""
+    w, c = env
+    s1, _, _ = put(w, "excel.exe", "十月工资表.xlsx", 1000, ["合计 汇总"])
+    s2, _, _ = put(w, "excel.exe", "预算.xlsx", 1500, ["合计 预算"])
+    w.piece_put(900, 2000, app="excel.exe", title="预算.xlsx", segment_ids=[s1, s2], task_label="Payroll 汇总").result(5)
+    seg = lambda **kw: sorted(g.segment_id for g in S(c, "合计", **kw).groups)  # noqa: E731
+    assert seg(task="payroll") == [s1, s2]  # 大小写不敏感
+    assert seg(task="ＰＡＹＲＯＬＬ") == [s1, s2]  # 全角
+    assert seg(task="payroll", exclude_title_keywords=["工资"]) == []
+    assert seg(task="payroll", exclude_apps=["EXCEL.EXE"]) == []
+    assert seg(exclude_title_keywords=["工资"]) == [s2]  # 不按任务筛时照常只去掉命中的内容源
 
 
 def test_empty_and_error_queries(env):

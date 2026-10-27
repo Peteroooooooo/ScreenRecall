@@ -358,12 +358,13 @@ def test_piece_and_day_summaries_written_with_task_label(tmp_path):
     assert p["task_label"] == "写周报"
     s = c.execute("SELECT * FROM summaries WHERE level = 'piece'").fetchone()
     assert s["text"] == "在写周报" and s["model"] == "fake-model" and s["key"] == str(p["piece_id"])
-    assert json.loads(s["refs"]) == [{"kind": "piece", "id": p["piece_id"], "app": "word.exe"}]
+    hidden_none = {"hidden": {"apps": [], "title_keywords": []}}
+    assert json.loads(s["refs"]) == [{"piece": p["piece_id"], "app": "word.exe"}, hidden_none]
     from datetime import datetime
     day = datetime.fromtimestamp(t / 1000).strftime("%Y-%m-%d")
     d = c.execute("SELECT * FROM summaries WHERE level = 'day'").fetchone()
     assert d["key"] == day and d["text"] == "今天主要在写周报。"
-    assert json.loads(d["refs"])[0]["app"] == "word.exe"
+    assert json.loads(d["refs"]) == [hidden_none, {"piece": p["piece_id"], "app": "word.exe"}]
     assert len(llm.calls) == 2 and rep["llm_model"] == "fake-model"
     # 屏幕文字被整体编码成 JSON 数据，系统消息要求忽略其中的指令
     sysmsg, user = llm.calls[0][0]["content"], llm.calls[0][1]["content"]
@@ -402,8 +403,23 @@ def test_hidden_and_excluded_apps_are_never_sent(tmp_path):
     assert "bank.exe" not in sent and "私聊" not in sent and "word.exe" in sent
     c = db(cfg)
     assert c.execute("SELECT COUNT(*) FROM summaries WHERE level = 'piece'").fetchone()[0] == 1
-    assert all(r["app"] == "word.exe" for r in json.loads(
-        c.execute("SELECT refs FROM summaries WHERE level = 'day'").fetchone()[0]))
+    refs = json.loads(c.execute("SELECT refs FROM summaries WHERE level = 'day'").fetchone()[0])
+    assert [r["app"] for r in refs if "piece" in r] == ["word.exe"]
+    # 生成时的隐藏名单记进 refs：MCP 层据此把这份天概括给 Agent（名单没变时）
+    assert {"hidden": {"apps": ["BANK.EXE"], "title_keywords": []}} in refs
+    from screenrecall.app import mcp_server as ms
+    from screenrecall.store.queries import Queries
+    from screenrecall.v2.adapters import StoreQueriesAdapter
+
+    q = Queries(cfg.data_dir)
+    try:
+        a = StoreQueriesAdapter(q, None)
+        key = c.execute("SELECT key FROM summaries WHERE level = 'day'").fetchone()[0]
+        s = a.summary("day", key, exclude=ms.Exclusion(("bank.exe",), ()))
+        assert s is not None and s.apps == ("word.exe",)
+        assert a.summary("day", key, exclude=ms.Exclusion(("bank.exe", "other.exe"), ())) is None  # 名单变大了
+    finally:
+        q.close()
 
 
 def test_unfinished_pieces_and_pieces_without_text_are_skipped(tmp_path):
