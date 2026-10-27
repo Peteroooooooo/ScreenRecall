@@ -43,6 +43,18 @@ def test_chat_sends_openai_request_and_parses_reply():
     assert r.usage["completion_tokens"] == 1
 
 
+def test_temperature_none_is_omitted():
+    seen = {}
+
+    def handler(req: httpx.Request):
+        seen["body"] = json.loads(req.content)
+        return httpx.Response(200, json=ok_body())
+
+    c, _ = make(handler)
+    c.chat([{"role": "user", "content": "hi"}], temperature=None)
+    assert "temperature" not in seen["body"] and "reasoning_effort" not in seen["body"]
+
+
 def test_retries_429_and_5xx_with_backoff_and_retry_after():
     calls = []
 
