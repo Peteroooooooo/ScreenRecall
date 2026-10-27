@@ -158,16 +158,34 @@ export interface Group {
   last_seen_ms: number;
   hits_total: number;
   piece_id: number | null;
+  /** literal：字面命中（hits 里有高亮）；semantic：只是意思相近（没有字面命中，hits 按相似度排） */
+  match: "literal" | "semantic";
   hits: Hit[];
 }
 
+/** relevant：字面命中在前、意思更近的在前，再是意思相近的；recent：按最后一次看到的时间 */
+export type SearchSort = "relevant" | "recent";
+
 export interface SearchResult {
   query: string;
+  sort: SearchSort;
+  offset: number;
   total_groups: number;
   groups: Group[];
+  /** 后面还有；下一页从 next_offset 开始（同样的条件，顺序不变） */
+  has_more: boolean;
+  next_offset: number | null;
   /** 这次检索用上了语义（向量）分支 */
   semantic: boolean;
 }
+
+export interface TaskItem {
+  task: string;
+  /** 这个任务的片段数 */
+  n: number;
+}
+
+export type SearchQuery = { q: string; from?: number; to?: number; app?: string; task?: string; limit?: number; offset?: number; sort?: SearchSort };
 
 export interface FrameDetail {
   frame_id: string;
@@ -246,8 +264,10 @@ export const api = {
   day: (date: string | undefined, s?: AbortSignal) => get<Day>(withQuery(`${V2}/day`, { date }), s),
   piece: (id: number, s?: AbortSignal) => get<PieceDetail>(`${V2}/pieces/${id}`, s),
   summarize: (id: number) => post<{ queued: boolean; summary_state: SummaryState }>(`${V2}/pieces/${id}/summarize`, {}),
-  search: (q: { q: string; from?: number; to?: number; app?: string; task?: string; limit?: number }, s?: AbortSignal) =>
-    get<SearchResult>(withQuery(`${V2}/search`, q), s),
+  search: (q: SearchQuery, s?: AbortSignal) => get<SearchResult>(withQuery(`${V2}/search`, q), s),
+  /** 搜索页打开时调用：服务端在后台先加载查询模型（第一次语义检索不用等） */
+  searchWarm: (s?: AbortSignal) => get<{ semantic: boolean }>(`${V2}/search/warm`, s),
+  tasks: (q: { from?: number; to?: number }, s?: AbortSignal) => get<{ tasks: TaskItem[] }>(withQuery(`${V2}/tasks`, q), s),
   frame: (id: string, s?: AbortSignal) => get<FrameDetail>(`${V2}/frames/${encodeURIComponent(id)}`, s),
   apps: (q: { from?: number; to?: number }, s?: AbortSignal) => get<{ apps: { app: string; n: number }[] }>(withQuery(`${V2}/apps`, q), s),
   settings: (s?: AbortSignal) => get<Settings>(`${V2}/settings`, s),
