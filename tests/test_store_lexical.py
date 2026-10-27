@@ -171,8 +171,8 @@ def test_recent_mode_matches_exact_top_groups(env):
     for k in range(30):
         s, _, _ = put(w, f"app{k % 3}.exe", f"title{k}", 1000 + k * 100, [f"the common word {k}-{i}" for i in range(5)])
         segs.append(s)
-    exact = S(c, "common", limit=5)
-    recent = S(c, "common", limit=5, cap=10, scan_hits=40)
+    exact = S(c, "common", limit=5, mode="exact")
+    recent = S(c, "common", limit=5, mode="recent", scan_hits=40, scan_rows=100)
     assert exact.mode == "exact" and recent.mode == "recent"
     assert [g.segment_id for g in recent.groups] == [g.segment_id for g in exact.groups] == segs[::-1][:5]
     assert [l["line_id"] for l in recent.groups[0].lines] == [l["line_id"] for l in exact.groups[0].lines]
@@ -184,5 +184,27 @@ def test_recent_mode_falls_back_when_filter_is_narrow(env):
     rare, _, _ = put(w, "rare.exe", "old", 10, ["the common word rare"])
     for k in range(20):
         put(w, "busy.exe", f"t{k}", 1000 + k, [f"the common word {k}-{i}" for i in range(5)])
-    res = S(c, "common", app="rare.exe", cap=10, scan_hits=40, scan_rows=30)
-    assert res.mode == "exact" and [g.segment_id for g in res.groups] == [rare]
+    res = S(c, "common", app="rare.exe", mode="recent", scan_hits=40, scan_rows=30)
+    assert res.mode == "segment" and [g.segment_id for g in res.groups] == [rare]
+    res = S(c, "common", time_from=0, mode="recent", limit=50, scan_hits=4000, scan_rows=30)
+    assert res.mode == "exact" and res.total == 101
+
+
+def test_all_modes_agree(env):
+    w, c = env
+    for k in range(12):
+        put(w, f"app{k % 2}.exe", f"t{k}", 1000 + k * 37 % 11 * 100, [f"报告 第{k}-{i} 段" for i in range(4)])
+    for kw in ({}, {"app": "app1.exe"}, {"time_from": 1300, "app": "app0.exe"}):
+        res = {m: S(c, "报告", mode=m, limit=4, **kw) for m in ("exact", "segment", "recent")}
+        ref = [(g.segment_id, [l["line_id"] for l in g.lines]) for g in res["exact"].groups]
+        for m, r in res.items():
+            assert [(g.segment_id, [l["line_id"] for l in g.lines]) for g in r.groups] == ref, (m, kw)
+
+
+def test_planner_picks_by_cost(env):
+    w, c = env
+    for k in range(40):
+        put(w, "busy.exe" if k else "rare.exe", f"t{k}", 1000 + k, [f"the word {k}-{i}" for i in range(10)])
+    put(w, "x.exe", "y", 5000, ["rarexyz term"])
+    assert S(c, "rarexyz").mode == "exact"
+    assert S(c, "the", app="rare.exe").mode in ("segment", "exact")

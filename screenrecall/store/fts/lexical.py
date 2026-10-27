@@ -266,6 +266,17 @@ def _collect(rows: list[sqlite3.Row]) -> tuple[int, int, list[Group]]:
     return total, total_groups, list(groups.values())
 
 
+# 代价模型（本机 1M 行库实测）：按 rowid 顺序取候选并核验约 2.5 µs/条；
+# 沿 last_seen 索引或内容源索引逐行回表核验约 4.5 µs/行。只用来比较三种执行方式的相对代价
+EXACT_US_PER_CANDIDATE = 2.5
+SCAN_US_PER_ROW = 4.5
+COUNT_CAP = 2_000_000
+
+
+def _count(conn, sql: str, params: dict, cap: int = COUNT_CAP) -> int:
+    return int(conn.execute(f"SELECT COUNT(*) FROM ({sql} LIMIT {int(cap) + 1})", params).fetchone()[0])
+
+
 def search(
     conn: sqlite3.Connection,
     query: str,
@@ -273,11 +284,18 @@ def search(
     filters: Filters | None = None,
     limit: int = 20,
     per_group: int = 3,
-    cap: int = 20000,
-    scan_hits: int = 2000,
+    scan_hits: int | None = None,
     scan_rows: int = 300_000,
+    mode: str | None = None,
 ) -> Result:
-    """limit = 返回的分组（内容源）数；per_group = 每组返回的最新命中行数。"""
+    """limit = 返回的分组（内容源）数；per_group = 每组返回的最新命中行数。
+
+    三种执行方式，按估算代价选（mode 可强制指定，测试用）：
+    - exact：全文索引出全部候选 → 核验 → 分组计数（结果和计数都精确）；
+    - segment：有应用/任务等内容源筛选且范围很小时，沿内容源索引逐行核验（精确）；
+    - recent：常见词，沿 last_seen 倒序边扫边核验，凑够 scan_hits 条命中就停；
+      分组顺序与每组最新命中精确，计数是下限。扫满 scan_rows 行还凑不出 limit 组时退回精确方式。
+    """
     f = filters or Filters()
     p = plan(query)
     terms_txt = [t.text for t in p.terms]
@@ -288,19 +306,35 @@ def search(
         return Result(query, [], "empty", 0, False, 0, [], note or "请输入要搜索的文字。")
     limit = max(1, int(limit))
     per_group = max(1, int(per_group))
+    if scan_hits is None:
+        scan_hits = max(200, limit * per_group * 10)
 
-    params: dict = {"groups": limit, "per_group": per_group}
+    params: dict = {"groups": limit, "per_group": per_group, "scan_hits": int(scan_hits),
+                    "scan_rows": int(scan_rows)}
     cand = _candidates_sql(p.terms, params)
-    n_cand = conn.execute(f"SELECT COUNT(*) FROM ({cand} LIMIT {int(cap) + 1})", params).fetchone()[0]
     verify = _verify_sql(p.terms, params)
     where = _filter_sql(f, params)
+    seg = segment_filter_sql(f, params)
 
-    if n_cand > cap:
-        params["scan_hits"] = int(scan_hits)
-        params["scan_rows"] = int(scan_rows)
+    if mode is None:
+        n_cand = _count(conn, cand, params)
+        row = conn.execute("SELECT seq FROM sqlite_sequence WHERE name = 'lines'").fetchone()
+        n_total = max(1, int(row[0]) if row else 1)
+        seg_lines = (_count(conn, f"SELECT 1 FROM lines INDEXED BY idx_lines_segment WHERE segment_id IN ({seg})",
+                            params) if seg else n_total)
+        rate = (n_cand / n_total) * (seg_lines / n_total)
+        costs = {
+            "exact": n_cand * EXACT_US_PER_CANDIDATE,
+            "recent": min(scan_hits / max(rate, 1e-12), n_total, scan_rows) * SCAN_US_PER_ROW,
+        }
+        if seg:
+            costs["segment"] = seg_lines * SCAN_US_PER_ROW
+        mode = min(costs, key=costs.get)
+
+    if mode == "recent":
         # time_to 不能用来缩小扫描起点：last_seen 晚于 time_to 的行，first_seen 仍可能在范围内
         start = "WHERE last_seen_ms >= :time_from " if f.time_from is not None else ""
-        # 扫描下界：最近第 scan_rows 行的 last_seen（只走索引），保证最多核验 scan_rows 行
+        # 扫描下界：最近第 scan_rows 行的 last_seen（只走索引），保证最多核验约 scan_rows 行
         thr = conn.execute(
             f"SELECT last_seen_ms FROM lines INDEXED BY idx_lines_last_seen {start}"
             "ORDER BY last_seen_ms DESC LIMIT 1 OFFSET :scan_rows", params,
@@ -312,17 +346,26 @@ def search(
             f"WHERE l.last_seen_ms >= :thr AND {verify} AND {where} "
             "ORDER BY l.last_seen_ms DESC LIMIT :scan_hits)" + _GROUPED
         )
-        rows = conn.execute(sql, params).fetchall()
-        total, total_groups, groups = _collect(rows)
-        if len(groups) >= limit or total >= scan_hits:
-            return Result(query, terms_txt, "recent", total, True, total_groups, groups, note)
-        # 筛选很窄：最近 scan_rows 行里凑不出 limit 个分组，退回精确模式（结果完整，较慢）
+        total, total_groups, groups = _collect(conn.execute(sql, params).fetchall())
+        if len(groups) >= limit or total >= scan_hits or thr is None:
+            # thr 为空 = 范围内的行不到 scan_rows，已经全部扫过，结果完整
+            exact = thr is None and total < scan_hits
+            return Result(query, terms_txt, "exact" if exact else "recent", total, not exact, total_groups,
+                          groups, note)
+        mode = "segment" if seg else "exact"  # 筛选很窄：最近 scan_rows 行里凑不出 limit 组
 
-    sql = (
-        f"WITH cand AS ({cand}), "
-        "hits AS (SELECT l.line_id, l.segment_id, l.last_seen_ms FROM cand JOIN lines l ON l.line_id = cand.id "
-        f"WHERE {verify} AND {where})" + _GROUPED
-    )
-    rows = conn.execute(sql, params).fetchall()
-    total, total_groups, groups = _collect(rows)
-    return Result(query, terms_txt, "exact", total, False, total_groups, groups, note)
+    if mode == "segment" and seg:
+        time_where = _filter_sql(Filters(f.time_from, f.time_to), params)
+        sql = (
+            "WITH hits AS (SELECT l.line_id, l.segment_id, l.last_seen_ms FROM lines l INDEXED BY idx_lines_segment "
+            f"WHERE l.segment_id IN ({seg}) AND {verify} AND {time_where})" + _GROUPED
+        )
+    else:
+        mode = "exact"
+        sql = (
+            f"WITH cand AS ({cand}), "
+            "hits AS (SELECT l.line_id, l.segment_id, l.last_seen_ms FROM cand JOIN lines l ON l.line_id = cand.id "
+            f"WHERE {verify} AND {where})" + _GROUPED
+        )
+    total, total_groups, groups = _collect(conn.execute(sql, params).fetchall())
+    return Result(query, terms_txt, mode, total, False, total_groups, groups, note)

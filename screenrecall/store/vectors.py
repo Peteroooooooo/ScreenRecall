@@ -423,16 +423,20 @@ class VectorStore:
                 mask = mask & np.isin(seg.ids, id_filter, assume_unique=False)
             if grp_filter is not None:
                 mask = mask & np.isin(seg.grp, grp_filter)
-            sel = np.flatnonzero(mask)
-            if sel.size == 0:
-                continue
-            if sel.size > seg.rows // 4:
-                scores = (seg.vec @ q)[sel]
+            if mask.all():
+                sel = slice(None)
+                scores = seg.vec @ q
+                n_sel = seg.rows
             else:
-                scores = seg.vec[sel] @ q
-            if not best_per_group and sel.size > k:
+                sel = np.flatnonzero(mask)
+                n_sel = sel.size
+                if n_sel == 0:
+                    continue
+                scores = (seg.vec @ q)[sel] if n_sel > seg.rows // 4 else seg.vec[sel] @ q
+            if not best_per_group and n_sel > k:
                 top = np.argpartition(-scores, k - 1)[:k]
-                sel, scores = sel[top], scores[top]
+                sel = top if isinstance(sel, slice) else sel[top]
+                scores = scores[top]
             parts_s.append(scores)
             parts_i.append(seg.ids[sel])
             parts_t.append(seg.ts[sel])
@@ -444,14 +448,21 @@ class VectorStore:
         tt = np.concatenate(parts_t)
         gg = np.concatenate(parts_g)
         if best_per_group:
-            order = np.lexsort((-s, gg))  # 先按组，组内分数从高到低
-            first = np.ones(order.size, bool)
-            first[1:] = gg[order][1:] != gg[order][:-1]
-            pick = order[first]
-            s, ii, tt, gg = s[pick], ii[pick], tt[pick], gg[pick]
-        if s.size > k:
-            top = np.argpartition(-s, k - 1)[:k]
+            top = _best_per_group(s, ii, gg, k)
         else:
-            top = np.arange(s.size)
-        top = top[np.lexsort((ii[top], -s[top]))]  # 分数降序，同分按 id
+            top = np.argpartition(-s, k - 1)[:k] if s.size > k else np.arange(s.size)
+            top = top[np.lexsort((ii[top], -s[top]))]  # 分数降序，同分按 id
         return [VectorHit(int(ii[j]), float(s[j]), int(tt[j]), int(gg[j])) for j in top]
+
+
+def _best_per_group(s: np.ndarray, ii: np.ndarray, gg: np.ndarray, k: int) -> np.ndarray:
+    """每组最高分的前 k 组。只在分数最高的 m 行里找：若这 m 行里已有 k 个不同的组，
+    这 k 组就是答案（没进前 m 的组，最高分不会超过第 m 名）；不够就把 m 放大 4 倍再找。"""
+    m = min(s.size, max(k * 20, 256))
+    while True:
+        cand = np.arange(s.size) if m >= s.size else np.argpartition(-s, m - 1)[:m]
+        cand = cand[np.lexsort((ii[cand], -s[cand]))]
+        _, first = np.unique(gg[cand], return_index=True)
+        if first.size >= k or m >= s.size:
+            return cand[np.sort(first)][:k]
+        m = min(s.size, m * 4)
