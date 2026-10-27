@@ -1,0 +1,79 @@
+{
+ "label": "after",
+ "sort": "relevant",
+ "limit": 10,
+ "corpus": {
+  "segments": 30,
+  "lines": 338,
+  "queries": 84,
+  "kinds": {
+   "exact": 14,
+   "partial": 6,
+   "paraphrase": 23,
+   "xling": 23,
+   "typo": 6,
+   "unrelated": 12
+  }
+ },
+ "embed": {
+  "lines": 338,
+  "seconds": 3.4,
+  "vectors": 415,
+  "rechunked": 0,
+  "line_vectors": 304,
+  "chunks": 111
+ },
+ "summary": {
+  "exact": {
+   "n": 14,
+   "found@5": 1.0,
+   "recall@5": 1.0,
+   "MRR": 1.0,
+   "junk_groups": 0.36
+  },
+  "partial": {
+   "n": 6,
+   "found@5": 1.0,
+   "recall@5": 1.0,
+   "MRR": 1.0,
+   "junk_groups": 0.33
+  },
+  "paraphrase": {
+   "n": 23,
+   "found@5": 0.87,
+   "recall@5": 0.783,
+   "MRR": 0.732,
+   "junk_groups": 0.35
+  },
+  "xling": {
+   "n": 23,
+   "found@5": 0.957,
+   "recall@5": 0.87,
+   "MRR": 0.895,
+   "junk_groups": 0.3
+  },
+  "typo": {
+   "n": 6,
+   "found@5": 0.833,
+   "recall@5": 0.833,
+   "MRR": 0.833,
+   "junk_groups": 0.5
+  },
+  "unrelated": {
+   "n": 12,
+   "fp_rate": 0.167
+  },
+  "all_related": {
+   "n": 72,
+   "found@5": 0.931,
+   "recall@5": 0.875,
+   "MRR": 0.867,
+   "junk_groups": 0.35
+  }
+ },
+ "latency_ms": {
+  "cold_first": 1088.7,
+  "warm_p50": 7.2,
+  "warm_p95": 10.7
+ }
+}

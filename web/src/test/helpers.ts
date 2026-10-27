@@ -111,14 +111,16 @@ export function frame(id = F1, over: Partial<FrameDetail> = {}): FrameDetail {
 
 export function search(over: Partial<SearchResult> = {}): SearchResult {
   return {
-    query: "示例词", total_groups: 2, semantic: false,
+    query: "示例词", sort: "relevant", offset: 0, total_groups: 2, has_more: false, next_offset: null, semantic: false,
     groups: [
       { segment_id: 5, app: "SampleReader.exe", title: "示例讲义第 3 章.pdf", first_seen_ms: at(9, 12), last_seen_ms: at(9, 41), hits_total: 4, piece_id: 11,
+        match: "literal",
         hits: [
           { line_id: 102, text: "示例定义：这里提到了示例词，后面是占位文字。", spans: [[10, 13]], last_seen_ms: at(9, 14), frame_id: F1 },
           { line_id: 103, text: "示例词出现在开头", spans: [[0, 3]], last_seen_ms: at(9, 21), frame_id: null },
         ] },
       { segment_id: 6, app: "SampleChat.exe", title: "示例小组群聊", first_seen_ms: at(9, 48), last_seen_ms: at(9, 53), hits_total: 1, piece_id: null,
+        match: "literal",
         hits: [{ line_id: 301, text: "示例消息：我来整理示例词那一部分。", spans: [[9, 12]], last_seen_ms: at(9, 50), frame_id: null }] },
     ],
     ...over,
@@ -155,6 +157,7 @@ export function agentConfigs(): AgentConfigs {
 
 export const windows = () => ({ windows: [{ hwnd: 1001, process: "SampleEditor.exe", title: "示例文档.txt" }, { hwnd: 1002, process: "SampleChat.exe", title: "示例小组群聊" }] });
 export const apps = () => ({ apps: [{ app: "SampleReader.exe", n: 30 }, { app: "SampleChat.exe", n: 8 }] });
+export const tasks = () => ({ tasks: [{ task: "示例任务 A", n: 3 }, { task: "示例任务 B", n: 1 }] });
 
 /** 各接口的默认回答（测试里没特别处理的请求） */
 export function defaultReply(call: Call): Reply | null {
@@ -164,7 +167,9 @@ export function defaultReply(call: Call): Reply | null {
   if (/^\/api\/v2\/pieces\/\d+$/.test(p)) return { body: piece() };
   if (/^\/api\/v2\/frames\/[^/]+$/.test(p)) return { body: frame(decodeURIComponent(p.split("/").pop()!)) };
   if (p === "/api/v2/search") return { body: search({ query: queryOf(call.path).get("q") ?? "" }) };
+  if (p === "/api/v2/search/warm") return { body: { semantic: true } };
   if (p === "/api/v2/apps") return { body: apps() };
+  if (p === "/api/v2/tasks") return { body: tasks() };
   if (p === "/api/v2/settings" && call.method === "GET") return { body: settings() };
   if (p === "/api/v2/windows") return { body: windows() };
   if (p === "/api/v2/storage") return { body: storage() };

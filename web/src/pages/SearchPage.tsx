@@ -1,15 +1,18 @@
-// 搜索：按内容段分组的结果，命中处高亮；筛选时间 / 应用 / 任务。条件都在地址里（#/search?q=&range=&app=&task=）。
-import { useEffect, useMemo, useState } from "react";
+// 搜索：按内容段分组的结果，命中处高亮；筛选时间 / 应用 / 任务，排序最相关 / 最后看到，“加载更多”往后翻。
+// 条件都在地址里（#/search?q=&range=&app=&task=&sort=）；翻到的页只在本页面里，换条件就从头开始。
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Image as ImageIcon, Search } from "lucide-react";
-import { api, frameThumbUrl, type Group } from "../api";
+import { api, frameThumbUrl, type Group, type SearchSort } from "../api";
 import { useT } from "../i18n";
-import { appName, errText, fmtWhen, highlight, hrefOf, navigate, startOfToday, useLoad } from "../lib";
-import { Av, Empty, LoadError, PageHeader, Segmented, Skeleton } from "../ui";
+import { appName, errText, fmtWhen, highlight, hrefOf, isAbort, navigate, startOfToday, useLoad } from "../lib";
+import { Av, Banner, Empty, LoadError, PageHeader, Segmented, Skeleton } from "../ui";
 import { FrameViewer, type ViewerState } from "../viewer";
 
 export type Range = "today" | "d7" | "d30" | "all";
 const RANGES: Range[] = ["today", "d7", "d30", "all"];
 const DEFAULT_RANGE: Range = "d7";
+const SORTS: SearchSort[] = ["relevant", "recent"];
+const DEFAULT_SORT: SearchSort = "relevant";
 export const SEARCH_LIMIT = 30;
 
 export function rangeFrom(r: Range, now = Date.now()): number | undefined {
@@ -19,35 +22,77 @@ export function rangeFrom(r: Range, now = Date.now()): number | undefined {
   return undefined;
 }
 
+type More = { groups: Group[]; next: number | null; loading: boolean; error: unknown };
+const NO_MORE: More = { groups: [], next: null, loading: false, error: null };
+
 export default function SearchPage({ params }: { params: URLSearchParams }) {
   const { t } = useT();
   const q = (params.get("q") ?? "").trim();
   const rp = params.get("range") as Range | null;
   const range: Range = rp && RANGES.includes(rp) ? rp : DEFAULT_RANGE;
+  const sp = params.get("sort") as SearchSort | null;
+  const sort: SearchSort = sp && SORTS.includes(sp) ? sp : DEFAULT_SORT;
   const app = params.get("app") ?? "";
   const task = params.get("task") ?? "";
   const [draft, setDraft] = useState(q);
-  const [taskDraft, setTaskDraft] = useState(task);
   useEffect(() => setDraft(q), [q]);
-  useEffect(() => setTaskDraft(task), [task]);
   const [viewer, setViewer] = useState<ViewerState>(null);
+
+  // 打开搜索页就让服务端在后台加载查询模型：用户打完字时第一次语义检索不用再等
+  useEffect(() => {
+    const c = new AbortController();
+    api.searchWarm(c.signal).catch(() => undefined);
+    return () => c.abort();
+  }, []);
 
   // 起点在换条件时算一次（按分钟取整），之后的重绘不改条件
   const fromKey = useMemo(() => {
     const from = rangeFrom(range);
     return from == null ? undefined : Math.floor(from / 60_000) * 60_000;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range, q, app, task]);
+  }, [range, q, app, task, sort]);
   const apps = useLoad((signal) => api.apps({ from: fromKey }, signal), [fromKey]);
+  const tasks = useLoad((signal) => api.tasks({ from: fromKey }, signal), [fromKey]);
+  const cond = { q, from: fromKey, app: app || undefined, task: task || undefined, sort, limit: SEARCH_LIMIT };
   const res = useLoad(
-    (signal) => (q ? api.search({ q, from: fromKey, app: app || undefined, task: task || undefined, limit: SEARCH_LIMIT }, signal) : Promise.resolve(null)),
-    [q, fromKey, app, task],
+    (signal) => (q ? api.search(cond, signal) : Promise.resolve(null)),
+    [q, fromKey, app, task, sort],
   );
 
-  const set = (patch: Record<string, string | undefined>) =>
-    navigate("/search", { q, range: range === DEFAULT_RANGE ? undefined : range, app, task, ...patch });
-  const appList = apps.data?.apps ?? [];
+  // “加载更多”：同样的条件，从上一页的 next_offset 接着取；换了条件就清空
+  const [more, setMore] = useState<More>(NO_MORE);
+  const moreCtrl = useRef<AbortController | null>(null);
+  useEffect(() => {
+    moreCtrl.current?.abort();
+    setMore(NO_MORE);
+  }, [res.data]);
+  useEffect(() => () => moreCtrl.current?.abort(), []);
   const data = res.data;
+  const next = more.groups.length ? more.next : (data?.next_offset ?? null);
+  const loadMore = () => {
+    if (next == null || more.loading) return;
+    const c = new AbortController();
+    moreCtrl.current?.abort();
+    moreCtrl.current = c;
+    setMore((m) => ({ ...m, loading: true, error: null }));
+    api.search({ ...cond, offset: next }, c.signal)
+      .then((r) => setMore((m) => {
+        const seen = new Set([...(data?.groups ?? []), ...m.groups].map((g) => g.segment_id));
+        return { groups: [...m.groups, ...r.groups.filter((g) => !seen.has(g.segment_id))], next: r.next_offset, loading: false, error: null };
+      }))
+      .catch((e: unknown) => {
+        if (c.signal.aborted || isAbort(e)) return;
+        setMore((m) => ({ ...m, loading: false, error: e }));
+      });
+  };
+
+  const set = (patch: Record<string, string | undefined>) =>
+    navigate("/search", {
+      q, range: range === DEFAULT_RANGE ? undefined : range, app, task, sort: sort === DEFAULT_SORT ? undefined : sort, ...patch,
+    });
+  const appList = apps.data?.apps ?? [];
+  const taskList = tasks.data?.tasks ?? [];
+  const shown = data ? [...data.groups, ...more.groups] : [];
 
   return (
     <div>
@@ -55,7 +100,7 @@ export default function SearchPage({ params }: { params: URLSearchParams }) {
       <section className="sr-card p-4 sm:p-5">
         <form role="search" className="flex flex-wrap gap-2" onSubmit={(e) => {
           e.preventDefault();
-          set({ q: draft.trim(), task: taskDraft.trim() || undefined });
+          set({ q: draft.trim() });
         }}>
           <label className="sr-only" htmlFor="sq">{t("search.input")}</label>
           <input id="sq" name="q" type="search" autoComplete="off" value={draft} onChange={(e) => setDraft(e.target.value)}
@@ -78,9 +123,18 @@ export default function SearchPage({ params }: { params: URLSearchParams }) {
           </label>
           <label className="flex min-w-0 flex-[1_1_150px] flex-col gap-1.5 sm:flex-none">
             <span className="text-[12.5px] font-medium text-graphite">{t("search.task")}</span>
-            <input className="sr-field sm:w-[200px]" name="task" value={taskDraft} placeholder={t("search.taskPh")}
-              onChange={(e) => setTaskDraft(e.target.value)}
-              onBlur={() => taskDraft.trim() !== task && set({ task: taskDraft.trim() || undefined })} />
+            <select className="sr-field sm:w-[200px]" name="task" value={task} onChange={(e) => set({ task: e.target.value || undefined })}>
+              <option value="">{t("search.taskPh")}</option>
+              {task && !taskList.some((x) => x.task === task) && <option value={task}>{task}</option>}
+              {taskList.map((x) => <option key={x.task} value={x.task}>{x.task}（{x.n}）</option>)}
+            </select>
+          </label>
+          <label className="flex min-w-0 flex-[1_1_120px] flex-col gap-1.5 sm:flex-none">
+            <span className="text-[12.5px] font-medium text-graphite">{t("search.sort")}</span>
+            <select className="sr-field sm:w-[140px]" name="sort" value={sort}
+              onChange={(e) => set({ sort: e.target.value === DEFAULT_SORT ? undefined : e.target.value })}>
+              {SORTS.map((s) => <option key={s} value={s}>{t(`search.${s}`)}</option>)}
+            </select>
           </label>
         </div>
       </section>
@@ -96,14 +150,24 @@ export default function SearchPage({ params }: { params: URLSearchParams }) {
       ) : (
         <>
           <div className="mb-2.5 mt-5 flex flex-wrap items-center justify-between gap-2 text-[13.5px] text-graphite" aria-live="polite">
-            <span>{data.total_groups > data.groups.length
-              ? t("search.countMore", { q, n: data.total_groups, m: data.groups.length })
-              : t("search.count", { q, n: data.groups.length })}</span>
-            <span className="text-[12.5px] text-faint">{t("search.order")}</span>
+            <span>{data.total_groups > shown.length
+              ? t("search.countMore", { q, n: data.total_groups, m: shown.length })
+              : t("search.count", { q, n: shown.length })}</span>
+            <span className="text-[12.5px] text-faint">{t(sort === "relevant" ? "search.orderRelevant" : "search.order")}</span>
           </div>
           <div className="space-y-3">
-            {data.groups.map((g, i) => <GroupCard key={g.segment_id} g={g} i={i} onShot={(fid, line) => setViewer({ frames: [fid], index: 0, line })} />)}
+            {shown.map((g, i) => <GroupCard key={g.segment_id} g={g} i={i} onShot={(fid, line) => setViewer({ frames: [fid], index: 0, line })} />)}
           </div>
+          {next != null && (
+            <div className="mt-4 flex flex-col items-center gap-2">
+              {more.error != null && !more.loading && (
+                <Banner tone="alarm" className="w-full">{t("search.moreError", { e: errText(more.error, t("common.offline")) })}</Banner>
+              )}
+              <button type="button" className="sr-btn sr-btn-line" onClick={loadMore} disabled={more.loading} aria-busy={more.loading}>
+                {more.loading ? t("search.loadingMore") : t("search.loadMore")}
+              </button>
+            </div>
+          )}
         </>
       )}
       <FrameViewer state={viewer} onClose={() => setViewer(null)} />
@@ -144,8 +208,10 @@ function GroupCard({ g, i, onShot }: { g: Group; i: number; onShot: (fid: string
           ))}
         </ul>
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-          <span className="sr-tag">{t("search.hits", { n: g.hits_total })}</span>
-          {g.hits_total > g.hits.length && <span className="text-[12.5px] text-faint">{t("search.more", { n: g.hits_total - g.hits.length })}</span>}
+          {g.match === "semantic"
+            ? <span className="sr-tag" title={t("search.similarTip")}>{t("search.similar")}</span>
+            : <span className="sr-tag">{t("search.hits", { n: g.hits_total })}</span>}
+          {g.match !== "semantic" && g.hits_total > g.hits.length && <span className="text-[12.5px] text-faint">{t("search.more", { n: g.hits_total - g.hits.length })}</span>}
           <span className="flex-1" />
           {g.piece_id != null && <a className="sr-btn sr-btn-line sr-btn-sm" href={hrefOf(`/piece/${g.piece_id}`)}>{t("search.openPiece")}</a>}
           {shot && (

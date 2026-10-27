@@ -1,0 +1,52 @@
+{
+ "old (OpenBLAS 16 threads, arena on), cold first query": {
+  "idle": {
+   "ws_mib": 78.3,
+   "private_mib": 543.1
+  },
+  "query_ms": 1310.8,
+  "semantic": true,
+  "loaded": {
+   "ws_mib": 912.4,
+   "private_mib": 1500.3
+  },
+  "unloaded": {
+   "ws_mib": 113.9,
+   "private_mib": 599.0
+  }
+ },
+ "new (OpenBLAS 4 threads, arena off), cold first query": {
+  "idle": {
+   "ws_mib": 77.6,
+   "private_mib": 157.6
+  },
+  "query_ms": 1377.1,
+  "semantic": true,
+  "loaded": {
+   "ws_mib": 821.5,
+   "private_mib": 926.8
+  },
+  "unloaded": {
+   "ws_mib": 118.4,
+   "private_mib": 218.2
+  }
+ },
+ "new, after search-page warm-up": {
+  "idle": {
+   "ws_mib": 77.4,
+   "private_mib": 157.2
+  },
+  "warm_call_ms": 190.1,
+  "warm_load_ms": 1371.0,
+  "query_ms": 10.1,
+  "semantic": true,
+  "loaded": {
+   "ws_mib": 820.0,
+   "private_mib": 925.4
+  },
+  "unloaded": {
+   "ws_mib": 114.6,
+   "private_mib": 217.2
+  }
+ }
+}

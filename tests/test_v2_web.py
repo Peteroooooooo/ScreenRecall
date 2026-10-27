@@ -366,10 +366,13 @@ def test_short_word_terms_only_highlight_word_starts():
 
 def test_search_shape_and_spans(client, env):
     r = client.get("/api/v2/search", params={"q": "report"}).json()
-    assert keys(r) == {"query", "total_groups", "groups", "semantic"}
+    assert keys(r) == {"query", "sort", "offset", "total_groups", "groups", "has_more", "next_offset", "semantic"}
     assert r["query"] == "report" and r["total_groups"] == 1 and r["semantic"] is False
+    assert r["sort"] == "relevant" and r["offset"] == 0 and r["has_more"] is False and r["next_offset"] is None
     g = r["groups"][0]
-    assert keys(g) == {"segment_id", "app", "title", "first_seen_ms", "last_seen_ms", "hits_total", "piece_id", "hits"}
+    assert keys(g) == {"segment_id", "app", "title", "first_seen_ms", "last_seen_ms", "hits_total", "piece_id",
+                       "match", "hits"}
+    assert g["match"] == "literal"
     assert g["segment_id"] == env.ids["segment"] and g["app"] == F.APP and g["piece_id"] == env.ids["piece"]
     assert g["hits_total"] == 1 and g["first_seen_ms"] == F.day_base()
     assert g["hits"] == [{"line_id": env.ids["lines"][0], "text": "Quarterly REPORT draft", "spans": [[10, 16]],
@@ -383,6 +386,50 @@ def test_search_shape_and_spans(client, env):
     assert client.get("/api/v2/search", params={"q": '"unpaired'}).status_code == 400
     assert client.get("/api/v2/search", params={"q": "x", "limit": 0}).status_code == 400
     assert client.get("/api/v2/search", params={"q": "x", "from": 5, "to": 1}).status_code == 400
+    assert client.get("/api/v2/search", params={"q": "x", "sort": "best"}).status_code == 400
+    assert client.get("/api/v2/search", params={"q": "x", "offset": -1}).status_code == 400
+    # 任务筛选：大小写、全半角、空白不敏感的包含匹配（任务标签是"写报告"）
+    assert client.get("/api/v2/search", params={"q": "report", "task": "报告"}).json()["total_groups"] == 1
+    assert client.get("/api/v2/search", params={"q": "report", "task": "写 报告"}).json()["total_groups"] == 1
+    assert client.get("/api/v2/search", params={"q": "report", "task": "开会"}).json()["groups"] == []
+
+
+def test_search_paging_and_sort(client, env):
+    w = env.stack.writer
+    sids = []
+    for i in range(5):
+        t = F.day_base() + (i + 1) * 3_600_000
+        sid = w.segment_for("tk.exe", f"合成文档 {i}", t).result(5)
+        w.record_lines(w.block_new(sid, t).result(5), t, (0, 100), [LineIn(f"page REPORT {i}", 0, 10, 300, 24)]).result(5)
+        sids.append(sid)
+    want = list(reversed(sids)) + [env.ids["segment"]]  # 没有语义分支：相关度一样，按最近
+    for sort in ("relevant", "recent"):
+        got, offset = [], 0
+        while offset is not None:
+            r = client.get("/api/v2/search", params={"q": "report", "limit": 2, "offset": offset, "sort": sort}).json()
+            assert r["sort"] == sort and r["offset"] == offset and len(r["groups"]) <= 2
+            got += [g["segment_id"] for g in r["groups"]]
+            offset = r["next_offset"]
+            assert (offset is not None) == r["has_more"]
+        assert got == want
+    assert r["total_groups"] == 6
+
+
+def test_tasks_endpoint(client, env):
+    w = env.stack.writer
+    sid = env.ids["segment"]
+    t = F.day_base()
+    w.piece_put(t + 20 * 60_000, t + 30 * 60_000, app=F.APP, title="b", segment_ids=[sid], task_label="写报告").result(5)
+    w.piece_put(t + 40 * 60_000, t + 50 * 60_000, app=F.APP, title="c", segment_ids=[sid], task_label="Ｒｅｖｉｅｗ").result(5)
+    r = client.get("/api/v2/tasks").json()
+    assert r == {"tasks": [{"task": "写报告", "n": 2}, {"task": "Ｒｅｖｉｅｗ", "n": 1}]}
+    r = client.get("/api/v2/tasks", params={"from": t + 35 * 60_000}).json()
+    assert r == {"tasks": [{"task": "Ｒｅｖｉｅｗ", "n": 1}]}
+    assert client.get("/api/v2/tasks", params={"from": 5, "to": 1}).status_code == 400
+
+
+def test_search_warm_without_semantic(client, env):
+    assert client.get("/api/v2/search/warm").json() == {"semantic": False}
 
 
 def test_search_groups_by_most_recent_hit(client, env):
@@ -455,6 +502,9 @@ def test_search_semantic_branch(tmp_path, monkeypatch):
             assert r["semantic"] is True and enc.calls == 1
             g = r["groups"][0]
             assert g["hits"][0]["line_id"] == lid and g["hits"][0]["spans"] == [] and g["hits_total"] == 1
+            assert g["match"] == "semantic"
+            # 预热：语义检索能用时返回 True（注入的模型已经"加载"，不再编码）
+            assert c.get("/api/v2/search/warm").json() == {"semantic": True} and enc.calls == 1
             # 低于阈值的纯语义命中不要
             enc.vec = e[1]
             assert c.get("/api/v2/search", params={"q": "完全不相关的词"}).json()["groups"] == []

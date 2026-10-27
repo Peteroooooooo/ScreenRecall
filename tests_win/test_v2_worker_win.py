@@ -174,8 +174,8 @@ def test_real_pipeline_throughput_and_memory(tmp_path):
     print(f"OCR: {ocr['items']} regions ({ocr['pixels'] / 1e6:.1f} MP), {ocr['lines']} lines, {ocr['seconds']:.2f} s "
           f"-> {ocr['items'] / ocr['seconds']:.2f} regions/s, {ocr['pixels'] / 1e6 / ocr['seconds']:.2f} MP/s, "
           f"second pass {ocr.get('second_pass', 0)}")
-    print(f"text vectors: {text['items']} lines in {text['chunks']} chunks, {text['seconds']:.2f} s "
-          f"-> {text['items'] / text['seconds']:.0f} lines/s, {text['chunks'] / text['seconds']:.0f} chunks/s")
+    print(f"text vectors: {text['items']} lines -> {text.get('line_vectors', 0)} line + {text['chunks']} paragraph "
+          f"vectors, {text['seconds']:.2f} s -> {text['items'] / text['seconds']:.0f} lines/s")
     if clip:
         print(f"CLIP: {clip['items']} frames, {clip['seconds']:.2f} s (incl. model load), labelled {clip['labelled']}")
     print(f"merge {st['merge']['seconds']:.3f} s, total {rep['seconds']:.1f} s")

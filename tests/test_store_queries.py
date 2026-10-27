@@ -6,7 +6,7 @@ from datetime import datetime
 import numpy as np
 import pytest
 
-from screenrecall.store.queries import RRF_K, Queries
+from screenrecall.store.queries import Queries
 from screenrecall.store.vectors import VectorStore
 from screenrecall.store.writer import LineIn, Writer
 
@@ -47,31 +47,102 @@ def test_search_lexical_only_is_json(env):
     assert res["groups"][0]["lines"][0]["line_id"] == ids[0]
 
 
-def test_search_fuses_vector_branch_with_rrf(env):
+def _three_docs(env):
     w, q, tmp = env
     s1, _, a = put(w, "a.exe", "文档一", 1000, ["深度学习入门"])
     s2, _, b = put(w, "b.exe", "文档二", 2000, ["神经网络训练技巧"])  # 只有语义相关，没有字面命中
     s3, _, c = put(w, "c.exe", "文档三", 3000, ["深度学习的历史"])
-    vs = VectorStore(tmp / "vectors" / "text", DIM)
+    vs = VectorStore(tmp / "vectors" / "text2", DIM)
     e = np.eye(DIM, dtype=np.float32)
-    vs.append([a[0], b[0], c[0]], np.stack([e[0], e[0] * 0.9 + e[1] * 0.1, e[2]]), [1000, 2000, 3000], [s1, s2, s3])
-    q.text_vectors = VectorStore(tmp / "vectors" / "text", DIM, readonly=True)
-    enc = lambda text: e[0]  # noqa: E731
-    res = q.search("深度学习", encoder=enc)
-    order = [g["segment_id"] for g in res["groups"]]
-    # 词法：s3(1), s1(2)；向量：s1(1), s2(2), s3(3)
-    assert order == [s1, s3, s2]
-    g1 = res["groups"][0]
-    assert g1["sources"] == ["lexical", "vector"]
-    assert g1["score"] == pytest.approx(1 / (RRF_K + 2) + 1 / (RRF_K + 1))
-    g2 = res["groups"][2]
-    assert g2["sources"] == ["vector"] and g2["lines"][0]["line_id"] == b[0]
-    assert res["mode"].endswith("+vector")
-    # 应用筛选同样作用于向量分支
-    res = q.search("深度学习", app="b.exe", encoder=enc)
+    near = e[0] * 0.9 + e[1] * 0.1
+    vs.append([a[0], b[0], c[0]], np.stack([e[0], near / np.linalg.norm(near), e[2]]), [1000, 2000, 3000],
+              [s1, s2, s3])
+    q.text_vectors = VectorStore(tmp / "vectors" / "text2", DIM, readonly=True)
+    return (s1, s2, s3), (a, b, c), (lambda text: e[0])
+
+
+def test_search_relevant_puts_literal_first_ranked_by_meaning(env):
+    _, q, _ = env
+    (s1, s2, s3), (a, b, c), enc = _three_docs(env)
+    res = q.search("深度学习", encoder=enc, sort="relevant")
+    # 字面命中 s1（意思也最近）、s3（字面命中、意思不近），然后是只有语义命中的 s2
+    assert [g["segment_id"] for g in res["groups"]] == [s1, s3, s2]
+    g1, g3, g2 = res["groups"]
+    assert g1["sources"] == ["lexical", "vector"] and g1["score"] == pytest.approx(2.0)
+    assert g3["sources"] == ["lexical"] and g3["semantic_score"] == pytest.approx(0.0) and g3["score"] == 1.0
+    assert g2["sources"] == ["vector"] and g2["lines"][0]["line_id"] == b[0] and g2["score"] > 0.9
+    assert res["mode"].endswith("+vector") and res["total_groups"] == 3 and res["has_more"] is False
+    # 最近：只按最后看到的时间
+    res = q.search("深度学习", encoder=enc, sort="recent")
+    assert [g["segment_id"] for g in res["groups"]] == [s3, s2, s1]
+    # 应用筛选、隐藏名单同样作用于向量分支
+    res = q.search("深度学习", app="b.exe", encoder=enc, sort="relevant")
     assert [g["segment_id"] for g in res["groups"]] == [s2]
-    res = q.search("深度学习", exclude_apps=["a.exe"], encoder=enc)
+    res = q.search("深度学习", exclude_apps=["a.exe"], encoder=enc, sort="relevant")
     assert s1 not in [g["segment_id"] for g in res["groups"]]
+
+
+@pytest.mark.parametrize("sort", ["relevant", "recent"])
+def test_search_pages_do_not_overlap(env, sort):
+    _, q, _ = env
+    _, _, enc = _three_docs(env)
+    full = [g["segment_id"] for g in q.search("深度学习", encoder=enc, sort=sort, limit=10)["groups"]]
+    pages, offset = [], 0
+    while True:
+        r = q.search("深度学习", encoder=enc, sort=sort, limit=1, offset=offset)
+        pages += [g["segment_id"] for g in r["groups"]]
+        offset += 1
+        if not r["has_more"]:
+            break
+    assert pages == full and len(full) == 3
+    assert q.search("深度学习", encoder=enc, sort=sort, limit=1, offset=3)["groups"] == []
+
+
+def test_semantic_only_groups_need_a_high_score_when_literal_hits_exist(env):
+    w, q, tmp = env
+    s1, _, a = put(w, "a.exe", "文档一", 1000, ["深度学习入门"])
+    s2, _, b = put(w, "b.exe", "文档二", 2000, ["随便一行"])
+    e = np.eye(DIM, dtype=np.float32)
+    mid = (0.5 * e[0] + np.sqrt(0.75) * e[1]).astype(np.float32)  # 余弦 0.5：过了 0.45，没过 0.55
+    vs = VectorStore(tmp / "vectors" / "text2", DIM)
+    vs.append([a[0], b[0]], np.stack([mid, mid]), [1000, 2000], [s1, s2])
+    q.text_vectors = VectorStore(tmp / "vectors" / "text2", DIM, readonly=True)
+    enc = lambda text: e[0]  # noqa: E731
+    assert [g["segment_id"] for g in q.search("深度学习", encoder=enc, sort="relevant")["groups"]] == [s1]
+    # 没有字面命中时 0.5 就够
+    assert [g["segment_id"] for g in q.search("毫不相干", encoder=enc, sort="relevant")["groups"]] == [s2, s1]
+
+
+def test_vector_hits_far_below_the_best_are_dropped(env):
+    w, q, tmp = env
+    s1, _, a = put(w, "a.exe", "文档一", 1000, ["第一行"])
+    s2, _, b = put(w, "b.exe", "文档二", 2000, ["第二行"])
+    e = np.eye(DIM, dtype=np.float32)
+    weak = (0.6 * e[0] + 0.8 * e[1]).astype(np.float32)  # 0.6 >= 0.45，但比最好的 1.0 低了 0.4
+    vs = VectorStore(tmp / "vectors" / "text2", DIM)
+    vs.append([a[0], b[0]], np.stack([e[0], weak]), [1000, 2000], [s1, s2])
+    q.text_vectors = VectorStore(tmp / "vectors" / "text2", DIM, readonly=True)
+    res = q.search("毫不相干", encoder=lambda t: e[0], sort="relevant")
+    assert [g["segment_id"] for g in res["groups"]] == [s1]
+    res = q.search("毫不相干", encoder=lambda t: e[0], sort="relevant", score_margin=0.5)
+    assert [g["segment_id"] for g in res["groups"]] == [s1, s2]
+
+
+def test_tasks_merge_case_width_and_space_variants(env):
+    w, q, _ = env
+    sid = w.segment_for("a.exe", "doc", 1000).result(5)
+    for i, label in enumerate(["写周报", "写周报", "Ｒｅｐｏｒｔ A", "report a", "整理笔记", None, "  "]):
+        w.piece_put(1000 + i * 10_000, 5000 + i * 10_000, app="a.exe", title=f"t{i}", segment_ids=[sid],
+                    task_label=label).result(5)
+    tasks = q.tasks()
+    # 同样多时最近的在前；写法取最常用、同样多时最近的
+    assert [(t["task"], t["n"]) for t in tasks][:2] == [("report a", 2), ("写周报", 2)]
+    assert {t["task"] for t in tasks} == {"写周报", "report a", "整理笔记"}
+    assert q.tasks(time_from=40_000) == [{"task": "整理笔记", "n": 1, "last_ms": 45_000}]
+    # 搜索的任务筛选：大小写、全半角、空白都不敏感，包含即可
+    put(w, "a.exe", "doc", 2000, ["周报正文"])
+    assert q.search("周报正文", task="ＲＥＰＯＲＴ")["groups"] and q.search("周报正文", task="reporta")["groups"]
+    assert q.search("周报正文", task="不存在")["groups"] == []
 
 
 def test_timeline_orders_and_hides(env):

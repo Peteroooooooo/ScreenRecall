@@ -1,0 +1,373 @@
+{
+  "about": "Synthetic search eval set for ScreenRecall v2. Every line is made up for this file (no real screen content, no legacy data, not the legacy blind-split queries). A segment is one window (app + title); blocks are lists of on-screen lines in reading order; 'gen' segments are expanded by run_eval.py (deterministic filler). Labels are 'segment_key:n' with n = 0-based line index across the segment's blocks (generated filler is never labelled). Query kinds: exact, partial, paraphrase, xling (cross-lingual zh<->en), typo, unrelated (must return no semantic-only result).",
+  "segments": [
+    {"key": "plan", "app": "notepad.exe", "title": "plan-week43.txt - Notepad", "age_h": 52, "blocks": [[
+      "Week 43 plan",
+      "Mon: finish the slides for the design review",
+      "Tue: dentist appointment at 9:30, then work from home",
+      "Wed: pair with Lena on the import script",
+      "Thu 15:00 finance sync to go over Q3 spending and next quarter's allocation",
+      "Fri: send the release notes to the mailing list",
+      "Groceries: oat milk, eggs, spinach, coffee beans",
+      "Remember to renew the parking permit before the 31st",
+      "Call the landlord about the broken heater in the bedroom",
+      "Ideas: try a standing desk for a month",
+      "Book train tickets to Lisbon for the conference"
+    ]]},
+    {"key": "team", "app": "SampleChat.exe", "title": "项目小组 - SampleChat", "age_h": 26, "blocks": [[
+      "小王 10:02",
+      "今天下午的评审会改到四点了，大家注意一下",
+      "李雷 10:05",
+      "收到，我把演示环境先部署好",
+      "韩梅梅 10:07",
+      "数据库迁移脚本我昨晚跑过一遍，没有报错",
+      "小王 10:09",
+      "好的，那测试报告谁来写？",
+      "李雷 10:10",
+      "我来写，周五之前发群里",
+      "韩梅梅 10:12",
+      "记得把性能测试的结果也附上，尤其是内存占用",
+      "小王 10:15",
+      "OK 👍",
+      "李雷 10:20",
+      "午饭去楼下那家拉面店吗"
+    ]]},
+    {"key": "coffee", "app": "msedge.exe", "title": "How Coffee Is Roasted - Reading", "age_h": 75, "blocks": [
+      ["New tab", "Settings and more", "Refresh", "Address and search bar"],
+      [
+        "How Coffee Is Roasted",
+        "Green coffee beans are stable for months, but they taste grassy and sour.",
+        "Roasting triggers the Maillard reaction, which creates hundreds of aroma compounds.",
+        "At around 196 °C the beans make an audible \"first crack\" as moisture escapes.",
+        "Light roasts keep more of the origin's fruity acidity.",
+        "Dark roasts develop bitter, smoky notes and an oily surface.",
+        "After roasting, beans release carbon dioxide for several days.",
+        "That is why fresh bags often have a one-way valve.",
+        "Most specialty cafes rest their beans for a week before brewing espresso.",
+        "Grind size matters more than most people think."
+      ]
+    ]},
+    {"key": "importer", "app": "code.exe", "title": "importer.py - Editor", "age_h": 30, "blocks": [[
+      "import csv",
+      "from pathlib import Path",
+      "def load_rows(path: Path) -> list[dict]:",
+      "    \"\"\"Read a CSV export and return one dict per row.\"\"\"",
+      "    with path.open(newline=\"\", encoding=\"utf-8\") as fh:",
+      "        return list(csv.DictReader(fh))",
+      "def dedupe(rows, key=\"email\"):",
+      "    seen = set()",
+      "    out = []",
+      "    for r in rows:",
+      "        if r[key] in seen:",
+      "            continue",
+      "        seen.add(r[key])",
+      "        out.append(r)",
+      "    return out",
+      "# TODO: retry the upload when the server returns 503"
+    ]]},
+    {"key": "sleep", "app": "msedge.exe", "title": "睡眠与记忆 - 阅读", "age_h": 100, "blocks": [
+      ["新建标签页", "设置及其他", "刷新", "地址和搜索栏"],
+      [
+        "睡眠与记忆",
+        "研究发现，深度睡眠阶段大脑会重放白天学到的内容。",
+        "海马体把短期记忆转移到大脑皮层，形成长期记忆。",
+        "熬夜复习的效果往往不如提前几天分散复习。",
+        "午睡二十分钟左右可以提高下午的注意力。",
+        "睡前长时间看手机，蓝光会推迟褪黑素的分泌。",
+        "建议每天固定时间起床，即使是周末。"
+      ]
+    ]},
+    {"key": "trip", "app": "mail.exe", "title": "Re: Lisbon conference travel - Mail", "age_h": 20, "blocks": [[
+      "From: Priya Nair",
+      "To: me",
+      "Subject: Re: Lisbon conference travel",
+      "Hi, the hotel near the venue is fully booked for the 14th.",
+      "I found another one about ten minutes away by tram, breakfast included.",
+      "The registration fee is reimbursed only if you submit the receipt within 30 days.",
+      "Please also send me your passport details for the visa letter.",
+      "Cheers, Priya"
+    ]]},
+    {"key": "family", "app": "SampleChat.exe", "title": "家人群 - SampleChat", "age_h": 8, "blocks": [[
+      "妈妈 19:30",
+      "周日回来吃饭吗？我炖了排骨汤",
+      "我 19:32",
+      "回来的，大概中午十二点到",
+      "爸爸 19:40",
+      "顺路帮我买一袋猫粮，家里的快吃完了",
+      "我 19:41",
+      "好，要上次那个牌子的吗",
+      "爸爸 19:45",
+      "对，三文鱼味的"
+    ]]},
+    {"key": "build", "app": "WindowsTerminal.exe", "title": "Windows PowerShell", "age_h": 5, "blocks": [[
+      "PS C:\\work\\demo> npm run build",
+      "> demo@1.4.0 build",
+      "> vite build",
+      "vite v5.4.2 building for production...",
+      "✓ 412 modules transformed.",
+      "dist/index.html                 0.48 kB",
+      "dist/assets/index-3f9a.js     339.67 kB │ gzip: 104.95 kB",
+      "✓ built in 4.21s",
+      "PS C:\\work\\demo> pytest -q",
+      "........................F......",
+      "FAILED tests/test_sync.py::test_conflict_resolution - AssertionError",
+      "1 failed, 30 passed in 2.13s"
+    ]]},
+    {"key": "tomato", "app": "msedge.exe", "title": "Growing Tomatoes on a Balcony - Reading", "age_h": 140, "blocks": [
+      ["New tab", "Settings and more", "Refresh", "Address and search bar"],
+      [
+        "Growing Tomatoes on a Balcony",
+        "Choose a container at least 30 litres deep so the roots stay cool.",
+        "Cherry varieties are more forgiving than large beefsteak types.",
+        "Water deeply in the morning rather than a little every evening.",
+        "Yellow lower leaves usually mean the plant needs more nitrogen.",
+        "Pinch off side shoots to direct energy into the fruit.",
+        "A light shake of the flowers helps pollination when there are no bees."
+      ]
+    ]},
+    {"key": "minutes", "app": "notepad.exe", "title": "会议纪要.txt - 记事本", "age_h": 70, "blocks": [[
+      "产品例会纪要 10月24日",
+      "参会：产品、设计、后端、测试",
+      "一、上线时间推迟到下周三，原因是支付接口还没联调完",
+      "二、设计稿第二版通过，首页的轮播图去掉",
+      "三、后端需要在周一前提供导出接口的文档",
+      "四、客服反馈退款流程太长，下个版本简化成两步",
+      "待办：测试组补充弱网环境下的用例"
+    ]]},
+    {"key": "stats", "app": "SumatraPDF.exe", "title": "Lecture 5 - Hypothesis testing.pdf", "age_h": 160, "blocks": [[
+      "Lecture 5: Hypothesis Testing",
+      "The null hypothesis states that there is no effect or no difference.",
+      "A p-value is the probability of seeing data at least this extreme if the null is true.",
+      "A small p-value does not tell you how large the effect is.",
+      "Type I error: rejecting a true null hypothesis.",
+      "Type II error: failing to reject a false null hypothesis.",
+      "Statistical power is the probability of detecting a real effect.",
+      "Increasing the sample size increases power."
+    ]]},
+    {"key": "support", "app": "SampleChat.exe", "title": "#support - SampleChat", "age_h": 3, "blocks": [[
+      "alex: anyone else seeing login timeouts on staging?",
+      "sam: yes, since the deploy at 2pm",
+      "alex: looks like the auth service is out of memory",
+      "sam: restarted it, should be fine for now",
+      "jordan: can we add an alert when memory goes above 90%?",
+      "alex: I'll open a ticket"
+    ]]},
+    {"key": "eggs", "app": "msedge.exe", "title": "番茄炒蛋的做法 - 阅读", "age_h": 44, "blocks": [[
+      "番茄炒蛋的做法",
+      "鸡蛋打散，加少许盐，大火炒到半凝固盛出",
+      "番茄切块，下锅炒出汁水",
+      "加一小勺糖可以中和酸味",
+      "倒回鸡蛋翻炒均匀，撒葱花出锅"
+    ]]},
+    {"key": "display", "app": "SystemSettings.exe", "title": "Settings", "age_h": 12, "blocks": [[
+      "Display",
+      "Brightness",
+      "Night light",
+      "Scale  150%",
+      "Resolution  2560 × 1440",
+      "Multiple displays",
+      "Notifications",
+      "Do not disturb"
+    ]]},
+    {"key": "bike", "app": "msedge.exe", "title": "The Bicycle: A Short History - Reading", "age_h": 200, "blocks": [[
+      "The Bicycle: A Short History",
+      "The first two-wheeled \"running machine\" appeared in 1817 and had no pedals.",
+      "Riders pushed themselves along with their feet.",
+      "Pedals attached to the front wheel arrived in the 1860s.",
+      "The safety bicycle of the 1880s introduced a chain drive and equal-sized wheels.",
+      "Pneumatic tyres made long rides far more comfortable."
+    ]]},
+    {"key": "orders", "app": "code.exe", "title": "api.ts - Editor", "age_h": 28, "blocks": [[
+      "export async function fetchOrders(customerId: string, page = 1) {",
+      "  const res = await fetch(`/api/orders?customer=${customerId}&page=${page}`);",
+      "  if (!res.ok) throw new Error(`orders request failed: ${res.status}`);",
+      "  return (await res.json()) as Order[];",
+      "}",
+      "// cache results for five minutes to avoid hammering the server",
+      "const CACHE_TTL_MS = 5 * 60 * 1000;"
+    ]]},
+    {"key": "reading", "app": "notepad.exe", "title": "reading-list.md - Notepad", "age_h": 90, "blocks": [[
+      "Reading list",
+      "- Thinking in Systems (Meadows) — chapter 2 on feedback loops",
+      "- The Design of Everyday Things — affordances and signifiers",
+      "- A Pattern Language — finished part one",
+      "- 三体 第二部 黑暗森林，读到一半",
+      "Next: something about the history of maps"
+    ]]},
+    {"key": "landlord", "app": "SampleChat.exe", "title": "房东 - SampleChat", "age_h": 33, "blocks": [[
+      "房东 09:12",
+      "下个月房租从三号开始可以转账了",
+      "我 09:15",
+      "好的，另外卧室的暖气片不热，能找人来修一下吗",
+      "房东 09:20",
+      "我周六下午带师傅过来看看"
+    ]]},
+    {"key": "money", "app": "msedge.exe", "title": "Personal Budgeting Basics - Reading", "age_h": 110, "blocks": [[
+      "Personal Budgeting Basics",
+      "Start by tracking every expense for one month.",
+      "The 50/30/20 rule splits income into needs, wants and savings.",
+      "Build an emergency fund that covers three to six months of costs.",
+      "Automate transfers to savings on payday."
+    ]]},
+    {"key": "calendar", "app": "Calendar.exe", "title": "Calendar - October 2026", "age_h": 6, "blocks": [[
+      "October 2026",
+      "Mon 26  Design review 10:00–11:00",
+      "Tue 27  Dentist 09:30",
+      "Thu 29  Finance sync 15:00",
+      "Fri 30  Release"
+    ]]},
+    {"key": "vectors", "app": "msedge.exe", "title": "向量检索入门 - 阅读", "age_h": 60, "blocks": [[
+      "向量检索入门",
+      "把文字变成向量之后，意思相近的句子在空间里也离得近",
+      "常用余弦相似度来衡量两个向量的接近程度",
+      "数据量不大时直接暴力计算就够快了",
+      "数据量上百万时可以考虑近似最近邻索引"
+    ]]},
+    {"key": "weekend", "app": "SampleChat.exe", "title": "weekend - SampleChat", "age_h": 15, "blocks": [[
+      "mia: hiking on saturday?",
+      "tom: only if it doesn't rain, the forecast says 70%",
+      "mia: then let's do the climbing gym instead",
+      "tom: deal, meet at 10 at the station"
+    ]]},
+    {"key": "policy", "app": "WINWORD.EXE", "title": "Remote Work Policy.docx - Word", "age_h": 130, "blocks": [[
+      "Remote Work Policy",
+      "Employees may work remotely up to three days per week.",
+      "Core hours are 10:00 to 15:00 in the local office time zone.",
+      "Equipment requests must be approved by your manager.",
+      "Expenses for home internet are not reimbursed."
+    ]]},
+    {"key": "scratch", "app": "notepad.exe", "title": "scratch.txt - Notepad", "age_h": 2, "blocks": [[
+      "TODO 明天: 把 staging 的 nginx 配置改回去",
+      "证书 expires on Nov 3, 记得续期",
+      "deploy key 放在密码管理器里，名字叫 deploy-2026",
+      "周报模板: 本周完成 / 下周计划 / 风险"
+    ]]},
+    {"key": "mars", "app": "msedge.exe", "title": "Why Is Mars Red? - Reading", "age_h": 180, "blocks": [[
+      "Why Is Mars Red?",
+      "The surface is covered in dust rich in iron oxide, essentially rust.",
+      "Fine particles are lifted into the atmosphere by frequent dust storms.",
+      "The sky at noon looks butterscotch rather than blue.",
+      "Sunsets on Mars, oddly, have a bluish glow."
+    ]]},
+    {"key": "transit", "app": "msedge.exe", "title": "A Century of City Trams - Reading", "age_h": 150, "blocks": [
+      ["New tab", "Settings and more", "Refresh", "Address and search bar"],
+      [
+        "A Century of City Trams",
+        "Horse-drawn trams ran on rails long before electric motors were practical.",
+        "Electrification in the 1890s let cities extend lines into new suburbs.",
+        "Many networks were torn up in the 1950s in favour of buses and cars.",
+        "Since the 1980s a number of cities have rebuilt light rail on old corridors.",
+        "Low-floor vehicles made boarding easier for prams and wheelchairs.",
+        "Signal priority at junctions keeps trams from waiting at red lights.",
+        "Critics point to the high cost per kilometre compared with bus lanes.",
+        "Supporters reply that rails attract riders who would never take a bus.",
+        "Ticket integration with regional trains matters as much as the vehicles.",
+        "Overhead wires remain controversial in historic city centres.",
+        "Some new lines use batteries to cross short stretches without wires.",
+        "Maintenance depots need large plots of land near the network.",
+        "Track noise can be reduced with embedded rails and rubber pads.",
+        "Ridership usually grows for several years after a line opens."
+      ]
+    ]},
+    {"key": "smalltalk", "app": "SampleChat.exe", "title": "同学群 - SampleChat", "age_h": 40, "blocks": [[
+      "阿杰 21:01", "有人周末打球吗", "小雨 21:03", "我可以，下午三点以后", "阿杰 21:04", "那就老地方",
+      "小雨 21:05", "记得带水，上次热死了", "老周 21:10", "我晚点到，先去趟超市", "阿杰 21:11", "没问题",
+      "小雨 21:20", "对了，下周谁过生日来着", "老周 21:21", "好像是阿杰", "阿杰 21:22", "哈哈被你们发现了",
+      "小雨 21:23", "那吃完球一起去吃火锅", "老周 21:24", "可以，我订位子", "阿杰 21:30", "收到"
+    ]]},
+    {"key": "applog", "app": "WindowsTerminal.exe", "title": "server.log - tail", "age_h": 1, "gen": "log", "n": 40},
+    {"key": "sheet", "app": "EXCEL.EXE", "title": "inventory.xlsx - Excel", "age_h": 36, "gen": "sheet", "n": 30},
+    {"key": "explorer", "app": "explorer.exe", "title": "Downloads - File Explorer", "age_h": 4, "gen": "files", "n": 24}
+  ],
+  "queries": [
+    {"q": "parking permit", "kind": "exact", "rel": ["plan:7"]},
+    {"q": "Maillard", "kind": "exact", "rel": ["coffee:6"]},
+    {"q": "DictReader", "kind": "exact", "rel": ["importer:5"]},
+    {"q": "数据库迁移", "kind": "exact", "rel": ["team:5"]},
+    {"q": "褪黑素", "kind": "exact", "rel": ["sleep:9"]},
+    {"q": "visa letter", "kind": "exact", "rel": ["trip:6"]},
+    {"q": "test_conflict_resolution", "kind": "exact", "rel": ["build:10"]},
+    {"q": "轮播图", "kind": "exact", "rel": ["minutes:3"]},
+    {"q": "p-value", "kind": "exact", "rel": ["stats:2", "stats:3"]},
+    {"q": "fetchOrders", "kind": "exact", "rel": ["orders:0"]},
+    {"q": "deploy-2026", "kind": "exact", "rel": ["scratch:2"]},
+    {"q": "Night light", "kind": "exact", "rel": ["display:2"]},
+    {"q": "番茄炒蛋", "kind": "exact", "rel": ["eggs:0"]},
+    {"q": "dentist", "kind": "exact", "rel": ["plan:2", "calendar:2"]},
+
+    {"q": "groceri", "kind": "partial", "rel": ["plan:6"]},
+    {"q": "dedup", "kind": "partial", "rel": ["importer:6"]},
+    {"q": "CACHE_TT", "kind": "partial", "rel": ["orders:6"]},
+    {"q": "pollinat", "kind": "partial", "rel": ["tomato:10"]},
+    {"q": "迁移脚", "kind": "partial", "rel": ["team:5"]},
+    {"q": "Pneumat", "kind": "partial", "rel": ["bike:5"]},
+
+    {"q": "budget meeting", "kind": "paraphrase", "rel": ["plan:4", "calendar:3"]},
+    {"q": "heating problem in the flat", "kind": "paraphrase", "rel": ["plan:8", "landlord:3"]},
+    {"q": "why coffee bags have a small valve", "kind": "paraphrase", "rel": ["coffee:11", "coffee:10"]},
+    {"q": "chemical reaction that creates the smell", "kind": "paraphrase", "rel": ["coffee:6"]},
+    {"q": "function that removes duplicate entries", "kind": "paraphrase", "rel": ["importer:6", "importer:12"]},
+    {"q": "retry the upload when the service is unavailable", "kind": "paraphrase", "rel": ["importer:15"]},
+    {"q": "谁负责写测试报告", "kind": "paraphrase", "rel": ["team:7", "team:9"]},
+    {"q": "为什么不要通宵复习", "kind": "paraphrase", "rel": ["sleep:7"]},
+    {"q": "expense refund deadline", "kind": "paraphrase", "rel": ["trip:5"]},
+    {"q": "which test failed", "kind": "paraphrase", "rel": ["build:10", "build:11"]},
+    {"q": "how often should I water the plants", "kind": "paraphrase", "rel": ["tomato:7"]},
+    {"q": "退款步骤太多", "kind": "paraphrase", "rel": ["minutes:5"]},
+    {"q": "false positive error", "kind": "paraphrase", "rel": ["stats:4"]},
+    {"q": "sign-in problems on the test environment", "kind": "paraphrase", "rel": ["support:0"]},
+    {"q": "the service ran out of RAM", "kind": "paraphrase", "rel": ["support:2"]},
+    {"q": "early bike without pedals", "kind": "paraphrase", "rel": ["bike:1", "bike:2"]},
+    {"q": "keep responses cached for a few minutes", "kind": "paraphrase", "rel": ["orders:5", "orders:6"]},
+    {"q": "book about feedback loops", "kind": "paraphrase", "rel": ["reading:1"]},
+    {"q": "save money for emergencies", "kind": "paraphrase", "rel": ["money:3"]},
+    {"q": "how many days can I work from home", "kind": "paraphrase", "rel": ["policy:1"]},
+    {"q": "indoor climbing if the weather is bad", "kind": "paraphrase", "rel": ["weekend:2", "weekend:1"]},
+    {"q": "大规模数据用近似索引", "kind": "paraphrase", "rel": ["vectors:4"]},
+    {"q": "renew the TLS certificate", "kind": "paraphrase", "rel": ["scratch:1"]},
+
+    {"q": "the review meeting was moved to 4pm", "kind": "xling", "rel": ["team:1"]},
+    {"q": "lunch at the noodle shop downstairs", "kind": "xling", "rel": ["team:15"]},
+    {"q": "牙医预约", "kind": "xling", "rel": ["plan:2", "calendar:2"]},
+    {"q": "咖啡豆烘焙时的一爆", "kind": "xling", "rel": ["coffee:7"]},
+    {"q": "读取 CSV 文件", "kind": "xling", "rel": ["importer:2", "importer:3"]},
+    {"q": "napping improves afternoon focus", "kind": "xling", "rel": ["sleep:8"]},
+    {"q": "phone screens before bed delay melatonin", "kind": "xling", "rel": ["sleep:9"]},
+    {"q": "酒店订满了", "kind": "xling", "rel": ["trip:3"]},
+    {"q": "buy cat food on the way home", "kind": "xling", "rel": ["family:5"]},
+    {"q": "叶子发黄缺氮", "kind": "xling", "rel": ["tomato:8"]},
+    {"q": "launch delayed because the payment API is not integrated", "kind": "xling", "rel": ["minutes:2"]},
+    {"q": "test cases for a weak network", "kind": "xling", "rel": ["minutes:6"]},
+    {"q": "样本量越大检验功效越高", "kind": "xling", "rel": ["stats:7", "stats:6"]},
+    {"q": "内存超过百分之九十时报警", "kind": "xling", "rel": ["support:4"]},
+    {"q": "add a little sugar to balance the sourness", "kind": "xling", "rel": ["eggs:3"]},
+    {"q": "充气轮胎让骑行更舒服", "kind": "xling", "rel": ["bike:5"]},
+    {"q": "The Dark Forest", "kind": "xling", "rel": ["reading:4"]},
+    {"q": "记录每一笔开销", "kind": "xling", "rel": ["money:1"]},
+    {"q": "cosine similarity measures how close two vectors are", "kind": "xling", "rel": ["vectors:2"]},
+    {"q": "周六去爬山", "kind": "xling", "rel": ["weekend:0"]},
+    {"q": "weekly report template", "kind": "xling", "rel": ["scratch:3"]},
+    {"q": "火星为什么是红色的", "kind": "xling", "rel": ["mars:0", "mars:1"]},
+    {"q": "rent can be paid from the third", "kind": "xling", "rel": ["landlord:1"]},
+
+    {"q": "parkng permit", "kind": "typo", "rel": ["plan:7"]},
+    {"q": "Maillrd reaction", "kind": "typo", "rel": ["coffee:6"]},
+    {"q": "fetchOrdrs", "kind": "typo", "rel": ["orders:0"]},
+    {"q": "conflict resolutoin", "kind": "typo", "rel": ["build:10"]},
+    {"q": "hypotesis testing", "kind": "typo", "rel": ["stats:0"]},
+    {"q": "emergancy fund", "kind": "typo", "rel": ["money:3"]},
+
+    {"q": "how to tie a bow tie", "kind": "unrelated", "rel": []},
+    {"q": "quantum entanglement experiment", "kind": "unrelated", "rel": []},
+    {"q": "外汇汇率走势", "kind": "unrelated", "rel": []},
+    {"q": "football world cup final score", "kind": "unrelated", "rel": []},
+    {"q": "knitting a wool scarf pattern", "kind": "unrelated", "rel": []},
+    {"q": "驾照科目二考试技巧", "kind": "unrelated", "rel": []},
+    {"q": "jazz saxophone solo", "kind": "unrelated", "rel": []},
+    {"q": "volcano eruption in Iceland", "kind": "unrelated", "rel": []},
+    {"q": "古典音乐会门票", "kind": "unrelated", "rel": []},
+    {"q": "submarine sonar", "kind": "unrelated", "rel": []},
+    {"q": "wedding dress shopping", "kind": "unrelated", "rel": []},
+    {"q": "股票期权行权", "kind": "unrelated", "rel": []}
+  ]
+}
