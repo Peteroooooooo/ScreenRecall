@@ -93,13 +93,16 @@ def test_status_pause_resume(client, env):
     ctrl = env.stack.queries.control()
     assert ctrl["desired_state"] == "recording" and ctrl["pause_until_ms"] is None
 
-    # 录制进程心跳 → 正在录制，显示当前窗口；命中排除规则的窗口不显示标题
+    # 录制进程心跳 → 正在录制，显示当前窗口；刚加的排除规则命中它时按排除的前台说（不显示进程名和标题）
     env.stack.writer.heartbeat(recorder_state="recording", current_process="tk.exe", current_title="合成窗口").result(5)
     env.stack.control.invalidate()
     s = client.get("/api/v2/status").json()
     assert s["recording"] == "recording" and s["current"] == {"app": "tk.exe", "title": "合成窗口", "excluded": False}
     client.post("/api/v2/settings", json={"excluded_title_keywords": ["合成"]}, headers=F.POST_H)
-    assert client.get("/api/v2/status").json()["current"] == {"app": "tk.exe", "title": None, "excluded": False}
+    assert client.get("/api/v2/status").json()["current"] == {"app": None, "title": None, "excluded": True}
+    client.post("/api/v2/settings", json={"excluded_title_keywords": [], "excluded_processes": ["TK.EXE"]},
+                headers=F.POST_H)
+    assert client.get("/api/v2/status").json()["current"] == {"app": None, "title": None, "excluded": True}
     # 前台是排除的窗口：录制进程不写进程名，只写占位标题
     from screenrecall.v2.rec_sink import EXCLUDED_TITLE
 
