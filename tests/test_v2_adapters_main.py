@@ -21,6 +21,8 @@ def test_build_children(tmp_path):
     assert worker.autostart is False and worker.below_normal is True
     assert worker.argv[2] == "screenrecall.v2.worker" and worker.argv[3:] == rec.argv[3:]
     assert "PYTHONPATH" in rec.env and rec.log_path.parent == cfg.logs_dir
+    # 整理进程的进度条不进 idle-worker.out.log
+    assert worker.env["TQDM_DISABLE"] == "1" and worker.env["HF_HUB_DISABLE_PROGRESS_BARS"] == "1"
     only = main.build_children(cfg, home=tmp_path / "home", recorder_module="x.y", worker_module=None)
     assert [c.name for c in only] == ["recorder"] and only[0].argv[2] == "x.y"
 
