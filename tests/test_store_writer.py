@@ -52,7 +52,7 @@ def test_connect_pragmas_and_schema(tmp_path):
     for t in ("activity", "gaps", "segments", "blocks", "lines", "lines_tri", "lines_bi", "frames", "line_in_frame",
               "ocr_regions", "skims", "pieces", "piece_segments", "summaries", "jobs", "control"):
         assert t in names
-    assert c.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()[0] == "1"
+    assert c.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()[0] == str(schema.SCHEMA_VERSION)
     c.close()
     # 重复打开不重建
     schema.connect(tmp_path / schema.DB_NAME).close()
@@ -86,7 +86,7 @@ def test_newer_schema_and_fts_version_rejected(tmp_path):
     with pytest.raises(schema.SchemaError):
         schema.connect(p)
     c = schema.connect(p, migrate=False)
-    c.execute("UPDATE meta SET value = '1' WHERE key = 'schema_version'")
+    c.execute("UPDATE meta SET value = ? WHERE key = 'schema_version'", (str(schema.SCHEMA_VERSION),))
     c.close()
 
 

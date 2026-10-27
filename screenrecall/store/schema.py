@@ -28,7 +28,7 @@ from pathlib import Path
 from .fts import docs
 
 DB_NAME = "recall.sqlite3"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # 全文索引文档的生成规则版本（fts.docs）。删除要提供与写入时完全相同的文档，规则一改就得重建索引
 FTS_VERSION = "f1"
@@ -293,7 +293,23 @@ INSERT OR IGNORE INTO meta (key, value) VALUES ('frame_seq', '0');
 """
 
 # 逐版本增量迁移：键为目标版本，值为在同一写事务内执行的 SQL。只追加，不改已发布的版本
-_MIGRATIONS: dict[int, str] = {}
+_MIGRATIONS: dict[int, str] = {
+    # v2（空闲整理进程）：
+    # - text_chunks：文字向量按"短段落"算（同一块里阅读顺序相邻的几行），一个向量对应多行。
+    #   chunk_id = 向量 id（通常是段落第一行的 line_id；被部分删除后重组的段落用负数编号，见 v2.work_text）。
+    #   行删除时成员关系级联删除；隐私删除据此把含有被删行的整段向量一起删掉（store.delete）；
+    # - frames.label / label_score / label_model：内容分类器（CLIP 图片向量 + 线性分类器）给证据帧的类别。
+    2: """
+CREATE TABLE IF NOT EXISTS text_chunks (
+    line_id   INTEGER PRIMARY KEY REFERENCES lines (line_id) ON DELETE CASCADE,
+    chunk_id  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_text_chunks_chunk ON text_chunks (chunk_id);
+ALTER TABLE frames ADD COLUMN label TEXT;
+ALTER TABLE frames ADD COLUMN label_score REAL;
+ALTER TABLE frames ADD COLUMN label_model TEXT;
+""",
+}
 
 
 class SchemaError(RuntimeError):
