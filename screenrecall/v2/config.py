@@ -10,6 +10,7 @@ TOML 里同名的键填进去；没写的键用 dataclass 默认值，写错名�
 from __future__ import annotations
 
 import dataclasses
+import json
 import os
 import tomllib
 import typing
@@ -124,6 +125,62 @@ def _raw() -> dict:
     return raw
 
 
+# ---------------- 页面上改的设置（<数据目录>/user_settings.json） ----------------
+# 设置页能改、又不在 control 表里的几项。放在数据目录里：录制进程、空闲整理进程用 load_v2(数据目录)
+# 读配置时自动套上，不用另外传。比 config.default.toml / config.local.toml 优先。
+USER_SETTINGS_FILE = "user_settings.json"
+OCR_MODELS = ("tiny", "small")
+
+
+def user_settings_path(data_dir: str | os.PathLike) -> Path:
+    return Path(data_dir) / USER_SETTINGS_FILE
+
+
+def read_user_settings(data_dir: str | os.PathLike) -> dict[str, Any]:
+    """{idle_minutes: float, ocr_model: 'tiny'|'small'} 中写过的几项；文件不存在或内容不对时返回空 dict。"""
+    try:
+        raw = json.loads(user_settings_path(data_dir).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    out: dict[str, Any] = {}
+    if isinstance(raw, dict):
+        m = raw.get("idle_minutes")
+        if isinstance(m, (int, float)) and not isinstance(m, bool) and 1 <= m <= 24 * 60:
+            out["idle_minutes"] = float(m)
+        if raw.get("ocr_model") in OCR_MODELS:
+            out["ocr_model"] = raw["ocr_model"]
+    return out
+
+
+def write_user_settings(data_dir: str | os.PathLike, updates: dict[str, Any]) -> dict[str, Any]:
+    """合并写入（只有本人能读，原子替换）；返回写入后的全部设置。"""
+    from ..app.paths import write_private_file
+
+    cur = read_user_settings(data_dir)
+    for k, v in updates.items():
+        if k == "idle_minutes":
+            if isinstance(v, bool) or not isinstance(v, (int, float)) or not 1 <= v <= 24 * 60:
+                raise ValueError("idle_minutes 应在 1 到 1440 之间")
+            cur[k] = float(v)
+        elif k == "ocr_model":
+            if v not in OCR_MODELS:
+                raise ValueError("ocr_model 只能是 tiny 或 small")
+            cur[k] = v
+        else:
+            raise ValueError(f"不认识的设置：{k}")
+    write_private_file(user_settings_path(data_dir), json.dumps(cur, ensure_ascii=False).encode("utf-8"))
+    return cur
+
+
+def _apply_user_settings(cfg: "V2Config") -> "V2Config":
+    us = read_user_settings(cfg.data_dir)
+    if "idle_minutes" in us:
+        cfg = dataclasses.replace(cfg, idle=dataclasses.replace(cfg.idle, threshold_s=us["idle_minutes"] * 60.0))
+    if "ocr_model" in us:
+        cfg = dataclasses.replace(cfg, ocr=dataclasses.replace(cfg.ocr, model=us["ocr_model"]))
+    return cfg
+
+
 def load_v2(data_dir_override: str | os.PathLike | None = None, *, home: Path | None = None) -> V2Config:
     raw = _raw()
     v2 = dict(raw.get("v2", {}))
@@ -146,8 +203,8 @@ def load_v2(data_dir_override: str | os.PathLike | None = None, *, home: Path | 
         raise ValueError(f"配置 [v2] 里有不认识的节或键：{', '.join(unknown)}")
     built = {name: _build(cls, v2.get(name, {}), f"v2.{name}") for name, cls in sections.items()}
     rules = raw.get("rules", {})
-    return V2Config(
+    return _apply_user_settings(V2Config(
         data_dir=data_dir.resolve(), home=home, **built,
         default_excluded_processes=tuple(rules.get("excluded_processes", ())),
         default_excluded_title_keywords=tuple(rules.get("excluded_title_keywords", ())),
-    )
+    ))

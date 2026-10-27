@@ -118,6 +118,12 @@ def cookie_name(port: int) -> str:
     return f"sr_session_{port}"
 
 
+def session_cookie(port: int, token: str) -> str:
+    """登录后设置的 Set-Cookie 头的值（HttpOnly、SameSite=Strict）。"""
+    return (f"{cookie_name(port)}={cookie_value(token)}; Path=/; Max-Age={COOKIE_MAX_AGE_S}; "
+            f"HttpOnly; SameSite=Strict")
+
+
 # ---------------- ASGI 中间件 ----------------
 
 def _headers(scope) -> dict[str, str]:
@@ -166,6 +172,12 @@ class AuthGuard:
 
     def __repr__(self) -> str:
         return f"AuthGuard(port={self.port})"
+
+    def set_token(self, token: str) -> None:
+        """换令牌（"重置访问令牌"）：旧令牌和由它派生的 Cookie 立即失效。"""
+        if len(token) < 32:
+            raise ValueError("令牌太短")
+        self._token, self._cookie = token, cookie_value(token)
 
     def is_public(self, path: str) -> bool:
         return path in self.public_paths or path.startswith(self.public_prefixes)
@@ -217,8 +229,7 @@ class AuthGuard:
         if not self.nonces.consume(nonce):
             return await _send_simple(send, 403, {"error": "链接已失效（只能用一次、30 秒内有效），请从托盘图标重新打开主页"},
                                       _SECURITY_HEADERS)
-        cookie = (f"{self._cookie_name}={self._cookie}; Path=/; Max-Age={COOKIE_MAX_AGE_S}; "
-                  f"HttpOnly; SameSite=Strict")
+        cookie = session_cookie(self.port, self._token)
         await _send_simple(send, 303, None, [(b"location", b"/"), (b"set-cookie", cookie.encode("latin-1")),
                                              *_SECURITY_HEADERS])
 
