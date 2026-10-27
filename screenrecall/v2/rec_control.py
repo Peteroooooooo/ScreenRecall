@@ -120,12 +120,7 @@ class ControlLoop:
         th, self._thread = self._thread, None
         if th is not None:
             th.join(5.0)
-        if self._conn is not None:
-            try:
-                self._conn.close()
-            except sqlite3.Error:
-                pass
-            self._conn = None
+        self._close_conn()
 
     def _run(self) -> None:
         while not self._stop.wait(self.interval_s):
@@ -134,7 +129,15 @@ class ControlLoop:
             except Exception:  # noqa: BLE001 - 控制循环不能停
                 self.errors += 1
                 log.exception("控制循环这一轮出错")
-                self._conn = None  # 连接坏了就重开
+                self._close_conn()  # 连接可能坏了：关掉，下一轮重开（只丢引用会一直漏连接）
+
+    def _close_conn(self) -> None:
+        conn, self._conn = self._conn, None
+        if conn is not None:
+            try:
+                conn.close()
+            except sqlite3.Error:
+                pass
 
     # ---------------- 一轮 ----------------
 

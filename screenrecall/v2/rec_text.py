@@ -33,7 +33,7 @@ from typing import Any, Protocol
 from ..rec.tracker import StillEvent
 from ..store.writer import BlockGone, LineIn, Writer
 from ..text import uia
-from .rec_sink import StillCtx, StoreSink
+from .rec_sink import StillCtx, StoreSink, _failed
 
 log = logging.getLogger(__name__)
 
@@ -43,6 +43,7 @@ _NO_READ = uia.UiaResult("error", [], False, 0.0, error="not read")
 class CoreLink(Protocol):
     def last_change_ms(self, hwnd: int) -> int | None: ...
     def request_evidence(self, hwnd: int, still_id: int) -> None: ...
+    def can_read(self, hwnd: int) -> bool: ...
 
 
 @dataclass
@@ -63,6 +64,8 @@ class TextStats:
     uia_usable: int = 0
     uia_not_ok: int = 0  # busy / timeout / error
     stale: int = 0  # 画面已经变了，没读或丢掉了结果
+    blocked: int = 0  # 暂停 / 锁屏 / 窗口此刻不能录（最小化、被隐藏、命中排除），没读或丢掉了结果
+    excluded_drops: int = 0  # 证据帧的窗口标题此刻命中排除，没存
     backlog_skips: int = 0
     no_hint: int = 0
     lines_sent: int = 0
@@ -246,10 +249,14 @@ class TextWorker:
             return
         self.stats.stills += 1
         res = None
+        fmap = ev.fmap
         stale = ctx.skip_uia or self._stopping or self._changed_since(ev) or self._newer_queued(ev.hwnd)
         if stale:
             if not (ctx.skip_uia or self._stopping):  # 积压另有计数；收尾时本来就不读
                 self.stats.stale += 1
+        elif not self._can_read(ev.hwnd):
+            # 暂停了 / 锁屏 / 窗口此刻最小化、被隐藏或命中排除：屏幕上的已经不是能录的内容，不读
+            self.stats.blocked += 1
         elif not self._hint(ev.hwnd):
             self.stats.no_hint += 1
         else:
@@ -259,20 +266,33 @@ class TextWorker:
             self.stats.uia_reads += 1
             if res.status not in ("ok", "empty"):
                 self.stats.uia_not_ok += 1
-            if self._changed_since(ev):
+            if not self._can_read(ev.hwnd):  # 读的这段时间里暂停了 / 命中排除：结果不要
+                self.stats.blocked += 1
+                res = None
+            elif self._changed_since(ev):
                 self.stats.stale += 1
                 res = None
+            elif res.status in ("ok", "empty"):
+                fmap = self._read_fmap(res, ev)
+                if fmap is None:  # 窗口大小变了：读到的和这一帧对不上
+                    self.stats.stale += 1
+                    res = None
         bgr = ev.bgr
         fh, fw = bgr.shape[:2]
         line_ids: list[int | None] = []
         rects: list[tuple[int, int, int, int]] = []
         if res is not None and res.status in ("ok", "empty"):
-            uncovered = self._uncovered_frame(res, ev)
+            uncovered = self._uncovered_frame(res, fmap)
             res_f = dataclasses.replace(res, uncovered=tuple(uncovered))
             regions = uia.ocr_regions(res_f, bgr, (0, 0), min_gap_px=self.min_gap_px)
             if res.usable:
                 self.stats.uia_usable += 1
-                line_ids, rects = self._write_lines(ctx, res, uncovered, fh)
+                try:
+                    line_ids, rects = self._write_lines(ctx, res, uncovered, fh, fmap)
+                except Exception:  # noqa: BLE001 - 字没写进去：这一帧整帧待 OCR，别把文字丢了
+                    self.stats.errors += 1
+                    log.exception("写文字行失败，改为整帧待 OCR")
+                    regions = uia.ocr_regions(_NO_READ, bgr, (0, 0), min_gap_px=self.min_gap_px)
         else:
             regions = uia.ocr_regions(_NO_READ, bgr, (0, 0), min_gap_px=self.min_gap_px)
         self._info[ev.still_id] = StillInfo(line_ids, rects, [tuple(map(int, r)) for r in regions],
@@ -293,11 +313,35 @@ class TextWorker:
         except Exception:  # noqa: BLE001
             return True
 
+    def _can_read(self, hwnd: int) -> bool:
+        fn = getattr(self.core, "can_read", None) if self.core is not None else None
+        if fn is None:
+            return True
+        try:
+            return bool(fn(hwnd))
+        except Exception:  # noqa: BLE001 - 查不了就当不能读
+            return False
+
     @staticmethod
-    def _uncovered_frame(res, ev: StillEvent) -> list[tuple[int, int, int, int]]:
+    def _read_fmap(res, ev: StillEvent):
+        """UIA 矩形是读字那一刻的屏幕坐标，ev.fmap 是这一帧截到时的窗口位置。窗口在这之间被拖动过
+        （内容没变，核心不会收新帧）就按读字时的窗口左上角换算；窗口大小变了返回 None（对不上）。"""
+        fmap = ev.fmap
+        wr = res.window_rect
+        if wr is None:
+            return fmap
+        bw, bh = round(fmap.width * fmap.scale_x), round(fmap.height * fmap.scale_y)
+        if abs((wr[2] - wr[0]) - bw) > 3 or abs((wr[3] - wr[1]) - bh) > 3:
+            return None
+        if (wr[0], wr[1]) != (fmap.left, fmap.top):
+            return dataclasses.replace(fmap, left=int(wr[0]), top=int(wr[1]))
+        return fmap
+
+    @staticmethod
+    def _uncovered_frame(res, fmap) -> list[tuple[int, int, int, int]]:
         out = []
         for band in res.uncovered:
-            r = ev.fmap.rect_to_frame(*band)
+            r = fmap.rect_to_frame(*band)
             if r is not None:
                 out.append(r)
         return out
@@ -324,9 +368,8 @@ class TextWorker:
             ys[bot_i] = (ys[bot_i][0], ys[bot_i][0] + med)
         return ys
 
-    def _write_lines(self, ctx: StillCtx, res, uncovered, fh: int) -> tuple[list, list]:
+    def _write_lines(self, ctx: StillCtx, res, uncovered, fh: int, fmap) -> tuple[list, list]:
         ev = ctx.ev
-        fmap = ev.fmap
         conv: list[tuple[str, tuple[int, int, int, int], bool]] = []
         for ln in res.lines:
             if ln.role != "text" or not ln.text.strip():
@@ -370,7 +413,10 @@ class TextWorker:
                 self.stats.block_gone += 1
                 if self.sink is None or attempt:
                     raise
-                ref = ctx.ref = self.sink.renew(ref, ev.t_ms)
+                ref = self.sink.renew(ref, ev.t_ms)
+                if ref is None:  # 标题这时命中排除：不重建、不写
+                    return [], []
+                ctx.ref = ref
             except FutureTimeout:
                 log.warning("写文字行超过 %.0f 秒没有完成", self.db_timeout_s)
                 break
@@ -389,10 +435,21 @@ class TextWorker:
                 return
             app, title = self.sink.name_of(ev.hwnd)
             ref = self.sink.block_ref(ev.hwnd, ev.block, ev.t_ms, app, title)
+            if ref is None:  # 标题此刻命中排除：不存
+                self.stats.excluded_drops += 1
+                return
             regions = [tuple(map(int, r)) for r in uia.ocr_regions(_NO_READ, ev.bgr, (0, 0),
                                                                    min_gap_px=self.min_gap_px)]
             info = StillInfo([], [], regions, app, title, ref)
         ref = info.ref
+        if _failed(ref) and self.sink is not None:
+            # 那次静止时建内容源 / 块的写入失败了：图照存，挂到重新建的块上（行号也都无效了，整帧待 OCR）
+            ref = self.sink.block_ref(ev.hwnd, ev.block, ev.t_ms, info.app, info.title)
+            if ref is None:
+                self.stats.excluded_drops += 1
+                return
+            info = StillInfo([], [], [tuple(map(int, r)) for r in uia.ocr_regions(
+                _NO_READ, ev.bgr, (0, 0), min_gap_px=self.min_gap_px)], info.app, info.title, ref)
         fid = self.writer.save_frame(
             ev.bgr, captured_ms=ev.t_ms, segment_id=ref.segment, block_id=ref.db_block, pos_y=ev.pos_y,
             hwnd=ev.hwnd, app=info.app, title=info.title,

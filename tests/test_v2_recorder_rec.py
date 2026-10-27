@@ -120,6 +120,32 @@ def test_foreground_hook_reports_switches_exclusion_and_settled_titles():
     assert e.sink.of("foreground")[0]["pid"] == 1001
 
 
+def test_can_read_follows_pause_rules_and_window_state_before_the_next_step():
+    e = Env()
+    assert not e.core.can_read(1)  # 还没在跟踪
+    e.core.step()
+    e.show(1, 0)
+    e.run(200)
+    assert e.core.can_read(1)
+    e.core.pause()  # 命令还没执行
+    assert not e.core.can_read(1)
+    e.run(40)
+    assert not e.core.can_read(1)
+    e.core.resume()
+    e.run(40)
+    assert e.core.can_read(1)
+    e.core.set_rules(make_rules(excluded_processes=["notepad.exe"]))  # 还没执行的规则也算
+    assert not e.core.can_read(1)
+    e.core.set_rules(None)
+    e.run(40)
+    e.win.windows[1]["minimized"] = True  # 核心还没走下一轮
+    assert not e.core.can_read(1)
+    e.win.windows[1]["minimized"] = False
+    assert e.core.can_read(1)
+    assert e.core.frame_height(1) == VH + e.head.shape[0] and e.core.frame_height(2) is None
+    assert e.core.title_excluded("x.exe", "a") is False
+
+
 def test_foreground_hook_is_optional_for_plain_sinks():
     e = Env()
     e.core.sink = ListSink()
