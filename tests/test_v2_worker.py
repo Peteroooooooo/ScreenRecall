@@ -793,19 +793,48 @@ def test_pinned_background_window_gets_pieces(tmp_path):
         w.activity_start(t, hwnd=1, pid=1, process="word.exe", title="周报.docx").result(5)
         w.activity_end(t + 10 * m).result(5)
         sid, b, _ = put_lines(w, "chat.exe", "合成群聊", t + 2 * m, ["后台的第一条"])
-        w.record_lines(b, t + 5 * m, (0, 200), [L("后台的第二条", 60)]).result(5)
+        w.record_lines(b, t + 3 * m, (0, 200), [L("后台的第二条", 60)]).result(5)
     run(cfg)
     c = db(cfg)
     rows = [tuple(r) for r in c.execute("SELECT app, start_ms, end_ms FROM pieces ORDER BY app")]
-    assert rows == [("chat.exe", t + 2 * m, t + 5 * m), ("word.exe", t, t + 10 * m)]
+    assert rows == [("chat.exe", t + 2 * m, t + 3 * m), ("word.exe", t, t + 10 * m)]
     chat = c.execute("SELECT piece_id FROM pieces WHERE app = 'chat.exe'").fetchone()[0]
     assert [r[0] for r in c.execute("SELECT segment_id FROM piece_segments WHERE piece_id = ?", (chat,))] == [sid]
-    # 同一个内容源（窗口一直钉着、一直在录）后来又有新内容：同一个片段延长，片段号不变；再跑一遍不多出片段
+    # 同一个内容源（窗口一直钉着）不久又有新内容：同一个片段延长，片段号不变；再跑一遍不多出片段
     with Writer(cfg.data_dir) as w:
-        w.record_lines(b, t + 20 * m, (0, 200), [L("后台的第三条", 90)]).result(5)
+        w.record_lines(b, t + 4 * m, (0, 200), [L("后台的第三条", 90)]).result(5)
     run(cfg)
     run(cfg)
     c = db(cfg)
     rows = [tuple(r) for r in c.execute("SELECT piece_id, start_ms, end_ms FROM pieces WHERE app = 'chat.exe'")]
-    assert rows == [(chat, t + 2 * m, t + 20 * m)]
+    assert rows == [(chat, t + 2 * m, t + 4 * m)]
     assert c.execute("SELECT COUNT(*) FROM pieces WHERE app = 'word.exe'").fetchone()[0] == 1
+    # 半小时没有新内容之后又来一条：和前台一样是新的片段，不把中间的空闲时间算进去
+    with Writer(cfg.data_dir) as w:
+        w.record_lines(b, t + 40 * m, (0, 200), [L("后台的第四条", 120)]).result(5)
+    run(cfg)
+    c = db(cfg)
+    rows = [tuple(r) for r in c.execute("SELECT start_ms, end_ms FROM pieces WHERE app = 'chat.exe' ORDER BY start_ms")]
+    assert rows == [(t + 2 * m, t + 4 * m), (t + 40 * m, t + 40 * m)]
+
+
+def test_pinned_background_piece_does_not_span_a_deleted_range(tmp_path):
+    """钉住的窗口录到一半被"删除最近 5 分钟"：删掉的那段没有内容，之后的新内容是新片段，不跨过删除范围。"""
+    from screenrecall.store import delete
+
+    cfg = make_cfg(tmp_path, idle={"clip": False, "summaries": False})
+    t = now_ms() - 3 * HOUR
+    m = 60_000
+    with Writer(cfg.data_dir) as w:
+        sid, b, _ = put_lines(w, "chat.exe", "合成群聊", t, ["删除前"])
+    run(cfg)
+    with Writer(cfg.data_dir) as w:
+        w.record_lines(b, t + 1 * m, (0, 200), [L("会被删掉", 60)]).result(5)
+        w.run_raw(lambda conn: delete.delete_data(conn, cfg.data_dir, time_from=t + m // 2,
+                                                  time_to=t + 6 * m)).result(10)
+        w.record_lines(b, t + 7 * m, (0, 200), [L("删除后", 120)]).result(5)
+    run(cfg)
+    c = db(cfg)
+    rows = [tuple(r) for r in c.execute("SELECT start_ms, end_ms FROM pieces WHERE app = 'chat.exe' ORDER BY start_ms")]
+    assert all(not (a < t + 6 * m and e > t + m // 2) for a, e in rows), rows
+    assert rows[-1] == (t + 7 * m, t + 7 * m)
