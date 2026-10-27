@@ -12,6 +12,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -140,7 +141,12 @@ def shim_command(python: str | None = None, root: Path = REPO_ROOT) -> dict[str,
     exe = Path(python or sys.executable)
     if exe.name.lower() == "pythonw.exe":
         exe = exe.with_name("python.exe")
-    return {"command": str(exe), "args": ["-m", "screenrecall.app.mcp_shim"], "env": {"PYTHONPATH": str(root)}}
+    env = {"PYTHONPATH": str(root)}
+    # 主进程用的不是默认目录（SCREENRECALL_HOME，便携使用 / 测试）：转发程序也得去那里找 endpoint.json，
+    # 不然它会连默认目录里的另一个实例，或者说"没在运行"
+    if os.environ.get("SCREENRECALL_HOME"):
+        env["SCREENRECALL_HOME"] = str(paths.app_home())
+    return {"command": str(exe), "args": ["-m", "screenrecall.app.mcp_shim"], "env": env}
 
 
 def agent_configs(python: str | None = None, root: Path = REPO_ROOT) -> dict[str, dict[str, Any]]:

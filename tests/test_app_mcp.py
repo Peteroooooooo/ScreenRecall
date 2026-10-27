@@ -382,7 +382,18 @@ def test_shim_stays_light():
     assert r.stdout.strip() == "[]", r.stdout + r.stderr
 
 
-def test_agent_configs_have_no_token():
+def test_agent_configs_carry_a_custom_home(monkeypatch, tmp_path):
+    """主进程用的是 SCREENRECALL_HOME 指定的目录：配置片段把它带上，转发程序才找得到这个实例的 endpoint.json。"""
+    monkeypatch.setenv("SCREENRECALL_HOME", str(tmp_path))
+    env = mcp_shim.shim_command(python=r"C:\py\python.exe", root=Path(r"D:\repo"))["env"]
+    assert env == {"PYTHONPATH": r"D:\repo", "SCREENRECALL_HOME": str(tmp_path)}
+    assert f"SCREENRECALL_HOME={tmp_path}" in mcp_shim.agent_configs(python=r"C:\py\python.exe")["claude_code"]["cli"]
+    monkeypatch.delenv("SCREENRECALL_HOME")
+    assert "SCREENRECALL_HOME" not in mcp_shim.shim_command()["env"]
+
+
+def test_agent_configs_have_no_token(monkeypatch):
+    monkeypatch.delenv("SCREENRECALL_HOME", raising=False)
     cfg = mcp_shim.agent_configs(python=r"C:\py\python.exe", root=Path(r"D:\repo dir"))
     assert set(cfg) == {"claude_desktop", "claude_code", "cursor"}
     entry = cfg["cursor"]["json"]["mcpServers"]["screenrecall"]
