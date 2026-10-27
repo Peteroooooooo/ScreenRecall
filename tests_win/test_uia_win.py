@@ -42,9 +42,9 @@ def _find_hwnd(title_part: str, timeout: float = 15.0) -> int:
 def _kill_tree(pid: int) -> None:
     try:
         p = psutil.Process(pid)
-    except psutil.NoSuchProcess:
+        procs = p.children(recursive=True) + [p]
+    except psutil.NoSuchProcess:  # 已经退出（Edge 启动器把窗口交给主进程后自己就退了）
         return
-    procs = p.children(recursive=True) + [p]
     for q in procs:
         try:
             q.kill()
