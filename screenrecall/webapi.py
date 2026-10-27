@@ -316,7 +316,8 @@ def _frame_extras(conn: sqlite3.Connection, fids: list[str]) -> tuple[set[str], 
 # ---------------- 接口实现（同步函数，在线程池里跑；每次请求自己开关数据库连接） ----------------
 
 def api_meta(st: State, _: dict) -> dict:
-    out = {"tz_label": timeutil.tz_label(), "rules": rules.describe(st.cfg.rules), "notice": NO_AUTH_NOTICE,
+    out = {"tz_label": timeutil.tz_label(), "rules": rules.describe(st.cfg.rules),
+           "notice": getattr(st, "notice", NO_AUTH_NOTICE),
            "retention": {"image_days": st.cfg.retention.image_days, "record_days": st.cfg.retention.record_days},
            "debug_max_minutes": st.cfg.capture.debug_max_minutes,
            "data_dir": str(st.cfg.data_dir), "schema_required": db.SCHEMA_VERSION}
@@ -843,10 +844,13 @@ class LocalOnly:
 
 def create_app(cfg: Config | None = None, *, port: int = 8600, extra_origins: tuple[str, ...] = (),
                dist: Path = WEB_DIST, preload: bool = False,
-               loader: Callable[[models.ModelsConfig, str], tuple] | None = None) -> LocalOnly:
+               loader: Callable[[models.ModelsConfig, str], tuple] | None = None,
+               notice: str = NO_AUTH_NOTICE) -> LocalOnly:
     """preload=True 时服务启动后在后台线程预加载查询模型（命令行默认开，--no-preload 关）；
-    默认关，测试等直接调用 create_app 的地方不会拉起真实模型。loader 供测试替换模型加载。"""
+    默认关，测试等直接调用 create_app 的地方不会拉起真实模型。loader 供测试替换模型加载。
+    notice：/api/meta 里给页面显示的访问说明（v2 主进程挂在登录鉴权后面时传自己的说明）。"""
     st = State(cfg or load_config(), loader=loader)
+    st.notice = notice
     w = lambda fn, *p: _wrap(st, fn, *p)  # noqa: E731
     routes = [
         Route("/api/meta", w(api_meta)),

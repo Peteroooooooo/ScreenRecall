@@ -1,0 +1,495 @@
+"""/api/v2：登录与 X-ScreenRecall 头、每个接口的返回结构、真实写线程写入的合成数据、隐私删除真删。"""
+from __future__ import annotations
+
+import json
+from datetime import datetime
+
+import httpx
+import numpy as np
+import pytest
+from starlette.testclient import TestClient
+
+from screenrecall.app import auth, paths
+from screenrecall.store import schema
+from screenrecall.store.vectors import VectorStore
+from screenrecall.store.writer import LineIn
+from screenrecall.timeutil import utc_ms
+from screenrecall.v2 import config as v2config
+from screenrecall.v2 import web
+from screenrecall.v2.searchsvc import SearchService, text_vectors_dir
+from tests import test_v2_web_fixtures as F
+
+
+@pytest.fixture
+def env(tmp_path, monkeypatch):
+    e = F.build_env(tmp_path, monkeypatch)
+    yield e
+    e.stack.close()
+
+
+@pytest.fixture
+def client(env):
+    with TestClient(env.guard, base_url=F.BASE, follow_redirects=False) as c:
+        F.login(c, env)
+        yield c
+
+
+def keys(d: dict) -> set:
+    return set(d)
+
+
+# ---------------- 登录与请求头 ----------------
+
+def test_every_route_needs_login(env):
+    with TestClient(env.guard, base_url=F.BASE, follow_redirects=False) as c:
+        for path in ("/api/v2/status", "/api/v2/day", "/api/v2/search?q=x", "/api/v2/settings", "/api/v2/storage",
+                     f"/api/v2/frames/{env.ids['frame']}/image", "/api/v2/windows", "/api/v2/apps"):
+            r = c.get(path)
+            assert r.status_code == 401 and "error" in r.json(), path
+        assert c.post("/api/v2/resume", json={}, headers=F.POST_H).status_code == 401
+        assert c.get("/api/v2/status", headers={"Authorization": f"Bearer {F.TOKEN}"}).status_code == 200
+
+
+def test_mutations_need_header(client):
+    for path, body in [("/api/v2/pause", {"minutes": 5}), ("/api/v2/resume", {}), ("/api/v2/settings", {}),
+                       ("/api/v2/delete", {"recent_minutes": 5}), ("/api/v2/agent/reset-token", {}),
+                       ("/api/v2/settings/llm", {"base_url": "http://x", "model": "m"})]:
+        r = client.post(path, json=body)
+        assert r.status_code == 403 and r.json() == {"error": "缺少 X-ScreenRecall 请求头"}, path
+    assert client.post("/api/v2/pause", content=b"{nope", headers=F.POST_H).status_code == 400
+    assert client.post("/api/v2/pause", json=[1], headers=F.POST_H).status_code == 400
+
+
+def test_unknown_v2_path_is_json_404(client):
+    r = client.get("/api/v2/nope")
+    assert r.status_code == 404 and r.json()["error"]
+
+
+# ---------------- 状态与暂停 ----------------
+
+STATUS_KEYS = {"recording", "pause_until_ms", "recorder_alive", "current", "pending_ocr", "idle_work",
+               "agent_enabled", "revision"}
+
+
+def test_status_pause_resume(client, env):
+    s = client.get("/api/v2/status").json()
+    assert keys(s) == STATUS_KEYS
+    assert s["recording"] == "stopped" and s["recorder_alive"] is False and s["current"] is None
+    assert s["pending_ocr"] == 1 and s["idle_work"] == "idle" and s["agent_enabled"] is False
+    assert isinstance(s["revision"], int) and s["revision"] > 0
+
+    t = utc_ms()
+    s = client.post("/api/v2/pause", json={"minutes": 15}, headers=F.POST_H).json()
+    assert s["recording"] == "paused" and abs(s["pause_until_ms"] - (t + 15 * 60_000)) < 5_000
+    s = client.post("/api/v2/pause", json={"until": "tomorrow"}, headers=F.POST_H).json()
+    tomorrow = datetime.fromtimestamp(s["pause_until_ms"] / 1000)
+    assert (tomorrow.hour, tomorrow.minute) == (0, 0) and tomorrow.date() > datetime.now().date()
+    assert client.post("/api/v2/pause", json={"until": "never"}, headers=F.POST_H).status_code == 400
+    assert client.post("/api/v2/pause", json={"minutes": 0}, headers=F.POST_H).status_code == 400
+    assert client.post("/api/v2/pause", json={}, headers=F.POST_H).status_code == 400
+
+    s = client.post("/api/v2/resume", json={}, headers=F.POST_H).json()
+    assert s["recording"] == "stopped" and s["pause_until_ms"] is None
+    ctrl = env.stack.queries.control()
+    assert ctrl["desired_state"] == "recording" and ctrl["pause_until_ms"] is None
+
+    # 录制进程心跳 → 正在录制，显示当前窗口；命中排除规则的窗口不显示标题
+    env.stack.writer.heartbeat(recorder_state="recording", current_process="tk.exe", current_title="合成窗口").result(5)
+    env.stack.control.invalidate()
+    s = client.get("/api/v2/status").json()
+    assert s["recording"] == "recording" and s["current"] == {"app": "tk.exe", "title": "合成窗口"}
+    client.post("/api/v2/settings", json={"excluded_title_keywords": ["合成"]}, headers=F.POST_H)
+    assert client.get("/api/v2/status").json()["current"] == {"app": "tk.exe", "title": None}
+
+
+def test_expired_pause_counts_as_recording(env):
+    from screenrecall.v2.adapters import effective_state
+
+    now = utc_ms()
+    assert effective_state({"desired_state": "paused", "pause_until_ms": now - 1, "recorder_alive": True}, now) == \
+        ("recording", None)
+    assert effective_state({"desired_state": "paused", "pause_until_ms": None, "recorder_alive": False}, now) == \
+        ("paused", None)
+
+
+# ---------------- 一天、片段 ----------------
+
+def test_day(client, env):
+    d = client.get("/api/v2/day").json()
+    assert keys(d) == {"date", "overview", "summary", "items"}
+    assert d["date"] == datetime.now().date().isoformat()
+    assert keys(d["overview"]) == {"active_ms", "apps", "lines_new", "frames"}
+    assert d["overview"]["apps"] == [{"app": F.APP, "ms": 10 * 60_000}] and d["overview"]["active_ms"] == 600_000
+    assert d["overview"]["lines_new"] == 4 and d["overview"]["frames"] == 1
+    assert d["summary"] is None
+    pieces = [x for x in d["items"] if x["kind"] == "piece"]
+    gaps = [x for x in d["items"] if x["kind"] == "gap"]
+    assert pieces == [{"kind": "piece", "piece_id": env.ids["piece"], "start_ms": pieces[0]["start_ms"],
+                       "end_ms": pieces[0]["end_ms"], "app": F.APP, "title": F.TITLE, "task": "写报告",
+                       "summary_line": "整理季度报告", "pending_ocr": True}]
+    # 两条重叠的锁屏缺口合并成一条；片段里面的最小化缺口不算
+    base = F.day_base()
+    assert gaps == [{"kind": "gap", "start_ms": base - 30 * 60_000, "end_ms": base - 15 * 60_000,
+                     "reason": "locked", "note": None}]
+    starts = [x["start_ms"] for x in d["items"]]
+    assert starts == sorted(starts, reverse=True)  # 新的在前
+
+    other = client.get("/api/v2/day?date=2001-01-01").json()
+    assert other["items"] == [] and other["overview"]["frames"] == 0
+    assert client.get("/api/v2/day?date=bad").status_code == 400
+
+
+def test_piece_detail(client, env):
+    r = client.get(f"/api/v2/pieces/{env.ids['piece']}").json()
+    assert keys(r) == {"piece", "summary", "blocks", "unjoined", "frames"}
+    assert r["piece"] == {"piece_id": env.ids["piece"], "start_ms": r["piece"]["start_ms"],
+                          "end_ms": r["piece"]["end_ms"], "app": F.APP, "title": F.TITLE, "task": "写报告"}
+    assert r["summary"] == {"text": "整理季度报告\n第二行细节", "status": "ok", "model": "test-model"}
+    assert r["unjoined"] is True and len(r["blocks"]) == 2
+    b1, b2 = r["blocks"]
+    assert b1["block_id"] == env.ids["blocks"][0] and b2["block_id"] == env.ids["blocks"][1]
+    kinds = [x["kind"] for x in b1["items"]]
+    assert kinds == ["line", "line", "line", "pending", "skim"]  # 按块内位置：行 y30–130，待 OCR y300，划过 y400
+    line = b1["items"][0]
+    assert line == {"kind": "line", "line_id": env.ids["lines"][0], "text": "Quarterly REPORT draft",
+                    "source": "uia", "first_seen_ms": F.day_base(), "frame_id": env.ids["frame"]}
+    pend = b1["items"][3]
+    assert keys(pend) == {"kind", "region_id", "frame_id"} and pend["frame_id"] == env.ids["frame"]
+    assert b1["items"][4] == {"kind": "skim", "start_ms": F.day_base() + 2000, "end_ms": F.day_base() + 3000,
+                              "distance_px": 1200}
+    assert b2["items"][0]["text"] == "another block line" and b2["items"][0]["frame_id"] is None
+    assert r["frames"] == [{"frame_id": env.ids["frame"], "captured_ms": F.day_base(), "width": 640, "height": 400}]
+    assert client.get("/api/v2/pieces/999999").status_code == 404
+    assert client.get("/api/v2/pieces/abc").status_code == 400
+
+
+def test_summarize_queues_job(client, env):
+    pid = env.ids["piece"]
+    assert client.post(f"/api/v2/pieces/{pid}/summarize", json={}, headers=F.POST_H).json() == {"queued": True}
+    row = env.stack.queries.conn().execute("SELECT kind, target, status FROM jobs").fetchall()
+    assert [tuple(r) for r in row] == [("summary", f"piece:{pid}", "pending")]
+    assert client.post("/api/v2/pieces/424242/summarize", json={}, headers=F.POST_H).status_code == 404
+
+
+# ---------------- 检索 ----------------
+
+def test_spans_are_case_and_width_insensitive():
+    assert web.match_spans("Quarterly REPORT draft", ["report"]) == [[10, 16]]
+    assert web.match_spans("ＦＵＬＬＷＩＤＴＨ Text", ["fullwidth"]) == [[0, 9]]
+    assert web.match_spans("组会 安排", ["会安"]) == [[1, 4]]  # 跨空白
+    assert web.match_spans("abc abc", ["abc"]) == [[0, 3], [4, 7]]
+    assert web.match_spans("aaa", ["aa"]) == [[0, 3]]  # 重叠合并
+    assert web.match_spans("末尾是组", ["组会"]) == [[3, 4]]  # 折到下一行的命中标出本行那一截
+    assert web.match_spans("nothing", ["zzz"]) == []
+
+
+def test_search_shape_and_spans(client, env):
+    r = client.get("/api/v2/search", params={"q": "report"}).json()
+    assert keys(r) == {"query", "total_groups", "groups", "semantic"}
+    assert r["query"] == "report" and r["total_groups"] == 1 and r["semantic"] is False
+    g = r["groups"][0]
+    assert keys(g) == {"segment_id", "app", "title", "first_seen_ms", "last_seen_ms", "hits_total", "piece_id", "hits"}
+    assert g["segment_id"] == env.ids["segment"] and g["app"] == F.APP and g["piece_id"] == env.ids["piece"]
+    assert g["hits_total"] == 1 and g["first_seen_ms"] == F.day_base()
+    assert g["hits"] == [{"line_id": env.ids["lines"][0], "text": "Quarterly REPORT draft", "spans": [[10, 16]],
+                          "last_seen_ms": F.day_base(), "frame_id": env.ids["frame"]}]
+    r = client.get("/api/v2/search", params={"q": "fullwidth 全角"}).json()
+    assert r["groups"][0]["hits"][0]["spans"] == [[0, 9], [15, 17]]
+    assert client.get("/api/v2/search", params={"q": "report", "app": "other.exe"}).json()["groups"] == []
+    assert client.get("/api/v2/search", params={"q": "report", "task": "写报告"}).json()["total_groups"] == 1
+    assert client.get("/api/v2/search", params={"q": "report", "from": F.day_base() + 1}).json()["groups"] == []
+    assert client.get("/api/v2/search", params={"q": ""}).status_code == 400
+    assert client.get("/api/v2/search", params={"q": '"unpaired'}).status_code == 400
+    assert client.get("/api/v2/search", params={"q": "x", "limit": 0}).status_code == 400
+    assert client.get("/api/v2/search", params={"q": "x", "from": 5, "to": 1}).status_code == 400
+
+
+def test_search_groups_by_most_recent_hit(client, env):
+    w = env.stack.writer
+    t = F.day_base() + 3_600_000
+    sid = w.segment_for("tk.exe", "合成文档", t).result(5)
+    b = w.block_new(sid, t).result(5)
+    w.record_lines(b, t, (0, 100), [LineIn("another REPORT here", 0, 10, 300, 24)]).result(5)
+    r = client.get("/api/v2/search", params={"q": "report"}).json()
+    assert [g["segment_id"] for g in r["groups"]] == [sid, env.ids["segment"]]
+    assert r["groups"][0]["piece_id"] is None and r["groups"][0]["hits"][0]["frame_id"] is None
+
+
+DIM = 8
+
+
+class FakeEncoder:
+    loaded = True
+
+    def __init__(self, vec):
+        self.vec = vec
+        self.calls = 0
+
+    def encode(self, texts):
+        self.calls += 1
+        return np.stack([self.vec for _ in texts])
+
+    def unload(self):
+        pass
+
+
+def test_search_semantic_branch(tmp_path, monkeypatch):
+    e = np.eye(DIM, dtype=np.float32)
+    enc = FakeEncoder(e[0])
+    # 先建一个空环境拿到数据目录，再放向量库
+    env = F.build_env(tmp_path, monkeypatch)
+    try:
+        vs = VectorStore(text_vectors_dir(env.data), DIM)
+        lid = env.ids["line2"]
+        vs.append([lid], e[0][None, :], [F.day_base() + 5000], [env.ids["segment"]])
+        svc = SearchService(env.data, encoder=enc, model_check=lambda: True)
+        env.stack.search = svc
+        with TestClient(env.guard, base_url=F.BASE, follow_redirects=False) as c:
+            F.login(c, env)
+            r = c.get("/api/v2/search", params={"q": "完全不相关的词"}).json()
+            assert r["semantic"] is True and enc.calls == 1
+            g = r["groups"][0]
+            assert g["hits"][0]["line_id"] == lid and g["hits"][0]["spans"] == [] and g["hits_total"] == 1
+            # 低于阈值的纯语义命中不要
+            enc.vec = e[1]
+            assert c.get("/api/v2/search", params={"q": "完全不相关的词"}).json()["groups"] == []
+        svc.close()
+    finally:
+        env.stack.close()
+
+
+def test_semantic_off_without_model_or_vectors(tmp_path):
+    svc = SearchService(tmp_path, model_check=lambda: True, encoder=FakeEncoder(np.ones(DIM, np.float32)))
+    schema.connect(schema.db_path(tmp_path)).close()
+    assert svc.search("x")["semantic"] is False  # 没有向量库
+    svc2 = SearchService(tmp_path, model_check=lambda: False)
+    assert svc2.search("x")["semantic"] is False
+    svc.close()
+    svc2.close()
+
+
+# ---------------- 证据帧 ----------------
+
+def test_frame_detail_image_thumb(client, env):
+    fid = env.ids["frame"]
+    r = client.get(f"/api/v2/frames/{fid}").json()
+    assert keys(r) == {"frame_id", "captured_ms", "width", "height", "app", "title", "piece_id", "lines"}
+    assert (r["width"], r["height"], r["app"], r["title"], r["piece_id"]) == (640, 400, F.APP, F.TITLE,
+                                                                              env.ids["piece"])
+    assert r["lines"][0] == {"line_id": env.ids["lines"][0], "text": "Quarterly REPORT draft", "x0": 20, "y0": 30,
+                             "x1": 600, "y1": 44}
+    img = client.get(f"/api/v2/frames/{fid}/image")
+    assert img.status_code == 200 and img.headers["content-type"] == "image/webp"
+    assert img.content[:4] == b"RIFF" and "private" in img.headers["cache-control"]
+    th = client.get(f"/api/v2/frames/{fid}/thumb?w=160")
+    assert th.status_code == 200 and th.headers["content-type"] == "image/jpeg" and th.content[:2] == b"\xff\xd8"
+    from PIL import Image
+    import io
+
+    assert Image.open(io.BytesIO(th.content)).size == (160, 100)
+    assert client.get(f"/api/v2/frames/{fid}/thumb?w=5").status_code == 400
+    for bad in ("0" * 32, "../../etc", "x"):
+        assert client.get(f"/api/v2/frames/{bad}").status_code == 404
+        assert client.get(f"/api/v2/frames/{bad}/image").status_code == 404
+
+
+def test_apps(client, env):
+    assert client.get("/api/v2/apps").json() == {"apps": [{"app": F.APP, "n": 1}]}
+    assert client.get("/api/v2/apps", params={"from": F.day_base() + 3_600_000}).json() == {"apps": []}
+
+
+# ---------------- 设置 ----------------
+
+SETTINGS_KEYS = {"pinned", "excluded_processes", "excluded_title_keywords", "hidden_from_agents", "agent_enabled",
+                 "idle_minutes", "ocr_model", "autostart", "llm", "data_dir"}
+
+
+def test_settings_roundtrip(client, env):
+    s = client.get("/api/v2/settings").json()
+    assert keys(s) == SETTINGS_KEYS
+    assert s["agent_enabled"] is False and s["idle_minutes"] == 5 and s["ocr_model"] == "tiny"
+    assert s["autostart"] is False and s["data_dir"] == str(env.data)
+    assert s["llm"] == {"configured": False, "model": None, "host": None}
+    assert s["hidden_from_agents"] == {"apps": [], "title_keywords": []}
+
+    body = {"pinned": [{"process": "tk.exe", "title": "合成窗口", "hwnd": 11}],
+            "excluded_processes": ["KeePass.exe", " ", "KeePass.exe"], "excluded_title_keywords": ["InPrivate"],
+            "hidden_from_agents": {"apps": ["bank.exe"]}, "agent_enabled": True, "idle_minutes": 7.5,
+            "ocr_model": "small", "autostart": True}
+    s = client.post("/api/v2/settings", json=body, headers=F.POST_H).json()
+    assert s["pinned"] == [{"process": "tk.exe", "title": "合成窗口"}]
+    assert s["excluded_processes"] == ["KeePass.exe"] and s["excluded_title_keywords"] == ["InPrivate"]
+    assert s["hidden_from_agents"] == {"apps": ["bank.exe"], "title_keywords": []}
+    assert s["agent_enabled"] is True and s["idle_minutes"] == 7.5 and s["ocr_model"] == "small"
+    assert s["autostart"] is True and env.ctx.autostart.enabled
+    ctrl = env.stack.queries.control()
+    assert ctrl["pinned_windows"] == [{"process": "tk.exe", "title": "合成窗口", "hwnd": 11}]
+    assert env.settings_seen[-1]["idle_minutes"] == 7.5
+    # 空闲阈值 / OCR 模型写在数据目录里，录制进程和空闲整理进程用 load_v2 读到
+    cfg = v2config.load_v2(env.data, home=env.home)
+    assert cfg.idle.threshold_s == 450 and cfg.ocr.model == "small"
+    assert paths.verify_private(v2config.user_settings_path(env.data)) == []
+    # 只改一部分：其他不变
+    s = client.post("/api/v2/settings", json={"hidden_from_agents": {"title_keywords": ["网银"]}},
+                    headers=F.POST_H).json()
+    assert s["hidden_from_agents"] == {"apps": ["bank.exe"], "title_keywords": ["网银"]}
+    assert client.post("/api/v2/settings", json={"autostart": False}, headers=F.POST_H).json()["autostart"] is False
+
+    for bad in [{"nope": 1}, {"pinned": [{"process": "a"}] * 3}, {"agent_enabled": "yes"}, {"idle_minutes": 0},
+                {"ocr_model": "huge"}, {"excluded_processes": "x"}, {"excluded_processes": ["a\nb"]},
+                {"hidden_from_agents": {"apps": ["a"], "x": []}}, {"autostart": 1}]:
+        r = client.post("/api/v2/settings", json=bad, headers=F.POST_H)
+        assert r.status_code == 400 and r.json()["error"], bad
+    # 校验失败时什么都没写
+    assert client.post("/api/v2/settings", json={"agent_enabled": False, "ocr_model": "huge"},
+                       headers=F.POST_H).status_code == 400
+    assert client.get("/api/v2/settings").json()["agent_enabled"] is True
+
+
+def test_llm_settings_never_echo_key(client, env):
+    key = "sk-test-" + "k" * 30
+    body = {"base_url": "https://llm.example.test/v1", "model": "demo-model", "api_key": key}
+    r = client.post("/api/v2/settings/llm", json=body, headers=F.POST_H)
+    assert r.status_code == 200 and key not in r.text
+    assert r.json()["llm"] == {"configured": True, "model": "demo-model", "host": "llm.example.test"}
+    env_file = env.home / ".env"
+    assert paths.verify_private(env_file) == []
+    assert f"LLM_API_KEY={key}" in env_file.read_text(encoding="utf-8")
+    # 不给 api_key = 保留原来的
+    client.post("/api/v2/settings/llm", json={"base_url": "https://other.example.test/v1", "model": "m2"},
+                headers=F.POST_H)
+    text = env_file.read_text(encoding="utf-8")
+    assert f"LLM_API_KEY={key}" in text and "m2" in text
+    assert key not in client.get("/api/v2/settings").text
+    for bad in [{"base_url": "ftp://x", "model": "m"}, {"base_url": "https://x", "model": ""},
+                {"base_url": "https://x", "model": "m", "api_key": "a b"}, {"model": "m"}]:
+        assert client.post("/api/v2/settings/llm", json=bad, headers=F.POST_H).status_code == 400, bad
+
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(json.loads(request.content))
+        assert request.headers["authorization"] == f"Bearer {key}"
+        return httpx.Response(200, json={"model": "m2", "choices": [{"message": {"content": "OK"}}]})
+
+    env.ctx.llm_transport = httpx.MockTransport(handler)
+    r = client.post("/api/v2/settings/llm/test", json={}, headers=F.POST_H).json()
+    assert r["ok"] is True and r["model"] == "m2" and isinstance(r["latency_ms"], int)
+    assert seen[0]["messages"] == [{"role": "user", "content": web.LLM_TEST_PROMPT}]  # 只发固定的合成提示
+
+    env.ctx.llm_transport = httpx.MockTransport(lambda req: httpx.Response(401, json={"error": {"message": "bad"}}))
+    r = client.post("/api/v2/settings/llm/test", json={}, headers=F.POST_H)
+    assert r.json()["ok"] is False and "401" in r.json()["error"] and key not in r.text
+
+
+def test_llm_test_without_config(client):
+    r = client.post("/api/v2/settings/llm/test", json={}, headers=F.POST_H).json()
+    assert r["ok"] is False and r["model"] is None and "没有配置" in r["error"]
+
+
+def test_windows_and_storage(client, env):
+    assert client.get("/api/v2/windows").json() == {"windows": [{"hwnd": 11, "process": "tk.exe",
+                                                                  "title": "Synthetic window"}]}
+    s = client.get("/api/v2/storage").json()
+    assert keys(s) == {"data_dir", "db_bytes", "frames_bytes", "vectors_bytes", "frames", "lines", "oldest_ms"}
+    assert s["db_bytes"] > 0 and s["frames_bytes"] > 0 and s["vectors_bytes"] == 0
+    assert (s["frames"], s["lines"], s["oldest_ms"]) == (1, 4, F.day_base())
+
+
+# ---------------- 隐私删除 ----------------
+
+def _raw_db_bytes(data_dir) -> bytes:
+    p = schema.db_path(data_dir)
+    out = p.read_bytes()
+    wal = p.with_name(p.name + "-wal")
+    if wal.exists():
+        out += wal.read_bytes()
+    return out
+
+
+def test_delete_recent_really_removes_sentinel(client, env):
+    w = env.stack.writer
+    t = utc_ms() - 60_000
+    sid = w.segment_for("tk.exe", "sentinel doc", t).result(5)
+    b = w.block_new(sid, t).result(5)
+    ids = w.record_lines(b, t, (0, 100), [LineIn(F.SENTINEL, 0, 10, 300, 24)]).result(5)
+    fid = w.save_frame(F.synthetic_frame(seed=7), captured_ms=t, segment_id=sid, block_id=b, pos_y=0, app="tk.exe",
+                       title="sentinel doc", line_ids=ids, line_rects=[(0, 10, 300, 24)])
+    w.flush()
+    vs = VectorStore(text_vectors_dir(env.data), DIM)
+    vs.append(ids, np.eye(DIM, dtype=np.float32)[:1], [t], [sid])
+    frame_file = env.data / env.stack.queries.frame(fid)["rel_path"]
+    assert frame_file.exists()
+    assert client.get("/api/v2/search", params={"q": F.SENTINEL}).json()["total_groups"] == 1
+
+    r = client.post("/api/v2/delete", json={"recent_minutes": 5}, headers=F.POST_H)
+    assert r.status_code == 200
+    d = r.json()["deleted"]
+    assert d["lines"] == 1 and d["frames"] == 1 and d["text_vectors"] == 1 and d["vectors_pending"] == 0
+    assert {"lines", "frames", "segments"} <= set(d)
+    assert client.get("/api/v2/search", params={"q": F.SENTINEL}).json()["groups"] == []
+    assert not frame_file.exists()
+    assert client.get(f"/api/v2/frames/{fid}").status_code == 404
+    assert F.SENTINEL.encode() not in _raw_db_bytes(env.data)
+    vs2 = VectorStore(text_vectors_dir(env.data), DIM, readonly=True)
+    assert len(vs2) == 0
+    # 今天 10:00 的旧内容不受影响
+    assert client.get("/api/v2/search", params={"q": "report"}).json()["total_groups"] == 1
+
+
+def test_delete_by_app_and_range(client, env):
+    base = F.day_base()
+    r = client.post("/api/v2/delete", json={"from_ms": base + 4_000, "to_ms": base + 6_000}, headers=F.POST_H)
+    assert r.json()["deleted"]["lines"] == 1  # 只有第二块那一行
+    assert client.get("/api/v2/search", params={"q": "another"}).json()["groups"] == []
+    r = client.post("/api/v2/delete", json={"app": F.APP}, headers=F.POST_H)
+    assert r.json()["deleted"]["lines"] == 3 and r.json()["deleted"]["frames"] == 1
+    assert client.get("/api/v2/search", params={"q": "report"}).json()["groups"] == []
+    assert client.get("/api/v2/day").json()["overview"]["apps"] == []
+    for bad in [{}, {"recent_minutes": 0}, {"recent_minutes": 5, "app": "x"}, {"from_ms": 1},
+                {"from_ms": 5, "to_ms": 1}, {"nope": 1}, {"app": ""}]:
+        assert client.post("/api/v2/delete", json=bad, headers=F.POST_H).status_code == 400, bad
+
+
+# ---------------- 令牌 ----------------
+
+def test_reset_token_reissues_cookie(client, env):
+    old = client.cookies.get(auth.cookie_name(F.PORT))
+    r = client.post("/api/v2/agent/reset-token", json={}, headers=F.POST_H)
+    assert r.json() == {"ok": True} and "HttpOnly" in r.headers["set-cookie"]
+    assert client.get("/api/v2/status").status_code == 200  # 这个浏览器拿到了新 Cookie
+    assert client.cookies.get(auth.cookie_name(F.PORT)) != old
+    with TestClient(env.guard, base_url=F.BASE) as other:
+        other.cookies.set(auth.cookie_name(F.PORT), old)
+        assert other.get("/api/v2/status").status_code == 401  # 旧 Cookie 失效
+        assert other.get("/api/v2/status", headers={"Authorization": f"Bearer {F.TOKEN}"}).status_code == 401
+
+
+def test_legacy_notice_parameter(tmp_path):
+    from screenrecall import webapi
+    from screenrecall.config import load_config
+
+    app = webapi.create_app(load_config(tmp_path), port=18734, notice="自定义说明")
+    with TestClient(app, base_url="http://127.0.0.1:18734") as c:
+        assert c.get("/api/meta").json()["notice"] == "自定义说明"
+    app = webapi.create_app(load_config(tmp_path), port=18734)
+    with TestClient(app, base_url="http://127.0.0.1:18734") as c:
+        assert c.get("/api/meta").json()["notice"] == webapi.NO_AUTH_NOTICE
+
+
+def test_legacy_dist_is_served_at_root_without_login(tmp_path, env):
+    from screenrecall import webapi
+    from screenrecall.app import server
+    from screenrecall.config import load_config
+
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<!doctype html><title>v2 ui</title>", encoding="utf-8")
+    (dist / "assets" / "app.js").write_text("console.log(1)", encoding="utf-8")
+    legacy = webapi.create_app(load_config(tmp_path / "legacy"), port=F.PORT, dist=dist)
+    guard = server.build_app(port=F.PORT, token=F.TOKEN, nonces=env.nonces, legacy=legacy,
+                             extra_routes=web.routes(env.ctx))
+    with TestClient(guard, base_url=F.BASE) as c:
+        assert "v2 ui" in c.get("/").text and c.get("/assets/app.js").status_code == 200
+        assert c.get("/api/v2/status").status_code == 401
+        assert c.get("/api/meta").status_code == 401
