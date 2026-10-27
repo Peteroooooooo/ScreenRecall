@@ -111,6 +111,12 @@ class RealWindows:
             return None
         return self._process(hwnd), winapi.window_title(hwnd)
 
+    def pid(self, hwnd: int) -> int | None:
+        """窗口所属进程号（活动日志用）。"""
+        self._process(hwnd)
+        hit = self._proc.get(hwnd)
+        return hit[0] if hit else None
+
     def is_shell(self, hwnd: int) -> bool:
         from .. import winapi
 
@@ -211,6 +217,10 @@ class FakeWindows:
     def describe(self, hwnd: int) -> tuple[str, str] | None:
         w = self.windows.get(hwnd)
         return (w["process"], w["title"]) if w else None
+
+    def pid(self, hwnd: int) -> int | None:
+        w = self.windows.get(hwnd)
+        return int(w.get("pid", 1000 + hwnd)) if w else None
 
     def is_shell(self, hwnd: int) -> bool:
         w = self.windows.get(hwnd)
