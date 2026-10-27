@@ -68,7 +68,7 @@ class OnnxTextEncoder:
     """与 screenrecall.models.StText 同接口：model_id / max_tokens / dim / count_tokens / encode。"""
 
     def __init__(self, spec: ModelSpec = DEFAULT_MODELS.text, *, threads: int = 2, batch_size: int = 16,
-                 local_files_only: bool = True):
+                 local_files_only: bool = True, mem_arena: bool = True):
         import onnxruntime as ort
         from tokenizers import Tokenizer
 
@@ -82,9 +82,7 @@ class OnnxTextEncoder:
         self.batch_size = max(1, int(batch_size))
         self.dim = DIM
 
-        self._tok_full = Tokenizer.from_file(str(d / "tokenizer.json"))
-        self._tok_full.no_truncation()
-        self._tok_full.no_padding()
+        # 只建一个分词器：25 万词表的 XLM-R 分词器每个实例约占 250 MiB
         self._tok = Tokenizer.from_file(str(d / "tokenizer.json"))
         self._tok.enable_truncation(max_length=self.max_tokens)
         pad_token = "<pad>"
@@ -97,13 +95,20 @@ class OnnxTextEncoder:
         so.intra_op_num_threads = max(1, int(threads))
         so.inter_op_num_threads = 1
         so.log_severity_level = 3
+        # 内存池：开着推理略快；关掉常驻内存少约 90 MiB（见 results/text/encoder_bench.json）
+        so.enable_cpu_mem_arena = bool(mem_arena)
         self._sess = ort.InferenceSession(str(d / ONNX_FILE), sess_options=so, providers=["CPUExecutionProvider"])
         self._inputs = {i.name for i in self._sess.get_inputs()}
         self._lock = threading.Lock()  # 多会话共享同一实例时串行推理
 
     def count_tokens(self, text: str) -> int:
         """含首尾特殊符号、不截断的 token 数（与 StText.count_tokens 一致）。"""
-        return len(self._tok_full.encode(text, add_special_tokens=True).ids)
+        with self._lock:
+            self._tok.no_truncation()
+            try:
+                return len(self._tok.encode(text, add_special_tokens=True).ids)
+            finally:
+                self._tok.enable_truncation(max_length=self.max_tokens)
 
     def encode(self, texts: Sequence[str]) -> np.ndarray:
         texts = [t if isinstance(t, str) else str(t) for t in texts]
