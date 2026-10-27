@@ -259,6 +259,38 @@ def test_pending_vector_deletes_survive_restart(env, monkeypatch):
     assert not pending.exists()
 
 
+def test_privacy_delete_also_zeroes_the_not_yet_migrated_old_layout(env):
+    # 空闲整理进程还没把老布局（vectors/text）迁移掉时，隐私删除照样要删老库里的向量（盘上清零）
+    from screenrecall.store.vectors import VectorStore
+    from screenrecall.v2.searchsvc import legacy_text_vectors_dir, text_vectors_dir
+
+    vec = np.eye(8, dtype=np.float32)[:1]
+    for root in (text_vectors_dir(env.data), legacy_text_vectors_dir(env.data)):
+        vs = VectorStore(root, 8)
+        vs.append([env.ids["line2"]], vec, [F.day_base() + 5000], [env.ids["segment"]])
+        vs.close()
+    base = F.day_base()
+    rep = env.stack.deleter.delete(time_from=base + 4_000, time_to=base + 6_000)
+    assert rep["lines"] == 1 and rep["text_vectors"] == 2 and rep["vectors_pending"] == 0
+    for root in (text_vectors_dir(env.data), legacy_text_vectors_dir(env.data)):
+        assert len(VectorStore(root, 8, readonly=True)) == 0
+        assert not np.fromfile(next(root.glob("*.vec")), dtype="<f4").any()
+
+
+def test_mcp_task_filter_is_case_width_and_space_insensitive(env):
+    enable(env)
+    w = env.stack.writer
+    w.piece_put(F.day_base() - 1_000, F.day_base() + 10 * 60_000, app=F.APP, title=F.TITLE,
+                segment_ids=[env.ids["segment"]], task_label="Weekly Ｒｅｐｏｒｔ", piece_id=env.ids["piece"]).result(5)
+    _, mcp = make_mcp(env)
+    for task in ("weekly report", "REPORT", "weeklyreport", "ｗｅｅｋｌｙ"):
+        assert "Quarterly REPORT draft" in text_of(call(mcp, "search", {"query": "report", "task": task})), task
+    assert "没有找到" in text_of(call(mcp, "search", {"query": "report", "task": "写代码"}))
+    # 隐藏名单规则不变：片段关联的内容源命中名单，就不能按它的任务标签查出来
+    env.stack.set_control(hidden_from_agents={"apps": [], "title_keywords": ["report.txt"]})
+    assert "没有找到" in text_of(call(mcp, "search", {"query": "report", "task": "report"}))
+
+
 def test_piece_summary_withheld_when_a_segment_is_hidden(env):
     # 片段本身（notepad.exe / report.txt）没命中，但它关联的另一个内容源标题含隐藏关键词：
     # 片段概括是按整段内容写的，不能给 Agent（时间线照样列出片段，只是不带概括）

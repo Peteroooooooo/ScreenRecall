@@ -154,8 +154,13 @@ def test_stdin_eof_stops_a_busy_worker_within_a_second_and_lock_blocks_a_second_
     # 没写完的概括待办没有算作一次失败
     r = db(cfg).execute("SELECT status, attempts FROM jobs WHERE kind = 'summary_piece'").fetchone()
     assert tuple(r) == ("pending", 0)
-    # 文字向量这一步在大模型之前已经做完（真 ONNX 编码器）
-    assert db(cfg).execute("SELECT COUNT(*) FROM text_chunks").fetchone()[0] == 1
+    # 文字向量这一步在大模型之前已经做完（真 ONNX 编码器）：一行一个单行向量，游标走到了这一行
+    c = db(cfg)
+    line_id = c.execute("SELECT MAX(line_id) FROM lines").fetchone()[0]
+    assert c.execute("SELECT value FROM meta WHERE key = 'worker.text_line_id'").fetchone()[0] == str(line_id)
+    from screenrecall.store.vectors import VectorStore
+    from screenrecall.v2.searchsvc import text_vectors_dir
+    assert len(VectorStore(text_vectors_dir(cfg.data_dir), 384, readonly=True)) == 1
 
 
 def _font(size):

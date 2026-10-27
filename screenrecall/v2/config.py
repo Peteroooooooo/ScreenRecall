@@ -50,7 +50,7 @@ class IdleSettings:
     summaries: bool = True         # 空闲时用大模型写片段 / 天概括
     clip: bool = True              # 空闲时给证据图算 CLIP 向量（内容分类器要用）
     # 以下给空闲整理进程（screenrecall.v2.worker）
-    chunk_lines: int = 6           # 文字向量的一个段落最多几行（同一块里阅读顺序相邻）
+    chunk_lines: int = 3           # 文字向量：每行一个，另外相邻最多这么多行拼一个短段落（同一块里阅读顺序相邻；1 = 不要段落）
     chunk_tokens: int = 100        # 一个段落最多多少 token（模型上限 128）
     llm_min_interval_s: float = 1.0  # 两次大模型调用至少间隔多久
     llm_max_calls: int = 200       # 一次空闲整理最多调用大模型几次
