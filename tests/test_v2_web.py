@@ -67,7 +67,7 @@ def test_unknown_v2_path_is_json_404(client):
 
 # ---------------- 状态与暂停 ----------------
 
-STATUS_KEYS = {"recording", "pause_until_ms", "recorder_alive", "current", "pending_ocr", "idle_work",
+STATUS_KEYS = {"recording", "pause_until_ms", "recorder_alive", "current", "pending_ocr", "idle_work", "queue",
                "agent_enabled", "revision"}
 
 
@@ -139,7 +139,8 @@ def test_status_after_recorder_said_stopped(client, env):
 
 def test_day(client, env):
     d = client.get("/api/v2/day").json()
-    assert keys(d) == {"date", "overview", "summary", "items"}
+    assert keys(d) == {"date", "overview", "summary", "summary_state", "summary_refresh", "items"}
+    assert d["summary_state"] == "none" and d["summary_refresh"] is False  # 没配大模型、没有 SummaryRunner
     assert d["date"] == datetime.now().date().isoformat()
     assert keys(d["overview"]) == {"active_ms", "apps", "lines_new", "frames"}
     assert d["overview"]["apps"] == [{"app": F.APP, "ms": 10 * 60_000}] and d["overview"]["active_ms"] == 600_000
@@ -538,7 +539,8 @@ def test_apps(client, env):
 # ---------------- 设置 ----------------
 
 SETTINGS_KEYS = {"pinned", "excluded_processes", "excluded_title_keywords", "hidden_from_agents", "agent_enabled",
-                 "idle_minutes", "ocr_model", "autostart", "llm", "data_dir"}
+                 "idle_minutes", "ocr_model", "autostart", "llm", "data_dir", "image_days", "text_days",
+                 "storage_cap_gb"}
 
 
 def test_settings_roundtrip(client, env):
