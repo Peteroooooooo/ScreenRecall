@@ -8,7 +8,8 @@
 - 片段：完全落在范围内的删掉（连同它的概括）；部分重叠的保留，它的概括清空并标为 stale；
 - 小时 / 天概括：与被删内容的时间跨度重叠的清空并标为 stale（可能引用了被删内容，之后重写）；
 - 内容源：不再有任何行、帧、划过记录时连同它的块一起删掉；
-- 向量：被删行（文本向量，id = line_id）和被删帧（图片向量，id = frame_no）写墓碑并就地清零。
+- 向量：被删行（文本向量，id = line_id）、含被删行的段落（文本向量，id = text_chunks.chunk_id，
+  段落里剩下的行登记 text_rechunk 待办）和被删帧（图片向量，id = frame_no）写墓碑并就地清零。
 只给 app 不给时间 = 删除该应用的全部记录。
 
 保证真删的设置：每个连接 PRAGMA secure_delete = ON（删除的页面内容清零）；
@@ -56,11 +57,13 @@ class DeleteReport:
     checkpoint_busy: bool = False
     line_ids: list[int] = field(default_factory=list, repr=False)
     frame_nos: list[int] = field(default_factory=list, repr=False)
+    chunk_ids: list[int] = field(default_factory=list, repr=False)  # 含被删行的文字向量段落（text_chunks）
 
     def to_dict(self) -> dict:
         d = asdict(self)
         d.pop("line_ids")
         d.pop("frame_nos")
+        d.pop("chunk_ids")
         return d
 
 
@@ -176,6 +179,17 @@ def delete_data(
                 f"SELECT line_id FROM lines WHERE tail_line_id IN ({ph}) AND line_id NOT IN ({ph})", args + args
             ).fetchall()
             docs.set_tails(conn, [(int(r[0]), "", None) for r in refs])
+            # 文字向量按段落算（text_chunks）：段落里任何一行被删，整段的向量都要删（它是用被删的字算的）；
+            # 段落里留下的行登记重组，空闲整理进程用新编号重新算（成员关系随行级联删除）
+            chunks = [int(r[0]) for r in conn.execute(
+                f"SELECT DISTINCT chunk_id FROM text_chunks WHERE line_id IN ({ph})", args)]
+            if chunks:
+                rep.chunk_ids.extend(chunks)
+                conn.executemany(
+                    "INSERT INTO jobs (kind, target, created_ms, updated_ms) VALUES ('text_rechunk', ?, ?, ?) "
+                    "ON CONFLICT (kind, target) DO UPDATE SET status = 'pending', attempts = 0, last_error = NULL, "
+                    "not_before_ms = 0, updated_ms = excluded.updated_ms",
+                    [(str(c), now, now) for c in chunks])
             conn.execute(f"DELETE FROM line_in_frame WHERE line_id IN ({ph})", args)
             conn.execute(f"DELETE FROM lines WHERE line_id IN ({ph})", args)
             conn.execute("COMMIT")
@@ -261,7 +275,7 @@ def delete_data(
 
     # 7. 向量
     for vs in text_vectors:
-        rep.text_vectors += vs.delete(rep.line_ids)
+        rep.text_vectors += vs.delete(rep.line_ids + rep.chunk_ids)
     for vs in image_vectors:
         rep.image_vectors += vs.delete(rep.frame_nos)
 
