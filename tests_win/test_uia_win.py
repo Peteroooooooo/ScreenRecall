@@ -53,10 +53,17 @@ def _kill_tree(pid: int) -> None:
     psutil.wait_procs(procs, timeout=5)
 
 
-@pytest.fixture(scope="module")
-def reader(tmp_path_factory):
+@pytest.fixture(scope="module", autouse=True)
+def comtypes_cache(tmp_path_factory):
+    """comtypes 生成的接口代码放进临时目录（每个进程只生成一次），测试不在 %LOCALAPPDATA% 留东西。"""
     cache = tmp_path_factory.mktemp("comtypes_cache")
-    r = uia.UiaReader(uia.UiaConfig(timeout_s=1.5, comtypes_cache_dir=str(cache)))
+    uia._import_uia(str(cache))
+    return cache
+
+
+@pytest.fixture(scope="module")
+def reader(comtypes_cache):
+    r = uia.UiaReader(uia.UiaConfig(timeout_s=1.5, comtypes_cache_dir=str(comtypes_cache)))
     yield r
     r.close()
 
