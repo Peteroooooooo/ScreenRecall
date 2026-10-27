@@ -164,6 +164,41 @@ def test_parallax_two_speed_layers_is_break(doc):
     assert m.kind == "break"
 
 
+_TEMPLATE_FIRST = ["A tired cartographer sketched eleven pewter spoons in the drafty attic during",
+                   "The village baker polished a jar of amber resin on the ferry deck during the",
+                   "Our night shift nurse described the broken weather vane at the edge of the",
+                   "A retired astronomer photographed three rusty bicycle bells in the narrow",
+                   "The museum guard rearranged an old brass telescope near the market square",
+                   "A curious botanist repaired the cedar bookshelf beside the frozen pond in"]
+
+
+def _templated(width: int, n: int, period: int, para_h: int, line_h: int = 34) -> np.ndarray:
+    """每 period 段重复同一个首行、第二行（短，只占左半边）各不相同的合成页面。"""
+    from PIL import Image, ImageDraw
+
+    img = Image.new("RGB", (width, n * para_h + 40), "white")
+    d = ImageDraw.Draw(img)
+    f = S.font(22)
+    for i in range(n):
+        y = 10 + i * para_h
+        d.text((16, y), _TEMPLATE_FIRST[i % period], fill="black", font=f)
+        d.text((16, y + line_h), f"week {i + 3}, then wrote {i * 13 % 97} notes.", fill="black", font=f)
+    return np.ascontiguousarray(np.array(img)[:, :, ::-1])
+
+
+@pytest.mark.parametrize("period,dy", [(6, 480), (5, 460), (6, 500)])
+def test_repeating_template_lines_do_not_give_a_wrong_shift(head, period, dy):
+    """翻页（滚了将近一屏）时真正的重叠很少；每隔几段完全一样的首行让右边几条竖带对上一个差几段的错偏移。
+    看得到第二行的条带在这个偏移下对不上 → 接不上（新块），不能给错的数（会把两屏的行交错着拼进同一块）。"""
+    doc = _templated(W, 80, period, 84)
+    m = M.analyze(M.Fp.from_image(S.view(doc, 300, VH, head)), M.Fp.from_image(S.view(doc, 300 + dy, VH, head)))
+    assert m.kind == "break" or (m.kind == "shift" and m.dy == dy), m
+    assert m.kind == "break" and "对不上" in m.agree
+    # 同一页面小步滚动照样认得出
+    m = M.analyze(M.Fp.from_image(S.view(doc, 300, VH, head)), M.Fp.from_image(S.view(doc, 340, VH, head)))
+    assert m.kind == "shift" and m.dy == 40
+
+
 def test_inplace_change(doc, head):
     a = S.view(doc, 1000, VH, head)
     b = S.write_text(a, 20, 300, "这一行原地改了 changed in place 42")
