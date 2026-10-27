@@ -123,13 +123,15 @@ class LlmClient:
                 pass
         return min(self.max_backoff_s, self.backoff_s * (2 ** attempt))
 
-    def chat(self, messages: Sequence[dict[str, Any]], *, max_tokens: int = 512, temperature: float = 0.2,
+    def chat(self, messages: Sequence[dict[str, Any]], *, max_tokens: int = 512, temperature: float | None = 0.2,
              timeout: float = 60.0, reasoning_effort: str | None = None, model: str | None = None) -> LlmReply:
         """发一次对话，返回第一条回答。429 / 5xx / 网络错误按指数退避重试（尊重 Retry-After）。
 
-        reasoning_effort：思考强度（"none" / "low" / ...），None 表示用模型默认。"""
-        body: dict[str, Any] = {"model": model or self.model, "messages": list(messages),
-                                "max_tokens": max_tokens, "temperature": temperature}
+        reasoning_effort：思考强度（"none" / "low" / ...），None 表示用模型默认。
+        temperature=None 时不发这个字段（部分推理模型只接受默认温度，发了会报 400）。"""
+        body: dict[str, Any] = {"model": model or self.model, "messages": list(messages), "max_tokens": max_tokens}
+        if temperature is not None:
+            body["temperature"] = temperature
         if reasoning_effort:
             body["reasoning_effort"] = reasoning_effort
         headers = {"Authorization": f"Bearer {self._key}", "Content-Type": "application/json"}

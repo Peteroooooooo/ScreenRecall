@@ -170,6 +170,15 @@ def test_nonce_endpoint_for_second_instance(client):
     assert client.get(url.removeprefix(BASE)).status_code == 303
 
 
+def test_agent_configs_endpoint_needs_login_and_has_no_token(client):
+    assert client.get("/api/app/agent-configs").status_code == 401
+    r = client.get("/api/app/agent-configs", headers=bearer())
+    assert r.status_code == 200
+    body = r.json()
+    assert set(body["configs"]) == {"claude_desktop", "claude_code", "cursor"}
+    assert body["mcp_url"] == f"{BASE}/mcp" and TOKEN not in r.text
+
+
 def test_lifespan_passes_through(tmp_path):
     seen = []
 

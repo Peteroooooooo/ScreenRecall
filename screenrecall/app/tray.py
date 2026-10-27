@@ -89,11 +89,15 @@ class Tray:
     """托盘图标。run() 阻塞当前线程直到 stop()；也可以 run_detached() 在后台线程里跑。"""
 
     def __init__(self, actions: TrayActions, *, title: str = "ScreenRecall",
-                 clock: Callable[[], datetime] = datetime.now, day_start_hour: int = 0):
+                 clock: Callable[[], datetime] = datetime.now, day_start_hour: int = 0, status_poll_s: float = 5.0):
+        """status_poll_s：每隔多久问一次状态，变了才更新图标（如"暂停 15 分钟"到点后图标恢复成彩色）；0 = 不轮询。"""
         self.actions, self.title = actions, title
         self._clock, self._day_start_hour = clock, day_start_hour
+        self._status_poll_s = status_poll_s
+        self._stop_poll = threading.Event()
         self._icon = None
         self._shown_paused: bool | None = None
+        self._shown: TrayStatus | None = None
         self._ready = threading.Event()
         self._cache: tuple[float, TrayStatus | None] = (0.0, None)
 
@@ -150,33 +154,50 @@ class Tray:
 
         return pystray.Menu(*(entry(i) for i in range(len(menu_model(TrayStatus(""))))))
 
-    def refresh(self) -> None:
-        """状态变化后调用：更新图标（暂停时变灰）、提示文字和菜单。"""
+    def refresh(self, only_if_changed: bool = False) -> bool:
+        """状态变化后调用：更新图标（暂停时变灰）、提示文字和菜单。返回是否真的更新了。"""
         icon = self._icon
         if icon is None:
-            return
+            return False
         st = self._status(fresh=True)
+        if only_if_changed and st == self._shown:
+            return False
+        self._shown = st
         if st.paused != self._shown_paused:
             icon.icon = draw_icon(64, st.paused)
             self._shown_paused = st.paused
         icon.title = f"{self.title} · {st.text}"[:127]  # Windows 托盘提示最长 128 个字符
         icon.update_menu()
+        return True
+
+    def _poll_status(self) -> None:
+        while not self._stop_poll.wait(self._status_poll_s):
+            try:
+                self.refresh(only_if_changed=True)
+            except Exception:  # noqa: BLE001 - 轮询出错不能拖垮托盘
+                log.exception("刷新托盘状态出错")
 
     def run(self, setup: Callable[[], None] | None = None) -> None:
         import pystray
 
         st = self._status()
-        self._shown_paused = st.paused
+        self._shown_paused, self._shown = st.paused, st
+        self._stop_poll.clear()
         self._icon = pystray.Icon("screenrecall", draw_icon(64, st.paused), f"{self.title} · {st.text}"[:127],
                                   menu=self.build_menu())
 
         def _setup(icon):
             icon.visible = True
             self._ready.set()
+            if self._status_poll_s > 0:
+                threading.Thread(target=self._poll_status, name="screenrecall-tray-status", daemon=True).start()
             if setup:
                 setup()
 
-        self._icon.run(setup=_setup)
+        try:
+            self._icon.run(setup=_setup)
+        finally:
+            self._stop_poll.set()
 
     def run_detached(self) -> threading.Thread:
         t = threading.Thread(target=self.run, name="screenrecall-tray", daemon=True)
@@ -188,5 +209,6 @@ class Tray:
         return self._ready.wait(timeout)
 
     def stop(self) -> None:
+        self._stop_poll.set()
         if self._icon is not None:
             self._icon.stop()
