@@ -75,7 +75,7 @@ export default function PrivacyPage() {
             <button className="sr-btn sr-btn-danger h-[52px]" onClick={() => ask(t("priv.d5"), t("priv.body5"), () => ({ recent_minutes: 5 }))}>{t("priv.d5")}</button>
             <button className="sr-btn sr-btn-danger h-[52px]" onClick={() => ask(t("priv.d60"), t("priv.body60"), () => ({ recent_minutes: 60 }))}>{t("priv.d60")}</button>
             <button className="sr-btn sr-btn-danger h-[52px]"
-              onClick={() => ask(t("priv.dToday"), t("priv.bodyToday"), () => ({ from_ms: startOfToday(), to_ms: Date.now() }))}>{t("priv.dToday")}</button>
+              onClick={() => ask(t("priv.dToday"), t("priv.bodyToday"), () => ({ from_ms: startOfToday(), to_ms: startOfToday(startOfToday() + 36 * 3_600_000) }))}>{t("priv.dToday")}</button>
           </div>
         </Card>
 
