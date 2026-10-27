@@ -192,6 +192,8 @@ def delete_data(
                     [(str(c), now, now) for c in chunks])
             conn.execute(f"DELETE FROM line_in_frame WHERE line_id IN ({ph})", args)
             conn.execute(f"DELETE FROM lines WHERE line_id IN ({ph})", args)
+            # 合并块里的别名（store.aliases）：被指向的那一行删掉了，别名那一份是在删除范围外看到的，重新显示
+            conn.execute(f"UPDATE lines SET alias_of = NULL WHERE alias_of IN ({ph})", args)
             conn.execute("COMMIT")
         except BaseException:
             if conn.in_transaction:

@@ -23,7 +23,7 @@ def test_v1_database_is_migrated_to_v2(tmp_path):
     c.execute("INSERT INTO segments (app, title, first_seen_ms, last_seen_ms) VALUES ('a', 'b', 1, 2)")
     c.close()
     c = schema.connect(p)
-    assert c.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()[0] == "2"
+    assert c.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()[0] == str(schema.SCHEMA_VERSION)
     cols = {r[1] for r in c.execute("PRAGMA table_info(frames)")}
     assert {"label", "label_score", "label_model"} <= cols
     assert c.execute("SELECT COUNT(*) FROM text_chunks").fetchone()[0] == 0

@@ -191,7 +191,9 @@ def _filter_sql(f: Filters, params: dict) -> str:
     seg = segment_filter_sql(f, params)
     if seg:
         clauses.append(f"l.segment_id IN ({seg})")
-    return " AND ".join(clauses) if clauses else "1"
+    # 合并过的块里重复的那一份（store.aliases）不再单独命中：留下的那一份代表两次看到
+    clauses.append("l.alias_of IS NULL")
+    return " AND ".join(clauses)
 
 
 def segment_filter_sql(f: Filters, params: dict) -> str | None:
