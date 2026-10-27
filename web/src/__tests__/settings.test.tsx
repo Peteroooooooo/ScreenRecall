@@ -82,22 +82,10 @@ describe("settings page", () => {
     expect(localStorage.getItem("sr-lang")).toBe("en");
   });
 
-  it("the advanced section links to the legacy import page", async () => {
+  it("has no legacy import link (v2 privacy delete could not reach imported files)", async () => {
     server();
     renderAt("#/settings");
-    expect((await screen.findByRole("link", { name: "打开导入页" })).getAttribute("href")).toBe("#/import");
-  });
-
-  it("the legacy import page posts files to /api/import", async () => {
-    const calls = mockFetch((c) => (c.path === "/api/import"
-      ? { body: { batch: { batch_id: "b", time_known: false, resubmitted: false, items: [{ seq: 0, name: "a.png", status: "ok", reason: null, frame_id: "x" }] }, ok: 1, failed: 0, skipped: 0 } }
-      : null));
-    renderAt("#/import");
-    expect(await screen.findByRole("heading", { level: 1, name: "导入截图（旧版）" })).toBeTruthy();
-    const input = document.querySelector("input[type=file]") as HTMLInputElement;
-    fireEvent.change(input, { target: { files: [new File(["x"], "a.png", { type: "image/png" })] } });
-    fireEvent.click(screen.getByRole("button", { name: "导入" }));
-    await waitFor(() => expect(calls.find((c) => c.path === "/api/import")?.headers["X-ScreenRecall"]).toBe("1"));
-    expect(await screen.findByText("成功 1、失败 0、跳过 0")).toBeTruthy();
+    await screen.findByText("数据文件夹");
+    expect(screen.queryByRole("link", { name: "打开导入页" })).toBeNull();
   });
 });

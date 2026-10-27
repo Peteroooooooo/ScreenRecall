@@ -62,6 +62,25 @@ def test_store_mode_wiring(app):
         assert c.get("/api/v2/status", headers=auth.bearer_headers(new)).status_code == 200
 
 
+def test_store_mode_legacy_app_only_serves_pages(tmp_path, monkeypatch):
+    """v2 模式下旧版 webapi 只发网页：/api/import 等旧接口会写进 v2 删除管不到的旧版库，一律 404。"""
+    home = tmp_path / "home"
+    monkeypatch.setenv("SCREENRECALL_HOME", str(home))
+    cfg = load_v2(tmp_path / "data", home=home)
+    opts = main.AppOptions(home=home, port=0, tray=False, open_browser=False, legacy_web=True, store=True, cfg=cfg)
+    a = main.MainApp(opts).start()
+    try:
+        h = {**auth.bearer_headers(a.endpoint), "X-ScreenRecall": "1"}
+        with httpx.Client(base_url=a.endpoint.base_url, trust_env=False, timeout=10) as c:
+            r = c.post("/api/import", files={"files": ("a.png", b"x", "image/png")}, headers=h)
+            assert r.status_code == 404 and "error" in r.json()
+            assert c.post("/api/search", json={"q": "x"}, headers=h).status_code == 404
+            assert c.get("/api/v2/status", headers=h).status_code == 200
+        assert not (cfg.data_dir / "screenrecall.sqlite3").exists()
+    finally:
+        a.shutdown()
+
+
 def test_fake_queries_mode_keeps_skeleton(tmp_path, monkeypatch):
     home = tmp_path / "home"
     monkeypatch.setenv("SCREENRECALL_HOME", str(home))
