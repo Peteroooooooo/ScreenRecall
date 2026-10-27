@@ -205,6 +205,20 @@ def test_ocr_regions():
     assert uia.ocr_regions(uia.UiaResult("ok", good.lines, True, 1.0, window_rect=WIN), frame) == []
 
 
+def test_ocr_regions_skip_the_system_caption():
+    """系统画的标题栏（标题、□、X）不登记待 OCR：标题已经在内容源里。"""
+    frame = _canvas()
+    _write(frame, 40, 10, "合成窗口标题 - title bar")
+    bad = uia.UiaResult("timeout", [], False, 1.0, window_rect=WIN)
+    assert uia.ocr_regions(bad, frame, top=40) == []  # 只有标题栏里有字
+    _write(frame, 40, 400, "客户区里的字 client text")
+    assert uia.ocr_regions(bad, frame, top=40) == [(0, 40, 800, 600)]
+    good = uia.UiaResult("ok", [_ln(300, 330, "足够长的一段正文文字 enough text here")], True, 1.0,
+                         window_rect=WIN, uncovered=((100, 100, 900, 280), (100, 360, 900, 700)))
+    assert uia.ocr_regions(good, frame, top=40) == [(0, 260, 800, 600)]  # 第一条横条只剩标题栏：不登记
+    assert uia.caption_height(0) == 0  # 不是窗口：0，照旧整帧
+
+
 # ---------- 读取器：线程与超时 ----------
 
 class FakeWin:
