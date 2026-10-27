@@ -150,7 +150,10 @@ def shim_command(python: str | None = None, root: Path = REPO_ROOT) -> dict[str,
 
 
 def agent_configs(python: str | None = None, root: Path = REPO_ROOT) -> dict[str, dict[str, Any]]:
-    """三种 Agent 的配置。都不含令牌（转发程序运行时自己读 endpoint.json）。"""
+    """各 Agent 的配置。都不含令牌（转发程序运行时自己读 endpoint.json）。Claude Code 的命令和 Codex 的
+    config.toml 块与 python -m screenrecall.app.agents install 登记的内容一样（同一个 shim_command）。"""
+    from .agents import codex_block
+
     cmd = shim_command(python, root)
     entry = {"mcpServers": {"screenrecall": dict(cmd)}}
     env_args = [x for k, v in cmd["env"].items() for x in ("-e", f"{k}={v}")]
@@ -161,6 +164,7 @@ def agent_configs(python: str | None = None, root: Path = REPO_ROOT) -> dict[str
                            "json": entry},
         "claude_code": {"name": "Claude Code", "file": ".mcp.json（项目）或用下面的命令添加",
                         "json": {"mcpServers": {"screenrecall": {"type": "stdio", **cmd}}}, "cli": cli},
+        "codex": {"name": "Codex", "file": r"%USERPROFILE%\.codex\config.toml", "toml": codex_block(cmd)},
         "cursor": {"name": "Cursor", "file": r"%USERPROFILE%\.cursor\mcp.json", "json": entry},
     }
 

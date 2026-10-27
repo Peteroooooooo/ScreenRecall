@@ -227,7 +227,8 @@ export interface DeleteResult {
 export interface AgentConfig {
   name: string;
   file: string;
-  json: unknown;
+  json?: unknown;
+  toml?: string;
   cli?: string;
 }
 export interface AgentConfigs {

@@ -147,6 +147,7 @@ export function agentConfigs(): AgentConfigs {
     configs: {
       claude_desktop: { name: "Claude Desktop", file: "%APPDATA%\\Claude\\claude_desktop_config.json", json: { mcpServers: { screenrecall: cmd } } },
       claude_code: { name: "Claude Code", file: ".mcp.json", json: { mcpServers: { screenrecall: { type: "stdio", ...cmd } } }, cli: "claude mcp add screenrecall -- C:\\example\\python.exe" },
+      codex: { name: "Codex", file: "%USERPROFILE%\\.codex\\config.toml", toml: '[mcp_servers.screenrecall]\ncommand = "C:\\\\example\\\\python.exe"\nargs = ["-m", "screenrecall.app.mcp_shim"]\n' },
       cursor: { name: "Cursor", file: "%USERPROFILE%\\.cursor\\mcp.json", json: { mcpServers: { screenrecall: cmd } } },
     },
     mcp_url: "http://127.0.0.1:8611/mcp",
