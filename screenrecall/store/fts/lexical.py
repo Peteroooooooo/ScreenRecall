@@ -11,11 +11,7 @@
 - 所有候选最后都用 SQL 里的 instr() 核验，结果是精确的；
 - 排序 = 最近一次看到（last_seen_ms），不用 rowid（空闲 OCR 会晚插入，重看到的行保留旧 id）。
 
-两种执行方式：
-- 候选不超过 cap 条（默认 20000）：精确模式，全部命中在 SQL 里分组计数；
-- 候选更多（常见词）：最近优先模式，沿 last_seen 索引倒序扫描、边扫边核验，凑够 scan_hits 条命中就停。
-  分组顺序和每组最新命中是精确的；各组计数与总数是下限（total_is_lower_bound = True）。
-  若扫了 scan_rows 行还凑不出 limit 个分组（筛选条件很窄），退回精确模式。
+执行方式（exact / segment / recent）按估算代价选，见 search() 的说明。
 """
 
 from __future__ import annotations
@@ -36,6 +32,7 @@ class Term:
     text: str  # norm 后
     kind: str  # 'tri' | 'short'
     fts: tuple[str, ...]  # FTS5 查询片段（已加引号）
+    word_prefix: bool = False  # 短词里有字母数字：语义是"以它开头的词"，instr 核验不够，还要查 lines_bi
 
 
 @dataclass(frozen=True)
@@ -150,7 +147,7 @@ def plan(raw: str) -> Plan:
         else:
             toks = _short_tokens(t)
             if toks:
-                terms.append(Term(t, "short", tuple(toks)))
+                terms.append(Term(t, "short", tuple(toks), bool(docs.words(t))))
             else:
                 dropped.append(p)
     return Plan(raw, tuple(terms), tuple(dropped))
@@ -248,6 +245,15 @@ def _candidates_sql(terms: Sequence[Term], params: dict) -> str:
     return "SELECT rowid AS id FROM lines_bi WHERE lines_bi MATCH :m"
 
 
+def _word_prefix_sql(terms: Sequence[Term], params: dict) -> str:
+    """短的字母数字词（"以它开头的词"）不能只靠 instr 核验：额外要求在 lines_bi 里命中。"""
+    toks = [q for t in terms if t.word_prefix for q in t.fts]
+    if not toks:
+        return ""
+    params["mw"] = " AND ".join(toks)
+    return " AND l.line_id IN (SELECT rowid FROM lines_bi WHERE lines_bi MATCH :mw)"
+
+
 def _collect(rows: list[sqlite3.Row]) -> tuple[int, int, list[Group]]:
     groups: dict[int, Group] = {}
     total = total_groups = 0
@@ -313,6 +319,9 @@ def search(
                     "scan_rows": int(scan_rows)}
     cand = _candidates_sql(p.terms, params)
     verify = _verify_sql(p.terms, params)
+    words_only_from_bi = not any(t.kind == "tri" for t in p.terms)  # 候选本身来自 lines_bi 时已满足
+    word_sql = _word_prefix_sql(p.terms, params)
+    verify_full = verify + word_sql
     where = _filter_sql(f, params)
     seg = segment_filter_sql(f, params)
 
@@ -343,7 +352,7 @@ def search(
         sql = (
             "WITH hits AS (SELECT l.line_id, l.segment_id, l.last_seen_ms FROM lines l "
             "INDEXED BY idx_lines_last_seen "
-            f"WHERE l.last_seen_ms >= :thr AND {verify} AND {where} "
+            f"WHERE l.last_seen_ms >= :thr AND {verify_full} AND {where} "
             "ORDER BY l.last_seen_ms DESC LIMIT :scan_hits)" + _GROUPED
         )
         total, total_groups, groups = _collect(conn.execute(sql, params).fetchall())
@@ -358,14 +367,14 @@ def search(
         time_where = _filter_sql(Filters(f.time_from, f.time_to), params)
         sql = (
             "WITH hits AS (SELECT l.line_id, l.segment_id, l.last_seen_ms FROM lines l INDEXED BY idx_lines_segment "
-            f"WHERE l.segment_id IN ({seg}) AND {verify} AND {time_where})" + _GROUPED
+            f"WHERE l.segment_id IN ({seg}) AND {verify_full} AND {time_where})" + _GROUPED
         )
     else:
         mode = "exact"
         sql = (
             f"WITH cand AS ({cand}), "
             "hits AS (SELECT l.line_id, l.segment_id, l.last_seen_ms FROM cand JOIN lines l ON l.line_id = cand.id "
-            f"WHERE {verify} AND {where})" + _GROUPED
+            f"WHERE {verify if words_only_from_bi else verify_full} AND {where})" + _GROUPED
         )
     total, total_groups, groups = _collect(conn.execute(sql, params).fetchall())
     return Result(query, terms_txt, mode, total, False, total_groups, groups, note)
