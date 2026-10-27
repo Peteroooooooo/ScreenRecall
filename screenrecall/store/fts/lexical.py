@@ -208,11 +208,23 @@ def segment_filter_sql(f: Filters, params: dict) -> str | None:
     for i, kw in enumerate(x for x in f.exclude_title_keywords if x):
         params[f"xk{i}"] = docs.fold(kw)
         seg.append(f"instr(s.title_fold, :xk{i}) = 0")
-    if f.task:
-        params["task"] = f.task
+    if f.task and f.task.strip():
+        # 任务标签是大模型写的短语：页面 / Agent 给的是自由文字，按 NFKC + casefold 包含匹配
+        params["task"] = docs.fold(f.task.strip())
+        cond = ["instr(sr_fold(COALESCE(p.task_label, '')), :task) > 0"]
+        # 有隐藏名单时：任务标签是按整个片段写的，片段本身或它关联的任一内容源命中名单，就不能拿它的标签来匹配
+        # （否则按任务查能查出隐藏内容所在片段的其他内容源，标签本身也可能就是隐藏的内容）
+        hid = [f"sr_fold(COALESCE({{t}}.app, '')) = :xa{i}" for i, a in enumerate(x for x in f.exclude_apps if x)]
+        hid += [f"instr(sr_fold(COALESCE({{t}}.title, '')), :xk{i}) > 0"
+                for i, kw in enumerate(x for x in f.exclude_title_keywords if x)]
+        if hid:
+            on = lambda t: " OR ".join(h.format(t=t) for h in hid)  # noqa: E731
+            cond.append(f"NOT ({on('p')})")
+            cond.append("NOT EXISTS (SELECT 1 FROM piece_segments ps2 JOIN segments s2 ON s2.segment_id = "
+                        f"ps2.segment_id WHERE ps2.piece_id = p.piece_id AND ({on('s2')}))")
         seg.append(
             "s.segment_id IN (SELECT ps.segment_id FROM piece_segments ps JOIN pieces p "
-            "ON p.piece_id = ps.piece_id WHERE p.task_label = :task)"
+            f"ON p.piece_id = ps.piece_id WHERE {' AND '.join(cond)})"
         )
     if f.segment_ids is not None:
         params["seg_ids"] = ",".join(str(int(x)) for x in f.segment_ids)
