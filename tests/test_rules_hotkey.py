@@ -21,6 +21,19 @@ def test_excluded_title_keyword():
     assert rules.check("chrome.exe", "无痕模式 - Chrome", R)
 
 
+def test_rules_fold_fullwidth_and_unicode_case():
+    """和"对 Agent 隐藏"名单一样按 NFKC + casefold 比较：全角、非 ASCII 大小写的标题也要拦住。"""
+    r = RulesConfig(excluded_processes=("ｂａｎｋ.exe",), excluded_title_keywords=("bank", "БАНК", "ＳＴＲＡＳＳＥ"))
+    assert rules.check("chrome.exe", "ＢＡＮＫ 网上银行", r)
+    assert rules.check("chrome.exe", "мой банк", r)
+    assert rules.check("chrome.exe", "Hauptstraße 1", r)
+    assert rules.check("BANK.EXE", "x", r)
+    from screenrecall.rec.windows import make_rules, rule_reason
+
+    assert rule_reason("msedge.exe", "ＢＡＮＫ - Edge", make_rules(excluded_title_keywords=["bank"]))
+    assert rules.check("notepad.exe", "a.txt", r) is None
+
+
 def test_allowed_when_no_rule_matches():
     assert rules.check("notepad.exe", "a.txt - 记事本", R) is None
 

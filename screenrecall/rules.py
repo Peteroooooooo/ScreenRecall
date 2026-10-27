@@ -8,19 +8,27 @@
 
 from __future__ import annotations
 
+import unicodedata
+
 from .config import RulesConfig
 
 
+def fold(s: str | None) -> str:
+    """NFKC + casefold：和"对 Agent 隐藏"名单、SQL 里的 sr_fold 同一种比较（store.fts.docs.fold）。
+    只用 lower() 的话全角的 "ＢＡＮＫ" 不含 "bank"，排除规则就漏了。"""
+    return unicodedata.normalize("NFKC", s or "").casefold()
+
+
 def check(process: str | None, title: str | None, rules: RulesConfig) -> str | None:
-    """返回拒绝原因；允许录制时返回 None。"""
-    proc = (process or "").strip().lower()
-    low_title = (title or "").lower()
-    if proc and proc in rules.excluded_processes:
+    """返回拒绝原因；允许录制时返回 None。进程名、标题、规则两边都按 fold() 比较。"""
+    proc = fold((process or "").strip())
+    low_title = fold(title)
+    if proc and proc in {fold(p) for p in rules.excluded_processes}:
         return f"程序 {process} 在排除列表中"
     for kw in rules.excluded_title_keywords:
-        if kw and kw.lower() in low_title:
+        if kw and fold(kw) in low_title:
             return f"窗口标题含排除关键词「{kw}」"
-    if rules.allowed_processes and proc not in rules.allowed_processes:
+    if rules.allowed_processes and proc not in {fold(p) for p in rules.allowed_processes}:
         return f"程序 {process or '未知'} 不在允许列表中"
     return None
 
