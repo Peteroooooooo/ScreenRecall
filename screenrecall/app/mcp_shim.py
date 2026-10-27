@@ -117,9 +117,12 @@ async def serve(home: Path | None = None) -> None:
 # ---------------- 给"连接 Agent"页面的配置片段 ----------------
 
 def shim_command(python: str | None = None, root: Path = REPO_ROOT) -> dict[str, Any]:
-    """启动转发程序的命令（command + args + env）。用 python.exe 而不是 pythonw：stdio 需要标准输入输出。"""
-    return {"command": python or sys.executable, "args": ["-m", "screenrecall.app.mcp_shim"],
-            "env": {"PYTHONPATH": str(root)}}
+    """启动转发程序的命令（command + args + env）。用 python.exe 而不是 pythonw：stdio 需要标准输入输出。
+    主进程开机自启时自己是 pythonw.exe 跑的，所以这里把 pythonw.exe 换回同目录的 python.exe。"""
+    exe = Path(python or sys.executable)
+    if exe.name.lower() == "pythonw.exe":
+        exe = exe.with_name("python.exe")
+    return {"command": str(exe), "args": ["-m", "screenrecall.app.mcp_shim"], "env": {"PYTHONPATH": str(root)}}
 
 
 def agent_configs(python: str | None = None, root: Path = REPO_ROOT) -> dict[str, dict[str, Any]]:

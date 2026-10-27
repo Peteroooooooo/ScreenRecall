@@ -184,6 +184,19 @@ def test_hard_killed_parent_takes_children_with_it(tmp_path):
         launcher.wait(10)
 
 
+def test_no_child_starts_after_stop_all(tmp_path):
+    """关机途中晚到的空闲回调（start_child）不能再拉起子进程。"""
+    out = tmp_path / "runs.txt"
+    s = script(tmp_path, "w.py", f"""
+        open({str(out)!r}, "a").write("x\\n")
+    """)
+    sup = supervisor.Supervisor([supervisor.ChildSpec("w", [PY, str(s)], autostart=False)], poll_s=0.05).start()
+    sup.stop_all(grace_s=0.1)
+    assert sup.start_child("w") is False
+    time.sleep(0.3)
+    assert not out.exists() and sup.status()["w"]["pid"] is None
+
+
 def test_duplicate_names_rejected():
     with pytest.raises(ValueError):
         supervisor.Supervisor([supervisor.ChildSpec("a", ["x"]), supervisor.ChildSpec("a", ["y"])])

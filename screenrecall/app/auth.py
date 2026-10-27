@@ -209,7 +209,9 @@ class AuthGuard:
         await _send_simple(send, status, {"error": msg}, [*_SECURITY_HEADERS, *extra])
 
     async def _login(self, scope, send) -> None:
-        if scope["method"] not in ("GET", "HEAD"):
+        if scope["method"] == "HEAD":  # 链接预览 / 安全软件先发 HEAD 探一下：不消耗一次性链接，也不发 Cookie
+            return await _send_simple(send, 204, None, _SECURITY_HEADERS)
+        if scope["method"] != "GET":
             return await _send_simple(send, 405, {"error": "不支持这种请求方法"})
         nonce = (parse_qs(scope.get("query_string", b"").decode("latin-1")).get("n") or [""])[0]
         if not self.nonces.consume(nonce):
