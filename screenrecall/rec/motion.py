@@ -330,7 +330,8 @@ def _mismatch_runs(prev: np.ndarray, cur: np.ndarray, d: int, once_all: np.ndarr
 VERIFY_TOP = 4             # 合并的票里取前几名（非零）偏移
 VERIFY_MIN_VOTES = 2       # 候选至少几票
 ALIAS_TOP = 4              # "所有相同的行"给出的偏移取前几名
-ALIAS_MAX_DUP = 8          # 旧图里同样的行超过这么多处（一屏都是的模板行）的不用来找候选
+ALIAS_PERIOD_TOP = 8       # 前几名都拿来试"旧图自己是不是每隔 (候选之差) 行就重复"（只比一次，很便宜）
+ALIAS_MAX_DUP = 8         # 旧图里同样的行超过这么多处（一屏都是的模板行）的不用来找候选
 ALIAS_MIN_VOTES = 4
 PLAUSIBLE_MIN_ONCE = 8     # 说得通：至少这么多独特格子参与比较
 PLAUSIBLE_RATIO = 0.5      # 说得通：独特格子至少这么多对上（实测错的偏移最多 0.36）
@@ -344,6 +345,31 @@ RIVAL_CELL_MARGIN = 0.05   # 对手：有内容的格子对上的比例最多比
 # 和旁边的内容拼成"独特"的行，哪个偏移下对不上得多只看滑块落在哪，说明不了什么
 RIVAL_EXTRA_MISS = 8
 RIVAL_MISS_SHARE = 0.15
+# 旧图自己错开 p 行（p = 最好的候选和别的候选之差）后，在动的行里有内容的格子至少这么多、对不上的不到这个比例：
+# 版式完全周期（实测头像一样的聊天 0.09，主要是滚动条滑块；表格、日志、代码在各种 p 下都在 0.4 以上）
+SELF_MIN_PERIOD = 8
+SELF_MIN_CELLS = 256
+SELF_MAX_MISS = 0.15
+
+
+# 而且有对不上的格子的行不到有内容的行的这么多：聊天页对不上的只是滚动条滑块两端那几行（实测 0.06–0.18），
+# 表格里窄窄一列各不相同的序号让大多数行都对不上（实测 0.44 以上）
+SELF_MAX_ROWS = 0.3
+
+
+def _self_periodic(prev: Fp, keep_rows: np.ndarray, p: int) -> bool:
+    h = prev.shape[0]
+    if p >= h:
+        return False
+    keep = keep_rows[: h - p] & keep_rows[p:]
+    c = (prev.content[:, : h - p] | prev.content[:, p:]) & keep
+    n = int(np.count_nonzero(c))
+    if n < SELF_MIN_CELLS:
+        return False
+    bad = c & (prev.v[:, : h - p] != prev.v[:, p:])
+    if int(np.count_nonzero(bad)) >= SELF_MAX_MISS * n:
+        return False
+    return int(np.count_nonzero(bad.any(axis=0))) < SELF_MAX_ROWS * int(np.count_nonzero(c.any(axis=0)))
 RIVAL_STRIP_MISS = 2
 RIVAL_STRIPS = 2
 
@@ -369,7 +395,8 @@ def _alias_candidates(prev: Fp, cur: Fp, static: np.ndarray) -> list[int]:
     idx = lo[rep] + np.arange(rep.size) - np.repeat(np.cumsum(n) - n, n)
     hist = np.bincount(ps.rows[idx] - cj[rep] + h, minlength=2 * h + 1)
     hist[h] = 0
-    top = np.argpartition(-hist, ALIAS_TOP)[:ALIAS_TOP] if hist.size > ALIAS_TOP else np.arange(hist.size)
+    top = np.argpartition(-hist, ALIAS_PERIOD_TOP)[:ALIAS_PERIOD_TOP] if hist.size > ALIAS_PERIOD_TOP \
+        else np.arange(hist.size)
     top = top[np.argsort(-hist[top], kind="stable")]
     return [int(t) - h for t in top if hist[t] >= ALIAS_MIN_VOTES]
 
@@ -434,10 +461,15 @@ def _verify(prev: Fp, cur: Fp, mask: MotionMask | None, static: np.ndarray,
         cands = [int(vals[i]) for i in order if counts[i] >= VERIFY_MIN_VOTES]
     if not cands and my in (None, 0):
         return _Verdict(None, False, 0)  # 没有任何"在动"的迹象（原地变了 / 接不上），不必再找重复版式的错位
-    for d in [d for d in dys if d not in (None, 0)] + _alias_candidates(prev, cur, static):
+    aliases = _alias_candidates(prev, cur, static)
+    for d in [d for d in dys if d not in (None, 0)] + aliases[:ALIAS_TOP]:
         if int(d) not in cands:
             cands.append(int(d))
-    keep =~static if mask is None else ~(mask.v | static)  # (高,) 或 (STRIPS, 高)
+    # 原地变了一部分的行（网页标题、标签页、状态栏）：在变，但同一位置还有独特的格子没变 —— 它们属于不动的版面，
+    # 不能拿来判断内容滚了多少（混进来时，重叠少的候选会被它们拖低，重复版式的错位就挤不进"对手"）
+    part = np.logical_not(static) & ((prev.v == cur.v) & once & cur.vsorted.once).any(axis=0)
+    still = static | part
+    keep = np.logical_not(still if mask is None else mask.v | still)  # (高,) 或 (STRIPS, 高)
     once_ok, cont_ok = once & keep, prev.content & keep
     cur_ok = np.broadcast_to(keep, once.shape)
     sc = {d: _explain(prev, cur, d, once_ok, cont_ok, cur_ok) for d in cands}
@@ -452,6 +484,11 @@ def _verify(prev: Fp, cur: Fp, mask: MotionMask | None, static: np.ndarray,
     anchor = best if best is not None else (my if my not in (None, 0) else None)
     if anchor is None:
         return _Verdict(None, False, 0)
+    # 旧图在动的部分本身每隔 p 行就重复（完全周期的版式）：滚了 d 和 d ± p 看起来一模一样，没法知道是哪个
+    keep_rows = np.logical_not(still)
+    for p in sorted({abs(anchor - d) for d in [*sc, *aliases] if abs(anchor - d) >= SELF_MIN_PERIOD}):
+        if _self_periodic(prev, keep_rows, p):
+            return _Verdict(best, strong, 1)
     if anchor not in sc:
         sc[anchor] = _explain(prev, cur, anchor, once_ok, cont_ok, cur_ok)
     a = sc[anchor]
