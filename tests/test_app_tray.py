@@ -80,6 +80,29 @@ def test_pystray_menu_builds_and_reads_status():
     assert next(i for i in items if i.text == "打开主页").default
 
 
+class FakeIcon:
+    def __init__(self):
+        self.icon = self.title = None
+        self.menu_updates = 0
+
+    def update_menu(self):
+        self.menu_updates += 1
+
+
+def test_status_change_without_menu_action_updates_icon():
+    """暂停到点由录制控制自己恢复（没有菜单操作）：轮询发现状态变了才更新图标，没变不动。"""
+    r = Recorder()
+    t = tray.Tray(r.actions())
+    t._icon = FakeIcon()
+    r.paused = True
+    assert t.refresh(only_if_changed=True) and t._icon.title.endswith("已暂停")
+    paused_icon = t._icon.icon
+    assert not t.refresh(only_if_changed=True) and t._icon.menu_updates == 1  # 没变：不重画
+    r.paused = False  # 暂停到点
+    assert t.refresh(only_if_changed=True) and t._icon.icon is not paused_icon
+    assert t._icon.title.endswith("正在录制") and t._icon.menu_updates == 2
+
+
 def test_icon_drawing():
     a, b = tray.draw_icon(64), tray.draw_icon(64, paused=True)
     assert a.size == (64, 64) and a.mode == "RGBA"

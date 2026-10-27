@@ -4,6 +4,7 @@
 - /auth?n=...         一次性登录链接（AuthGuard 自己处理）
 - /mcp                MCP streamable HTTP（Bearer 令牌；浏览器 Cookie 也可以，但 MCP 只核对本服务自己的 Origin）
 - /api/app/nonce      POST，给第二个启动的实例要一条登录链接（"已经在运行，打开它的主页"）
+- /api/app/agent-configs  GET，"连接 Agent"页面用的配置片段（mcp_shim.agent_configs()，不含令牌）
 - 其他                交给旧版 webapi.create_app 返回的应用（它自己还会核对 Host 和 X-ScreenRecall 头）
 """
 from __future__ import annotations
@@ -53,7 +54,14 @@ def build_app(*, port: int, token: str, nonces: auth.NonceStore, mcp=None, legac
     async def nonce(request: Request) -> JSONResponse:
         return JSONResponse({"url": auth.home_url(port, nonces.mint())}, headers={"Cache-Control": "no-store"})
 
+    async def agent_configs(request: Request) -> JSONResponse:
+        from . import mcp_shim  # 只用它的配置片段函数（不含令牌）
+
+        return JSONResponse({"configs": mcp_shim.agent_configs(), "mcp_url": f"http://127.0.0.1:{port}/mcp"},
+                            headers={"Cache-Control": "no-store"})
+
     routes.append(Route("/api/app/nonce", nonce, methods=["POST"]))
+    routes.append(Route("/api/app/agent-configs", agent_configs, methods=["GET"]))
     if mcp is not None:
         mcp.streamable_http_app()  # 创建 session manager（只建一次）
         routes.append(Route("/mcp", endpoint=_Asgi(mcp.session_manager.handle_request)))
