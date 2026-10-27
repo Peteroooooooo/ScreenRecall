@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { REGEN_POLL_MS } from "../pages/PiecePage";
 import { F1, F2, mockFetch, piece } from "../test/helpers";
 import { renderAt, toasts } from "../test/render";
 
@@ -59,6 +60,32 @@ describe("piece page", () => {
     await waitFor(() => expect(toasts().join()).toContain("概括已更新"));
   }, 12000);
 
+  it("重新生成 keeps polling after a failed re-fetch, and a double click queues once", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ["setInterval", "clearInterval"] });
+    let n = 0;
+    const calls = mockFetch((c) => {
+      if (c.path === "/api/v2/pieces/11/summarize") return { body: { queued: true } };
+      if (c.path === "/api/v2/pieces/11") {
+        n += 1;
+        if (n === 2) return { status: 500, body: { error: "暂时忙" } }; // 第一次重新拉取失败
+        return { body: n >= 3 ? piece({ summary: { text: "新的概括", status: "ok", model: "sample-model" } }) : piece() };
+      }
+      return null;
+    });
+    renderAt("#/piece/11");
+    const btn = await screen.findByRole("button", { name: "重新生成" });
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+    await waitFor(() => expect(n).toBe(1));
+    await vi.advanceTimersByTimeAsync(REGEN_POLL_MS);
+    await waitFor(() => expect(n).toBe(2));
+    expect(screen.getByRole("button", { name: "生成中…" })).toBeTruthy();
+    await vi.advanceTimersByTimeAsync(REGEN_POLL_MS);
+    expect(await screen.findByText("新的概括")).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("button", { name: "重新生成" })).toBeTruthy());
+    expect(calls.filter((c) => c.path === "/api/v2/pieces/11/summarize")).toHaveLength(1);
+  });
+
   it("删除这个片段 needs confirmation, then deletes its time range for that app", async () => {
     const calls = mockFetch((c) => (c.path === "/api/v2/delete" ? { body: { deleted: { lines: 3, frames: 2, segments: 1 } } } : null));
     renderAt("#/piece/11");
@@ -68,7 +95,8 @@ describe("piece page", () => {
     fireEvent.click(within(dlg).getByRole("button", { name: "删除" }));
     await waitFor(() => expect(calls.some((c) => c.path === "/api/v2/delete")).toBe(true));
     const p = piece().piece;
-    expect(calls.find((c) => c.path === "/api/v2/delete")!.body).toEqual({ from_ms: p.start_ms, to_ms: p.end_ms, app: p.app });
+    // 删除范围是 [from, to)，to = end + 1 才包含正好在结束那一刻的截图
+    expect(calls.find((c) => c.path === "/api/v2/delete")!.body).toEqual({ from_ms: p.start_ms, to_ms: p.end_ms + 1, app: p.app });
     await waitFor(() => expect(window.location.hash).toBe("#/"));
   });
 

@@ -25,11 +25,11 @@ export default function PrivacyPage() {
     const f = r.deleted.frames ?? 0;
     return Object.values(r.deleted).some((n) => n > 0) ? t("priv.done", { l: fmtInt(l), f: fmtInt(f) }) : t("priv.doneNone");
   };
-  const run = async (body: DeleteRequest, after?: () => Promise<void>) => {
+  const run = async (body: DeleteRequest, before?: () => Promise<void>) => {
     try {
+      if (before) await before();
       const r = await api.remove(body);
       toast(doneText(r));
-      if (after) await after();
     } catch (e) {
       toast(t("priv.fail", { e: errText(e, t("common.offline")) }), "alarm");
     } finally {
@@ -37,8 +37,8 @@ export default function PrivacyPage() {
       apps.reload(true);
     }
   };
-  const ask = (title: string, body: string, req: () => DeleteRequest, after?: () => Promise<void>) =>
-    setConfirm({ title, body, run: () => run(req(), after) });
+  const ask = (title: string, body: string, req: () => DeleteRequest, before?: () => Promise<void>) =>
+    setConfirm({ title, body, run: () => run(req(), before) });
 
   const onRange = (e: FormEvent) => {
     e.preventDefault();
@@ -51,11 +51,14 @@ export default function PrivacyPage() {
     e.preventDefault();
     if (!app) return;
     const ex = alsoExclude;
-    ask(t("priv.dApp"), `${t("priv.bodyApp", { x: appName(app) })}${ex ? " " + t("priv.bodyAppEx") : ""}`, () => ({ app }), ex ? async () => {
-      const list = settings.data?.excluded_processes ?? [];
-      if (!hasItem(list, app) && (await settings.save({ excluded_processes: [...list, app] }))) toast(t("priv.excluded", { x: app }));
+    // 先加进排除名单再删：删除只覆盖到“现在”，先排除才不会在两步之间又记下这个应用的新内容
+    ask(t("priv.dApp"), `${t("priv.bodyApp", { x: appName(app) })}${ex ? " " + t("priv.bodyAppEx") : ""}`, () => ({ app }), async () => {
+      if (ex) {
+        const s = await settings.save((cur) => (hasItem(cur.excluded_processes, app) ? null : { excluded_processes: [...cur.excluded_processes, app] }));
+        if (s) toast(t("priv.excluded", { x: app }));
+      }
       setApp("");
-    } : async () => setApp(""));
+    });
   };
 
   const s = storage.data;
