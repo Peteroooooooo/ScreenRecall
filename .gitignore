@@ -25,3 +25,5 @@ results/windows/*/codec/crops/
 
 # 大模型等密钥配置，只在本机
 .env
+# v2 的 OCR 模型文件（python -m screenrecall.text.ocr2 --download 下载并校验）
+models/
