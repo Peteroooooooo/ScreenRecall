@@ -12,6 +12,10 @@
 目标程序卡死时放弃那个线程（它带着取消标记，之后自己退出），下次读取换新线程，调用方永远不会被拖住。
 被放弃且仍未退出的线程超过上限时直接返回 busy，不再继续开新线程。
 
+待 OCR：usable=False（程序给不出字）时整帧要 OCR；usable=True 时也可能有大片没读到字的区域（浏览器第一次被
+访问时只给外框、页面里的图片 / 画布 / 扫描 PDF），结果里的 uncovered 记下这些整宽横条；ocr_regions(result, frame)
+再按帧像素去掉空白横条，返回要登记待 OCR 的帧坐标矩形。
+
 坐标：UIA 矩形是屏幕坐标；调用进程必须先切到 Per-Monitor V2（winapi.enable_dpi_awareness），
 矩形才是物理像素、和 WGC / PrintWindow 截图一致。窗口矩形用 DWMWA_EXTENDED_FRAME_BOUNDS，
 与 WGC 帧的范围相同；换成帧坐标用 to_frame_rect。
@@ -87,6 +91,9 @@ class UiaResult:
     element_count: int = 0
     window_rect: Rect | None = None
     error: str | None = None
+    # usable 为 True 时也可能有大片区域没读到字（浏览器第一次被访问只给外框、页面里的图片 / 画布 / 扫描 PDF）：
+    # 这些区域是整宽的横条（屏幕物理像素），调用方用 ocr_regions() 结合帧像素决定哪些要登记待 OCR
+    uncovered: tuple[Rect, ...] = ()
 
     @property
     def content_chars(self) -> int:
@@ -106,6 +113,8 @@ class UiaConfig:
     max_abandoned: int = 3  # 被放弃仍未退出的线程上限
     hint_fail_streak: int = 3  # 同一程序连续这么多次读不出可用文字 -> has_text_hint 返回 False
     hint_ttl_s: float = 600.0  # 判定"没有文字"后，过这么久再试一次
+    min_gap_px: int = 48  # 没有任何文字行的横条高于这么多像素，记进 uncovered
+    container_frac: float = 0.4  # 高度超过窗口这个比例的行（窗口 / 面板的名字）不算"覆盖"了那片区域
     comtypes_cache_dir: str | None = None  # comtypes 生成的接口代码放这里，默认 %LOCALAPPDATA%\ScreenRecall\comtypes_cache
 
 
@@ -269,6 +278,85 @@ def to_frame_rect(rect: Rect, frame_origin: tuple[int, int]) -> Rect:
     """屏幕矩形换成截图（帧）坐标：减去帧左上角（窗口可见边框的左上角）。"""
     ox, oy = frame_origin
     return (rect[0] - ox, rect[1] - oy, rect[2] - ox, rect[3] - oy)
+
+
+def uncovered_bands(lines: Sequence[UiaLine], win_rect: Rect, min_gap_px: int = 48,
+                    container_frac: float = 0.4) -> list[Rect]:
+    """窗口里没有任何文字行的整宽横条（屏幕坐标），只返回高于 min_gap_px 的。
+
+    所有行（正文和界面文字）都算覆盖；但高度超过窗口 container_frac 的行（窗口、面板、文档本身的名字）
+    不算，否则一个整窗大小的名字就会把整个窗口标成"读到了"。只看纵向，不分左右栏。
+    """
+    l, t, r, b = win_rect
+    h = b - t
+    if h <= 0 or r <= l:
+        return []
+    spans = sorted(
+        (max(ln.rect[1], t), min(ln.rect[3], b)) for ln in lines
+        if ln.rect[3] > ln.rect[1] and (ln.rect[3] - ln.rect[1]) <= container_frac * h
+    )
+    out: list[Rect] = []
+    cur = t
+    for s0, s1 in spans:
+        if s0 - cur >= min_gap_px:
+            out.append((l, cur, r, s0))
+        cur = max(cur, s1)
+    if b - cur >= min_gap_px:
+        out.append((l, cur, r, b))
+    return out
+
+
+def has_ink(img, *, edge_level: int = 48, min_edges: int = 24) -> bool:
+    """这块图上有没有"像字的东西"：横向和纵向的强边缘（相邻像素差 > edge_level）都至少 min_edges 个。
+
+    按个数而不是比例：宽横条里只有一个短词也要算有字。两个方向都要有：一条竖分隔线只有横向边缘、
+    一条横线只有纵向边缘，都不算；纯色背景、渐变、Mica 这类轻微纹理也判为空白。
+    img：HxWx3/4 的 BGR(A) uint8，或单通道（如录制进程里的绿色通道）。
+    """
+    import numpy as np
+
+    a = np.asarray(img)
+    if a.ndim == 3:
+        a = a[:, :, 1]  # 绿色通道近似亮度，和比对用的通道一致
+    if a.ndim != 2 or a.shape[0] < 2 or a.shape[1] < 2:
+        return False
+    a = a.astype(np.int16)
+    h = int(np.count_nonzero(np.abs(np.diff(a, axis=1)) > edge_level))
+    if h < min_edges:
+        return False
+    v = int(np.count_nonzero(np.abs(np.diff(a, axis=0)) > edge_level))
+    return v >= min_edges
+
+
+def ocr_regions(res: UiaResult, frame, frame_origin: tuple[int, int] | None = None,
+                *, min_gap_px: int = 48) -> list[Rect]:
+    """录制进程用：这一帧里哪些区域要登记待 OCR（帧坐标 (l, t, r, b)），空列表表示 UIA 已经够了。
+
+    - 读取失败 / 超时 / 窗口给不出可用文字：整帧（若整帧都是空白则不登记）；
+    - 读到了可用文字：只取 uncovered 横条里"有像字的东西"的那些（空白的段落间距、底部留白不登记）。
+    frame：这一帧的像素（BGR(A) 或绿色通道）；frame_origin 默认是 res.window_rect 的左上角
+    （窗口可见边框 = WGC 帧范围）。
+    """
+    import numpy as np
+
+    a = np.asarray(frame)
+    fh, fw = a.shape[0], a.shape[1]
+    whole = [(0, 0, fw, fh)]
+    if res.status not in ("ok", "empty") or not res.usable:
+        return whole if has_ink(a) else []
+    if frame_origin is None:
+        if res.window_rect is None:
+            return whole if has_ink(a) else []
+        frame_origin = (res.window_rect[0], res.window_rect[1])
+    out = []
+    for band in res.uncovered:
+        l, t, r, b = to_frame_rect(band, frame_origin)
+        l, t, r, b = max(0, l), max(0, t), min(fw, r), min(fh, b)
+        if b - t < min_gap_px or r <= l:
+            continue
+        if has_ink(a[t:b, l:r]):
+            out.append((l, t, r, b))
+    return out
 
 
 # ---------- 最小的 Win32 调用 ----------
@@ -545,6 +633,7 @@ class _Worker(threading.Thread):
         self.jobs: list[_Job | None] = []
         self.cv = threading.Condition()
         self.abandoned = threading.Event()
+        self.ready = threading.Event()  # open() 已结束（成功或失败）
         self.open_error: str | None = None
 
     def submit(self, job: _Job | None) -> None:
@@ -558,6 +647,7 @@ class _Worker(threading.Thread):
         except Exception as exc:
             self.open_error = f"{type(exc).__name__}: {exc}"[:300]
             ctx = None
+        self.ready.set()
         try:
             while True:
                 with self.cv:
@@ -566,7 +656,9 @@ class _Worker(threading.Thread):
                     job = self.jobs.pop(0)
                 if job is None:
                     return
-                if ctx is None:
+                if job.cancel.is_set():  # 初始化期间调用方已经不等了：不再去读
+                    job.error = "cancelled"
+                elif ctx is None:
                     job.error = self.open_error or "UIA 初始化失败"
                 else:
                     try:
@@ -602,7 +694,10 @@ class UiaReader:
         self._worker: _Worker | None = None
         self._abandoned: list[_Worker] = []
         self._seen: OrderedDict[int, None] = OrderedDict()
-        self._hint: dict[tuple[int, str], tuple[int, float]] = {}  # key -> (连续失败次数, 最后时间)
+        self._hint_lock = threading.Lock()
+        self._hint: OrderedDict[tuple[int, str], tuple[int, float]] = OrderedDict()  # key -> (连续失败次数, 最后时间)
+        # 读出过可用文字的程序：它的某个页面读不出字（图片页、画布）不代表整个程序不行，提示一直为 True
+        self._capable: OrderedDict[tuple[int, str], None] = OrderedDict()
 
     @property
     def win(self):
@@ -623,19 +718,25 @@ class UiaReader:
         rect = win.frame_rect(hwnd)
         if rect is None or rect[2] <= rect[0] or rect[3] <= rect[1]:
             return UiaResult("no_window", [], False, _ms(t0))
-        with self._lock:
+        # 另一个线程正在读：最多等到自己的预算用完，不能被别人的读取拖过 timeout
+        if not self._lock.acquire(timeout=max(0.0, budget - (time.perf_counter() - t0))):
+            return UiaResult("busy", [], False, _ms(t0), window_rect=rect, error="另一次读取还没结束")
+        try:
             res = self._read_once(hwnd, rect, budget, t0)
-            first = hwnd not in self._seen
-            self._remember(hwnd)
-            if first and res.status in ("ok", "empty"):
-                # 第一次访问：浏览器等程序此时才打开辅助功能树，稍等再读一次，取元素多的那次
-                spent = time.perf_counter() - t0
-                retry = self.cfg.first_touch_retry_s
-                if retry > 0 and budget - spent > retry + max(0.05, res.elapsed_ms / 1000.0 * 1.5):
-                    time.sleep(retry)
-                    res2 = self._read_once(hwnd, rect, budget - (time.perf_counter() - t0), t0)
-                    if res2.status in ("ok", "empty") and res2.element_count >= res.element_count:
-                        res = res2
+            if res.status in ("ok", "empty"):
+                first = hwnd not in self._seen
+                self._remember(hwnd)  # 只记成功读过的：第一次超时的窗口下次仍按"第一次访问"处理
+                if first:
+                    # 第一次访问：浏览器等程序此时才打开辅助功能树，稍等再读一次，取元素多的那次
+                    spent = time.perf_counter() - t0
+                    retry = self.cfg.first_touch_retry_s
+                    if retry > 0 and budget - spent > retry + max(0.05, res.elapsed_ms / 1000.0 * 1.5):
+                        time.sleep(retry)
+                        res2 = self._read_once(hwnd, rect, budget, t0)  # budget 是从 t0 起算的总预算
+                        if res2.status in ("ok", "empty") and res2.element_count >= res.element_count:
+                            res = res2
+        finally:
+            self._lock.release()
         self._update_hint(hwnd, res)
         return res
 
@@ -643,12 +744,17 @@ class UiaReader:
         """便宜的提示：同一程序（进程 + 窗口类）最近连续几次都读不出可用文字时返回 False。
 
         False 时调用方可以跳过 UIA、直接登记待 OCR；过 hint_ttl_s 后重新返回 True，再试一次。
+        本进程里读出过可用文字的程序（如浏览器）一直返回 True：它的某些页面读不出字时由每次结果的
+        usable / uncovered 处理，不连累同一程序的其他窗口和页面。
         """
         try:
             key = self.win.window_key(hwnd)
         except Exception:
             return True
-        streak, at = self._hint.get(key, (0, 0.0))
+        with self._hint_lock:
+            if key in self._capable:
+                return True
+            streak, at = self._hint.get(key, (0, 0.0))
         if streak < self.cfg.hint_fail_streak:
             return True
         return self._clock() - at > self.cfg.hint_ttl_s
@@ -675,9 +781,13 @@ class UiaReader:
         job = _Job(hwnd, rect)
         worker = self._worker
         worker.submit(job)
-        if not job.done.wait(max(0.0, budget)):
-            # 目标程序卡住：放弃这个线程，下次换新的
+        if not job.done.wait(max(0.0, budget - (time.perf_counter() - t0))):
             job.cancel.set()
+            if not worker.ready.is_set():
+                # 还在初始化 COM / 生成 comtypes 接口（进程里第一次、慢机器上可能超过预算）：
+                # 不是目标程序卡住，线程留着继续初始化，这次答"忙"，也不计入提示的失败次数
+                return UiaResult("busy", [], False, _ms(t0), window_rect=rect, error="UIA 正在初始化")
+            # 目标程序卡住：放弃这个线程，下次换新的
             worker.abandoned.set()
             worker.submit(None)
             self._abandoned.append(worker)
@@ -687,7 +797,8 @@ class UiaReader:
             return UiaResult("error", [], False, _ms(t0), window_rect=rect, error=job.error)
         lines = job.lines or []
         usable = content_chars(lines) >= self.cfg.min_content_chars
-        return UiaResult("ok" if lines else "empty", lines, usable, _ms(t0), job.count, rect)
+        gaps = tuple(uncovered_bands(lines, rect, self.cfg.min_gap_px, self.cfg.container_frac))
+        return UiaResult("ok" if lines else "empty", lines, usable, _ms(t0), job.count, rect, uncovered=gaps)
 
     def _remember(self, hwnd: int) -> None:
         self._seen[hwnd] = None
@@ -702,13 +813,18 @@ class UiaReader:
             key = self.win.window_key(hwnd)
         except Exception:
             return
-        if res.usable:
-            self._hint.pop(key, None)
-            return
-        streak, _ = self._hint.get(key, (0, 0.0))
-        self._hint[key] = (streak + 1, self._clock())
-        if len(self._hint) > 512:
-            self._hint.pop(next(iter(self._hint)))
+        with self._hint_lock:
+            if res.usable:
+                self._hint.pop(key, None)
+                self._capable[key] = None
+                self._capable.move_to_end(key)
+                while len(self._capable) > 512:
+                    self._capable.popitem(last=False)
+                return
+            streak, _ = self._hint.pop(key, (0, 0.0))
+            self._hint[key] = (streak + 1, self._clock())
+            while len(self._hint) > 512:
+                self._hint.popitem(last=False)
 
 
 def _ms(t0: float) -> float:
@@ -730,7 +846,8 @@ def default_reader() -> UiaReader:
 def read_visible_lines(hwnd: int, timeout_s: float = 0.5) -> list[UiaLine]:
     """读窗口里屏幕上看得见的文字行（屏幕物理像素矩形）。超时、最小化、读不出时返回空列表。
 
-    需要"这个窗口能不能用 UIA 读字"的判断时用 default_reader().read(hwnd) 的 usable。
+    录制进程应直接用 default_reader().read(hwnd)：结果里的 usable / uncovered 配合 ocr_regions()
+    决定哪些区域要登记待 OCR。
     """
     return default_reader().read(hwnd, timeout_s).lines
 
