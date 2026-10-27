@@ -113,6 +113,22 @@ class PlaceholderController:
 
 # ---------------- 主程序 ----------------
 
+class StaticOnly:
+    """v2 存储模式下旧版 webapi 只用来发网页文件（/、/assets）。它的 /api/*（导入、搜索、删除……）读写的是
+    数据目录里的旧版库 screenrecall.sqlite3：v2 页面不读它，v2 的隐私删除和占用统计也管不到它，
+    所以一律 404，不让任何东西写进去。"""
+
+    def __init__(self, app):
+        self.app = app  # server._inner_lifespan 顺着 .app 找旧版应用的 lifespan
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and (scope.get("path") or "").startswith("/api/"):
+            await JSONResponse({"error": "这个旧版接口在 v2 里不可用"}, status_code=404,
+                               headers={"Cache-Control": "no-store"})(scope, receive, send)
+            return
+        await self.app(scope, receive, send)
+
+
 @dataclass
 class AppOptions:
     home: Path | None = None
@@ -174,8 +190,9 @@ class MainApp:
         from ..config import load_config
 
         notice = V2_NOTICE if self.opts.store else webapi.NO_AUTH_NOTICE
-        return webapi.create_app(load_config(self.data_dir), port=port, extra_origins=self.opts.extra_origins,
-                                 notice=notice)
+        app = webapi.create_app(load_config(self.data_dir), port=port, extra_origins=self.opts.extra_origins,
+                                notice=notice)
+        return StaticOnly(app) if self.opts.store else app
 
     def _start_store(self) -> list:
         """v2 存储与 /api/v2 路由；返回要挂上的路由。"""
