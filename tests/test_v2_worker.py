@@ -781,3 +781,31 @@ def test_config_defaults_for_worker_fields(tmp_path, monkeypatch):
     assert (i.chunk_lines, i.chunk_tokens, i.llm_min_interval_s, i.llm_max_calls) == (6, 100, 1.0, 200)
     assert i.llm_reasoning_effort == "none" and i.classifier_dir == "results/classifier/v1"
     assert i.frame_report_days == 30 and i.encoder_threads == 4
+
+
+def test_pinned_background_window_gets_pieces(tmp_path):
+    """钉住的窗口只在后台录到内容、从没到过前台（没有焦点记录）：也要有片段，"今天"、概括、删除才够得着。"""
+    cfg = make_cfg(tmp_path, idle={"clip": False, "summaries": False})
+    t = now_ms() - 3 * HOUR
+    m = 60_000
+    with Writer(cfg.data_dir) as w:
+        put_lines(w, "word.exe", "周报.docx", t + 1000, ["前台的字"])
+        w.activity_start(t, hwnd=1, pid=1, process="word.exe", title="周报.docx").result(5)
+        w.activity_end(t + 10 * m).result(5)
+        sid, b, _ = put_lines(w, "chat.exe", "合成群聊", t + 2 * m, ["后台的第一条"])
+        w.record_lines(b, t + 5 * m, (0, 200), [L("后台的第二条", 60)]).result(5)
+    run(cfg)
+    c = db(cfg)
+    rows = [tuple(r) for r in c.execute("SELECT app, start_ms, end_ms FROM pieces ORDER BY app")]
+    assert rows == [("chat.exe", t + 2 * m, t + 5 * m), ("word.exe", t, t + 10 * m)]
+    chat = c.execute("SELECT piece_id FROM pieces WHERE app = 'chat.exe'").fetchone()[0]
+    assert [r[0] for r in c.execute("SELECT segment_id FROM piece_segments WHERE piece_id = ?", (chat,))] == [sid]
+    # 同一个内容源（窗口一直钉着、一直在录）后来又有新内容：同一个片段延长，片段号不变；再跑一遍不多出片段
+    with Writer(cfg.data_dir) as w:
+        w.record_lines(b, t + 20 * m, (0, 200), [L("后台的第三条", 90)]).result(5)
+    run(cfg)
+    run(cfg)
+    c = db(cfg)
+    rows = [tuple(r) for r in c.execute("SELECT piece_id, start_ms, end_ms FROM pieces WHERE app = 'chat.exe'")]
+    assert rows == [(chat, t + 2 * m, t + 20 * m)]
+    assert c.execute("SELECT COUNT(*) FROM pieces WHERE app = 'word.exe'").fetchone()[0] == 1

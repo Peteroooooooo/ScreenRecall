@@ -3,6 +3,7 @@
 规则：同一应用 + 同一标题，中间离开不超过 piece_gap_ms 算同一个片段（离开期间用过别的窗口也一样）；
 命中排除规则的焦点记录（excluded = 1）只记时间，永远不成为片段。
 片段关联的内容源 = 同应用同标题、存在时间与片段重叠的 segments。
+钉住的窗口在后台录下的内容没有焦点记录：按内容源补片段（_background），否则它们够不着"今天"、概括和删除。
 
 增量：游标 worker.piece_activity_id = 已处理完的最后一条已结束记录。仍在进行的记录（end_ms 为空，
 最多一条）每次都重新处理，把它所在的片段延长到现在（录制进程没心跳时只到最后一次心跳）。
@@ -18,6 +19,7 @@ from __future__ import annotations
 from .work_common import Ctx, FileLock, timed
 
 PIECE_CURSOR = "worker.piece_activity_id"
+SEG_CURSOR = "worker.piece_segment_ms"
 PIECES_LOCK = "pieces.lock"
 BATCH = 5000
 
@@ -102,7 +104,45 @@ class PieceStep:
                 st.add(n)
                 if open_ids or len(rows) < BATCH:
                     break
+            if not ctx.stop.is_set():
+                self._background(gap)  # 不算"有活"：钉住的窗口一直在更新，算了整理进程就不会自己退出
         return total
+
+    def _background(self, gap: int) -> None:
+        """钉住的窗口在后台也录（帧、文字），但焦点记录只有前台：这些内容源没有片段，"今天"、片段概括、
+        搜索结果的片段号、按片段删除都够不着它们。这里按内容源补：没被任何片段盖住的那段时间
+        （没关联片段的整段，或最后一个关联片段之后的部分）按同应用同标题并进相邻片段或新建一个。
+        游标 worker.piece_segment_ms = 已处理到的内容源 last_seen_ms；重跑幂等（_find 找回已建的片段）。"""
+        ctx = self.ctx
+        since = ctx.meta_get(SEG_CURSOR)
+        rows = ctx.conn.execute(
+            "SELECT s.segment_id, s.app, s.title, s.first_seen_ms, s.last_seen_ms, "
+            "(SELECT MAX(p.end_ms) FROM piece_segments ps JOIN pieces p ON p.piece_id = ps.piece_id "
+            " WHERE ps.segment_id = s.segment_id) AS covered "
+            "FROM segments s WHERE s.last_seen_ms > ? AND s.app != '' AND s.title != '' "
+            "AND (EXISTS (SELECT 1 FROM lines l WHERE l.segment_id = s.segment_id) "
+            "     OR EXISTS (SELECT 1 FROM frames f WHERE f.segment_id = s.segment_id)) "
+            "ORDER BY s.last_seen_ms LIMIT ?", (since, BATCH)).fetchall()
+        if not rows:
+            return
+        for r in rows:
+            ctx.stop.check()
+            app, title, end = r["app"], r["title"], int(r["last_seen_ms"])
+            covered = r["covered"]
+            start = int(r["first_seen_ms"]) if covered is None else max(int(r["first_seen_ms"]), int(covered))
+            if covered is not None and end <= int(covered):
+                continue  # 已经被片段盖住
+            p = self._find(app, title, start, end, gap)
+            if p is not None and _near(p, start, end, gap):
+                if start < p["start_ms"] or end > p["end_ms"]:
+                    p["start_ms"], p["end_ms"] = min(p["start_ms"], start), max(p["end_ms"], end)
+                elif covered is not None:
+                    continue
+                self._save(app, title, p)  # 没关联过的内容源：存一次就关联上
+            else:
+                self._save(app, title, {"piece_id": None, "start_ms": start, "end_ms": max(start, end),
+                                        "task_label": None, "dirty": True})
+        ctx.meta_put(SEG_CURSOR, int(rows[-1]["last_seen_ms"]))
 
     def _find(self, app: str, title: str, start: int, end: int, gap: int) -> dict | None:
         """库里与这条记录相邻（间隔不超过 gap）的同应用同标题片段（重跑同一批记录时找回已建的片段）。"""
