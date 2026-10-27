@@ -105,26 +105,30 @@ class VectorPending:
 
     def flush(self) -> int:
         """删掉记下的向量；返回还剩几个没删掉。"""
-        from .searchsvc import image_vectors_dir, text_vectors_dir
+        from .searchsvc import image_vectors_dir, text_vector_dirs
 
-        for kind, root in (("text", text_vectors_dir(self.data_dir)), ("image", image_vectors_dir(self.data_dir))):
+        # 文字向量：新布局和（还没迁移的）老布局两个库都删，和隐私删除一样
+        for kind, roots in (("text", text_vector_dirs(self.data_dir)), ("image", [image_vectors_dir(self.data_dir)])):
             ids = self.ids[kind]
             if not ids:
                 continue
-            manifest = root / "manifest.json"
-            if not manifest.is_file():
-                ids.clear()  # 没有向量库：没有要删的
-                continue
-            try:
-                dim = int(json.loads(manifest.read_text(encoding="utf-8"))["dim"])
-                vs = VectorStore(root, dim)
+            ok = True
+            for root in roots:
+                manifest = root / "manifest.json"
+                if not manifest.is_file():
+                    continue  # 没有这个向量库：没有要删的
                 try:
-                    vs.delete(sorted(ids))
-                finally:
-                    vs.close()
+                    dim = int(json.loads(manifest.read_text(encoding="utf-8"))["dim"])
+                    vs = VectorStore(root, dim)
+                    try:
+                        vs.delete(sorted(ids))
+                    finally:
+                        vs.close()
+                except Exception as exc:  # noqa: BLE001 - 下次再补
+                    ok = False
+                    log.warning("删除%s向量失败，下次再试：%s", kind, type(exc).__name__)
+            if ok:
                 ids.clear()
-            except Exception as exc:  # noqa: BLE001 - 下次再补
-                log.warning("删除%s向量失败，下次再试：%s", kind, type(exc).__name__)
         self._save()
         return sum(len(v) for v in self.ids.values())
 
