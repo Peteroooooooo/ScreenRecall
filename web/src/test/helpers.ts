@@ -132,6 +132,7 @@ export function settings(over: Partial<Settings> = {}): Settings {
     hidden_from_agents: { apps: ["SampleBank.exe"], title_keywords: ["示例私事"] },
     agent_enabled: true, idle_minutes: 5, ocr_model: "tiny", autostart: false,
     llm: { configured: true, model: "sample-model", host: "llm.example.invalid" }, data_dir: "C:\\Users\\example\\AppData\\Local\\ScreenRecall\\data",
+    image_days: 30, text_days: 90, storage_cap_gb: 0,
     ...over,
   };
 }

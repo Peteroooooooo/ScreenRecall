@@ -1,10 +1,10 @@
 // 片段详情：头部、概括（可重新生成）、按块排好的阅读视图、证据截图条和截图查看器。
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, Clock, FileQuestion, Image as ImageIcon, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
 import { ApiError, api, frameThumbUrl, type BlockItem } from "../api";
 import { useT, type Key } from "../i18n";
 import { appName, errText, fmtClock, fmtDuration, fmtMonthDay, fmtWhen, hrefOf, localDate, navigate, useLoad } from "../lib";
-import { Av, Card, ConfirmDialog, Empty, LoadError, PageHeader, Skeleton, useToast, type ConfirmSpec } from "../ui";
+import { Av, Card, ConfirmDialog, Empty, LoadError, PageHeader, Skeleton, useStatus, useToast, type ConfirmSpec } from "../ui";
 import { FrameViewer, type ViewerState } from "../viewer";
 
 export default function PiecePage({ id }: { id: number }) {
@@ -14,6 +14,16 @@ export default function PiecePage({ id }: { id: number }) {
   const [viewer, setViewer] = useState<ViewerState>(null);
   const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
   const regen = useRegen(id, piece.reload);
+
+  // 内容变了（概括写好了、空闲时识别出新的字）：revision 变化时后台刷新，不闪加载状态
+  const { status } = useStatus();
+  const rev = useRef(status?.revision);
+  const reload = piece.reload;
+  useEffect(() => {
+    if (status?.revision == null) return;
+    if (rev.current != null && rev.current !== status.revision) reload(true);
+    rev.current = status.revision;
+  }, [status?.revision, reload]);
 
   if (!piece.data) {
     if (piece.error instanceof ApiError && piece.error.status === 404)
@@ -83,9 +93,9 @@ export default function PiecePage({ id }: { id: number }) {
         <div className="min-w-0 space-y-4">
           <Card title={t("piece.summary")} id="sum-h"
             aside={state !== "private" && (
-              <button className="sr-btn sr-btn-ghost sr-btn-sm" onClick={regen.start} disabled={regen.busy || state === "queued"}>
-                {regen.busy ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <RefreshCw size={15} aria-hidden />}
-                {state === "queued" ? t("piece.queued") : t("piece.regen")}
+              <button className="sr-btn sr-btn-ghost sr-btn-sm" onClick={regen.start} disabled={regen.busy || state === "queued" || state === "generating"}>
+                {regen.busy || state === "generating" ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <RefreshCw size={15} aria-hidden />}
+                {state === "generating" ? t("piece.generating") : state === "queued" ? t("piece.queued") : t("piece.regen")}
               </button>
             )}>
             {summary?.text ? <p className="text-[15px] leading-[1.7] [overflow-wrap:anywhere]">{summary.text}</p>
@@ -95,6 +105,8 @@ export default function PiecePage({ id }: { id: number }) {
                 {summary.model && <span>{t("piece.model", { x: summary.model })}</span>}
                 {state === "stale" && <span className="sr-tag sr-tag-warn">{t("piece.stale")}</span>}
                 {state === "queued" && <span className="sr-tag sr-tag-warn">{t("piece.queuedTag")}</span>}
+                {state === "generating" && <span className="sr-tag sr-tag-warn">{t("piece.sum.generating")}</span>}
+                {state === "failed" && <span className="text-marker-ink">{t("piece.sum.failed")}</span>}
               </p>
             )}
           </Card>
@@ -185,7 +197,7 @@ function BlockRow({ it, fig, open }: { it: BlockItem; fig: (fid: string | null) 
   );
 }
 
-/** 重新生成：只是排队（概括由空闲整理进程写，它只在电脑空闲时运行），不在页面上等结果 */
+/** 重新生成：主进程在后台马上写（页面显示“生成中”，写完 revision 变了就刷新）；没配大模型时只排队、等空闲时写 */
 function useRegen(id: number, reload: (silent?: boolean) => void) {
   const { t } = useT();
   const toast = useToast();
@@ -194,8 +206,8 @@ function useRegen(id: number, reload: (silent?: boolean) => void) {
   const start = async () => {
     setBusy(true); // 请求发出时就禁用按钮，连点不会重复排队
     try {
-      await api.summarize(id);
-      toast(t("piece.regenQueued"), "info");
+      const r = await api.summarize(id);
+      toast(r.summary_state === "generating" ? t("piece.regenNow") : t("piece.regenQueued"), "info");
       reload(true);
     } catch (e) {
       toast(errText(e, t("common.offline")), "alarm");
