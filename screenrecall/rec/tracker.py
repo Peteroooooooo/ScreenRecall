@@ -25,14 +25,13 @@ from __future__ import annotations
 import itertools
 import logging
 from dataclasses import dataclass, field
-from functools import lru_cache
 from typing import Iterator, Protocol
 
 import numpy as np
 
 from .frames import Frame, FrameMap
 from .inputmon import WheelEvent
-from .motion import STRIPS, Fp, Motion, analyze, row_fingerprints, rows_equal, strip_edges, tile_changes, _layout
+from .motion import Fp, Motion, analyze, content_cells, rows_equal, tile_changes
 from .volatile import VolatileConfig, VolatileTiles
 
 log = logging.getLogger(__name__)
@@ -157,28 +156,6 @@ class TrackerConfig:
 
 
 # ---------- 内部 ----------
-
-@lru_cache(maxsize=32)
-def _const_fps(width: int) -> np.ndarray:
-    """每条竖带上"整行都是同一个值 v"的指纹表，形状 (STRIPS, 16)。"""
-    _, lens = _layout(width, STRIPS)
-    out = np.zeros((STRIPS, 16), dtype=np.uint64)
-    for s, n in enumerate(lens):
-        rows = np.repeat(np.arange(16, dtype=np.uint8)[:, None], max(int(n), 1), axis=1)
-        if n == 0:
-            rows[:] = 0
-        out[s] = row_fingerprints(rows)
-    return out
-
-
-def content_cells(fp: Fp) -> np.ndarray:
-    """哪些格子（竖带 × 行）有内容（不是纯色），形状 (STRIPS, 高)。"""
-    w = fp.shape[1]
-    starts = strip_edges(w)[:-1]
-    first = fp.g[:, np.minimum(starts, w - 1)].T  # (STRIPS, 高)，每格第一个取样像素的值
-    const = _const_fps(w)[np.arange(STRIPS)[:, None], first]
-    return fp.v != const
-
 
 @dataclass
 class _Saved:
