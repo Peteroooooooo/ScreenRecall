@@ -30,6 +30,33 @@ log = logging.getLogger(__name__)
 UPDATE_INTERVAL_MS = 100  # 会话打开时的最小间隔；之后只能在 Python 里限速
 
 
+_mta_lock = threading.Lock()
+_mta_cookie = None
+
+
+def keep_mta_alive() -> bool:
+    """让进程的多线程 COM 套间（MTA）一直活着（CoIncrementMTAUsage，只做一次）。
+
+    实测 windows-capture 2.0.1：没有任何线程持有 MTA 时，开过会话的线程一退出（或主线程上的
+    Tk 根窗口销毁），MTA 就被拆掉，库里缓存的 WinRT 对象随之失效，下一次 start_free_threaded
+    访问冲突、整个进程崩掉。先占住 MTA 后同样的场景反复跑都正常。
+    """
+    global _mta_cookie
+    with _mta_lock:
+        if _mta_cookie is not None:
+            return True
+        try:
+            import ctypes
+
+            cookie = ctypes.c_void_p()
+            if ctypes.windll.ole32.CoIncrementMTAUsage(ctypes.byref(cookie)) != 0:
+                return False
+        except (OSError, AttributeError):
+            return False
+        _mta_cookie = cookie
+        return True
+
+
 class _BufferPool:
     """几块同尺寸的 BGRA 缓冲轮流用。别人（某个 Frame）还拿着的缓冲不会被覆盖。"""
 
@@ -138,6 +165,7 @@ class CaptureSession(_SlotSource):
         super().__init__(hwnd, on_frame, on_closed, max_fps, clock)
         self._bounds = bounds or win32.frame_bounds
         self._pool = _BufferPool()
+        self._cap = None
         self._control = None
         self._stopping = False
 
@@ -166,6 +194,8 @@ class CaptureSession(_SlotSource):
             self._closed()
 
         self.started_ms = self._clock()
+        self._cap = cap  # 会话对象要一直留着：被回收时原生线程可能还在用它
+        keep_mta_alive()
         self._control = cap.start_free_threaded()
 
     def stop(self) -> None:
@@ -174,6 +204,7 @@ class CaptureSession(_SlotSource):
         if ctl is not None:
             try:
                 ctl.stop()
+                ctl.wait()
             except Exception as exc:  # noqa: BLE001 - 窗口已经关掉时停止会报错
                 log.debug("停止 WGC 会话：%s", exc)
         with self._lock:
