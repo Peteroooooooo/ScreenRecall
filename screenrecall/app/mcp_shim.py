@@ -12,7 +12,6 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
-import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -57,22 +56,41 @@ def read_tools_cache(home: Path | None = None) -> list[types.Tool]:
         return []
 
 
-def _endpoint(home: Path | None) -> auth.Endpoint:
+def listener_pid(port: int) -> int | None:
+    """本机 127.0.0.1:port（或 0.0.0.0:port）上正在监听的进程号；没人监听返回 None。"""
+    import psutil  # 只在这里用：GetExtendedTcpTable，几毫秒
+
+    for c in psutil.net_connections(kind="tcp4"):
+        if c.status == psutil.CONN_LISTEN and c.laddr and c.laddr.port == port and c.laddr.ip in ("127.0.0.1", "0.0.0.0"):
+            return c.pid
+    return None
+
+
+def verified_endpoint(home: Path | None) -> auth.Endpoint:
+    """读 endpoint.json，并确认监听这个端口的正是 endpoint.json 里记的主进程，才把令牌发过去。
+
+    主程序没运行时端口是空着的：本机别的程序（包括别的账户）可以先占住这个端口，等 Agent 调用时
+    收下 Authorization 头里的令牌。所以只"能连上"不够，要核对监听者的进程号。"""
     ep = auth.read_endpoint(home)
-    if ep is None:
+    if ep is None or ep.pid is None:  # 正常退出时 pid 已清空
         raise NotRunning(NOT_RUNNING)
-    try:  # 先试一下端口，主程序没运行时立刻返回，不等 HTTP 超时
-        with socket.create_connection(("127.0.0.1", ep.port), timeout=1.0):
-            pass
-    except OSError:
+    try:
+        owner = listener_pid(ep.port)
+    except Exception:  # noqa: BLE001 - 查不到就不发令牌
+        log.warning("无法确认端口 %d 的监听进程", ep.port, exc_info=True)
         raise NotRunning(NOT_RUNNING) from None
+    if owner is None:
+        raise NotRunning(NOT_RUNNING)
+    if owner != ep.pid:
+        log.warning("端口 %d 被别的进程（%s）占用，不是 ScreenRecall 主进程（%s），不发送令牌", ep.port, owner, ep.pid)
+        raise NotRunning(NOT_RUNNING)
     return ep
 
 
 @contextlib.asynccontextmanager
 async def remote_session(home: Path | None = None, timeout: float = 60.0) -> AsyncIterator[ClientSession]:
     """连到主进程的 /mcp（每次调用新开一个会话：服务端是无状态模式，主进程重启也不受影响）。"""
-    ep = _endpoint(home)
+    ep = verified_endpoint(home)
     async with httpx.AsyncClient(headers=auth.bearer_headers(ep), timeout=httpx.Timeout(timeout, connect=3.0),
                                  trust_env=False) as client:  # trust_env=False：本机地址不走系统代理
         async with streamable_http_client(f"{ep.base_url}/mcp", http_client=client) as (read, write, _sid):
