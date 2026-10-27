@@ -4,6 +4,7 @@
 命中排除规则的焦点记录（excluded = 1）只记时间，永远不成为片段。
 片段关联的内容源 = 同应用同标题、存在时间与片段重叠的 segments。
 钉住的窗口在后台录下的内容没有焦点记录：按内容源补片段（_background），否则它们够不着"今天"、概括和删除。
+后台片段按 background_piece_gap_ms（默认 10 分钟）没有新内容才断开，比前台的 piece_gap_ms 长。
 
 增量：游标 worker.piece_activity_id = 已处理完的最后一条已结束记录。仍在进行的记录（end_ms 为空，
 最多一条）每次都重新处理，把它所在的片段延长到现在（录制进程没心跳时只到最后一次心跳）。
@@ -105,7 +106,8 @@ class PieceStep:
                 if open_ids or len(rows) < BATCH:
                     break
             if not ctx.stop.is_set():
-                self._background(gap)  # 不算"有活"：钉住的窗口一直在更新，算了整理进程就不会自己退出
+                # 钉住的窗口（聊天之类）隔几分钟才来一条新内容：用单独的、更长的间隔，免得切成一串短片段
+                self._background(int(ctx.cfg.idle.background_piece_gap_ms))  # 不算"有活"：钉住的窗口一直在更新，算了整理进程就不会自己退出
         return total
 
     def _background(self, gap: int) -> None:
@@ -135,8 +137,10 @@ class PieceStep:
             # 按真正录到东西的时刻（证据帧、新出现的行）分段：中间超过 gap 没有新内容就是另一个片段，
             # 和前台的规则一样。只看内容源的 first_seen..last_seen 的话，钉了一整天的窗口会变成一个跨过
             # 空闲时间、甚至跨过隐私删除范围的大片段
-            for start, end in self._bursts(int(r["segment_id"]), lo, last, gap):
+            for start, end in self._bursts(int(r["segment_id"]), lo, last, gap, app):
                 p = self._find(app, title, start, end, gap)
+                if p is not None and start > p["end_ms"] and self._purged(app, p["end_ms"], start):
+                    p = None  # 中间删过一段：删掉的时间不能被一个片段跨过去
                 if p is not None and _near(p, start, end, gap):
                     if start < p["start_ms"] or end > p["end_ms"]:
                         p["start_ms"], p["end_ms"] = min(p["start_ms"], start), max(p["end_ms"], end)
@@ -148,19 +152,28 @@ class PieceStep:
                                             "task_label": None, "dirty": True})
         ctx.meta_put(SEG_CURSOR, int(rows[-1]["last_seen_ms"]))
 
-    def _bursts(self, segment_id: int, lo: int, hi: int, gap: int) -> list[tuple[int, int]]:
-        """内容源在 [lo, hi] 里录到东西的时刻（证据帧的截图时间、行第一次出现的时间），间隔不超过 gap 的连成一段。"""
+    def _bursts(self, segment_id: int, lo: int, hi: int, gap: int, app: str | None = None) -> list[tuple[int, int]]:
+        """内容源在 [lo, hi] 里录到东西的时刻（证据帧的截图时间、行第一次出现的时间），间隔不超过 gap 的连成一段；
+        中间删过一段（purges 登记）的不连。"""
         times = sorted(int(t) for (t,) in self.ctx.conn.execute(
             "SELECT captured_ms FROM frames WHERE segment_id = ? AND captured_ms BETWEEN ? AND ? "
             "UNION SELECT first_seen_ms FROM lines WHERE segment_id = ? AND first_seen_ms BETWEEN ? AND ?",
             (segment_id, lo, hi, segment_id, lo, hi)))
         out: list[tuple[int, int]] = []
         for t in times:
-            if out and t - out[-1][1] <= gap:
+            if out and t - out[-1][1] <= gap and not self._purged(app, out[-1][1], t):
                 out[-1] = (out[-1][0], t)
             else:
                 out.append((t, t))
         return out
+
+    def _purged(self, app: str | None, a: int, b: int) -> bool:
+        """(a, b) 之间有没有删除登记（所有应用的，或这个应用的）。登记保留一天，足够覆盖片段还在变的时候。"""
+        if b <= a:
+            return False
+        return self.ctx.conn.execute(
+            "SELECT EXISTS (SELECT 1 FROM purges WHERE time_from < ? AND time_to > ? "
+            "AND (app IS NULL OR app = ? COLLATE NOCASE))", (b, a, app or "")).fetchone()[0] == 1
 
     def _find(self, app: str, title: str, start: int, end: int, gap: int) -> dict | None:
         """库里与这条记录相邻（间隔不超过 gap）的同应用同标题片段（重跑同一批记录时找回已建的片段）。"""
