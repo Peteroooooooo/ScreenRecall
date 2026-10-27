@@ -142,6 +142,13 @@ def test_reused_missing_and_expired_nonce(client):
     assert client.post(f"/auth?n={client.nonces.mint()}").status_code == 405
 
 
+def test_head_probe_does_not_burn_the_nonce(client):
+    n = client.nonces.mint()
+    r = client.head(f"/auth?n={n}")
+    assert r.status_code == 204 and "set-cookie" not in r.headers
+    assert client.get(f"/auth?n={n}").status_code == 303
+
+
 def test_wrong_cookie_and_other_port_cookie_rejected(client):
     client.cookies.set(auth.cookie_name(PORT), "0" * 64)
     assert client.get("/api/meta").status_code == 401

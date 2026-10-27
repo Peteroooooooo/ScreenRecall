@@ -70,6 +70,25 @@ def test_thread_runs_and_stops():
     assert f.events == [("start", "input")]
 
 
+def test_return_from_idle_is_noticed_quickly():
+    """空闲期间按 idle_interval_s 查：用户回来后很快触发 on_idle_end（停掉占显卡的空闲整理进程）。"""
+    f = Fake()
+    f.idle_s = 1000
+    w = watcher(f, interval_s=30, idle_interval_s=0.02).start()
+    try:
+        t0 = time.monotonic()
+        while not f.events and time.monotonic() - t0 < 2:
+            time.sleep(0.01)
+        f.idle_s = 0
+        t1 = time.monotonic()
+        while len(f.events) < 2 and time.monotonic() - t1 < 2:
+            time.sleep(0.01)
+        assert f.events == [("start", "input"), ("end",)]
+        assert time.monotonic() - t1 < 1.0
+    finally:
+        w.stop()
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows API")
 def test_real_api_values_are_sane():
     s = idle.idle_seconds()

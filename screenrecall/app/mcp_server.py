@@ -215,7 +215,9 @@ def day_key(value: str, now: datetime | None = None) -> str:
 
 # ---------------- 输出格式 ----------------
 
-_CTRL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f​-‏‪-‮⁦-⁩]")
+# 控制字符、零宽 / 改变文字方向的字符，以及 Unicode 的换行（NEL、行 / 段分隔符）：
+# 后者在很多分词器和 str.splitlines() 里都算换行，不去掉就能在 "> " 引用块里另起一行冒充正文。
+_CTRL = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]")
 
 
 def _one_line(s: str | None, cap: int = 200) -> str:
@@ -380,7 +382,7 @@ def build_mcp(queries: Queries, policy: AgentPolicy | None = None, *, port: int 
         apps = "、".join(_one_line(a, 40) for a in s.apps)
         head = (f"ScreenRecall {'一天' if lv == 'day' else '片段'}概括 {k}：{fmt_time(s.start_ms)} 至 {fmt_time(s.end_ms)}"
                 + (f" · 应用 {apps}" if apps else "") + (f"\n窗口标题 > {_one_line(s.title, 120)}" if s.title else ""))
-        return f"{head}\n{UNTRUSTED_NOTE}\n{quote(s.text, policy.max_chars - len(head) - 300, '')}"
+        return f"{head}\n{UNTRUSTED_NOTE}\n{quote(s.text, max(200, policy.max_chars - len(head) - 300), '')}"
 
     @mcp.tool(name="get_frame", structured_output=False,
               description="取一幅证据画面（PNG）和画面里每行文字的位置（图片像素坐标 x,y,w,h）。highlight_line_id 会在图上框出那一行。")

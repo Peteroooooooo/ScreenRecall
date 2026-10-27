@@ -168,6 +168,7 @@ class Supervisor:
         self._children = {s.name: _Child(s, backoff_s=s.backoff_initial_s) for s in specs}
         self._on_event, self._poll_s, self._clock = on_event, poll_s, clock
         self._stop = threading.Event()
+        self._closed = False            # stop_all 之后不再启动任何子进程（关机途中空闲回调来得晚也不会再拉起）
         self._thread: threading.Thread | None = None
 
     # ---------- 对外 ----------
@@ -187,6 +188,8 @@ class Supervisor:
         """按需启动一个子进程（已在运行时什么都不做）。返回是否在运行。"""
         c = self._children[name]
         with c.lock:
+            if self._closed:
+                return False
             c.wanted = True
             if c.proc is not None and c.proc.poll() is None:
                 return True
@@ -204,6 +207,11 @@ class Supervisor:
         return code
 
     def stop_all(self, grace_s: float | None = None) -> None:
+        """停掉全部子进程并关闭看护（之后 start_child 返回 False）。"""
+        self._closed = True
+        for c in self._children.values():
+            with c.lock:  # 等正在进行的 start_child 做完（它启动的进程下面会被停掉）
+                pass
         self._stop.set()
         if self._thread is not None:
             self._thread.join(5)
@@ -250,6 +258,8 @@ class Supervisor:
             if proc is not None:
                 proc.kill()
                 proc.wait(5)
+                if proc.stdin is not None:  # 否则管道句柄一直留在主进程里
+                    proc.stdin.close()
             if job is not None:
                 job.close()
             c.proc, c.job, c.state = None, None, "failed"
