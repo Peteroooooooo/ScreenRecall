@@ -11,6 +11,7 @@ from starlette.testclient import TestClient
 
 from screenrecall.app import auth, paths
 from screenrecall.store import schema
+from screenrecall.store.gate import PROBES
 from screenrecall.store.vectors import VectorStore
 from screenrecall.store.writer import LineIn
 from screenrecall.timeutil import utc_ms
@@ -455,6 +456,9 @@ class FakeEncoder:
         self.calls = 0
 
     def encode(self, texts):
+        texts = list(texts)
+        if texts == list(PROBES):  # 命中判定的泛泛查询：放在测试向量都不用的方向上（不计入查询次数）
+            return np.stack([np.eye(DIM, dtype=np.float32)[DIM - 1] for _ in texts])
         self.calls += 1
         return np.stack([self.vec for _ in texts])
 

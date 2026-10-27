@@ -6,7 +6,8 @@
 - 文字向量库 <data_dir>/vectors/text2（空闲整理进程写，这里只读，布局见 work_text）：每次检索增量刷新；
   老布局的 vectors/text 不再读（整理进程迁移时清零删除；在那之前只有词法检索）；
 - 模型没下载、向量库还不存在或是空的、编码出错：只走词法分支，结果里 semantic = False；
-- 向量命中的分数门槛（固定 + 相对最高分）在 Queries.search 里、在排序和截断之前生效。
+- 向量命中的判定（store.gate：余弦减去命中行的"凑数程度"，再按固定 + 相对最高分的门槛筛）在 Queries.search 里、
+  在排序和截断之前生效；gate_config=None 时退回只按余弦的固定门槛。
 """
 from __future__ import annotations
 
@@ -19,6 +20,7 @@ from typing import Any, Callable, Sequence
 
 import numpy as np
 
+from ..store.gate import PROBES, GateConfig, VectorGate
 from ..store.queries import MIN_VECTOR_SCORE, VECTOR_MARGIN, Queries
 from ..store.vectors import VectorStore
 
@@ -65,10 +67,13 @@ class SearchService:
     def __init__(self, data_dir: Path | str, *, idle_unload_s: float = 300.0, threads: int = 2,
                  batch_size: int = 16, encoder: Any = None, vectors: VectorStore | None = None,
                  model_check: Callable[[], bool] | None = None, min_vector_score: float = MIN_VECTOR_SCORE,
-                 vector_margin: float = VECTOR_MARGIN, clock: Callable[[], int] | None = None):
+                 vector_margin: float = VECTOR_MARGIN, clock: Callable[[], int] | None = None,
+                 gate_config: GateConfig | None = GateConfig()):
         self.data_dir = Path(data_dir)
         self.min_vector_score = float(min_vector_score)
         self.vector_margin = float(vector_margin)
+        self.gate_config = gate_config  # None：只用固定门槛（min_vector_score / vector_margin）
+        self._gate: VectorGate | None = None
         self._enc_kwargs = {"idle_unload_s": idle_unload_s, "threads": threads, "batch_size": batch_size,
                             "mem_arena": False}
         self._encoder = encoder              # 测试注入；否则第一次需要时建 LazyTextEncoder
@@ -159,6 +164,7 @@ class SearchService:
         def load() -> None:
             try:
                 enc.encode(["warm up"])
+                self._get_gate(enc)  # 探针向量也先算好
             except Exception:  # noqa: BLE001 - 真检索时会退回词法并记日志
                 log.warning("预先加载查询模型失败", exc_info=True)
 
@@ -195,7 +201,7 @@ class SearchService:
         try:
             if semantic:
                 out = self.queries.search(query, encoder=encoder, min_score=self.min_vector_score,
-                                          score_margin=self.vector_margin, **kwargs)
+                                          score_margin=self.vector_margin, gate=self._get_gate(enc), **kwargs)
             else:
                 out = self._lexical(query, **kwargs)
         except Exception:  # noqa: BLE001 - 语义分支出错（模型加载失败等）：退回只用词法
@@ -205,6 +211,24 @@ class SearchService:
             out, semantic = self._lexical(query, **kwargs), False
         out["semantic"] = semantic
         return out
+
+    def _get_gate(self, enc) -> VectorGate | None:
+        """命中判定（store.gate）：PROBES 用查询模型编码一次后缓存（模型卸载再加载也不用重算）。
+        gate_config 为 None、或编码出来的维度和向量库不符：退回固定门槛。"""
+        if self.gate_config is None:
+            return None
+        with self._lock:
+            gate = self._gate
+        if gate is None:
+            probes = np.asarray(enc.encode(list(PROBES)), dtype=np.float32)
+            dim = self._vectors.dim if self._vectors is not None else None
+            if probes.ndim != 2 or probes.shape[0] != len(PROBES) or (dim is not None and probes.shape[1] != dim):
+                log.warning("命中判定的探针向量形状 %s 不对，改用固定门槛", probes.shape)
+                return None
+            gate = VectorGate(probes, self.gate_config)
+            with self._lock:
+                self._gate = gate
+        return gate
 
     def _lexical(self, query: str, **kwargs) -> dict:
         # 不给 encoder（self.queries.encoder 也是 None）：Queries 只走全文索引，不管 text_vectors 有没有设置

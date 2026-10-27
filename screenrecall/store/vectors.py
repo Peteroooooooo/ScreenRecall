@@ -496,6 +496,24 @@ class VectorStore:
         return [VectorHit(int(ii[j]), float(s[j]), int(tt[j]), int(gg[j])) for j in top]
 
 
+    def vectors(self, ids: Sequence[int] | np.ndarray, *, refresh: bool = False) -> dict[int, np.ndarray]:
+        """id → 向量（存的是什么就返回什么，已删除的不返回）。检索的命中判定要看命中行自己的向量。"""
+        want = np.unique(np.asarray(list(ids), dtype=np.int64))
+        if want.size == 0:
+            return {}
+        with self._mu:
+            if refresh:
+                self._refresh()
+            out: dict[int, np.ndarray] = {}
+            for seg in self._segments.values():
+                if seg.rows == 0:
+                    continue
+                sel = np.flatnonzero(seg.alive & np.isin(seg.ids, want))
+                for j in sel:
+                    out[int(seg.ids[j])] = np.array(seg.vec[j], dtype=np.float32)
+            return out
+
+
 def _best_per_group(s: np.ndarray, ii: np.ndarray, gg: np.ndarray, k: int) -> np.ndarray:
     """每组最高分的前 k 组。只在分数最高的 m 行里找：若这 m 行里已有 k 个不同的组，
     这 k 组就是答案（没进前 m 的组，最高分不会超过第 m 名）；不够就把 m 放大 4 倍再找。"""

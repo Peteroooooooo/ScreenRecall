@@ -33,6 +33,27 @@ class Query:
     q: str
     kind: str
     rel: list[str] = field(default_factory=list)
+    tag: str = ""      # unrelated: offtopic / near / short / number; related: "short" for 1-2 word queries
+    split: str = ""    # "tune" or "heldout" (see assign_splits)
+
+
+SPLIT_SEED = 20261027
+SPLITS = ("tune", "heldout")
+
+
+def assign_splits(queries: list[Query], seed: int = SPLIT_SEED) -> None:
+    """Fixed-seed half split, stratified by (kind, tag): rules are tuned on 'tune' and reported on 'heldout'.
+    Within each stratum the shuffled first half (rounded up) is 'tune'."""
+    rnd = random.Random(seed)
+    strata: dict[tuple[str, str], list[Query]] = {}
+    for q in queries:
+        strata.setdefault((q.kind, q.tag), []).append(q)
+    for key in sorted(strata):
+        group = strata[key][:]
+        rnd.shuffle(group)
+        half = (len(group) + 1) // 2
+        for i, q in enumerate(group):
+            q.split = "tune" if i < half else "heldout"
 
 
 def _gen(kind: str, n: int, seed: int) -> list[str]:
@@ -70,7 +91,9 @@ def load(path: Path = EVAL_SET) -> tuple[list[Segment], list[Query]]:
                                 labelled=False))
         else:
             segs.append(Segment(s["key"], s["app"], s["title"], float(s["age_h"]), [list(b) for b in s["blocks"]]))
-    queries = [Query(q["q"], q["kind"], list(q["rel"])) for q in raw["queries"]]
+    queries = [Query(q["q"], q["kind"], list(q["rel"]),
+                     q.get("tag", "offtopic" if q["kind"] == "unrelated" else "")) for q in raw["queries"]]
+    assign_splits(queries)
     keys = {s.key: s for s in segs}
     for q in queries:  # labels must point at real lines
         for r in q.rel:
@@ -82,9 +105,12 @@ def load(path: Path = EVAL_SET) -> tuple[list[Segment], list[Query]]:
 def stats() -> dict:
     segs, queries = load()
     kinds: dict[str, int] = {}
+    splits: dict[str, int] = {}
     for q in queries:
         kinds[q.kind] = kinds.get(q.kind, 0) + 1
-    return {"segments": len(segs), "lines": sum(len(s.lines()) for s in segs), "queries": len(queries), "kinds": kinds}
+        splits[q.split] = splits.get(q.split, 0) + 1
+    return {"segments": len(segs), "lines": sum(len(s.lines()) for s in segs), "queries": len(queries),
+            "kinds": kinds, "splits": splits}
 
 
 if __name__ == "__main__":
