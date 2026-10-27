@@ -7,9 +7,7 @@
 - StoreController：实现 app.main.Controller（暂停 / 继续 / 删除最近 N 分钟 / 托盘状态），状态有短缓存；
 - agent_policy()：AgentPolicy 每次调用工具时现读 control 行（1 秒缓存）。
 
-小时 / 天概括的约定（空闲整理进程写 summaries.refs 时遵守）：
-refs 是 JSON 列表，元素可以是 {"piece": id}（引用的片段）、{"app": "x.exe"} / {"apps": [...]}（涉及的应用）、
-{"hidden": {"apps": [...], "title_keywords": [...]}}（生成时已排除的"对 Agent 隐藏"名单）。
+小时 / 天概括的 summaries.refs 约定见 v2.refs（空闲整理进程写、这里读，共用那里的函数）。
 当前隐藏名单非空时，只有 refs 里的 hidden 名单覆盖了当前名单的概括才给 Agent；否则当作没有概括。
 """
 from __future__ import annotations
@@ -32,6 +30,7 @@ from ..store.queries import Hidden, Queries
 from ..store.vectors import VectorStore
 from ..store.writer import Writer
 from ..timeutil import utc_ms
+from .refs import HIDDEN, ref_piece_id
 from .searchsvc import SearchService, image_vectors_dir, text_vectors_dir
 
 log = logging.getLogger("screenrecall.v2.adapters")
@@ -372,7 +371,8 @@ class StoreQueriesAdapter:
 
     def timeline(self, *, start_ms, end_ms, app, limit, exclude) -> list[ms.Piece]:
         tl = self.queries.timeline(start_ms, end_ms, app, **self._ex(exclude))
-        items = [x for x in tl["items"] if x["kind"] == "piece"][:max(1, int(limit))]
+        # 最新的 limit 段（items 已按开始时间排好）：Agent 问"今天"时最关心的是刚才在做什么
+        items = [x for x in tl["items"] if x["kind"] == "piece"][-max(1, int(limit)):]
         ids = [int(x["id"]) for x in items]
         withheld = _pieces_touching_hidden(self.queries.conn(), ids, Hidden(exclude.apps, exclude.title_keywords))
         texts = self._piece_summaries([i for i in ids if i not in withheld])
@@ -471,8 +471,8 @@ def _pieces_touching_hidden(conn, piece_ids: Sequence[int], hidden: Hidden) -> s
 def _generated_without(refs: list, hidden: Hidden) -> bool:
     """概括生成时排除的名单是否覆盖当前的隐藏名单。"""
     for r in refs:
-        if isinstance(r, dict) and isinstance(r.get("hidden"), dict):
-            h = r["hidden"]
+        if isinstance(r, dict) and isinstance(r.get(HIDDEN), dict):
+            h = r[HIDDEN]
             apps = {docs.fold(a) for a in h.get("apps", ()) if isinstance(a, str) and a}
             kws = {docs.fold(k) for k in h.get("title_keywords", ()) if isinstance(k, str) and k}
             return hidden.apps <= apps and set(hidden.keywords) <= kws
@@ -489,12 +489,9 @@ def _summary_apps(conn, refs: list) -> list[str]:
             apps.append(r["app"])
         if isinstance(r.get("apps"), list):
             apps.extend(a for a in r["apps"] if isinstance(a, str))
-        for k in ("piece", "piece_id"):
-            try:
-                if r.get(k) is not None:
-                    pieces.append(int(r[k]))
-            except (TypeError, ValueError):
-                pass
+        pid = ref_piece_id(r)
+        if pid is not None:
+            pieces.append(pid)
     if pieces:
         apps.extend(a for (a,) in conn.execute(
             "SELECT DISTINCT app FROM pieces WHERE app IS NOT NULL AND piece_id IN "
