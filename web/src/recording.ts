@@ -28,7 +28,9 @@ export function recView(s: Status | null, lost: boolean, t: T): RecView {
   if (s.recording === "paused") return { tone: "idle", label: t("st.paused"), detail: resumeText(s.pause_until_ms, t), state: "paused" };
   if (!s.recorder_alive) return { tone: "off", label: t("st.dead"), detail: null, state: "dead" };
   if (s.recording === "stopped") return { tone: "idle", label: t("st.stopped"), detail: null, state: "stopped" };
-  return { tone: "rec", label: t("st.recording"), detail: s.current ? t("st.watching", { x: s.current.title || s.current.app }) : null, state: "recording" };
+  const c = s.current;
+  const detail = !c ? null : c.excluded ? t("st.excludedFg") : (c.title || c.app) ? t("st.watching", { x: c.title || c.app || "" }) : null;
+  return { tone: "rec", label: t("st.recording"), detail, state: "recording" };
 }
 
 /** 暂停 / 继续：成功后立刻用返回的状态刷新顶栏，并给出轻提示 */

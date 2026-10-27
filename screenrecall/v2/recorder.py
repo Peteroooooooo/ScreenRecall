@@ -184,7 +184,7 @@ class RecorderProcess:
 def _recover(conn, now: int, default_procs: list, default_kws: list) -> dict:
     """（写线程里）上次没正常退出：没结束的缺口和活动在最后一次心跳时结束，补一段"录制进程没在运行"；
     上次正常退出留下的"录制停止"缺口在现在结束。第一次建库时写默认排除规则。返回 control 行（规则已解析）。"""
-    from .rec_sink import STOPPED_DETAIL
+    from .rec_sink import NOT_RUNNING_DETAIL, STOPPED_DETAIL
 
     r = dict(conn.execute("SELECT * FROM control WHERE id = 1").fetchone())
     hb = int(r["recorder_heartbeat_ms"] or 0)
@@ -196,7 +196,7 @@ def _recover(conn, now: int, default_procs: list, default_kws: list) -> dict:
     conn.execute("UPDATE activity SET end_ms = max(start_ms, ?) WHERE end_ms IS NULL", (end,))
     if crashed and now > hb:
         conn.execute("INSERT INTO gaps (start_ms, end_ms, reason, detail) VALUES (?, ?, 'error', ?)",
-                     (hb, now, "recorder not running"))
+                     (hb, now, NOT_RUNNING_DETAIL))
     # 第一次在这个库上启动：默认排除规则写进 control（页面已经改过的列表不覆盖）。
     # 期望状态（开始录制）不在这里改：那是主进程的 adapters._seed_control，它认得这个标记
     fresh = conn.execute("INSERT OR IGNORE INTO meta (key, value) VALUES ('recorder_defaults_ms', ?)",

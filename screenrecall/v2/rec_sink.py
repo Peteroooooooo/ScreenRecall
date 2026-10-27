@@ -32,7 +32,8 @@ from ..store.writer import Writer
 log = logging.getLogger(__name__)
 
 EXCLUDED_TITLE = "[已排除]"  # 活动日志 / 心跳里代替被排除窗口的标题
-STOPPED_DETAIL = "recorder stopped"
+STOPPED_DETAIL = "recorder stopped"           # 缺口 closed：录制进程正常退出到下次启动
+NOT_RUNNING_DETAIL = "recorder not running"   # 缺口 error：录制进程没正常退出（崩溃、被杀）到下次启动
 
 # 跟踪器的缺口原因 → (库里的 reason, detail)；不在表里的不记
 _WINDOW_GAPS = {"minimized": ("minimised", None), "cloaked": ("minimised", "cloaked"), "excluded": ("excluded", None)}

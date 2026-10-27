@@ -511,6 +511,24 @@ def test_pinned_window_resolves_and_reresolves_after_reopen(env):
     assert env.core.pinned == ()
 
 
+def test_pin_survives_title_change_when_the_list_is_edited(env):
+    """钉住的窗口标题变了（浏览器换页），之后页面又加了一个钉住项：已经找到的那一项不能因为按标题找不到而停掉。"""
+    Win(env, 1, "msedge.exe", "第一页 - Edge", Doc())
+    Win(env, 7, "tk.exe", "合成", Doc(seed=7))
+    env.win.fg = 1
+    env.window_list = [(1, "msedge.exe", "第一页 - Edge"), (7, "tk.exe", "合成")]
+    env.control(pinned_windows=[{"process": "msedge.exe", "title": "第一页 - Edge"}])
+    assert env.core.pinned == (1,)
+    env.window_list = [(1, "msedge.exe", "第二页 - Edge"), (7, "tk.exe", "合成")]  # 标题变了
+    env.control(pinned_windows=[{"process": "msedge.exe", "title": "第一页 - Edge"}, {"process": "tk.exe", "title": "合成"}])
+    assert sorted(env.core.pinned) == [1, 7]
+    # 页面带着窗口句柄保存：重启录制进程后按句柄找回（标题对不上也行）
+    from screenrecall.v2.rec_control import _pins, resolve_pins
+
+    pins = _pins([{"process": "msedge.exe", "title": "第一页 - Edge", "hwnd": 1}])
+    assert resolve_pins(pins, env.window_list) == [1]
+
+
 # ---------------- 隐私删除 ----------------
 
 def test_block_gone_recreates_segment_and_block(env):

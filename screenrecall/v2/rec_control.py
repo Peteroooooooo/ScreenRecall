@@ -206,8 +206,11 @@ class ControlLoop:
     def _update_pins(self, now: int, raw: Any, core_pinned: set[int]) -> None:
         pins = _pins(raw)[:MAX_PINNED]
         if pins != self._pins_raw:
+            # 名单变了（加了 / 去掉一项）：没变的项留着已经找到的窗口。全部重找的话，标题已经变了的窗口
+            # （浏览器、聊天）按标题再也找不到，钉住就悄悄停了
+            old = {(p[1], p[2]): self._pinned.get(i) for i, p in enumerate(self._pins_raw or ())}
             self._pins_raw = pins
-            self._pinned = {}
+            self._pinned = {i: old[(p[1], p[2])] for i, p in enumerate(pins) if old.get((p[1], p[2])) is not None}
             self._last_resolve = -10**15
         if not pins and not self._applied:
             return

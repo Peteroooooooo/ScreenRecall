@@ -97,9 +97,15 @@ def test_status_pause_resume(client, env):
     env.stack.writer.heartbeat(recorder_state="recording", current_process="tk.exe", current_title="合成窗口").result(5)
     env.stack.control.invalidate()
     s = client.get("/api/v2/status").json()
-    assert s["recording"] == "recording" and s["current"] == {"app": "tk.exe", "title": "合成窗口"}
+    assert s["recording"] == "recording" and s["current"] == {"app": "tk.exe", "title": "合成窗口", "excluded": False}
     client.post("/api/v2/settings", json={"excluded_title_keywords": ["合成"]}, headers=F.POST_H)
-    assert client.get("/api/v2/status").json()["current"] == {"app": "tk.exe", "title": None}
+    assert client.get("/api/v2/status").json()["current"] == {"app": "tk.exe", "title": None, "excluded": False}
+    # 前台是排除的窗口：录制进程不写进程名，只写占位标题
+    from screenrecall.v2.rec_sink import EXCLUDED_TITLE
+
+    env.stack.writer.heartbeat(recorder_state="recording", current_process=None, current_title=EXCLUDED_TITLE).result(5)
+    env.stack.control.invalidate()
+    assert client.get("/api/v2/status").json()["current"] == {"app": None, "title": None, "excluded": True}
 
 
 def test_expired_pause_counts_as_recording(env):
@@ -122,7 +128,8 @@ def test_status_after_recorder_said_stopped(client, env):
     env.stack.writer.heartbeat(recorder_state="stopped").result(5)
     env.stack.control.invalidate()
     s = client.get("/api/v2/status").json()
-    assert (s["recording"], s["recorder_alive"], s["current"]) == ("stopped", False, None)
+    # 正常停下：心跳还新鲜 → recorder_alive 仍为真、recording = stopped（页面显示"没在录制"，不是"没有响应"）
+    assert (s["recording"], s["recorder_alive"], s["current"]) == ("stopped", True, None)
 
 
 # ---------------- 一天、片段 ----------------
@@ -218,6 +225,33 @@ def test_summarize_refuses_private_piece(client, env):
     assert client.get(f"/api/v2/pieces/{pid}").json()["summary_state"] == "private"
     assert client.post(f"/api/v2/pieces/{pid}/summarize", json={}, headers=F.POST_H).status_code == 409
     assert env.stack.queries.conn().execute("SELECT COUNT(*) FROM jobs").fetchone()[0] == 0
+
+
+def test_day_gap_reasons_match_what_the_recorder_writes(client, env):
+    from screenrecall.v2.rec_sink import NOT_RUNNING_DETAIL, STOPPED_DETAIL
+
+    w = env.stack.writer
+    b = F.day_base() + 3 * 3600_000  # 13:00 起，和合成数据（10:00 前后）不重叠
+    m = 60_000
+    w.gap(b, b + 5 * m, "closed", detail=STOPPED_DETAIL).result(5)               # 正常退出 → stopped
+    w.gap(b + 10 * m, b + 15 * m, "error", detail=NOT_RUNNING_DETAIL).result(5)   # 崩溃 → stopped
+    w.gap(b + 20 * m, b + 25 * m, "closed", detail="window closed").result(5)     # 窗口关了：不是空档
+    w.gap(b + 30 * m, b + 35 * m, "minimised", detail="cloaked", hwnd=5, process="chat.exe").result(5)
+    w.gap(b + 40 * m, b + 45 * m, "minimised", hwnd=5, process="chat.exe").result(5)
+    w.gap(b + 50 * m, b + 55 * m, "excluded", hwnd=6, process="KeePass.exe").result(5)
+    # 固定的聊天窗口最小化了一小时，期间用户一直在别的窗口工作：只有没在录别的窗口的那 10 分钟算空档
+    w.gap(b + 60 * m, b + 120 * m, "minimised", hwnd=5, process="chat.exe").result(5)
+    w.activity_start(b + 60 * m, hwnd=7, pid=1, process="code.exe", title="main.py").result(5)
+    w.activity_start(b + 100 * m, hwnd=6, pid=2, process="KeePass.exe", title="[已排除]", excluded=True).result(5)
+    w.activity_start(b + 110 * m, hwnd=7, pid=1, process="code.exe", title="main.py").result(5)
+    w.activity_end(b + 119 * m + 30_000).result(5)  # 最后 30 秒：不到一分钟，不显示
+    gaps = [(x["start_ms"] - b) // m for x in client.get("/api/v2/day").json()["items"]
+            if x["kind"] == "gap" and x["start_ms"] >= b]
+    rows = {(x["start_ms"] - b) // m: (x["reason"], x["note"]) for x in client.get("/api/v2/day").json()["items"]
+            if x["kind"] == "gap" and x["start_ms"] >= b}
+    assert rows == {0: ("stopped", None), 10: ("stopped", None), 30: ("cloaked", None), 40: ("minimized", None),
+                    50: ("excluded", "KeePass.exe"), 100: ("minimized", None)}
+    assert len(gaps) == len(rows)
 
 
 class FakeClock:
@@ -500,7 +534,8 @@ def test_settings_roundtrip(client, env):
             "hidden_from_agents": {"apps": ["bank.exe"]}, "agent_enabled": True, "idle_minutes": 7.5,
             "ocr_model": "small", "autostart": True}
     s = client.post("/api/v2/settings", json=body, headers=F.POST_H).json()
-    assert s["pinned"] == [{"process": "tk.exe", "title": "合成窗口"}]
+    # hwnd 原样带回（标题变了也能按句柄找到）；found：现在能找到这个窗口
+    assert s["pinned"] == [{"process": "tk.exe", "title": "合成窗口", "hwnd": 11, "found": True}]
     assert s["excluded_processes"] == ["KeePass.exe"] and s["excluded_title_keywords"] == ["InPrivate"]
     assert s["hidden_from_agents"] == {"apps": ["bank.exe"], "title_keywords": []}
     assert s["agent_enabled"] is True and s["idle_minutes"] == 7.5 and s["ocr_model"] == "small"
@@ -517,6 +552,9 @@ def test_settings_roundtrip(client, env):
                     headers=F.POST_H).json()
     assert s["hidden_from_agents"] == {"apps": ["bank.exe"], "title_keywords": ["网银"]}
     assert client.post("/api/v2/settings", json={"autostart": False}, headers=F.POST_H).json()["autostart"] is False
+    s = client.post("/api/v2/settings", json={"pinned": [{"process": "x.exe", "title": "已经关了的窗口"}]},
+                    headers=F.POST_H).json()
+    assert s["pinned"] == [{"process": "x.exe", "title": "已经关了的窗口", "hwnd": None, "found": False}]
 
     for bad in [{"nope": 1}, {"pinned": [{"process": "a"}] * 3}, {"agent_enabled": "yes"}, {"idle_minutes": 0},
                 {"ocr_model": "huge"}, {"excluded_processes": "x"}, {"excluded_processes": ["a\nb"]},

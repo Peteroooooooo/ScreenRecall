@@ -60,13 +60,33 @@ describe("recorder page", () => {
     await waitFor(() => expect(within(pick).getAllByRole("option")).toHaveLength(2));
     fireEvent.change(pick, { target: { value: "1001" } });
     fireEvent.click(screen.getByRole("button", { name: "固定" }));
+    // 带上窗口句柄：标题会变，录制程序优先按句柄找
     await waitFor(() => expect(posts.at(-1)).toEqual({ pinned: [
-      { process: "SampleChat.exe", title: "示例小组群聊" }, { process: "SampleEditor.exe", title: "示例文档.txt" },
+      { process: "SampleChat.exe", title: "示例小组群聊" }, { process: "SampleEditor.exe", title: "示例文档.txt", hwnd: 1001 },
     ] }));
     // 满 2 个后不能再选
     await waitFor(() => expect((screen.getByRole("combobox", { name: "选择要固定的窗口" }) as HTMLSelectElement).disabled).toBe(true));
     fireEvent.click(screen.getByRole("button", { name: "取消固定 示例小组群聊" }));
-    await waitFor(() => expect(posts.at(-1)).toEqual({ pinned: [{ process: "SampleEditor.exe", title: "示例文档.txt" }] }));
+    // 留下的那一项连句柄一起写回
+    await waitFor(() => expect(posts.at(-1)).toEqual({ pinned: [{ process: "SampleEditor.exe", title: "示例文档.txt", hwnd: 1001 }] }));
+  });
+
+  it("a pinned window that can't be found says so", async () => {
+    settingsServer(settings({ pinned: [{ process: "SampleChat.exe", title: "示例小组群聊", hwnd: null, found: false }] }));
+    renderAt("#/recorder");
+    expect(await screen.findByText(/找不到这个窗口/)).toBeTruthy();
+  });
+
+  it("a clean recorder stop shows 没在录制, a stale heartbeat shows the recorder isn't running", async () => {
+    mockFetch((c) => (c.path === "/api/v2/status" ? { body: status({ recording: "stopped", recorder_alive: true, current: null }) } : null));
+    renderAt("#/recorder");
+    expect(await screen.findByRole("heading", { name: "没在录制" })).toBeTruthy();
+  });
+
+  it("an excluded foreground window is named as such", async () => {
+    mockFetch((c) => (c.path === "/api/v2/status" ? { body: status({ current: { app: null, title: null, excluded: true } }) } : null));
+    renderAt("#/recorder");
+    expect(await screen.findByText("前台是排除的窗口，不记录。")).toBeTruthy();
   });
 
   it("hidden-from-agents: adds a title keyword and removes an app", async () => {
