@@ -174,6 +174,36 @@ def build_children(cfg, *, home: Path, recorder_module: str = RECORDER_MODULE,
     return specs
 
 
+class StorageCap:
+    """主进程定时查空间上限（隐私与删除页的"空间上限"）：每 cap_check_s 秒读一次占用（库文件大小 + 库里记的截图
+    字节数 + 向量目录），超了当场从最旧的截图删起（v2.work_frames，和空闲整理进程同一套规则、同一把锁）。
+    上限改了马上生效（每次现读页面设置）。"""
+
+    def __init__(self, stack, clock=time.monotonic):
+        from ..v2.work_common import Ctx, StopFlag
+        from ..v2.work_frames import FrameCleanup
+
+        self._clock = clock
+        self.ctx = Ctx(stack.cfg, stack.writer, StopFlag(), clock=stack.clock)
+        self.cleanup = FrameCleanup(self.ctx)
+        self._next = clock() + 60.0  # 启动后先等一分钟，别和第一次加载抢
+        self.deleted = 0
+
+    def tick(self) -> int:
+        now = self._clock()
+        if now < self._next:
+            return 0
+        self._next = now + max(30.0, float(self.cleanup.retention.cap_check_s))
+        n = self.cleanup.enforce_cap()
+        if n:
+            log.info("超出空间上限：删除了 %d 张最旧的截图", n)
+        self.deleted += n
+        return n
+
+    def close(self) -> None:
+        self.ctx.close()
+
+
 class MainApp:
     def __init__(self, opts: AppOptions, *, queries: mcp_server.Queries | None = None,
                  controller: Controller | None = None, policy: mcp_server.AgentPolicy | None = None):
@@ -185,6 +215,8 @@ class MainApp:
         self.controller = controller or PlaceholderController()
         self.policy = policy or mcp_server.AgentPolicy()
         self.stack = None               # v2.adapters.StoreStack（store=True 时）
+        self.summaries = None           # v2.summarize_now.SummaryRunner（store=True 时）
+        self.storage_cap: StorageCap | None = None
         self.guard: auth.AuthGuard | None = None
         self._housekeeping: threading.Thread | None = None
         self.nonces = auth.NonceStore()
@@ -213,6 +245,7 @@ class MainApp:
         """v2 存储与 /api/v2 路由；返回要挂上的路由。"""
         from ..v2 import adapters, web
         from ..v2.config import load_v2
+        from ..v2.summarize_now import SummaryRunner
 
         cfg = self.opts.cfg or load_v2(self.data_dir, home=self.home)
         self.stack = adapters.StoreStack(cfg)
@@ -222,9 +255,26 @@ class MainApp:
         self.queries = queries or adapters.StoreQueriesAdapter(self.stack.queries, self.stack.search)
         self.controller = controller or adapters.StoreController(self.stack)
         self.policy = policy or adapters.agent_policy(self.stack.control)
+        self.summaries = SummaryRunner(cfg, self.stack.writer, self._llm_client, clock=self.stack.clock)
+        self.storage_cap = StorageCap(self.stack)
         ctx = web.V2Context(self.stack, self.home, idle_running=self._idle_running, rotate_token=self._rotate_token,
-                            on_settings=self._on_settings, list_windows=isolated_window_list())
+                            on_settings=self._on_settings, list_windows=isolated_window_list(),
+                            run_idle=self.run_idle_now, summaries=self.summaries)
         return web.routes(ctx)
+
+    def _llm_client(self, stop):
+        """马上写概括用的大模型客户端：和空闲整理进程读同样的 .env（仓库的 + 应用目录的）。"""
+        from . import llm
+
+        return llm.LlmClient.from_env(env_files=[llm.REPO_ROOT / ".env", self.home / ".env"],
+                                      sleep=lambda s: stop.wait(s))
+
+    def run_idle_now(self) -> bool:
+        """"现在就整理"：马上启动空闲整理进程（已在运行就什么都不做）。返回是否在运行。"""
+        if not (self.sup and IDLE_CHILD in self.sup.status()):
+            return False
+        log.info("手动开始空闲整理")
+        return self.sup.start_child(IDLE_CHILD)
 
     def start(self) -> "MainApp":
         t0 = time.perf_counter()
@@ -260,12 +310,17 @@ class MainApp:
         return self
 
     def _housekeep(self) -> None:
-        """暂停到点改回录制、补删没删掉的向量（StoreController.tick）。"""
+        """暂停到点改回录制、补删没删掉的向量（StoreController.tick）；定时查空间上限（StorageCap）。"""
         while not self.stopped.wait(HOUSEKEEPING_S):
             try:
                 self.controller.tick()
             except Exception:  # noqa: BLE001 - 定时任务不能停
                 log.warning("定时检查出错", exc_info=True)
+            if self.storage_cap is not None:
+                try:
+                    self.storage_cap.tick()
+                except Exception:  # noqa: BLE001
+                    log.warning("检查空间上限出错", exc_info=True)
 
     def _idle_running(self) -> bool:
         return bool(self.sup and IDLE_CHILD in self.sup.status() and self.sup.pid(IDLE_CHILD) is not None)
@@ -342,6 +397,10 @@ class MainApp:
             self.web.stop()
         if self._housekeeping is not None:
             self._housekeeping.join(5)
+        if self.summaries is not None:
+            self.summaries.close()  # 正在等的大模型回答不等了；写了一半的待办由空闲整理进程接着做
+        if self.storage_cap is not None:
+            self.storage_cap.close()
         if self.stack is not None:
             try:
                 self.stack.close()
@@ -399,7 +458,9 @@ def app_switches(cfg, args) -> tuple[bool, bool]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m screenrecall.app", description="ScreenRecall v2 主进程")
-    ap.add_argument("--data-dir", help="数据目录（默认 %%LOCALAPPDATA%%\\ScreenRecall\\data）")
+    ap.add_argument("--data-dir", help="数据目录（默认 <应用目录>\\data）")
+    ap.add_argument("--home", help="应用目录（默认 SCREENRECALL_HOME 或 %%LOCALAPPDATA%%\\ScreenRecall）；"
+                                   "开机自启和快捷方式用它代替环境变量")
     ap.add_argument("--port", type=int, default=None,
                     help=f"优先使用的端口（默认取配置 [v2.app] port，即 {DEFAULT_PORT}；被占用时自动换一个；0 = 任意）")
     ap.add_argument("--no-tray", action="store_true", help="不显示托盘图标（按 Ctrl+C 退出）")
@@ -413,6 +474,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--recorder-module", default=RECORDER_MODULE, help=argparse.SUPPRESS)
     ap.add_argument("--worker-module", default=WORKER_MODULE, help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
+    if a.home:
+        # 子进程（录制、空闲整理、MCP 转发程序的配置片段）都按环境变量找应用目录
+        os.environ["SCREENRECALL_HOME"] = str(Path(a.home).resolve())
     home = paths.app_home()
     paths.ensure_private_dir(home)
     _setup_logging(home)

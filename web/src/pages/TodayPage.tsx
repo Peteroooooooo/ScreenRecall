@@ -1,13 +1,13 @@
 // 今天：换日期、当天概括与统计、时间线（片段 + 没有记录的时间段，最新在上）。
-import { useEffect, useRef } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CalendarDays, ChevronLeft, ChevronRight, LoaderCircle, Play, RefreshCw } from "lucide-react";
 import { api, type Day, type GapItem, type PieceItem, type Status } from "../api";
 import { hasKey, useT } from "../i18n";
 import {
   addDays, appName, errText, fmtClock, fmtDuration, fmtInt, fmtMonthDay, hrefOf, localDate, navigate, parseLocalDate, useLoad, weekday,
 } from "../lib";
 import { usePauseActions } from "../recording";
-import { Av, Empty, LoadError, PageHeader, Skeleton, useStatus } from "../ui";
+import { Av, Empty, LoadError, PageHeader, Skeleton, useStatus, useToast } from "../ui";
 
 /** 进行中的判定：今天结束得最晚的片段，结束时间离现在不到 2 分钟，正在录制且前台是它的应用 */
 const LIVE_MS = 120_000;
@@ -25,11 +25,13 @@ export default function TodayPage({ params }: { params: URLSearchParams }) {
   // 今天的内容在变：revision 变化时后台刷新（不闪加载状态）
   const rev = useRef(status?.revision);
   const reload = day.reload;
+  // 别的日子在马上写当天概括时也要刷新（写完 revision 会变）
+  const generating = day.data?.summary_state === "generating";
   useEffect(() => {
-    if (!isToday || status?.revision == null) return;
+    if ((!isToday && !generating) || status?.revision == null) return;
     if (rev.current != null && rev.current !== status.revision) reload(true);
     rev.current = status.revision;
-  }, [status?.revision, isToday, reload]);
+  }, [status?.revision, isToday, generating, reload]);
 
   const d = parseLocalDate(date)!;
   const head = isToday ? t("today.title") : date === addDays(today, -1) ? t("today.yesterday") : weekday(d);
@@ -64,7 +66,7 @@ export default function TodayPage({ params }: { params: URLSearchParams }) {
         </Empty>
       ) : (
         <>
-          <Overview day={data} />
+          <Overview day={data} onRefreshed={() => reload(true)} />
           <ol className="mt-[18px]" aria-label={t("today.timeline")}>
             {data.items.map((it, i) =>
               it.kind === "gap" ? <GapRow key={`g${it.start_ms}-${i}`} gap={it} />
@@ -91,9 +93,27 @@ export function liveIndex(d: Day, status: Status | null | undefined, now = Date.
   return now - p.end_ms < LIVE_MS && p.app.toLowerCase() === cur.app.toLowerCase() ? best : -1;
 }
 
-function Overview({ day }: { day: Day }) {
+function Overview({ day, onRefreshed }: { day: Day; onRefreshed: () => void }) {
   const { t } = useT();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
   const o = day.overview;
+  const st = day.summary_state ?? (day.summary ? (day.summary.status === "stale" ? "stale" : "ok") : "none");
+  const generating = st === "generating";
+  const refresh = async () => {
+    setBusy(true);
+    try {
+      await api.summarizeDay(day.date);
+      toast(t("today.regenStarted"), "info");
+      onRefreshed();
+    } catch (e) {
+      toast(errText(e, t("common.offline")), "alarm");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const note = generating ? t("today.generatingNote") : st === "failed" ? t("today.failedNote")
+    : st === "stale" && !day.summary?.text ? t("today.staleNote") : null;
   const pieces = day.items.filter((x) => x.kind === "piece");
   const gaps = day.items.length - pieces.length;
   const pending = pieces.filter((x) => (x as PieceItem).pending_ocr).length;
@@ -106,10 +126,17 @@ function Overview({ day }: { day: Day }) {
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex flex-wrap items-center gap-2">
           <h2 id="focus-h" className="sr-label">{t("today.focus")}</h2>
-          {day.summary?.status === "stale" && <span className="sr-tag sr-tag-warn" title={t("today.staleTip")}>{t("today.stale")}</span>}
+          {st === "stale" && <span className="sr-tag sr-tag-warn" title={t("today.staleTip")}>{t("today.stale")}</span>}
+          {day.summary_refresh && (
+            <button className="sr-btn sr-btn-ghost sr-btn-sm ml-auto" onClick={refresh} disabled={busy || generating}>
+              {busy || generating ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <RefreshCw size={15} aria-hidden />}
+              {generating ? t("today.generating") : t("today.regen")}
+            </button>
+          )}
         </div>
         {day.summary?.text ? <p className="text-base font-medium [overflow-wrap:anywhere]">{day.summary.text}</p>
-          : <p className="text-sm text-graphite">{t("today.noSummary")}</p>}
+          : !note && <p className="text-sm text-graphite">{t("today.noSummary")}</p>}
+        {note && <p className={`text-sm ${st === "stale" || st === "failed" ? "text-marker-ink" : "text-graphite"}`} aria-live="polite">{note}</p>}
         <div className="sr-num mt-2.5 flex flex-wrap gap-x-[18px] gap-y-1.5 text-[13px] text-graphite">
           <span>{t("today.active", { x: fmtDuration(o.active_ms) })}</span>
           <span>{t("today.pieces", { n: pieces.length })}</span>

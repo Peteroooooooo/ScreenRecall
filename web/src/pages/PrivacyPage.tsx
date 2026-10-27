@@ -1,10 +1,21 @@
-// 隐私与删除：最近 5 分钟 / 1 小时 / 今天、任意时间段、按应用删除（都要先确认）；数据位置与占用。
+// 隐私与删除：最近 5 分钟 / 1 小时 / 今天、任意时间段、按应用删除（都要先确认，可顺便暂停 15 分钟）；
+// 数据位置与占用（打开文件夹）；保留多久（截图 / 文字 / 空间上限，缩短时先确认）。
 import { useState, type FormEvent } from "react";
-import { api, type DeleteRequest, type DeleteResult } from "../api";
+import { FolderOpen } from "lucide-react";
+import { api, type DeleteRequest, type DeleteResult, type Settings, type SettingsPatch } from "../api";
 import { useT } from "../i18n";
 import { appName, errText, fmtBytes, fmtInt, fmtWhen, localDateTime, startOfToday, useLoad } from "../lib";
 import { useSettings, hasItem } from "../settings";
-import { Banner, Card, ConfirmDialog, LoadError, PageHeader, Skeleton, useToast, type ConfirmSpec } from "../ui";
+import { Banner, Card, ConfirmDialog, LoadError, PageHeader, Skeleton, useStatus, useToast, type ConfirmSpec } from "../ui";
+
+export const IMAGE_DAYS = [30, 90, 365, 0];
+export const TEXT_DAYS = [90, 365, 0];
+export const CAP_GB = [10, 20, 50, 0];
+
+/** 保留期变短了（0 = 一直保留）：保存后下次整理会删掉东西，要先确认 */
+export const shorter = (from: number, to: number) => to > 0 && (from === 0 || to < from);
+
+const withCur = (opts: number[], cur: number) => (opts.includes(cur) ? opts : [...opts, cur].sort((a, b) => (a || Infinity) - (b || Infinity)));
 
 export default function PrivacyPage() {
   const { t } = useT();
@@ -18,6 +29,8 @@ export default function PrivacyPage() {
   const [to, setTo] = useState(() => localDateTime(now));
   const [app, setApp] = useState("");
   const [alsoExclude, setAlsoExclude] = useState(true);
+  const [pauseAfter, setPauseAfter] = useState(false);
+  const { setStatus } = useStatus();
   const rangeBad = !!from && !!to && new Date(from).getTime() >= new Date(to).getTime();
 
   const doneText = (r: DeleteResult) => {
@@ -27,6 +40,11 @@ export default function PrivacyPage() {
   };
   const run = async (body: DeleteRequest, before?: () => Promise<void>) => {
     try {
+      // 先暂停再删：屏幕上还开着的内容不会在两步之间又被记下来
+      if (pauseAfter) {
+        setStatus(await api.pause({ minutes: 15 }));
+        toast(t("priv.paused15"), "info");
+      }
       if (before) await before();
       const r = await api.remove(body);
       toast(doneText(r));
@@ -61,6 +79,14 @@ export default function PrivacyPage() {
     });
   };
 
+  const openDir = async () => {
+    try {
+      await api.openDataDir();
+    } catch (e) {
+      toast(t("priv.openFail", { e: errText(e, t("common.offline")) }), "alarm");
+    }
+  };
+
   const s = storage.data;
   const total = s ? s.db_bytes + s.frames_bytes + s.vectors_bytes : 0;
   const pct = (n: number) => `${total ? Math.max(n > 0 ? 1 : 0, (n / total) * 100) : 0}%`;
@@ -77,6 +103,11 @@ export default function PrivacyPage() {
             <button className="sr-btn sr-btn-danger h-[52px]"
               onClick={() => ask(t("priv.dToday"), t("priv.bodyToday"), () => ({ from_ms: startOfToday(), to_ms: startOfToday(startOfToday() + 36 * 3_600_000) }))}>{t("priv.dToday")}</button>
           </div>
+          <p className="mt-3.5 text-[13px] leading-relaxed text-graphite">{t("priv.reHint")}</p>
+          <label className="mt-2 flex items-center gap-2 text-sm">
+            <input type="checkbox" name="pause_after" className="h-4 w-4 accent-[var(--cobalt)]" checked={pauseAfter} onChange={(e) => setPauseAfter(e.target.checked)} />
+            {t("priv.pauseAfter")}
+          </label>
         </Card>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -117,6 +148,7 @@ export default function PrivacyPage() {
           </Card>
         </div>
 
+        <div className="grid gap-4 md:grid-cols-2">
         <Card title={t("priv.where")} id="where-h">
           {!s ? (storage.error ? <LoadError text={errText(storage.error, t("common.offline"))} onRetry={() => storage.reload()} /> : <Skeleton rows={1} />) : (
             <>
@@ -137,12 +169,71 @@ export default function PrivacyPage() {
                 {t("priv.counts", { f: fmtInt(s.frames), l: fmtInt(s.lines) })}
                 {s.oldest_ms != null && <> · {t("priv.oldest", { x: fmtWhen(s.oldest_ms) })}</>}
               </p>
+              {!!settings.data?.storage_cap_gb && (
+                <p className="sr-num mt-1 text-[12.5px] text-graphite">{t("priv.used", { x: fmtBytes(total), y: fmtBytes(settings.data.storage_cap_gb * 1024 ** 3) })}</p>
+              )}
+              <div className="mt-3.5">
+                <button className="sr-btn sr-btn-line sr-btn-sm" onClick={openDir}><FolderOpen size={15} aria-hidden />{t("priv.open")}</button>
+              </div>
             </>
           )}
         </Card>
+        {settings.data ? <RetentionCard s={settings.data} saving={settings.saving}
+          onSave={(patch) => settings.save(patch, t("priv.keepSaved")).then(() => storage.reload(true))}
+          ask={(spec) => setConfirm(spec)} />
+          : !settings.error && <Card title={t("priv.keep")} id="keep-h"><Skeleton rows={2} /></Card>}
+        </div>
         {!!settings.error && !settings.data && <Banner tone="warn">{t("set.loadFail", { e: errText(settings.error, t("common.offline")) })}</Banner>}
       </div>
       <ConfirmDialog spec={confirm} onClose={() => setConfirm(null)} />
     </div>
+  );
+}
+
+/** 保留多久：截图 / 文字的天数（0 = 一直保留）和空间上限（0 = 不限）。空闲整理时执行，上限主进程也定时查。 */
+function RetentionCard({ s, saving, onSave, ask }: {
+  s: Settings; saving: boolean; onSave: (p: SettingsPatch) => Promise<unknown>; ask: (spec: ConfirmSpec) => void;
+}) {
+  const { t } = useT();
+  const [img, setImg] = useState(s.image_days);
+  const [txt, setTxt] = useState(s.text_days);
+  const [cap, setCap] = useState(s.storage_cap_gb);
+  const dirty = img !== s.image_days || txt !== s.text_days || cap !== s.storage_cap_gb;
+  const days = (n: number) => (n === 0 ? t("priv.forever") : n === 365 ? t("priv.year") : t("priv.days", { n }));
+  const gb = (n: number) => (n === 0 ? t("priv.noCap") : t("priv.gb", { n }));
+
+  const save = () => {
+    const patch: SettingsPatch = {};
+    if (img !== s.image_days) patch.image_days = img;
+    if (txt !== s.text_days) patch.text_days = txt;
+    if (cap !== s.storage_cap_gb) patch.storage_cap_gb = cap;
+    const what = [
+      shorter(s.image_days, img) && t("priv.keepWhatImages", { n: img }),
+      shorter(s.text_days, txt) && t("priv.keepWhatText", { n: txt }),
+    ].filter(Boolean).join("、");
+    if (what) ask({ title: t("priv.keepConfirm"), body: t("priv.keepBody", { x: what }), ok: t("priv.keepOk"), run: () => onSave(patch).then(() => undefined) });
+    else void onSave(patch);
+  };
+
+  const field = (id: string, label: string, hint: string | null, value: number, opts: number[], fmt: (n: number) => string, set: (n: number) => void) => (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <label htmlFor={id} className="text-[12.5px] font-medium text-graphite">{label}</label>
+      <select id={id} name={id} className="sr-field" value={String(value)} disabled={saving} aria-describedby={hint ? `${id}-hint` : undefined}
+        onChange={(e) => set(Number(e.target.value))}>
+        {withCur(opts, value).map((n) => <option key={n} value={String(n)}>{fmt(n)}</option>)}
+      </select>
+      {hint && <span id={`${id}-hint`} className="text-xs text-faint">{hint}</span>}
+    </div>
+  );
+
+  return (
+    <Card title={t("priv.keep")} id="keep-h">
+      <div className="space-y-3.5">
+        {field("image_days", t("priv.keepImages"), t("priv.keepImagesHint"), img, IMAGE_DAYS, days, setImg)}
+        {field("text_days", t("priv.keepText"), t("priv.keepTextHint"), txt, TEXT_DAYS, days, setTxt)}
+        {field("storage_cap_gb", t("priv.cap"), t("priv.capHint"), cap, CAP_GB, gb, setCap)}
+        <div><button className="sr-btn sr-btn-primary sr-btn-sm" onClick={save} disabled={!dirty || saving}>{t("common.save")}</button></div>
+      </div>
+    </Card>
   );
 }

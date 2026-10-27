@@ -22,14 +22,34 @@ def pythonw_path(python: str | None = None) -> str:
     return str(w if w.exists() else exe)
 
 
-def default_command(python: str | None = None, root: Path = REPO_ROOT, args: tuple[str, ...] = ("--autostart",)) -> str:
-    """开机时运行的完整命令行（已按 Windows 规则加引号）。"""
+def launch_argv(python: str | None = None, root: Path = REPO_ROOT, args: tuple[str, ...] = ()) -> list[str]:
+    """不开控制台窗口启动主进程的参数数组：开机自启、桌面 / 开始菜单快捷方式（app.shortcut）都用它。"""
     root_s = str(root)
     if "'" in root_s or '"' in root_s:
-        raise ValueError("仓库路径含引号，无法生成自启命令，请直接传 command")
+        raise ValueError("仓库路径含引号，无法生成启动命令，请直接传 command")
     code = (f"import sys,runpy;sys.path.insert(0,{root_s!r});"
             "runpy.run_module('screenrecall.app',run_name='__main__',alter_sys=True)")
-    return subprocess.list2cmdline([pythonw_path(python), "-c", code, *args])
+    return [pythonw_path(python), "-c", code, *args]
+
+
+def default_command(python: str | None = None, root: Path = REPO_ROOT, args: tuple[str, ...] = ("--autostart",)) -> str:
+    """开机时运行的完整命令行（已按 Windows 规则加引号）。"""
+    return subprocess.list2cmdline(launch_argv(python, root, args))
+
+
+def location_args(home: Path, data_dir: Path) -> tuple[str, ...]:
+    """应用目录 / 数据目录不是默认位置时要带上的参数（开机自启和快捷方式里没有环境变量）。
+    默认应用目录 = %LOCALAPPDATA%\\ScreenRecall（不看 SCREENRECALL_HOME），默认数据目录 = <应用目录>\\data。"""
+    import os
+
+    base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+    default_home = Path(base) / "ScreenRecall"
+    out: list[str] = []
+    if Path(home).resolve() != default_home.resolve():
+        out += ["--home", str(home)]
+    if Path(data_dir).resolve() != (Path(home) / "data").resolve():
+        out += ["--data-dir", str(data_dir)]
+    return tuple(out)
 
 
 def enable(command: str | None = None, name: str = VALUE_NAME) -> str:
