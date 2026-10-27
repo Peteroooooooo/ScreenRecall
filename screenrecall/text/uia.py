@@ -26,6 +26,7 @@
 from __future__ import annotations
 
 import ctypes
+import dataclasses
 import os
 import sys
 import threading
@@ -94,6 +95,11 @@ class UiaResult:
     # usable 为 True 时也可能有大片区域没读到字（浏览器第一次被访问只给外框、页面里的图片 / 画布 / 扫描 PDF）：
     # 这些区域是整宽的横条（屏幕物理像素），调用方用 ocr_regions() 结合帧像素决定哪些要登记待 OCR
     uncovered: tuple[Rect, ...] = ()
+    # 窗口上部界面条（标签页条、工具栏）的最下沿，屏幕 y（chrome_bottom）；待 OCR 的区域从它下面开始
+    chrome_bottom: int | None = None
+    # 这是对这个窗口的第一次读取，预算不够、没有按 first_touch_retry_s 再读一次：浏览器这时常常只给外框
+    # （没有页面），调用方（自己的线程，不怕多等）应当稍等再读一次
+    first_touch: bool = False
 
     @property
     def content_chars(self) -> int:
@@ -205,6 +211,16 @@ def _over_document(rect: Rect, elems: Sequence[Elem], tp_set: set[int]) -> bool:
     return False
 
 
+def _above_document(rect: Rect, elems: Sequence[Elem], docs: set[int]) -> bool:
+    """rect 的中心在某个正文区域（_doc_panes）的正上方：横向落在它的范围里、纵向在它顶边以上。"""
+    cx, cy = (rect[0] + rect[2]) / 2, (rect[1] + rect[3]) / 2
+    for i in docs:
+        r = elems[i].rect
+        if r[0] <= cx < r[2] and cy < r[1]:
+            return True
+    return False
+
+
 def _tp_ancestor(elems: Sequence[Elem], idx: int, tp_set: set[int]) -> int:
     """idx 的最近一个"产出了可见行"的 TextPattern 祖先（不含自身），没有返回 -1。"""
     p = elems[idx].parent
@@ -213,6 +229,67 @@ def _tp_ancestor(elems: Sequence[Elem], idx: int, tp_set: set[int]) -> int:
             return p
         p = elems[p].parent
     return -1
+
+
+# 程序自己的界面条（标签页条、工具栏、菜单栏、标题栏）。它们里面、或者和它们同一高度的字是界面（标签页标题、
+# 地址栏、搜索框、按钮提示），不是正文
+_BAR_CT = frozenset({"ToolBar", "MenuBar", "TitleBar", "Tab"})
+_CHROME_ANCESTOR_CT = frozenset({"ToolBar", "MenuBar", "TitleBar"})
+_DOC_MIN_AREA = 0.15  # 文档元素至少占窗口这么大，才算"正文区域"（不是页面里的一个小输入框）
+_BAR_MAX_H = 0.15  # 界面条：高度不超过窗口的这个比例、宽度至少一半、在窗口上部 _BAR_TOP 以内
+_BAR_TOP = 0.3
+
+
+def _area(r: Rect) -> int:
+    return max(0, r[2] - r[0]) * max(0, r[3] - r[1])
+
+
+def _doc_panes(elems: Sequence[Elem], win_rect: Rect) -> set[int]:
+    """正文区域：控件类型是 Document、带 TextPattern、看得见并且足够大的元素（浏览器页面、文档编辑区）。
+    页面刚开始加载时它还没有可见行，但位置已经在了：它上面和它上面浮着的字是程序的界面。"""
+    out = set()
+    wa = max(1, _area(win_rect))
+    for i, e in enumerate(elems):
+        if e.ct != "Document" or not e.has_tp or e.offscreen or e.password:
+            continue
+        r = _intersect(e.rect, win_rect)
+        if r is not None and _area(r) >= _DOC_MIN_AREA * wa:
+            out.add(i)
+    return out
+
+
+def _has_ancestor(elems: Sequence[Elem], idx: int, pred: Callable[[int], bool]) -> bool:
+    p = elems[idx].parent
+    while p >= 0:
+        if pred(p):
+            return True
+        p = elems[p].parent
+    return False
+
+
+def chrome_bottom(elems: Sequence[Elem], win_rect: Rect, docs: set[int] | None = None) -> int | None:
+    """窗口上部界面条（标签页条、工具栏、菜单栏）的最下沿（屏幕 y）；没有时 None。
+
+    界面条：控件类型 ToolBar / MenuBar / TitleBar / Tab，横向（宽至少窗口一半、高不超过 15%），顶边在窗口上部
+    30% 以内，并且不在正文里（网页里的工具栏不算）。"""
+    l, t, r, b = win_rect
+    w, h = r - l, b - t
+    if w <= 0 or h <= 0:
+        return None
+    docs = _doc_panes(elems, win_rect) if docs is None else docs
+    bottom = None
+    for i, e in enumerate(elems):
+        if e.ct not in _BAR_CT or e.offscreen:
+            continue
+        rr = _intersect(e.rect, win_rect)
+        if rr is None:
+            continue
+        if rr[2] - rr[0] < 0.5 * w or rr[3] - rr[1] > _BAR_MAX_H * h or rr[1] > t + _BAR_TOP * h:
+            continue
+        if i in docs or _has_ancestor(elems, i, lambda p: p in docs):
+            continue
+        bottom = rr[3] if bottom is None else max(bottom, rr[3])
+    return bottom
 
 
 def outermost_tp(elems: Sequence[Elem]) -> list[int]:
@@ -239,6 +316,10 @@ def collect_lines(elems: Sequence[Elem], tps: Sequence[TpLines], win_rect: Rect)
     - 普通元素：去掉屏外、矩形为空、不和窗口相交、密码框；Name 与 Value 各算一条；
     - 带 TextPattern 的元素：Value 若是整篇全文（多行或很长）不收；产出了可见行时 Name / Value 都不收；
     - 位于"产出了可见行"的文档里的子元素，文字已被可见行覆盖时不重复收；
+    - 程序自己的界面（role 'ui'，不当正文存）：标签页标题、文档元素自己的名字和值（网页标题、网址）、输入框的名字
+      （它的标签），以及不在正文里的元素中：工具栏 / 菜单栏里的、和窗口上部界面条同一高度的、画在正文区域上面或
+      正上方的（悬停卡片、弹出提示）。正文区域在页面还没有可见行时（刚开始加载）就按文档元素的位置算，
+      所以页面加载的第一次读字也不会把标签页、地址栏当成正文；
     - 同文字同矩形去重。
     """
     out: list[UiaLine] = []
@@ -260,6 +341,9 @@ def collect_lines(elems: Sequence[Elem], tps: Sequence[TpLines], win_rect: Rect)
             # 不加分隔：折成几行显示的段落（网页里的 <p>）整段文字也算被覆盖
             covered[tp.elem] = ("".join(keys), [k for k in keys if len(k) >= _MIN_COVER_KEY])
 
+    docs = _doc_panes(elems, win_rect)
+    panes = docs | tp_with_lines
+    zone = chrome_bottom(elems, win_rect, docs)
     for i, e in enumerate(elems):
         if e.password or e.offscreen or i in tp_with_lines:
             continue
@@ -278,13 +362,23 @@ def collect_lines(elems: Sequence[Elem], tps: Sequence[TpLines], win_rect: Rect)
             continue
         anc = _tp_ancestor(elems, i, tp_with_lines) if tp_with_lines else -1
         role = "text" if e.ct in CONTENT_CT else "ui"
-        if anc < 0 and role == "text" and _over_document(rect, elems, tp_with_lines):
-            role = "ui"  # 不在正文里、却画在正文上面：浮层（浏览器的翻译提示、弹出气泡、通知）
+        # 标签页标题、文档自己的名字和值（网页标题、网址）是界面，正文由可见行 / 子元素给出
+        if e.ct in ("TabItem", "Document"):
+            role = "ui"
+        if role == "text" and i not in docs and not (panes and _has_ancestor(elems, i, lambda p: p in panes)):
+            if _has_ancestor(elems, i, lambda p: elems[p].ct in _CHROME_ANCESTOR_CT):
+                role = "ui"  # 工具栏 / 菜单栏里的字：地址栏、搜索框
+            elif zone is not None and rect[1] < zone - 2:
+                role = "ui"  # 和窗口上部的界面条同一高度：标签页的悬停卡片、地址栏下面弹出的提示
+            elif _over_document(rect, elems, panes) or _above_document(rect, elems, docs):
+                role = "ui"  # 不在正文里、却画在正文上面或正文上方：浮层（翻译提示、弹出气泡、通知）
         for raw, src in cands:
+            # 输入框的名字是它的标签（"地址和搜索栏"），屏幕上画的是它的值
+            r_src = "ui" if src == "name" and e.ct == "Edit" else role
             for t in _split_lines(raw):
                 if anc >= 0 and _is_covered(_norm_key(t), covered[anc]):
                     continue
-                out.append(UiaLine(t, rect, e.ct, src, role))
+                out.append(UiaLine(t, rect, e.ct, src, r_src))
 
     seen: set[tuple[str, Rect]] = set()
     uniq = []
@@ -611,7 +705,7 @@ class ComBackend:
                 tp.lines = []
             tps.append(tp)
         handles.clear()
-        return collect_lines(elems, tps, win_rect), len(elems)
+        return collect_lines(elems, tps, win_rect), len(elems), chrome_bottom(elems, win_rect)
 
     def _walk(self, cached, cancel: threading.Event) -> tuple[list[Elem], list]:
         elems: list[Elem] = []
@@ -679,6 +773,7 @@ class _Job:
     done: threading.Event = field(default_factory=threading.Event)
     lines: list[UiaLine] | None = None
     count: int = 0
+    chrome: int | None = None
     error: str | None = None
 
 
@@ -718,7 +813,9 @@ class _Worker(threading.Thread):
                     job.error = self.open_error or "UIA 初始化失败"
                 else:
                     try:
-                        job.lines, job.count = self.backend.read(ctx, job.hwnd, job.win_rect, job.cancel)
+                        got = self.backend.read(ctx, job.hwnd, job.win_rect, job.cancel)
+                        job.lines, job.count = got[0], got[1]
+                        job.chrome = got[2] if len(got) > 2 else None  # 测试用的后端只给两项
                     except Cancelled:
                         job.error = "cancelled"
                     except Exception as exc:
@@ -791,6 +888,9 @@ class UiaReader:
                         res2 = self._read_once(hwnd, rect, budget, t0)  # budget 是从 t0 起算的总预算
                         if res2.status in ("ok", "empty") and res2.element_count >= res.element_count:
                             res = res2
+                    elif retry > 0:
+                        # 第一次读本身就慢（初始化 COM、目标程序刚建辅助功能树），预算里放不下重读：让调用方来
+                        res = dataclasses.replace(res, first_touch=True)
         finally:
             self._lock.release()
         self._update_hint(hwnd, res)
@@ -854,7 +954,8 @@ class UiaReader:
         lines = job.lines or []
         usable = content_chars(lines) >= self.cfg.min_content_chars
         gaps = tuple(uncovered_bands(lines, rect, self.cfg.min_gap_px, self.cfg.container_frac))
-        return UiaResult("ok" if lines else "empty", lines, usable, _ms(t0), job.count, rect, uncovered=gaps)
+        return UiaResult("ok" if lines else "empty", lines, usable, _ms(t0), job.count, rect, uncovered=gaps,
+                         chrome_bottom=job.chrome)
 
     def _remember(self, hwnd: int) -> None:
         self._seen[hwnd] = None

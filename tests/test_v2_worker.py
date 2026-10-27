@@ -72,6 +72,41 @@ def test_ocr_region_lines_land_in_frame_and_block_coordinates(tmp_path):
     assert rep["steps"]["ocr"]["items"] == 1 and rep["steps"]["ocr"]["lines"] == 1
 
 
+def test_ocr_drops_caret_and_low_confidence_symbols_but_keeps_one_character_cells(tmp_path):
+    """文本光标（一条 2 像素宽的竖线，被识别成 '|' 或 '一'）和低置信度的单个符号不存；表格里一个字的格子
+    （数字 1、7、单个汉字、高置信度的 '-'）照存。画面是合成的，框和置信度照着真实 OCR 的输出给。"""
+    from PIL import Image, ImageDraw, ImageFont
+
+    from screenrecall.v2.work_ocr import glyph_noise
+
+    img = Image.new("RGB", (900, 120), "white")
+    d = ImageDraw.Draw(img)
+    font = ImageFont.truetype("msyh.ttc", 20)
+    d.rectangle([22, 10, 23, 36], fill="black")  # 光标
+    d.rectangle([122, 10, 123, 36], fill="black")
+    cells = {"1": 220, "7": 300, "中": 380, "-": 460, ".": 540}
+    for c, x in cells.items():
+        d.text((x, 12), c, font=font, fill="black")
+    arr = np.asarray(img)[:, :, ::-1].copy()
+    ocr_lines = [("|", 0.93, (12, 4, 34, 40)), ("一", 0.97, (112, 4, 134, 40)), ("1", 0.998, (214, 8, 233, 36)),
+                 ("7", 0.999, (294, 8, 315, 36)), ("中", 1.0, (374, 8, 403, 36)), ("-", 0.95, (454, 8, 475, 36)),
+                 (".", 0.6, (534, 8, 555, 36)), ("合成的一行", 0.98, (600, 8, 800, 36))]
+    noise = {t for t, c, b in ocr_lines if glyph_noise(t, c, arr, b)}
+    assert noise == {"|", "一", "."}
+
+    cfg = make_cfg(tmp_path, idle={"clip": False})
+    t = now_ms() - HOUR
+    with Writer(cfg.data_dir) as w:
+        sid = w.segment_for("a.exe", "doc", t).result(5)
+        b = w.block_new(sid, t).result(5)
+        w.save_frame(arr, captured_ms=t, segment_id=sid, block_id=b, pos_y=0, app="a.exe", title="doc",
+                     ocr_rects=[(0, 0, 900, 120)])
+        w.flush()
+    rep = run(cfg, ocr=FakeOcr(ocr_lines))
+    assert sorted(r[0] for r in db(cfg).execute("SELECT text FROM lines")) == sorted(["1", "7", "中", "-", "合成的一行"])
+    assert rep["steps"]["ocr"]["noise"] == 3
+
+
 def test_low_confidence_gets_second_pass_with_small(tmp_path):
     cfg = make_cfg(tmp_path, idle={"clip": False}, ocr={"second_pass_below": 0.8})
     t = now_ms() - HOUR
@@ -269,6 +304,9 @@ def test_blocks_with_overlapping_text_are_merged(tmp_path):
     rows = {r[0]: (r[1], r[2]) for r in c.execute("SELECT block_id, merged_into, offset_px FROM blocks")}
     assert rows[b2] == (b1, 90) and rows[b3] == (None, 0) and rows[b4] == (None, 0)
     assert rep["steps"]["merge"]["items"] == 1
+    # 两边都有的第 3–5 段：b2 那份记成 b1 那份的别名（不删）
+    assert [tuple(r) for r in c.execute("SELECT block_id, COUNT(*) FROM lines WHERE alias_of IS NOT NULL "
+                                        "GROUP BY block_id")] == [(b2, 3)]
     with Writer(cfg.data_dir) as w:  # 新行进来：只看这个内容源，已合并的不再动
         put_lines(w, "a.exe", "doc", t + 5000, ["又看到的一行新内容"], block=b1, y0=400)
     run(cfg)
