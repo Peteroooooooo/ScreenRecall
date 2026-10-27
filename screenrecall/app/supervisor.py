@@ -139,6 +139,20 @@ class ChildSpec:
     backoff_max_s: float = 60.0
     stable_s: float = 30.0
     stop_grace_s: float = 3.0
+    log_max_bytes: int = 2_000_000   # 每次启动前 log_path 超过这么大就换成 <name>.1（只留上一份）
+
+
+def cap_log(path: Path, max_bytes: int) -> None:
+    """子进程的标准输出 / 错误日志是追加写的：启动前超过 max_bytes 就把它改名成 <path>.1（覆盖更早的那份），
+    这样最多占 2 × max_bytes。子进程自己的日志另有滚动文件，这里只装崩溃信息和警告。"""
+    try:
+        if path.stat().st_size <= max_bytes:
+            return
+        os.replace(path, path.with_name(path.name + ".1"))
+    except FileNotFoundError:
+        return
+    except OSError:  # 被占用之类：这次照常追加，下次再换
+        log.warning("子进程日志 %s 换文件失败", path.name, exc_info=True)
 
 
 @dataclass
@@ -247,6 +261,8 @@ class Supervisor:
     def _spawn(self, c: _Child) -> bool:
         s = c.spec
         flags = _CREATE_SUSPENDED | _CREATE_NO_WINDOW | (_BELOW_NORMAL_PRIORITY_CLASS if s.below_normal else 0)
+        if s.log_path:
+            cap_log(Path(s.log_path), s.log_max_bytes)
         out = open(s.log_path, "ab") if s.log_path else subprocess.DEVNULL
         job = proc = None
         try:

@@ -710,6 +710,9 @@ def test_llm_error_details_stay_out_of_the_log(tmp_path, caplog):
     run(cfg, llm=FakeLlm(fail=LlmHttpError(400, "bad request: '本周完成：接口联调' is not allowed")))
     text = "\n".join(caplog.messages)
     assert "接口联调" not in text and "LlmHttpError HTTP 400" in text
+    # jobs 表不归隐私删除管：错误详情也不进 last_error
+    errs = [r[0] for r in db(cfg).execute("SELECT last_error FROM jobs WHERE kind = 'summary_piece'")]
+    assert errs and all(e == "LlmHttpError HTTP 400" for e in errs)
 
 
 def test_stop_during_a_slow_ocr_call_returns_quickly_without_using_an_attempt(tmp_path):

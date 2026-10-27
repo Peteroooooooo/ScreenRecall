@@ -80,7 +80,7 @@ def parse_reply(text: str) -> dict:
                         return obj
                     break
         start = t.find("{", start + 1)
-    raise ValueError("回答里没有 JSON 对象")
+    raise BadReply("回答里没有 JSON 对象")
 
 
 def _hm(ms: int) -> str:
@@ -128,10 +128,18 @@ def _piece_payload(ctx: Ctx, p, cap: int = PROMPT_CHARS) -> tuple[dict, list[int
             [int(r["line_id"]) for r in picked])
 
 
+class BadReply(ValueError):
+    """回答格式不对（说明是本模块写死的，不含回答内容）。"""
+
+
 def _err_brief(exc: BaseException) -> str:
-    """日志里只写错误类型和 HTTP 状态码：接口的错误详情可能原样带回发过去的屏幕文字。"""
-    status = getattr(exc, "status", None)
-    return type(exc).__name__ + (f" HTTP {status}" if status else "")
+    """日志和 jobs.last_error 里只写错误类型和 HTTP 状态码：接口的错误详情可能原样带回发过去的屏幕文字
+    （jobs 表不归隐私删除管）。回答格式不对时带上本模块自己的说明。"""
+    from ..app.llm import error_brief
+
+    if isinstance(exc, BadReply):
+        return f"{type(exc).__name__}: {exc}"
+    return error_brief(exc)
 
 
 class LlmStep:
@@ -286,13 +294,13 @@ class LlmStep:
             summary = clean(obj.get("summary", ""), 120)
             task = clean(obj.get("task", ""), 24) or None
             if not summary:
-                raise ValueError("回答里没有 summary")
+                raise BadReply("回答里没有 summary")
         except (Stopped, _Budget):
             ctx.writer.call(_job_release, job_id).result(10)  # 没做完不算一次失败
             raise
         except Exception as exc:  # noqa: BLE001 —— LlmError、回答格式不对
             log.warning("片段 %s 概括失败：%s", p["piece_id"], _err_brief(exc))
-            ctx.writer.job_fail(job_id, clean(str(exc), 300), retry_ms=10 * 60_000, max_attempts=3).result(30)
+            ctx.writer.job_fail(job_id, _err_brief(exc), retry_ms=10 * 60_000, max_attempts=3).result(30)
             return False
         refs = [{"kind": "piece", "id": int(p["piece_id"]), "app": p["app"]}]
         ok = ctx.writer.call(_piece_put_checked, int(p["piece_id"]), line_ids, summary, task,
@@ -350,7 +358,7 @@ class LlmStep:
             obj, reply = self._chat(SYSTEM_DAY, {"day": key, "pieces": items}, max_tokens=500)
             text = clean(obj.get("summary", ""), 400)
             if not text:
-                raise ValueError("回答里没有 summary")
+                raise BadReply("回答里没有 summary")
         except (Stopped, _Budget):
             raise
         except Exception as exc:  # noqa: BLE001

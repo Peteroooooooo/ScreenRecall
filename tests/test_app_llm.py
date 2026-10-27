@@ -125,3 +125,21 @@ def test_not_configured_message(tmp_path):
 def test_full_chat_url_kept():
     c = llm.LlmClient("http://h:1/v1/chat/completions/", "k", "m")
     assert c._url == "http://h:1/v1/chat/completions"
+
+
+def test_retry_log_has_no_error_detail(caplog):
+    """重试前的日志只记错误类型和状态码：接口的错误详情可能原样带回发过去的屏幕文字。"""
+    n = {"i": 0}
+
+    def handler(req: httpx.Request):
+        n["i"] += 1
+        if n["i"] == 1:
+            return httpx.Response(503, json={"error": {"message": "upstream echoed: SCREEN-TEXT-SENTINEL"}})
+        return httpx.Response(200, json=ok_body())
+
+    c, sleeps = make(handler, max_retries=2)
+    with caplog.at_level(logging.DEBUG, logger="screenrecall.app.llm"):
+        assert c.chat([{"role": "user", "content": "x"}]).text == "OK"
+    assert len(sleeps) == 1
+    assert "SCREEN-TEXT-SENTINEL" not in caplog.text and "LlmHttpError HTTP 503" in caplog.text
+    assert llm.error_brief(llm.LlmHttpError(429, "detail SCREEN-TEXT-SENTINEL")) == "LlmHttpError HTTP 429"

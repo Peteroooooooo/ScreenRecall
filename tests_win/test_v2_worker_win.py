@@ -99,7 +99,9 @@ def test_supervised_worker_is_below_normal_and_stops_on_stdin_eof(tmp_path):
         text = log_path.read_text("utf-8", "replace")
         assert code == 0, text[-2000:]
         assert elapsed < 2.0, f"stop_child took {elapsed:.2f} s"
-        assert '"stopped": true' in text
+        # 进度日志写在 <home>/logs/idle-worker.log；标准输出 / 错误（log_path）只留警告和出错
+        assert '"stopped": true' in (tmp_path / "home" / "logs" / "idle-worker.log").read_text("utf-8", "replace")
+        assert '"stopped": true' not in text
         print(f"\nsupervised stop (stdin EOF while waiting for LLM): {elapsed * 1000:.0f} ms, "
               f"RSS while waiting for the LLM {rss:.0f} MiB (text encoder already released)")
     finally:

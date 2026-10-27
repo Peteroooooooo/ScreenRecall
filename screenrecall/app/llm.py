@@ -39,6 +39,13 @@ class LlmHttpError(LlmError):
         self.status = status
 
 
+def error_brief(exc: BaseException) -> str:
+    """写日志、存库用的错误说明：只有错误类型和 HTTP 状态码。str(exc) 里接口的错误详情可能原样带回
+    发过去的屏幕文字（代理、内容审核的报错常这样），不能落盘。"""
+    status = getattr(exc, "status", None)
+    return type(exc).__name__ + (f" HTTP {status}" if status else "")
+
+
 @dataclass(frozen=True)
 class LlmReply:
     text: str
@@ -152,7 +159,8 @@ class LlmClient:
                         raise last
                 if attempt < self.max_retries:
                     wait = self._wait_s(attempt, resp)
-                    log.info("大模型接口暂时不可用（%s），%.1f 秒后重试", last, wait)
+                    # 只记错误类型和状态码：接口返回的错误详情可能原样带回发过去的屏幕文字
+                    log.info("大模型接口暂时不可用（%s），%.1f 秒后重试", error_brief(last), wait)
                     self._sleep(wait)
         assert last is not None
         raise last

@@ -207,3 +207,29 @@ def test_helpers():
     assert cmd[1:] == ["-m", "screenrecall.app", "--x"]
     env = supervisor.child_env({"A": "1"})
     assert env["PYTHONPATH"].split(";")[0] == str(ROOT) and env["A"] == "1"
+
+
+def test_cap_log_rotates_big_child_log(tmp_path):
+    p = tmp_path / "x.out.log"
+    supervisor.cap_log(p, 10)  # 不存在：什么都不做
+    p.write_bytes(b"a" * 5)
+    supervisor.cap_log(p, 10)
+    assert p.read_bytes() == b"a" * 5
+    p.write_bytes(b"b" * 11)
+    (tmp_path / "x.out.log.1").write_bytes(b"old")
+    supervisor.cap_log(p, 10)
+    assert not p.exists() and (tmp_path / "x.out.log.1").read_bytes() == b"b" * 11
+
+
+def test_spawn_caps_the_child_log(tmp_path):
+    log = tmp_path / "child.out.log"
+    log.write_bytes(b"z" * 2000)
+    s = script(tmp_path, "quiet.py", "print('hello')\n")
+    spec = supervisor.ChildSpec("c", [PY, str(s)], restart="never", log_path=log, log_max_bytes=1000)
+    sup = supervisor.Supervisor([spec]).start()
+    try:
+        wait_for(lambda: sup.status()["c"]["state"] in ("exited", "stopped") or log.exists() and b"hello" in log.read_bytes())
+    finally:
+        sup.stop_all()
+    assert log.read_bytes().strip() == b"hello"
+    assert (tmp_path / "child.out.log.1").stat().st_size == 2000
