@@ -1,0 +1,271 @@
+{
+ "label": "search2-before",
+ "sort": "relevant",
+ "limit": 10,
+ "corpus": {
+  "segments": 36,
+  "lines": 376,
+  "queries": 232,
+  "kinds": {
+   "exact": 14,
+   "partial": 6,
+   "paraphrase": 54,
+   "xling": 55,
+   "typo": 6,
+   "unrelated": 97
+  },
+  "splits": {
+   "heldout": 115,
+   "tune": 117
+  }
+ },
+ "embed": {
+  "lines": 376,
+  "seconds": 3.23,
+  "vectors": 462,
+  "rechunked": 0,
+  "line_vectors": 338,
+  "chunks": 124
+ },
+ "summary": {
+  "all": {
+   "exact": {
+    "n": 14,
+    "found@5": 1.0,
+    "recall@5": 1.0,
+    "MRR": 1.0,
+    "junk_groups": 0.43
+   },
+   "partial": {
+    "n": 6,
+    "found@5": 1.0,
+    "recall@5": 1.0,
+    "MRR": 1.0,
+    "junk_groups": 0.33
+   },
+   "paraphrase": {
+    "n": 54,
+    "found@5": 0.833,
+    "recall@5": 0.796,
+    "MRR": 0.756,
+    "junk_groups": 0.54
+   },
+   "xling": {
+    "n": 55,
+    "found@5": 0.873,
+    "recall@5": 0.804,
+    "MRR": 0.783,
+    "junk_groups": 0.42
+   },
+   "typo": {
+    "n": 6,
+    "found@5": 0.833,
+    "recall@5": 0.833,
+    "MRR": 0.833,
+    "junk_groups": 0.67
+   },
+   "unrelated": {
+    "n": 97,
+    "fp_rate": 0.495,
+    "fp_groups": 1.08
+   },
+   "all_related": {
+    "n": 135,
+    "found@5": 0.874,
+    "recall@5": 0.831,
+    "MRR": 0.807,
+    "junk_groups": 0.47
+   },
+   "short_related": {
+    "n": 9,
+    "found@5": 0.667,
+    "recall@5": 0.467,
+    "MRR": 0.611,
+    "junk_groups": 0.78
+   },
+   "unrelated_by_tag": {
+    "offtopic": {
+     "n": 34,
+     "fp_rate": 0.294,
+     "fp_groups": 0.82
+    },
+    "near": {
+     "n": 39,
+     "fp_rate": 0.641,
+     "fp_groups": 1.0
+    },
+    "short": {
+     "n": 18,
+     "fp_rate": 0.389,
+     "fp_groups": 1.06
+    },
+    "number": {
+     "n": 6,
+     "fp_rate": 1.0,
+     "fp_groups": 3.17
+    }
+   }
+  },
+  "tune": {
+   "exact": {
+    "n": 7,
+    "found@5": 1.0,
+    "recall@5": 1.0,
+    "MRR": 1.0,
+    "junk_groups": 0.71
+   },
+   "partial": {
+    "n": 3,
+    "found@5": 1.0,
+    "recall@5": 1.0,
+    "MRR": 1.0,
+    "junk_groups": 0.67
+   },
+   "paraphrase": {
+    "n": 27,
+    "found@5": 0.852,
+    "recall@5": 0.833,
+    "MRR": 0.741,
+    "junk_groups": 0.56
+   },
+   "xling": {
+    "n": 28,
+    "found@5": 0.857,
+    "recall@5": 0.786,
+    "MRR": 0.741,
+    "junk_groups": 0.61
+   },
+   "typo": {
+    "n": 3,
+    "found@5": 0.667,
+    "recall@5": 0.667,
+    "MRR": 0.667,
+    "junk_groups": 0.0
+   },
+   "unrelated": {
+    "n": 49,
+    "fp_rate": 0.449,
+    "fp_groups": 0.9
+   },
+   "all_related": {
+    "n": 68,
+    "found@5": 0.868,
+    "recall@5": 0.831,
+    "MRR": 0.776,
+    "junk_groups": 0.57
+   },
+   "short_related": {
+    "n": 5,
+    "found@5": 0.6,
+    "recall@5": 0.5,
+    "MRR": 0.6,
+    "junk_groups": 1.0
+   },
+   "unrelated_by_tag": {
+    "offtopic": {
+     "n": 17,
+     "fp_rate": 0.294,
+     "fp_groups": 1.0
+    },
+    "near": {
+     "n": 20,
+     "fp_rate": 0.6,
+     "fp_groups": 0.95
+    },
+    "short": {
+     "n": 9,
+     "fp_rate": 0.222,
+     "fp_groups": 0.22
+    },
+    "number": {
+     "n": 3,
+     "fp_rate": 1.0,
+     "fp_groups": 2.0
+    }
+   }
+  },
+  "heldout": {
+   "exact": {
+    "n": 7,
+    "found@5": 1.0,
+    "recall@5": 1.0,
+    "MRR": 1.0,
+    "junk_groups": 0.14
+   },
+   "partial": {
+    "n": 3,
+    "found@5": 1.0,
+    "recall@5": 1.0,
+    "MRR": 1.0,
+    "junk_groups": 0.0
+   },
+   "paraphrase": {
+    "n": 27,
+    "found@5": 0.815,
+    "recall@5": 0.759,
+    "MRR": 0.772,
+    "junk_groups": 0.52
+   },
+   "xling": {
+    "n": 27,
+    "found@5": 0.889,
+    "recall@5": 0.822,
+    "MRR": 0.827,
+    "junk_groups": 0.22
+   },
+   "typo": {
+    "n": 3,
+    "found@5": 1.0,
+    "recall@5": 1.0,
+    "MRR": 1.0,
+    "junk_groups": 1.33
+   },
+   "unrelated": {
+    "n": 48,
+    "fp_rate": 0.542,
+    "fp_groups": 1.27
+   },
+   "all_related": {
+    "n": 67,
+    "found@5": 0.881,
+    "recall@5": 0.831,
+    "MRR": 0.838,
+    "junk_groups": 0.37
+   },
+   "short_related": {
+    "n": 4,
+    "found@5": 0.75,
+    "recall@5": 0.425,
+    "MRR": 0.625,
+    "junk_groups": 0.5
+   },
+   "unrelated_by_tag": {
+    "offtopic": {
+     "n": 17,
+     "fp_rate": 0.294,
+     "fp_groups": 0.65
+    },
+    "near": {
+     "n": 19,
+     "fp_rate": 0.684,
+     "fp_groups": 1.05
+    },
+    "short": {
+     "n": 9,
+     "fp_rate": 0.556,
+     "fp_groups": 1.89
+    },
+    "number": {
+     "n": 3,
+     "fp_rate": 1.0,
+     "fp_groups": 4.33
+    }
+   }
+  }
+ },
+ "latency_ms": {
+  "cold_first": 997.3,
+  "warm_p50": 6.5,
+  "warm_p95": 8.3
+ }
+}
