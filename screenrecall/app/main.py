@@ -145,6 +145,19 @@ class AppOptions:
     cfg: Any = None                 # v2.config.V2Config；store=True 且没给时按 data_dir / home 读
 
 
+def isolated_window_list():
+    """只给测试用：设了 SCREENRECALL_TEST_ONLY_HWNDS（录制子进程也认它）时，/api/v2/windows（固定窗口的选择列表）
+    和设置里的 found 只看这些窗口，端到端测试打开选择列表时不会列出别的窗口的标题。没设时返回 None（列出全部）。"""
+    from ..v2.recorder import TEST_ONLY_HWNDS_ENV, only_hwnds
+
+    only = only_hwnds(os.environ.get(TEST_ONLY_HWNDS_ENV, ""))
+    if not only:
+        return None
+    from .. import winapi
+
+    return lambda: [w for w in winapi.list_windows() if int(w.hwnd) in only]
+
+
 def build_children(cfg, *, home: Path, recorder_module: str = RECORDER_MODULE,
                    worker_module: str | None = WORKER_MODULE) -> list[supervisor.ChildSpec]:
     """录制进程（一直运行，退出就重启）+ 空闲整理进程（空闲时才启动，出错才重启，低优先级）。"""
@@ -208,7 +221,7 @@ class MainApp:
         self.controller = controller or adapters.StoreController(self.stack)
         self.policy = policy or adapters.agent_policy(self.stack.control)
         ctx = web.V2Context(self.stack, self.home, idle_running=self._idle_running, rotate_token=self._rotate_token,
-                            on_settings=self._on_settings)
+                            on_settings=self._on_settings, list_windows=isolated_window_list())
         return web.routes(ctx)
 
     def start(self) -> "MainApp":
