@@ -222,6 +222,37 @@ class Deleter:
         return counts[0], counts[1]
 
 
+# ---------------- 第一次使用 ----------------
+
+CONTROL_SEEDED = "control_seeded"        # meta：主进程已写过第一次的默认值（开始录制）
+RECORDER_DEFAULTS = "recorder_defaults_ms"  # meta：录制进程已填过默认排除规则（v2/recorder._recover）
+
+
+def _seed_control(conn, now: int, default_procs: list, default_kws: list) -> bool:
+    """（写线程里）第一次使用：desired_state 改为 recording、空的排除名单填默认值，记 control_seeded。
+
+    新库的期望状态默认是 paused；不在这里改成 recording，新装的程序永远不会开始录。
+    录制进程先在这个库上跑过（单独运行、测试）也算第一次：它只填排除名单（记 recorder_defaults_ms、
+    request_seq + 1），从不改期望状态。
+    这个标记出现之前建的库：request_seq 只算录制进程那一次（或 0）才当第一次；更多说明主进程或页面写过，
+    只补记标记，不改用户的选择。"""
+    if conn.execute("SELECT 1 FROM meta WHERE key = ?", (CONTROL_SEEDED,)).fetchone() is not None:
+        return False
+    r = conn.execute("SELECT request_seq, excluded_processes, excluded_title_keywords FROM control WHERE id = 1"
+                     ).fetchone()
+    seq = int(r[0] or 0)
+    by_recorder = conn.execute("SELECT 1 FROM meta WHERE key = ?", (RECORDER_DEFAULTS,)).fetchone() is not None
+    conn.execute("INSERT INTO meta (key, value) VALUES (?, ?)", (CONTROL_SEEDED, str(int(now))))
+    if seq > (1 if by_recorder else 0):
+        return False  # 旧库，已经有人写过
+    procs = json.loads(r[1] or "[]") or list(default_procs)
+    kws = json.loads(r[2] or "[]") or list(default_kws)
+    conn.execute("UPDATE control SET desired_state = 'recording', pause_until_ms = NULL, excluded_processes = ?, "
+                 "excluded_title_keywords = ?, request_seq = request_seq + 1, updated_ms = ? WHERE id = 1",
+                 (json.dumps(procs, ensure_ascii=False), json.dumps(kws, ensure_ascii=False), int(now)))
+    return True
+
+
 # ---------------- 主进程的一套存储对象 ----------------
 
 class StoreStack:
@@ -243,15 +274,12 @@ class StoreStack:
                                vector_retries=1)
 
     def seed_control(self) -> bool:
-        """第一次用这个数据目录（界面从没写过 control）：开始录制，写入默认排除规则。返回是否写了。"""
-        ctrl = self.queries.control()
-        if int(ctrl.get("request_seq") or 0) != 0:
-            return False
-        self.writer.control_set(desired_state="recording", pause_until_ms=None,
-                                excluded_processes=list(self.cfg.default_excluded_processes),
-                                excluded_title_keywords=list(self.cfg.default_excluded_title_keywords)).result(10)
+        """第一次用这个数据目录：开始录制，空的排除名单写入默认规则。只做一次（meta control_seeded），
+        之后用户暂停了，重启也保持暂停。返回这次是否写了。"""
+        done = self.writer.call(_seed_control, self.clock(), list(self.cfg.default_excluded_processes),
+                                list(self.cfg.default_excluded_title_keywords)).result(10)
         self.control.invalidate()
-        return True
+        return bool(done)
 
     def set_control(self, **fields: Any) -> None:
         self.writer.control_set(**fields).result(10)
