@@ -184,6 +184,17 @@ def content_chars(lines: Sequence[UiaLine]) -> int:
     return sum(len(_norm_key(ln.text)) for ln in lines if ln.role == "text")
 
 
+# 子元素里含有一整条可见行（至少这么多字）时，它就是那几行所在的段落：看得见的部分已经由可见行收了
+_MIN_COVER_KEY = 8
+
+
+def _is_covered(key: str, cov: tuple[str, list[str]]) -> bool:
+    """文档子元素的文字（已 _norm_key）是否已被文档的可见行收过：它是可见行连起来的一段，
+    或者它包含某条可见行（只露出一半的段落，Name 是整段，屏幕外那半不该收）。"""
+    joined, long_keys = cov
+    return key in joined or any(k in key for k in long_keys)
+
+
 def _tp_ancestor(elems: Sequence[Elem], idx: int, tp_set: set[int]) -> int:
     """idx 的最近一个"产出了可见行"的 TextPattern 祖先（不含自身），没有返回 -1。"""
     p = elems[idx].parent
@@ -221,7 +232,7 @@ def collect_lines(elems: Sequence[Elem], tps: Sequence[TpLines], win_rect: Rect)
     - 同文字同矩形去重。
     """
     out: list[UiaLine] = []
-    covered: dict[int, str] = {}
+    covered: dict[int, tuple[str, list[str]]] = {}
     tp_with_lines: set[int] = set()
     for tp in tps:
         e = elems[tp.elem]
@@ -236,7 +247,8 @@ def collect_lines(elems: Sequence[Elem], tps: Sequence[TpLines], win_rect: Rect)
                 keys.append(_norm_key(t))
         if keys:
             tp_with_lines.add(tp.elem)
-            covered[tp.elem] = "\n".join(keys)
+            # 不加分隔：折成几行显示的段落（网页里的 <p>）整段文字也算被覆盖
+            covered[tp.elem] = ("".join(keys), [k for k in keys if len(k) >= _MIN_COVER_KEY])
 
     for i, e in enumerate(elems):
         if e.password or e.offscreen or i in tp_with_lines:
@@ -258,7 +270,7 @@ def collect_lines(elems: Sequence[Elem], tps: Sequence[TpLines], win_rect: Rect)
         role = "text" if e.ct in CONTENT_CT else "ui"
         for raw, src in cands:
             for t in _split_lines(raw):
-                if anc >= 0 and _norm_key(t) in covered[anc]:
+                if anc >= 0 and _is_covered(_norm_key(t), covered[anc]):
                     continue
                 out.append(UiaLine(t, rect, e.ct, src, role))
 
