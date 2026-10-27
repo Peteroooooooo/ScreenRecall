@@ -8,7 +8,10 @@
   同一个写线程里后面的操作可以直接引用前面操作的 Future（例如 save_frame(line_ids=record_lines(...))），
   写线程按先后顺序执行，取值不会等待；
 - 证据帧的无损 WebP 编码在单独的编码线程里做，编码完再排队把帧状态改成 ok；
-- 别的进程同时写（空闲整理进程、主进程）时靠 busy_timeout 排队，事务都很短。
+- 别的进程同时写（空闲整理进程、主进程）时靠 busy_timeout 排队，事务都很短；
+- 隐私删除（delete.delete_data，可能在别的进程里执行）会先登记到 purges：之后提交的、时间落在
+  已删范围里的行、帧、划过记录一律丢弃（record_lines 返回全 None，帧不登记且文件会被抹掉）；
+- 隐私删除可能删掉整个内容源：再往旧块里写会得到 BlockGone，录制方应重新 segment_for + block_new。
 """
 
 from __future__ import annotations

@@ -13,7 +13,10 @@
   读取方按墓碑屏蔽；compact() 把有死行的段重写成新一代文件，旧文件没人占用时删除；
 - 读取方 refresh() 只读新增的行（看文件大小）和新增的墓碑，不整库重载；
 - 检索：每段一次矩阵乘，时间范围按段的最早/最晚时间整段跳过，argpartition 取前 k，
-  按组（如内容源）取每组最高分也全是向量化运算。向量应已归一化（余弦 = 点积）。
+  按组（如内容源）取每组最高分也全是向量化运算。向量应已归一化（余弦 = 点积）；
+- 文字向量约定：id = line_id，ts = 行的 first_seen_ms（之后不变），group = segment_id；
+  图片向量：id = frames.frame_no，ts = captured_ms，group = segment_id；
+- 一个实例可被多个线程同时检索（内部加锁串行）；写入方每个进程一个实例。
 """
 
 from __future__ import annotations
