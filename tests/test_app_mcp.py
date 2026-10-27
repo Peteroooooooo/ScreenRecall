@@ -396,13 +396,31 @@ def test_agent_configs_carry_a_custom_home(monkeypatch, tmp_path):
 def test_agent_configs_have_no_token(monkeypatch):
     monkeypatch.delenv("SCREENRECALL_HOME", raising=False)
     cfg = mcp_shim.agent_configs(python=r"C:\py\python.exe", root=Path(r"D:\repo dir"))
-    assert set(cfg) == {"claude_desktop", "claude_code", "cursor"}
+    assert set(cfg) == {"claude_desktop", "claude_code", "codex", "cursor"}
     entry = cfg["cursor"]["json"]["mcpServers"]["screenrecall"]
     assert entry == {"command": r"C:\py\python.exe", "args": ["-m", "screenrecall.app.mcp_shim"],
                      "env": {"PYTHONPATH": r"D:\repo dir"}}
     assert cfg["claude_code"]["json"]["mcpServers"]["screenrecall"]["type"] == "stdio"
     assert cfg["claude_code"]["cli"].startswith("claude mcp add screenrecall --scope user -e \"PYTHONPATH=D:\\repo dir\" --")
     assert "token" not in json.dumps(cfg).lower() and "bearer" not in json.dumps(cfg).lower()
+
+
+def test_page_snippets_match_what_the_installer_registers(monkeypatch):
+    """"连接 Agent"页面的 Codex 块 / Claude Code 命令和 python -m screenrecall.app.agents install 登记的是同一个命令。"""
+    import tomllib
+
+    from screenrecall.app import agents
+
+    monkeypatch.delenv("SCREENRECALL_HOME", raising=False)
+    py = r"C:\py dir\python.exe"
+    cfg = mcp_shim.agent_configs(python=py)
+    entry = agents.shim_entry(py)
+    assert cfg["codex"]["toml"] == agents.codex_block(entry)
+    got = tomllib.loads(cfg["codex"]["toml"])["mcp_servers"]["screenrecall"]
+    assert {k: got[k] for k in ("command", "args", "env")} == entry
+    assert got["default_tools_approval_mode"] == "approve"
+    assert cfg["claude_code"]["json"]["mcpServers"]["screenrecall"] == {"type": "stdio", **entry}
+    assert subprocess.list2cmdline([py]) in cfg["claude_code"]["cli"]
 
 
 def test_agent_configs_use_console_python_even_when_main_runs_under_pythonw(monkeypatch):

@@ -7,7 +7,7 @@ import { errText, useLoad } from "../lib";
 import { useSettings } from "../settings";
 import { Banner, Card, ConfirmDialog, LoadError, PageHeader, Skeleton, Switch, copyText, useToast, type ConfirmSpec } from "../ui";
 
-const ORDER = ["claude_desktop", "claude_code", "cursor"];
+const ORDER = ["claude_desktop", "claude_code", "codex", "cursor"];
 
 export default function AgentPage() {
   const { t } = useT();
@@ -89,11 +89,11 @@ export default function AgentPage() {
               </div>
               {cur && (() => {
                 const k = keys[Math.min(tab, keys.length - 1)];
-                const json = JSON.stringify(cur.json, null, 2);
+                const body = cur.toml ?? JSON.stringify(cur.json, null, 2);
                 return (
                   <div role="tabpanel" id={`pan-${k}`} aria-labelledby={`tab-${k}`} className="mt-3 space-y-3">
                     <p className="text-[12.5px] text-graphite [overflow-wrap:anywhere]">{t("agent.addTo", { x: cur.file })}</p>
-                    <Snippet text={json} onCopy={copy} />
+                    <Snippet text={body} onCopy={copy} />
                     {cur.cli && <>
                       <p className="text-[12.5px] text-graphite">{t("agent.cli")}</p>
                       <Snippet text={cur.cli} onCopy={copy} />
