@@ -119,6 +119,24 @@ def covered_spans(top: int, bottom: int, holes: list[tuple[int, int]]) -> list[t
     return out
 
 
+def stored_lines(res, fmap) -> tuple[list[tuple[str, tuple[int, int, int, int], bool]], int]:
+    """一次读字结果里要存成文字行的那些：[(文字, 帧坐标矩形, 是否 TextPattern 可见行)]，以及正文顶边（帧 y）。
+
+    只收 role 'text'（界面文字由 uia.collect_lines 标成 'ui'）；正文上方的固定区域（标签页、地址栏）不收：
+    有 TextPattern 正文时，正文第一行以上的都算固定区域。"""
+    conv: list[tuple[str, tuple[int, int, int, int], bool]] = []
+    for ln in res.lines:
+        if ln.role != "text" or not ln.text.strip():
+            continue
+        r = fmap.rect_to_frame(*ln.rect)
+        if r is None:
+            continue
+        conv.append((ln.text, r, ln.source_detail.startswith("textpattern")))
+    tp_idx = [i for i, (_, _, tp) in enumerate(conv) if tp]
+    content_top = min(conv[i][1][1] for i in tp_idx) if tp_idx else 0
+    return [c for c in conv if c[1][1] >= content_top], content_top
+
+
 class TextWorker:
     def __init__(self, writer: Writer, reader, *, core: CoreLink | None = None, sink: StoreSink | None = None,
                  max_pending_stills: int = 8, keep_stills: int = 256, db_timeout_s: float = 10.0,
@@ -286,7 +304,8 @@ class TextWorker:
         if res is not None and res.status in ("ok", "empty"):
             uncovered = self._uncovered_frame(res, fmap)
             res_f = dataclasses.replace(res, uncovered=tuple(uncovered))
-            regions = uia.ocr_regions(res_f, bgr, (0, 0), min_gap_px=self.min_gap_px, top=self._top(ev))
+            top = self._top(ev, res, fmap)
+            regions = uia.ocr_regions(res_f, bgr, (0, 0), min_gap_px=self.min_gap_px, top=top)
             if res.usable:
                 self.stats.uia_usable += 1
                 try:
@@ -294,7 +313,7 @@ class TextWorker:
                 except Exception:  # noqa: BLE001 - 字没写进去：这一帧整帧待 OCR，别把文字丢了
                     self.stats.errors += 1
                     log.exception("写文字行失败，改为整帧待 OCR")
-                    regions = uia.ocr_regions(_NO_READ, bgr, (0, 0), min_gap_px=self.min_gap_px, top=self._top(ev))
+                    regions = uia.ocr_regions(_NO_READ, bgr, (0, 0), min_gap_px=self.min_gap_px, top=top)
         else:
             regions = uia.ocr_regions(_NO_READ, bgr, (0, 0), min_gap_px=self.min_gap_px, top=self._top(ev))
         self._info[ev.still_id] = StillInfo(line_ids, rects, [tuple(map(int, r)) for r in regions],
@@ -308,14 +327,24 @@ class TextWorker:
                 self.stats.evidence_requested += 1
         self.stats.add("still_ms", (time.perf_counter() - t_start) * 1000)
 
-    def _top(self, ev) -> int:
-        """帧里系统标题栏以下从第几行开始（帧像素）；取不到时 0。"""
-        try:
-            px = int(self.caption_px(ev.hwnd) or 0)
-        except Exception:  # noqa: BLE001
-            return 0
+    def _top(self, ev, res=None, fmap=None) -> int:
+        """帧里从第几行开始登记待 OCR（帧像素）：系统标题栏以下；这次读字认出了窗口上部的界面条（标签页条、
+        工具栏，uia.chrome_bottom）时从它下面开始，否则页面还没进辅助功能树时整帧识别会把标签页、地址栏识别成正文。"""
         scale = getattr(ev.fmap, "scale_y", 1.0) or 1.0
-        return max(0, int(px / scale))
+        try:
+            top = max(0, int(int(self.caption_px(ev.hwnd) or 0) / scale))
+        except Exception:  # noqa: BLE001
+            top = 0
+        cb = getattr(res, "chrome_bottom", None) if res is not None else None
+        fm = fmap or ev.fmap
+        if cb is not None and fm is not None:
+            try:
+                y = fm.to_frame(fm.left, cb)[1]
+            except Exception:  # noqa: BLE001
+                y = 0
+            if 0 < y < fm.height:
+                top = max(top, int(y))
+        return top
 
     def _hint(self, hwnd: int) -> bool:
         fn = getattr(self.reader, "has_text_hint", None)
@@ -381,18 +410,7 @@ class TextWorker:
 
     def _write_lines(self, ctx: StillCtx, res, uncovered, fh: int, fmap) -> tuple[list, list]:
         ev = ctx.ev
-        conv: list[tuple[str, tuple[int, int, int, int], bool]] = []
-        for ln in res.lines:
-            if ln.role != "text" or not ln.text.strip():
-                continue
-            r = fmap.rect_to_frame(*ln.rect)
-            if r is None:
-                continue
-            conv.append((ln.text, r, ln.source_detail.startswith("textpattern")))
-        # 正文上方的固定区域（标签页、地址栏）不收：有 TextPattern 正文时，正文第一行以上的都算固定区域
-        tp_idx = [i for i, (_, _, tp) in enumerate(conv) if tp]
-        content_top = min(conv[i][1][1] for i in tp_idx) if tp_idx else 0
-        conv = [c for c in conv if c[1][1] >= content_top]
+        conv, content_top = stored_lines(res, fmap)
         spans = covered_spans(content_top, fh, [(r[1], r[3]) for r in uncovered])
         if not spans:
             return [], []

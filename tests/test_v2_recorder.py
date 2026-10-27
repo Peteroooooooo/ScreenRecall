@@ -58,6 +58,7 @@ class Win:
         self.env, self.hwnd, self.doc, self.uia_text = env, hwnd, doc, uia_text
         self.top = 0
         self.origin = (0, 0)  # 窗口在屏幕上的左上角（只影响 UIA 给的屏幕坐标；假截图来源的帧边界固定在 (0, 0)）
+        self.chrome: int | None = None  # 读不到字时 UIA 认出的界面条下沿（窗口内 y）
         self.head = S.header(W)
         env.win.add(hwnd, process, title)
         env.wins[hwnd] = self
@@ -74,7 +75,8 @@ class Win:
         ox, oy = self.origin
         rect = (ox, oy, ox + W, oy + HEAD + VH)
         if not self.uia_text:
-            return uia.UiaResult("empty", [], False, 3.0, 4, rect)
+            cb = None if self.chrome is None else oy + self.chrome
+            return uia.UiaResult("empty", [], False, 3.0, 4, rect, chrome_bottom=cb)
         lines = [uia.UiaLine("合成窗口 - 标题栏", (ox + 16, oy + 14, ox + 300, oy + 40), "TabItem", "name", "text")]
         for y0, y1, text in self.doc.lines:
             sy0, sy1 = HEAD + y0 - self.top, HEAD + y1 - self.top
@@ -391,6 +393,19 @@ def test_ocr_region_starts_below_the_system_caption(env):
     env.run(1300)
     reg = env.db().execute("SELECT x0, y0, x1, y1 FROM ocr_regions").fetchall()
     assert [tuple(r) for r in reg] == [(0, 30, W, HEAD + VH)]
+
+
+def test_ocr_region_starts_below_the_app_chrome_bars(env):
+    """页面还没进辅助功能树（浏览器刚开始加载）：UIA 只认出了窗口上部的标签页条 / 工具栏（chrome_bottom），
+    整帧待 OCR 时从它们下面开始，标签页标题和网址不会被识别成正文。"""
+    w = Win(env, 3, "msedge.exe", "加载中", Doc(seed=5), uia_text=False)
+    w.chrome = HEAD
+    env.win.fg = 3
+    env.run(40)
+    w.show(0)
+    env.run(1300)
+    reg = env.db().execute("SELECT x0, y0, x1, y1 FROM ocr_regions").fetchall()
+    assert [tuple(r) for r in reg] == [(0, HEAD, W, HEAD + VH)]
 
 
 def test_busy_or_timeout_uia_means_ocr(env):
