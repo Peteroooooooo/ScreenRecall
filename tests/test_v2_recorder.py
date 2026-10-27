@@ -57,6 +57,7 @@ class Win:
     def __init__(self, env, hwnd: int, process: str, title: str, doc: Doc | None, *, uia_text: bool = True):
         self.env, self.hwnd, self.doc, self.uia_text = env, hwnd, doc, uia_text
         self.top = 0
+        self.origin = (0, 0)  # 窗口在屏幕上的左上角（只影响 UIA 给的屏幕坐标；假截图来源的帧边界固定在 (0, 0)）
         self.head = S.header(W)
         env.win.add(hwnd, process, title)
         env.wins[hwnd] = self
@@ -70,17 +71,18 @@ class Win:
         self.env.src(self.hwnd).push(self.image(), self.env.clock.t)
 
     def uia_result(self) -> uia.UiaResult:
-        rect = (0, 0, W, HEAD + VH)
+        ox, oy = self.origin
+        rect = (ox, oy, ox + W, oy + HEAD + VH)
         if not self.uia_text:
             return uia.UiaResult("empty", [], False, 3.0, 4, rect)
-        lines = [uia.UiaLine("合成窗口 - 标题栏", (16, 14, 300, 40), "TabItem", "name", "text")]
+        lines = [uia.UiaLine("合成窗口 - 标题栏", (ox + 16, oy + 14, ox + 300, oy + 40), "TabItem", "name", "text")]
         for y0, y1, text in self.doc.lines:
             sy0, sy1 = HEAD + y0 - self.top, HEAD + y1 - self.top
             if sy1 <= HEAD or sy0 >= HEAD + VH:
                 continue
             # 和真的 UIA 一样：露出半截的行给整行文字、但矩形裁到可见部分
-            lines.append(uia.UiaLine(text, (20, max(sy0, HEAD), 780, min(sy1, HEAD + VH)), "Document",
-                                     "textpattern:Document", "text"))
+            lines.append(uia.UiaLine(text, (ox + 20, oy + max(sy0, HEAD), ox + 780, oy + min(sy1, HEAD + VH)),
+                                     "Document", "textpattern:Document", "text"))
         unc = tuple(uia.uncovered_bands(lines, rect))
         return uia.UiaResult("ok", lines, uia.content_chars(lines) >= 16, 5.0, len(lines), rect, uncovered=unc)
 
@@ -681,6 +683,172 @@ def test_threads_run_and_stop_cleanly(tmp_path):
     assert conn.execute("SELECT COUNT(*) FROM lines").fetchone()[0] > 0
     assert conn.execute("SELECT COUNT(*) FROM frames").fetchone()[0] == 1  # 收尾时候选帧存成证据帧
     conn.close()
+
+
+# ---------------- 评审修复：排队中的静止、坐标、划过、出错后的块映射 ----------------
+
+def _queue_still(env, w):
+    """让一次静止留在读字线程的队列里（不处理）。"""
+    env.win.fg = w.hwnd
+    env.run(40)
+    w.show(0)
+    t = env.clock.t + 1100
+    while env.clock.t < t:
+        env.clock.t += 40
+        env.core.step()
+    assert env.proc.text.pending() == 1
+
+
+def _no_text_anywhere(conn, needle):
+    for table in ("segments", "activity", "gaps", "frames", "lines", "control"):
+        for row in conn.execute(f"SELECT * FROM {table}"):
+            assert not any(isinstance(v, str) and needle in v for v in tuple(row)), table
+
+
+def test_queued_still_is_not_read_after_pause(env):
+    """暂停之后不能再去读排队中的静止：那时屏幕上的已经是用户暂停后才打开的内容。"""
+    w = Win(env, 1, "msedge.exe", "综述 - Edge", Doc())
+    _queue_still(env, w)
+    env.proc.writer.control_set(desired_state="paused").result(10)
+    env.proc.control.tick()  # 暂停命令已发给核心，核心还没走下一轮
+    env.proc.text.drain()
+    assert env.reader.reads == 0
+    env.run(200)
+    conn = env.db()
+    assert conn.execute("SELECT COUNT(*) FROM lines").fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM frames").fetchone()[0] == 0
+
+
+def test_queued_still_is_not_read_after_window_becomes_excluded(env):
+    """静止排队期间窗口标题命中了排除规则（核心还没来得及走一轮）：不读字，也不建带这个标题的内容源。"""
+    w = Win(env, 1, "msedge.exe", "综述 - Edge", Doc())
+    _queue_still(env, w)
+    env.win.windows[1]["title"] = "网上银行 - InPrivate"
+    env.proc.text.drain()
+    assert env.reader.reads == 0
+    env.run(1200)
+    conn = env.db()
+    assert conn.execute("SELECT COUNT(*) FROM lines").fetchone()[0] == 0
+    _no_text_anywhere(conn, "银行")
+
+
+def test_background_still_with_excluded_title_creates_no_segment(env):
+    """前台换走后，旧窗口的静止晚一秒才到；这时它的标题已命中排除：不建内容源、不读字、不存图。"""
+    a = Win(env, 1, "msedge.exe", "综述 - Edge", Doc())
+    Win(env, 2, "notepad.exe", "笔记 - 记事本", Doc(seed=4))
+    env.win.fg = 1
+    env.run(40)
+    a.show(0)
+    env.run(200)
+    env.win.fg = 2
+    env.win.windows[1]["title"] = "网上银行 - InPrivate"
+    env.run(4500)  # 静止 + 后台会话延迟停止时的 closing 证据帧
+    conn = env.db()
+    _no_text_anywhere(conn, "银行")
+    assert conn.execute("SELECT COUNT(*) FROM frames").fetchone()[0] == 0
+    assert env.reader.reads == 0
+
+
+def test_window_moved_after_still_keeps_block_coordinates(env):
+    """静止之后、读字之前窗口被拖动了（内容没变，核心手里的帧还是旧位置）：按读字时的窗口位置换算。"""
+    w = Win(env, 1, "msedge.exe", "综述 - Edge", Doc())
+    _queue_still(env, w)
+    w.origin = (130, 70)
+    env.proc.text.drain()
+    rows = _lines(env.db())
+    visible = [ln for ln in w.doc.lines if ln[0] < VH]
+    assert [r["text"] for r in rows] == [ln[2] for ln in visible]
+    for r, ln in zip(rows, visible):
+        assert r["y0"] == HEAD + ln[0] and r["x0"] == 20
+
+
+def test_window_resized_after_still_discards_read(env):
+    w = Win(env, 1, "msedge.exe", "综述 - Edge", Doc())
+    _queue_still(env, w)
+    orig = w.uia_result
+
+    def resized():
+        r = orig()
+        return uia.UiaResult(r.status, r.lines, r.usable, r.elapsed_ms, r.element_count,
+                             (0, 0, W + 200, HEAD + VH + 100), uncovered=r.uncovered)
+
+    w.uia_result = resized
+    env.proc.text.drain()
+    assert env.reader.reads == 1 and env.proc.text.stats.stale == 1
+    assert env.db().execute("SELECT COUNT(*) FROM lines").fetchone()[0] == 0
+
+
+def test_skim_before_first_still_uses_live_frame_height(env):
+    """窗口一出现就一路滑下去（之前没有过静止）：划过的范围仍然去掉起止两屏。"""
+    w = Win(env, 1, "msedge.exe", "综述 - Edge", Doc())
+    env.win.fg = 1
+    env.run(40)
+    w.show(0)
+    env.run(200)
+    env.scroll(w, 1500, step_px=150)
+    env.run(1200)
+    sk = env.db().execute("SELECT * FROM skims").fetchall()
+    assert len(sk) == 1 and (sk[0]["y_from"], sk[0]["y_to"]) == (HEAD + VH, 1500)
+
+
+def test_failed_block_creation_is_retried(env):
+    """建库块的那批写入失败了（Future 带异常）：映射不能一直指着它，下次重新建。"""
+    from concurrent.futures import Future
+
+    real = env.proc.writer.block_new
+    calls = []
+
+    def flaky(seg, t, anchor="none"):
+        calls.append(t)
+        if len(calls) == 1:
+            f = Future()
+            f.set_exception(RuntimeError("同批操作出错，事务已回滚"))
+            return f
+        return real(seg, t, anchor)
+
+    env.proc.writer.block_new = flaky
+    w = Win(env, 1, "msedge.exe", "综述 - Edge", Doc())
+    env.win.fg = 1
+    env.run(40)
+    w.show(0)
+    env.run(1200)
+    assert env.db().execute("SELECT COUNT(*) FROM lines").fetchone()[0] == 0
+    w.doc.rewrite(2, "第002行 写入失败之后的新内容")
+    w.show()
+    env.run(1300)
+    conn = env.db()
+    assert len(calls) == 2
+    assert conn.execute("SELECT COUNT(*) FROM lines").fetchone()[0] > 0
+    assert conn.execute("SELECT COUNT(*) FROM blocks").fetchone()[0] == 1
+
+
+def test_control_loop_closes_its_connection_after_an_error(env):
+    import time
+
+    ctl = env.proc.control
+    ctl.tick()
+    first = ctl._conn
+    real = env.core.stats
+    n = {"k": 0}
+
+    def boom():
+        n["k"] += 1
+        if n["k"] == 1:
+            raise RuntimeError("synthetic")
+        return real()
+
+    env.core.stats = boom
+    ctl.interval_s = 0.01
+    ctl.start()
+    try:
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and (ctl.errors == 0 or ctl._conn is None):
+            time.sleep(0.01)
+    finally:
+        ctl.stop()
+    assert ctl.errors == 1
+    with pytest.raises(sqlite3.ProgrammingError):
+        first.execute("SELECT 1")
 
 
 def test_text_backlog_skips_oldest_reads(tmp_path):

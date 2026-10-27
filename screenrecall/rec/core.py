@@ -135,6 +135,40 @@ class RecorderCore:
         tr = self.trackers.get(hwnd)
         return None if tr is None else tr.last_change_ms
 
+    def can_read(self, hwnd: int) -> bool:
+        """集成方（读字线程）现在能不能去读这个窗口屏幕上的内容。任何线程都可以调。
+
+        暂停 / 锁屏（包括已经发出、核心还没执行的暂停命令）、窗口没在跟踪 / 已关 / 在缺口里、
+        或者此刻（按最新的规则，包括还没执行的规则命令）是最小化 / 被隐藏 / 命中排除时返回 False。
+        核心只在每一轮开头查规则，静止事件排队等读字的这段时间里窗口可能已经换了内容和标题。
+        """
+        if self._paused or self._locked:
+            return False
+        rules = self._rules
+        with self._cmd_lock:
+            for name, arg in self._cmds:
+                if name == "pause":
+                    return False
+                if name == "rules":
+                    rules = arg
+        tr = self.trackers.get(hwnd)
+        if tr is None or tr.closed or tr.in_gap:
+            return False
+        try:
+            return self._reason(hwnd, rules) is None
+        except Exception:  # noqa: BLE001 - 查不了就当不能读
+            return False
+
+    def title_excluded(self, process: str | None, title: str | None) -> bool:
+        """这个进程名 + 标题是否命中当前的排除规则（分析线程里调用）。"""
+        return rule_reason(process, title, self._rules) is not None
+
+    def frame_height(self, hwnd: int) -> int | None:
+        """这个窗口最新一帧的高度（分析线程里调用）；还没有帧时 None。"""
+        tr = self.trackers.get(hwnd)
+        f = None if tr is None else tr.latest
+        return None if f is None else int(f.shape[0])
+
     @property
     def paused(self) -> bool:
         return self._paused
@@ -325,7 +359,9 @@ class RecorderCore:
             pid = None
         fn(t, hwnd, pid, key[1], None if key[2] else key[3], key[2])
 
-    def _reason(self, hwnd: int) -> str | None:
+    _CURRENT_RULES = object()
+
+    def _reason(self, hwnd: int, rules: object = _CURRENT_RULES) -> str | None:
         st = self.windows.state(hwnd)
         reason = st.gap_reason
         if reason is not None:
@@ -333,7 +369,8 @@ class RecorderCore:
         desc = self.windows.describe(hwnd)
         if desc is None:
             return "closed"
-        return "excluded" if rule_reason(desc[0], desc[1], self._rules) else None
+        rules = self._rules if rules is RecorderCore._CURRENT_RULES else rules
+        return "excluded" if rule_reason(desc[0], desc[1], rules) else None
 
     def step(self, now: int | None = None) -> None:
         with self._step_lock:

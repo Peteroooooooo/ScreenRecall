@@ -62,6 +62,14 @@ class StillCtx:
     skip_uia: bool = False  # 读字线程积压了：不再去读（画面早变了），整帧登记待 OCR
 
 
+def _failed(ref: BlockRef) -> bool:
+    """库块映射里的 Future 已经失败（建内容源 / 块的那批写入回滚了）。"""
+    for f in (ref.segment, ref.db_block):
+        if isinstance(f, Future) and f.done() and (f.cancelled() or f.exception() is not None):
+            return True
+    return False
+
+
 class GlobalGaps:
     """锁屏 / 暂停 / 录制停止这类全局缺口：每种原因同时最多一行，开关都是幂等的。任何线程都可以调。"""
 
@@ -100,11 +108,17 @@ class StoreSink:
     """rec.tracker.Sink 的实现，外加 foreground（活动日志）。text 是读字线程（put_still / put_evidence）。"""
 
     def __init__(self, writer: Writer, text, gaps: GlobalGaps, *,
-                 describe: Callable[[int], tuple[str, str] | None] | None = None, max_blocks: int = 4096):
+                 describe: Callable[[int], tuple[str, str] | None] | None = None,
+                 excluded: Callable[[str, str], bool] | None = None,
+                 frame_height: Callable[[int], int | None] | None = None, max_blocks: int = 4096):
+        """describe(hwnd) -> (进程, 标题)；excluded(进程, 标题) -> 是否命中排除规则；
+        frame_height(hwnd) -> 窗口最新一帧的高（划过用）。录制进程把它们接到录制核心上。"""
         self.writer = writer
         self.text = text
         self.gaps = gaps
         self.describe = describe or (lambda _h: None)
+        self.excluded = excluded or (lambda _a, _t: False)
+        self.frame_height = frame_height or (lambda _h: None)
         self.max_blocks = max_blocks
         self._lock = threading.Lock()
         self._blocks: OrderedDict[tuple[int, int], BlockRef] = OrderedDict()
@@ -114,7 +128,8 @@ class StoreSink:
         self._cur_lock = threading.Lock()
         # 当前前台（给心跳用）：(hwnd, 进程, 标题 | None, 是否排除, 起始时间)；None = 没有可录的前台窗口
         self._current: tuple[int, str, str | None, bool, int] | None = None
-        self.counts = {"blocks": 0, "segments_renewed": 0, "skims": 0, "anchors": 0, "gaps": 0, "activity": 0}
+        self.counts = {"blocks": 0, "segments_renewed": 0, "skims": 0, "anchors": 0, "gaps": 0, "activity": 0,
+                       "excluded_drops": 0, "failed_refs": 0}
 
     # ---------------- 名字和块映射 ----------------
 
@@ -134,13 +149,28 @@ class StoreSink:
             return self._names.get(hwnd, ("unknown", ""))
 
     def block_ref(self, hwnd: int, block: int, t_ms: int, app: str | None = None,
-                  title: str | None = None) -> BlockRef:
-        """核心块在当前标题下的库块；还没有（或标题变了）就排队新建。"""
+                  title: str | None = None) -> BlockRef | None:
+        """核心块在当前标题下的库块；还没有（或标题变了）就排队新建。
+
+        标题此刻命中排除规则时返回 None，调用方什么都不写：核心只在窗口是前台 / 钉住时查规则，
+        转到后台的窗口晚一秒才到的静止、到顶到底事件可能已经带着要排除的标题。
+        """
         if app is None or title is None:
             app, title = self.name_of(hwnd)
+        try:
+            excluded = bool(self.excluded(app, title))
+        except Exception:  # noqa: BLE001 - 查不了规则就当排除
+            excluded = True
+        if excluded:
+            self.counts["excluded_drops"] += 1
+            return None
         key = (hwnd, block)
         with self._lock:
             ref = self._blocks.get(key)
+            if ref is not None and _failed(ref):
+                # 建内容源 / 块的那批写入失败了（整批回滚）：不能一直引用失败的 Future，重新建
+                self.counts["failed_refs"] += 1
+                ref = None
             if ref is not None and ref.app == app and ref.title == title:
                 self._blocks.move_to_end(key)
                 return ref
@@ -153,7 +183,7 @@ class StoreSink:
             self.counts["blocks"] += 1
             return ref
 
-    def renew(self, old: BlockRef, t_ms: int) -> BlockRef:
+    def renew(self, old: BlockRef, t_ms: int) -> BlockRef | None:
         """库里的块没了（BlockGone）：重新建内容源和块。别的线程已经换过时直接用换好的。"""
         key = (old.hwnd, old.block)
         with self._lock:
@@ -178,13 +208,19 @@ class StoreSink:
 
     def block_anchor(self, hwnd: int, block: int, anchor: str, t_ms: int, pos_y: int) -> None:
         ref = self.block_ref(hwnd, block, t_ms)
+        if ref is None:
+            return
         self.writer.block_anchor(ref.db_block, anchor)
         self.counts["anchors"] += 1
 
     def still(self, ev: StillEvent) -> None:
         app, title = self.name_of(ev.hwnd)
-        ref = self.block_ref(ev.hwnd, ev.block, ev.t_ms, app, title)
         self._frame_h[ev.hwnd] = int(ev.frame.shape[0])
+        while len(self._frame_h) > 256:
+            self._frame_h.pop(next(iter(self._frame_h)))
+        ref = self.block_ref(ev.hwnd, ev.block, ev.t_ms, app, title)
+        if ref is None:  # 标题命中排除：这次静止不读字、不存图（它的候选帧之后到读字线程时也会被丢掉）
+            return
         self.text.put_still(StillCtx(ev, app, title, ref))
 
     def evidence(self, ev: StillEvent, reason: str) -> None:
@@ -194,14 +230,21 @@ class StoreSink:
              y0: int, y1: int) -> None:
         """划过：库里只记"起止两屏都没盖到"的那段内容 [靠上那屏的底, 靠下那屏的顶)，块坐标。
 
-        y0 / y1 是起止两屏顶端的位置，帧高用这个窗口最后一次静止时的。滚动距离不到一屏时两屏连着，
-        没有漏看的内容，不记。还不知道帧高时退回记两屏顶端之间。
+        y0 / y1 是起止两屏顶端的位置，帧高用这个窗口此刻最新那一帧的（= 停下来那一屏；划过在静止 / 断开时、
+        新帧收下之前发出），取不到时用最后一次静止的。滚动距离不到一屏时两屏连着，没有漏看的内容，不记。
+        两个都没有时退回记两屏顶端之间。
         """
-        h = self._frame_h.get(hwnd, 0)
+        try:
+            h = self.frame_height(hwnd)
+        except Exception:  # noqa: BLE001
+            h = None
+        h = int(h) if h else self._frame_h.get(hwnd, 0)
         lo, hi = min(y0, y1) + h, max(y0, y1)
         if hi <= lo:
             return
         ref = self.block_ref(hwnd, block, t0_ms)
+        if ref is None:
+            return
         self.writer.skim(ref.segment, ref.db_block, int(t0_ms), int(t1_ms), int(lo), int(hi))
         self.counts["skims"] += 1
 
