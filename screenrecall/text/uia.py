@@ -195,6 +195,16 @@ def _is_covered(key: str, cov: tuple[str, list[str]]) -> bool:
     return key in joined or any(k in key for k in long_keys)
 
 
+def _over_document(rect: Rect, elems: Sequence[Elem], tp_set: set[int]) -> bool:
+    """rect 的中心落在某个"产出了可见行"的 TextPattern 元素（正文）矩形里。"""
+    cx, cy = (rect[0] + rect[2]) / 2, (rect[1] + rect[3]) / 2
+    for i in tp_set:
+        r = elems[i].rect
+        if r[0] <= cx < r[2] and r[1] <= cy < r[3]:
+            return True
+    return False
+
+
 def _tp_ancestor(elems: Sequence[Elem], idx: int, tp_set: set[int]) -> int:
     """idx 的最近一个"产出了可见行"的 TextPattern 祖先（不含自身），没有返回 -1。"""
     p = elems[idx].parent
@@ -268,6 +278,8 @@ def collect_lines(elems: Sequence[Elem], tps: Sequence[TpLines], win_rect: Rect)
             continue
         anc = _tp_ancestor(elems, i, tp_with_lines) if tp_with_lines else -1
         role = "text" if e.ct in CONTENT_CT else "ui"
+        if anc < 0 and role == "text" and _over_document(rect, elems, tp_with_lines):
+            role = "ui"  # 不在正文里、却画在正文上面：浮层（浏览器的翻译提示、弹出气泡、通知）
         for raw, src in cands:
             for t in _split_lines(raw):
                 if anc >= 0 and _is_covered(_norm_key(t), covered[anc]):

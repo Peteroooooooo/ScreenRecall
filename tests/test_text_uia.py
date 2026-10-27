@@ -95,6 +95,23 @@ def test_wrapped_paragraph_name_is_not_stored_next_to_its_visible_lines():
     assert len(got) == 4 and "合成图片的说明文字" in got  # 文档里不在可见行中的字照收
 
 
+def test_text_drawn_over_the_document_from_outside_it_is_ui():
+    """浏览器的翻译提示、弹出气泡：不在正文（产出了可见行的 TextPattern 元素）里，却画在正文上面 → ui，
+    不当成正文存（每张截图都会重复一遍）。正文外面的字（例如工具栏下的状态文字）照旧。"""
+    elems = [
+        Elem(-1, "Window", rect=WIN),
+        Elem(0, "Document", name="页面", rect=(100, 200, 900, 700), has_tp=True),
+        Elem(0, "Pane", rect=(600, 210, 890, 330)),
+        Elem(2, "Text", name="翻译 英语 页面?", rect=(610, 220, 880, 250)),
+        Elem(0, "Text", name="状态栏文字 outside the page", rect=(110, 150, 600, 180)),
+    ]
+    tps = [TpLines(1, [("合成正文的一行 visible line", [(110, 220, 590, 250)])])]
+    by = {ln.text: ln for ln in collect_lines(elems, tps, WIN)}
+    assert by["翻译 英语 页面?"].role == "ui"
+    assert by["状态栏文字 outside the page"].role == "text"
+    assert by["合成正文的一行 visible line"].role == "text"
+
+
 def test_textpattern_without_lines_falls_back_to_short_value():
     elems = [Elem(-1, "Window", rect=WIN), Elem(0, "Edit", name="", value="单行短值", rect=(110, 110, 300, 130), has_tp=True)]
     got = _texts(collect_lines(elems, [TpLines(1, [])], WIN))
