@@ -101,8 +101,10 @@ def build(data_dir: Path, n_lines: int, *, lines_per_block: int = 40, blocks_per
                 # 时间：主体按 rowid 递增铺满 50 天；晚插入的随机落在更早的时间
                 frac = (made + start) / max(1, main)
                 t = T0 + int((rng.random() if is_late else frac) * 50 * DAY)
-                conn.execute("INSERT INTO segments (segment_id, app, title, first_seen_ms, last_seen_ms) "
-                             "VALUES (?, ?, ?, ?, ?)", (seg_id, app, f"窗口标题 {seg_id}", t, t + 600_000))
+                title = f"窗口标题 {seg_id}"
+                conn.execute("INSERT INTO segments (segment_id, app, title, first_seen_ms, last_seen_ms, app_fold, "
+                             "title_fold) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                             (seg_id, app, title, t, t + 600_000, docs.fold(app), docs.fold(title)))
             block_id += 1
             conn.execute("INSERT INTO blocks (block_id, segment_id, created_ms, last_seen_ms) VALUES (?, ?, ?, ?)",
                          (block_id, seg_id, t, t))

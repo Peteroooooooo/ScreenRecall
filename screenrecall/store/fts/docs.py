@@ -23,10 +23,14 @@ from typing import Iterable, Sequence
 TAIL_CHARS = 16
 
 
+def fold(text: str) -> str:
+    """NFKC + casefold（保留空白）：应用名、标题等按"大小写/全半角不敏感"比较时用。"""
+    return unicodedata.normalize("NFKC", text).casefold()
+
+
 def norm(text: str) -> str:
     """NFKC + casefold + 去掉全部空白。"""
-    folded = unicodedata.normalize("NFKC", text).casefold()
-    return "".join(folded.split())
+    return "".join(fold(text).split())
 
 
 # 中日韩表意文字、假名、谚文、注音的码位范围（含两端）
@@ -96,6 +100,24 @@ def unindex_rows(conn: sqlite3.Connection, rows: Iterable[Row]) -> None:
                      [(lid, tri_doc(n, t)) for lid, _, n, t in rows])
     conn.executemany("INSERT INTO lines_bi (lines_bi, rowid, k) VALUES ('delete', ?, ?)",
                      [(lid, bi_doc(x, n, t)) for lid, x, n, t in rows])
+
+
+def rebuild_index(conn: sqlite3.Connection, batch: int = 5000) -> int:
+    """清空两张全文表，按当前规则从 lines 重新生成全部文档（须在调用方写事务内）。返回行数。
+
+    'delete-all' 丢弃全部索引段；连接开着 secure_delete，释放的页面会被清零。
+    """
+    conn.execute("INSERT INTO lines_tri (lines_tri) VALUES ('delete-all')")
+    conn.execute("INSERT INTO lines_bi (lines_bi) VALUES ('delete-all')")
+    last, n = 0, 0
+    while True:
+        rows = conn.execute("SELECT line_id, text, norm, tail FROM lines WHERE line_id > ? ORDER BY line_id LIMIT ?",
+                            (last, batch)).fetchall()
+        if not rows:
+            return n
+        index_rows(conn, [(int(r[0]), r[1], r[2], r[3]) for r in rows])
+        last = int(rows[-1][0])
+        n += len(rows)
 
 
 def set_tails(conn: sqlite3.Connection, changes: Sequence[tuple[int, str, int | None]]) -> None:
