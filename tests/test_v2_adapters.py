@@ -317,7 +317,10 @@ def test_timeline_adapter_returns_newest_pieces_in_time_order(env):
     q, _ = make_mcp(env)
     lo, hi = F.day_base() - 3600_000, F.day_base() + 6 * 3600_000
     got = q.timeline(start_ms=lo, end_ms=hi, app=None, limit=2, exclude=ms.Exclusion())
-    assert [p.piece_id for p in got] == [str(ids[2]), str(ids[3])]
+    assert [p.piece_id for p in got if isinstance(p, ms.Piece)] == [str(ids[2]), str(ids[3])]
+    # 锁屏缺口（≥ 3 分钟）也给，不带 detail；一分钟的最小化不给
+    assert [(g.reason, g.end_ms - g.start_ms) for g in got if isinstance(g, ms.GapItem)] == [
+        ("locked", 15 * 60_000)]
 
 
 def test_search_hit_does_not_name_a_hidden_piece(env):
