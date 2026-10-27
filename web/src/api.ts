@@ -1,4 +1,6 @@
-// 与 screenrecall/webapi.py 对应的请求封装。会改数据的请求都带 X-ScreenRecall 头（服务端据此防跨站请求）。
+// v2 网页接口（/api/v2/*）的请求封装与类型。时间一律是 UTC 毫秒整数，界面按本机时区显示。
+// 会改数据的请求（POST）都带 X-ScreenRecall: 1 头（服务端据此防跨站请求）。
+// 任何 /api 请求返回 401 时广播 UNAUTHORIZED_EVENT：外壳换成“请从托盘进入”的整页提示并停止轮询。
 
 export class ApiError extends Error {
   status: number;
@@ -10,6 +12,14 @@ export class ApiError extends Error {
   }
 }
 
+export const UNAUTHORIZED_EVENT = "sr-unauthorized";
+let unauthorized = false;
+export const isUnauthorized = () => unauthorized;
+/** 只给测试用：重置 401 状态 */
+export const resetUnauthorized = () => {
+  unauthorized = false;
+};
+
 async function handle<T>(res: Response): Promise<T> {
   let data: Record<string, unknown> = {};
   try {
@@ -17,266 +27,207 @@ async function handle<T>(res: Response): Promise<T> {
   } catch {
     /* 非 JSON 响应 */
   }
+  if (res.status === 401) {
+    if (!unauthorized) {
+      unauthorized = true;
+      window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+    }
+  }
   if (!res.ok) throw new ApiError(res.status, String(data.error ?? `请求失败（${res.status}）`), data);
   return data as T;
 }
 
-// 界面语言随每个请求发给服务端（X-Lang），服务端据此翻译系统提示
+// 界面语言随请求发给服务端（X-Lang）
 let lang = "zh";
 export const setApiLang = (l: string) => {
   lang = l;
 };
 
-// signal：页面不再等待时（换了查询、点了"停止等待"、轮询超时）中止请求；服务端照常算完，只是前端不再收结果
+export type Query = Record<string, string | number | null | undefined>;
+
+export function withQuery(path: string, q?: Query): string {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(q ?? {})) if (v !== undefined && v !== null && v !== "") qs.set(k, String(v));
+  const s = qs.toString();
+  return s ? `${path}?${s}` : path;
+}
+
+/** signal：页面不再等待时（换了条件、卸载、轮询超时）中止请求 */
 export function get<T>(path: string, signal?: AbortSignal): Promise<T> {
-  return fetch(path, { headers: { Accept: "application/json", "X-Lang": lang }, signal }).then((r) => handle<T>(r));
+  return fetch(path, { headers: { Accept: "application/json", "X-Lang": lang }, credentials: "same-origin", signal }).then((r) => handle<T>(r));
 }
 
 export function post<T>(path: string, body: unknown = {}, signal?: AbortSignal): Promise<T> {
   return fetch(path, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-ScreenRecall": "1", "X-Lang": lang },
+    headers: { "Content-Type": "application/json", Accept: "application/json", "X-ScreenRecall": "1", "X-Lang": lang },
+    credentials: "same-origin",
     body: JSON.stringify(body),
     signal,
   }).then((r) => handle<T>(r));
 }
 
 export function postForm<T>(path: string, form: FormData): Promise<T> {
-  return fetch(path, { method: "POST", headers: { "X-ScreenRecall": "1", "X-Lang": lang }, body: form }).then((r) => handle<T>(r));
+  return fetch(path, { method: "POST", headers: { "X-ScreenRecall": "1", "X-Lang": lang }, credentials: "same-origin", body: form })
+    .then((r) => handle<T>(r));
 }
 
-export const thumbUrl = (fid: string, w = 480) => `/api/frames/${fid}/thumb?w=${w}`;
-export const imageUrl = (fid: string) => `/api/frames/${fid}/image`;
-export const downloadUrl = (fid: string) => `/api/frames/${fid}/image?download=1`;
+// ---------- 类型（与接口约定一致） ----------
 
-// ---------- 类型（只列前端用到的字段） ----------
+export type RecordingState = "recording" | "paused" | "stopped";
 
-export type Quad = [number, number][];
-export type Box = { kind: "lex" | "sem"; quad: Quad };
-
-export interface Occurrence {
-  occurrence_id: string;
-  session_id: string;
-  first_seen_ms: number;
-  last_seen_ms: number;
-  observations: number;
-  app: string | null;
-  window_title: string | null;
-  source_type: string;
-  source_label?: string;
-  favorited?: boolean;
+export interface Status {
+  recording: RecordingState;
+  pause_until_ms: number | null;
+  recorder_alive: boolean;
+  current: { app: string; title: string } | null;
+  pending_ocr: number;
+  idle_work: "idle" | "running";
+  agent_enabled: boolean;
+  revision: number;
 }
 
-export interface Result {
-  frame_id: string;
-  width: number;
-  height: number;
-  image_status: string;
-  image_ok: boolean;
-  latest: Occurrence;
-  occurrences_in_filter: number;
-  matched_terms: string[];
-  snippet: string[];
-  semantic_lines: number[];
-  sources: string[];
-  boxes: Box[];
-  time_unknown: boolean;
-  favorited: boolean;
-  label: { label: string; score: number } | null;
-}
-
-export interface SearchResponse {
-  query: { raw: string; quoted: string[]; terms: string[]; error: string | null };
-  mode: "text" | "image";
-  total: number;
-  rank_basis: string;
-  rank_basis_label: string;
-  message: string | null;
-  can_relax: boolean;
-  relaxed: boolean;
-  relax_rule: string;
-  notes: string[];
-  results: Result[];
-}
-
-export interface Step {
-  occurrence_id: string;
-  frame_id: string;
-  first_seen_ms: number;
-  last_seen_ms: number;
-  observations: number;
-  app: string | null;
-  window_title: string | null;
-  source_type: string;
-  source_label: string;
-  image_status: string;
-  width: number;
-  height: number;
-  pos?: number;
-  gaps_before?: string;
-}
-
-export interface Detail {
-  frame_id: string;
-  width: number;
-  height: number;
-  image_status: string;
-  image_ok: boolean;
-  /** pending（排队或识别中）/ done / failed；旧服务没有这个字段 */
-  ocr_status?: string;
-  capture_meta: Record<string, unknown>;
-  time_known: boolean;
+export interface Summary {
   text: string;
-  lines: { line_no: number; text: string; quad: Quad }[];
-  lex_lines: number[];
-  sem_lines: number[];
-  mode: "text" | "image";
-  occurrence: Occurrence;
-  occurrences: Occurrence[];
-  label: { label: string; score: number } | null;
-  context: null | {
-    session: {
-      is_import: boolean;
-      end_label: string;
-      started_at_ms: number;
-      ended_at_ms: number | null;
-      target_title: string | null;
-      target_process: string | null;
-      is_active: boolean;
-    };
-    index: number;
-    total: number;
-    prev: Step | null;
-    current: Step;
-    next: Step | null;
-    gaps_before: string;
-    gaps_after: string;
-    strip: Step[];
-  };
+  status: "ok" | "stale";
+  model: string | null;
 }
 
-export interface Meta {
-  db_ok: boolean;
-  db_problem?: string;
-  apps: string[];
-  labels: string[];
-  tz_label: string;
-  rules: string[];
-  notice: string;
-  retention: { image_days: number; record_days: number };
-  debug_max_minutes?: number; // 旧服务没有这个字段时按 30
+export interface PieceItem {
+  kind: "piece";
+  piece_id: number;
+  start_ms: number;
+  end_ms: number;
+  app: string;
+  title: string;
+  task: string | null;
+  summary_line: string | null;
+  pending_ocr: boolean;
+}
+
+export interface GapItem {
+  kind: "gap";
+  start_ms: number;
+  end_ms: number;
+  reason: string;
+  note: string | null;
+}
+
+export interface Day {
+  date: string;
+  overview: { active_ms: number; apps: { app: string; ms: number }[]; lines_new: number; frames: number };
+  summary: Summary | null;
+  items: (PieceItem | GapItem)[];
+}
+
+export type BlockItem =
+  | { kind: "line"; line_id: number; text: string; source: "uia" | "ocr"; first_seen_ms: number; frame_id: string | null }
+  | { kind: "skim"; start_ms: number; end_ms: number; distance_px: number }
+  | { kind: "pending"; region_id: number; frame_id: string };
+
+export interface FrameRef {
+  frame_id: string;
+  captured_ms: number;
+  width: number;
+  height: number;
+}
+
+export interface PieceDetail {
+  piece: { piece_id: number; start_ms: number; end_ms: number; app: string; title: string; task: string | null };
+  summary: Summary | null;
+  blocks: { block_id: number; items: BlockItem[] }[];
+  unjoined: boolean;
+  frames: FrameRef[];
+}
+
+export interface Hit {
+  line_id: number;
+  text: string;
+  spans: [number, number][];
+  last_seen_ms: number;
+  frame_id: string | null;
+}
+
+export interface Group {
+  segment_id: number;
+  app: string;
+  title: string;
+  first_seen_ms: number;
+  last_seen_ms: number;
+  hits_total: number;
+  piece_id: number | null;
+  hits: Hit[];
+}
+
+export interface SearchResult {
+  query: string;
+  total_groups: number;
+  groups: Group[];
+}
+
+export interface FrameDetail {
+  frame_id: string;
+  captured_ms: number;
+  width: number;
+  height: number;
+  app: string;
+  title: string;
+  piece_id: number | null;
+  lines: { line_id: number; text: string; x0: number; y0: number; x1: number; y1: number }[];
+}
+
+export interface Settings {
+  pinned: { process: string; title: string }[];
+  excluded_processes: string[];
+  excluded_title_keywords: string[];
+  hidden_from_agents: { apps: string[]; title_keywords: string[] };
+  agent_enabled: boolean;
+  idle_minutes: number;
+  ocr_model: "tiny" | "small";
+  autostart: boolean;
+  llm: { configured: boolean; model: string | null; host: string | null };
   data_dir: string;
 }
 
-export interface Status {
-  now_ms: number;
-  alive: boolean;
-  pending: boolean;
-  favorites: number;
-  control: {
-    desired_state: string;
-    actual_state: string;
-    state_reason: string | null;
-    actual_mode: string;
-    mode_until_ms: number | null;
-    mode_reason: string | null;
-    capture_note: string | null;
-    snapshot_result: string | null;
-    snapshot_at_ms: number | null;
-    hotkey_status: string | null;
-    last_capture_ms: number | null;
-    heartbeat_ms: number | null;
-    target_title: string | null;
-    target_process: string | null;
-  };
-  index: Record<string, number | null>;
-  maintenance: null | {
-    at_ms: number;
-    usage_bytes: number;
-    free_bytes: number;
-    quota_bytes: number;
-    paused: boolean;
-    reason: string | null;
-  };
-  retention: { image_days: number; record_days: number };
+export type SettingsPatch = Partial<Omit<Settings, "llm" | "data_dir">>;
+
+export interface LlmTest {
+  ok: boolean;
+  model: string | null;
+  latency_ms: number | null;
+  error?: string;
 }
 
-/** GET /api/models：查询侧编码器的加载状态（旧服务没有这个接口，返回 404） */
-export type ModelStateName = "idle" | "loading" | "ready" | "unavailable" | "disabled";
-export interface ModelState {
-  state: ModelStateName;
-  elapsed_ms: number | null;
-  reason: string | null;
-}
-export interface Models {
-  text: ModelState;
-  image: ModelState;
-}
-
-export interface WindowItem {
+export interface WindowInfo {
   hwnd: number;
-  title: string;
   process: string;
-  width: number;
-  height: number;
-  allowed: boolean;
-  reason: string | null;
+  title: string;
 }
 
-export interface FailedJob {
-  job_id: number;
-  frame_id: string;
-  stage: string;
-  stage_name: string;
-  attempts: number;
-  last_error: string;
-  captured_at_ms: number;
-  app: string;
-  window_title: string;
-  retryable: boolean;
-  why_not: string;
+export interface Storage {
+  data_dir: string;
+  db_bytes: number;
+  frames_bytes: number;
+  vectors_bytes: number;
+  frames: number;
+  lines: number;
+  oldest_ms: number | null;
 }
 
-export interface Failed {
-  summary: Record<string, { name: string; retryable: number; not_retryable: number; errors: [string, number][] }>;
-  jobs: FailedJob[];
+export type DeleteRequest = { recent_minutes: number } | { from_ms: number; to_ms: number; app?: string } | { app: string };
+export interface DeleteResult {
+  deleted: Record<string, number>;
 }
 
-export interface Favorite {
-  occurrence_id: string;
-  frame_id: string;
-  first_seen_ms: number;
-  last_seen_ms: number;
-  app: string | null;
-  window_title: string | null;
-  image_status: string;
-  image_ok: boolean;
-  width?: number;
-  height?: number;
+export interface AgentConfig {
+  name: string;
+  file: string;
+  json: unknown;
+  cli?: string;
 }
-
-export interface FramePlan {
-  frame_id: string;
-  favorites: string[];
-  image_status: string;
-  occurrences: (Occurrence & { favorited: boolean })[];
-}
-
-export interface OccurrencePlan {
-  occurrence_id: string;
-  first_seen_ms: number;
-  favorited: boolean;
-  other_occurrences: number;
-}
-
-export interface RangePlan {
-  start_ms: number;
-  end_ms: number;
-  apps: string[];
-  occurrences: number;
-  frames_purged: number;
-  frames_kept: number;
-  favorites: string[];
+export interface AgentConfigs {
+  configs: Record<string, AgentConfig>;
+  mcp_url: string;
 }
 
 export interface ImportResult {
@@ -290,3 +241,32 @@ export interface ImportResult {
   failed: number;
   skipped: number;
 }
+
+// ---------- 接口 ----------
+
+const V2 = "/api/v2";
+
+export const api = {
+  status: (s?: AbortSignal) => get<Status>(`${V2}/status`, s),
+  pause: (body: { minutes: number } | { until: "tomorrow" }) => post<Status>(`${V2}/pause`, body),
+  resume: () => post<Status>(`${V2}/resume`, {}),
+  day: (date: string | undefined, s?: AbortSignal) => get<Day>(withQuery(`${V2}/day`, { date }), s),
+  piece: (id: number, s?: AbortSignal) => get<PieceDetail>(`${V2}/pieces/${id}`, s),
+  summarize: (id: number) => post<{ queued: boolean }>(`${V2}/pieces/${id}/summarize`, {}),
+  search: (q: { q: string; from?: number; to?: number; app?: string; task?: string; limit?: number }, s?: AbortSignal) =>
+    get<SearchResult>(withQuery(`${V2}/search`, q), s),
+  frame: (id: string, s?: AbortSignal) => get<FrameDetail>(`${V2}/frames/${encodeURIComponent(id)}`, s),
+  apps: (q: { from?: number; to?: number }, s?: AbortSignal) => get<{ apps: { app: string; n: number }[] }>(withQuery(`${V2}/apps`, q), s),
+  settings: (s?: AbortSignal) => get<Settings>(`${V2}/settings`, s),
+  saveSettings: (patch: SettingsPatch) => post<Settings>(`${V2}/settings`, patch),
+  saveLlm: (body: { base_url: string; model: string; api_key?: string }) => post<Settings>(`${V2}/settings/llm`, body),
+  testLlm: () => post<LlmTest>(`${V2}/settings/llm/test`, {}),
+  windows: (s?: AbortSignal) => get<{ windows: WindowInfo[] }>(`${V2}/windows`, s),
+  storage: (s?: AbortSignal) => get<Storage>(`${V2}/storage`, s),
+  remove: (body: DeleteRequest) => post<DeleteResult>(`${V2}/delete`, body),
+  resetToken: () => post<{ ok: boolean }>(`${V2}/agent/reset-token`, {}),
+  agentConfigs: (s?: AbortSignal) => get<AgentConfigs>("/api/app/agent-configs", s),
+};
+
+export const frameImageUrl = (id: string) => `${V2}/frames/${encodeURIComponent(id)}/image`;
+export const frameThumbUrl = (id: string, w = 320) => `${V2}/frames/${encodeURIComponent(id)}/thumb?w=${w}`;
