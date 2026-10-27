@@ -277,6 +277,23 @@ def test_strictly_periodic_chat_never_gives_a_number(dy):
     assert m.kind == "break", m
 
 
+@pytest.mark.parametrize("dy", [10, 490, 560])
+def test_periodic_chat_with_title_change_and_scrollbar_never_gives_a_number(dy):
+    """完全周期的聊天页翻了将近一屏，同时网页标题（顶栏里的一段字）变了、右边的滚动条滑块挪了位置：
+    标题那几行和滑块让"错开整段"的偏移看起来比真偏移差一点，但版式本身每 480 像素就重复 → 照样接不上。"""
+    doc, top = _chat_page(), _chrome(W)
+
+    def frame(y, title):
+        f = S.write_text(S.view(doc, y, VH, top).copy(), 300, 8, title, size=18)
+        f[top.shape[0]:, -14:] = 230  # 滚动条轨道
+        t0 = top.shape[0] + y * VH // doc.shape[0]
+        f[t0:t0 + VH * VH // doc.shape[0], -12:-2] = 120   # 滑块：长短、位置按页面比例，跟着位置走，不跟着内容走
+        return f
+
+    m = M.analyze(M.Fp.from_image(frame(300, "标题 s7 pd")), M.Fp.from_image(frame(300 + dy, "标题 e7 done")))
+    assert m.kind == "break", m
+
+
 @pytest.mark.parametrize("dy", [92, 214])
 def test_static_chrome_votes_do_not_make_a_scroll_inplace(dy):
     """表格：只有最左边一列的序号各不相同；高高的静止顶栏让每条竖带都有十几行"只出现一次"的行说"没动"。
