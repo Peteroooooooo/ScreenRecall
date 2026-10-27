@@ -301,6 +301,63 @@ def test_shim_without_endpoint_file(tmp_path):
     assert tools == [] and res.isError and "没有在运行" in text_of(res.content)
 
 
+def test_shim_never_sends_token_to_a_squatter_on_the_port(tmp_path):
+    """主程序没运行时别的程序占了端口：转发程序必须认出监听者不是主进程，一个字节都不发。"""
+    import socket
+    import threading
+
+    sq = socket.socket()
+    sq.bind(("127.0.0.1", 0))
+    sq.listen(4)
+    sq.settimeout(0.2)
+    port = sq.getsockname()[1]
+    other = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+    received = []
+
+    def accept_loop():
+        while not stop.is_set():
+            try:
+                conn, _ = sq.accept()
+            except OSError:
+                continue
+            conn.settimeout(1)
+            try:
+                received.append(conn.recv(65536))
+            except OSError:
+                pass
+            conn.close()
+
+    stop = threading.Event()
+    th = threading.Thread(target=accept_loop, daemon=True)
+    th.start()
+    try:
+        # endpoint.json 说主进程是 other（已不在监听），端口却在本测试进程手里
+        auth.write_endpoint(auth.Endpoint(port, TOKEN, other.pid), tmp_path)
+        assert mcp_shim.listener_pid(port) == os.getpid()
+        with pytest.raises(mcp_shim.NotRunning):
+            mcp_shim.verified_endpoint(tmp_path)
+        auth.write_endpoint(auth.Endpoint(port, TOKEN, None), tmp_path)  # 正常退出后 pid 为空
+        with pytest.raises(mcp_shim.NotRunning):
+            mcp_shim.verified_endpoint(tmp_path)
+
+        async def go():
+            async with stdio_client(_shim_params(tmp_path)) as (r, w):
+                async with ClientSession(r, w) as s:
+                    await s.initialize()
+                    return await s.call_tool("search", {"query": "x"})
+
+        auth.write_endpoint(auth.Endpoint(port, TOKEN, other.pid), tmp_path)
+        res = anyio.run(go)
+        assert res.isError and "没有在运行" in text_of(res.content)
+        assert not any(TOKEN.encode() in b for b in received) and received == []
+    finally:
+        stop.set()
+        th.join(2)
+        sq.close()
+        other.kill()
+        other.wait(10)
+
+
 def test_shim_stays_light():
     code = ("import sys; import screenrecall.app.mcp_shim; "
             "bad = [m for m in ('torch', 'numpy', 'PIL', 'onnxruntime', 'screenrecall.db', 'screenrecall.webapi', "

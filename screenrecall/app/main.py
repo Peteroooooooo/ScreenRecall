@@ -238,9 +238,10 @@ class MainApp:
 
 def open_running_instance(home: Path, open_browser: bool = True) -> int:
     """已有实例在运行：向它要一条一次性登录链接并打开（open_browser=False 时只打印"已在运行"）。"""
-    ep = auth.read_endpoint(home)
-    if ep is None:
-        print("ScreenRecall 已经在运行，但找不到它的地址文件。", file=sys.stderr)
+    try:
+        ep = mcp_shim.verified_endpoint(home)  # 同样核对监听端口的就是记录里的主进程，才发令牌
+    except mcp_shim.NotRunning:
+        print("ScreenRecall 已经在运行，但找不到它的地址（可能还没启动完），请稍后再试。", file=sys.stderr)
         return 1
     try:
         r = httpx.post(f"{ep.base_url}/api/app/nonce", headers=auth.bearer_headers(ep), timeout=5, trust_env=False)
