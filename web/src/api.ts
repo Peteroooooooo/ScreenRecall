@@ -79,6 +79,8 @@ export interface Status {
   current: { app: string | null; title: string | null; excluded?: boolean } | null;
   pending_ocr: number;
   idle_work: "idle" | "running";
+  /** 空闲整理还有多少活（只有数量）：待识别区域、还没算向量的行、等着写概括的片段 */
+  queue?: { ocr: number; vectors: number; summaries: number };
   agent_enabled: boolean;
   revision: number;
 }
@@ -109,10 +111,16 @@ export interface GapItem {
   note: string | null;
 }
 
+/** 当天概括：generating 正在马上写；failed 这次没写成；stale 删过部分记录、概括已清空或过时；ok；none 还没有 */
+export type DaySummaryState = "generating" | "failed" | "stale" | "ok" | "none";
+
 export interface Day {
   date: string;
   overview: { active_ms: number; apps: { app: string; ms: number }[]; lines_new: number; frames: number };
   summary: Summary | null;
+  summary_state?: DaySummaryState;
+  /** 能不能点“重新生成”马上写（配置了大模型） */
+  summary_refresh?: boolean;
   items: (PieceItem | GapItem)[];
 }
 
@@ -128,9 +136,9 @@ export interface FrameRef {
   height: number;
 }
 
-/** 片段概括的情况：ok 已写好；stale 内容被删过、要重写；queued 点过“重新生成”、等空闲时写；
- *  private 不发给大模型（对 Agent 隐藏或排除名单）；failed 多次失败；no_text 没有字可写；waiting 还没写 */
-export type SummaryState = "ok" | "stale" | "queued" | "private" | "failed" | "no_text" | "waiting";
+/** 片段概括的情况：ok 已写好；stale 内容被删过、要重写；generating 主进程正在马上写；queued 点过“重新生成”、等空闲时写；
+ *  private 不发给大模型（对 Agent 隐藏或排除名单）；failed 没写成；no_text 没有字可写；waiting 还没写 */
+export type SummaryState = "ok" | "stale" | "generating" | "queued" | "private" | "failed" | "no_text" | "waiting";
 
 export interface PieceDetail {
   piece: { piece_id: number; start_ms: number; end_ms: number; app: string; title: string; task: string | null };
@@ -210,6 +218,10 @@ export interface Settings {
   autostart: boolean;
   llm: { configured: boolean; model: string | null; host: string | null };
   data_dir: string;
+  /** 保留期：截图 / 文字保留几天（0 = 一直保留），空间上限 GB（0 = 不限） */
+  image_days: number;
+  text_days: number;
+  storage_cap_gb: number;
 }
 
 export type SettingsPatch = Partial<Omit<Settings, "llm" | "data_dir">>;
@@ -264,6 +276,9 @@ export const api = {
   day: (date: string | undefined, s?: AbortSignal) => get<Day>(withQuery(`${V2}/day`, { date }), s),
   piece: (id: number, s?: AbortSignal) => get<PieceDetail>(`${V2}/pieces/${id}`, s),
   summarize: (id: number) => post<{ queued: boolean; summary_state: SummaryState }>(`${V2}/pieces/${id}/summarize`, {}),
+  summarizeDay: (date: string) => post<{ date: string; summary_state: DaySummaryState }>(`${V2}/day/summarize`, { date }),
+  runIdle: () => post<Status>(`${V2}/idle/run`, {}),
+  openDataDir: () => post<{ ok: boolean }>(`${V2}/storage/open`, {}),
   search: (q: SearchQuery, s?: AbortSignal) => get<SearchResult>(withQuery(`${V2}/search`, q), s),
   /** 搜索页打开时调用：服务端在后台先加载查询模型（第一次语义检索不用等） */
   searchWarm: (s?: AbortSignal) => get<{ semantic: boolean }>(`${V2}/search/warm`, s),
