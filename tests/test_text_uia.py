@@ -50,7 +50,8 @@ def test_roles_and_value():
     by = {ln.text: ln for ln in lines}
     assert by["保存"].role == "ui"
     assert by["example.test/page"].source_detail == "value" and by["example.test/page"].role == "text"
-    assert uia.content_chars(lines) == len("地址和搜索栏") + len("example.test/page")
+    assert by["地址和搜索栏"].role == "ui"  # 输入框的名字是它的标签，屏幕上画的是值
+    assert uia.content_chars(lines) == len("example.test/page")
 
 
 def test_textpattern_lines_preferred_and_whole_doc_value_dropped():
@@ -97,19 +98,97 @@ def test_wrapped_paragraph_name_is_not_stored_next_to_its_visible_lines():
 
 def test_text_drawn_over_the_document_from_outside_it_is_ui():
     """浏览器的翻译提示、弹出气泡：不在正文（产出了可见行的 TextPattern 元素）里，却画在正文上面 → ui，
-    不当成正文存（每张截图都会重复一遍）。正文外面的字（例如工具栏下的状态文字）照旧。"""
+    不当成正文存（每张截图都会重复一遍）。正文正上方、不在正文里的字（工具栏下的提示条）也是程序的界面
+    （录制时本来就按"正文上方的固定区域"不收）；正文旁边的字（侧栏）照旧。"""
     elems = [
         Elem(-1, "Window", rect=WIN),
-        Elem(0, "Document", name="页面", rect=(100, 200, 900, 700), has_tp=True),
-        Elem(0, "Pane", rect=(600, 210, 890, 330)),
-        Elem(2, "Text", name="翻译 英语 页面?", rect=(610, 220, 880, 250)),
+        Elem(0, "Document", name="页面", rect=(100, 200, 700, 700), has_tp=True),
+        Elem(0, "Pane", rect=(600, 210, 690, 330)),
+        Elem(2, "Text", name="翻译 英语 页面?", rect=(610, 220, 680, 250)),
         Elem(0, "Text", name="状态栏文字 outside the page", rect=(110, 150, 600, 180)),
+        Elem(0, "Text", name="侧栏文字 beside the page", rect=(720, 300, 890, 330)),
     ]
     tps = [TpLines(1, [("合成正文的一行 visible line", [(110, 220, 590, 250)])])]
     by = {ln.text: ln for ln in collect_lines(elems, tps, WIN)}
     assert by["翻译 英语 页面?"].role == "ui"
-    assert by["状态栏文字 outside the page"].role == "text"
+    assert by["状态栏文字 outside the page"].role == "ui"
+    assert by["侧栏文字 beside the page"].role == "text"
     assert by["合成正文的一行 visible line"].role == "text"
+
+
+BROWSER = (0, 0, 1350, 1140)
+
+
+def _browser(doc: str | None):
+    """合成的浏览器控件树，结构照着临时配置 Edge 实测的样子（不含任何真实文字）。
+    doc：None = 页面还没进辅助功能树；'empty' = 文档元素在了但还没有可见行（加载的第一次读字）；'lines' = 正常。"""
+    elems = [
+        Elem(-1, "Window", name="合成页面 - 浏览器", rect=BROWSER),                                  # 0
+        Elem(0, "Pane", rect=(2, 0, 1331, 1130)),                                                    # 1
+        Elem(1, "Tab", name="标签页条", rect=(5, 0, 1124, 62)),                                       # 2
+        Elem(2, "TabItem", name="合成页面标题 synthetic page", rect=(50, 0, 434, 62)),                # 3
+        Elem(1, "ToolBar", name="导航", rect=(2, 60, 1331, 120)),                                     # 4
+        Elem(4, "Group", rect=(200, 66, 1120, 112)),                                                 # 5
+        Elem(5, "Edit", name="地址和搜索栏", value="file:///synthetic/page.html", rect=(206, 72, 1115, 108),
+             has_tp=True),                                                                           # 6
+        Elem(1, "Pane", rect=(250, 95, 950, 145)),                                                   # 7 地址栏下弹出的提示
+        Elem(7, "Text", name="合成的弹出提示 a synthetic bubble", rect=(260, 99, 806, 141), has_tp=True),  # 8
+        Elem(7, "Hyperlink", name="了解详情", rect=(812, 99, 938, 141)),                              # 9
+        Elem(1, "Pane", rect=(66, 64, 470, 135)),                                                    # 10 标签页悬停卡片
+        Elem(10, "Text", name="合成页面标题 synthetic page", rect=(66, 68, 462, 92), has_tp=True),    # 11
+        Elem(10, "Text", name="synthetic.test", rect=(102, 104, 462, 131), has_tp=True),             # 12
+        Elem(1, "Pane", rect=(1331, 120, 1350, 1124)),                                               # 13 侧栏
+        Elem(13, "ListItem", name="侧栏里的合成条目 side item", rect=(1332, 300, 1349, 330)),          # 14
+    ]
+    tps = [TpLines(6, []), TpLines(8, []), TpLines(11, []), TpLines(12, [])]
+    body = []
+    if doc is not None:
+        elems.append(Elem(1, "Document", name="合成页面标题 synthetic page", value="file:///synthetic/page.html",
+                          rect=(8, 120, 1325, 1124), has_tp=True))                                    # 15
+        for i in range(5):
+            text = f"合成正文第{i}段 synthetic paragraph {i}"
+            elems.append(Elem(15, "Text", name=text, rect=(30, 140 + 40 * i, 900, 170 + 40 * i)))
+            body.append((text, [(30, 140 + 40 * i, 900, 170 + 40 * i)]))
+        tps.append(TpLines(15, body if doc == "lines" else []))
+    return elems, tps
+
+
+def test_browser_chrome_is_ui_on_every_read_of_a_page_load():
+    """页面加载的第一次读字（文档还没有可见行，甚至文档元素还不在）：标签页标题、地址栏的名字和网址、
+    文档自己的名字和网址、地址栏下弹出的提示、标签页的悬停卡片都不是正文。正文和侧栏照收。"""
+    want = {f"合成正文第{i}段 synthetic paragraph {i}" for i in range(5)}
+    for state in (None, "empty", "lines"):
+        elems, tps = _browser(state)
+        lines = collect_lines(elems, tps, BROWSER)
+        text = {ln.text for ln in lines if ln.role == "text"}
+        body = want if state else set()
+        assert text == body | {"侧栏里的合成条目 side item"}, state
+        assert uia.chrome_bottom(elems, BROWSER) == 120
+    # 正文行的位置和来源不变（有可见行时来自 TextPattern）
+    elems, tps = _browser("lines")
+    got = [ln for ln in collect_lines(elems, tps, BROWSER) if ln.role == "text" and "合成正文" in ln.text]
+    assert len(got) == 5 and all(ln.source_detail == "textpattern:Document" for ln in got)
+
+
+def test_chrome_bars_need_to_be_horizontal_strips_outside_the_document():
+    """整个窗口大小的 Tab 控件（对话框的分页）不是界面条，里面的内容照收；网页里的工具栏也不算。"""
+    elems = [
+        Elem(-1, "Window", rect=WIN),
+        Elem(0, "Tab", name="分页", rect=(100, 100, 900, 700)),
+        Elem(1, "TabItem", name="常规", rect=(110, 100, 180, 130)),
+        Elem(1, "Text", name="分页里的合成说明文字", rect=(120, 140, 600, 160)),
+    ]
+    by = {ln.text: ln for ln in collect_lines(elems, [], WIN)}
+    assert uia.chrome_bottom(elems, WIN) is None
+    assert by["分页里的合成说明文字"].role == "text" and by["常规"].role == "ui"
+    page = [
+        Elem(-1, "Window", rect=WIN),
+        Elem(0, "Document", rect=(100, 100, 900, 700), has_tp=True),
+        Elem(1, "ToolBar", rect=(100, 100, 900, 140)),
+        Elem(2, "Text", name="网页工具栏里的合成字", rect=(110, 105, 400, 135)),
+    ]
+    assert uia.chrome_bottom(page, WIN) is None
+    assert {ln.text: ln.role for ln in collect_lines(page, [TpLines(1, [])], WIN)}["网页工具栏里的合成字"] == "text"
 
 
 def test_textpattern_without_lines_falls_back_to_short_value():
