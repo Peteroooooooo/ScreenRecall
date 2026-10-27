@@ -70,10 +70,11 @@ class IdleWatcher:
     idle_fn / locked_fn / clock 供测试替换；poll() 也可以手动调用（测试不起线程）。
     """
 
-    def __init__(self, threshold_s: float = 300.0, *, interval_s: float = 5.0,
+    def __init__(self, threshold_s: float = 300.0, *, interval_s: float = 5.0, idle_interval_s: float = 1.0,
                  on_idle_start: Callable[[str], None] | None = None, on_idle_end: Callable[[], None] | None = None,
                  idle_fn: Callable[[], float] = idle_seconds, locked_fn: Callable[[], bool] = is_locked):
-        self.threshold_s, self.interval_s = threshold_s, interval_s
+        # 空闲期间查得更勤（idle_interval_s）：用户一回来就尽快停掉占显卡的空闲整理进程
+        self.threshold_s, self.interval_s, self.idle_interval_s = threshold_s, interval_s, idle_interval_s
         self.on_idle_start, self.on_idle_end = on_idle_start, on_idle_end
         self._idle_fn, self._locked_fn = idle_fn, locked_fn
         self.idle = False
@@ -123,7 +124,7 @@ class IdleWatcher:
     def _run(self) -> None:
         while not self._stop.is_set():
             self.poll()
-            self._stop.wait(self.interval_s)
+            self._stop.wait(self.idle_interval_s if self.idle else self.interval_s)
 
     def stop(self, timeout: float = 5.0) -> None:
         self._stop.set()

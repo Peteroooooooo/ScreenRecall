@@ -219,12 +219,12 @@ class MainApp:
         return 0
 
     def shutdown(self) -> None:
-        """先停子进程（不再录），再停空闲监视和网页服务；令牌保留，pid 清空。"""
+        """先停空闲监视（它会启动空闲整理进程），再停子进程（不再录），最后停网页服务；令牌保留，pid 清空。"""
         self.stopped.set()
-        if self.sup:
-            self.sup.stop_all()
         if self.idle:
             self.idle.stop()
+        if self.sup:
+            self.sup.stop_all()
         if self.web:
             self.web.stop()
         if self.endpoint:
