@@ -35,7 +35,7 @@ from ..store.fts import lexical
 from ..store.queries import _block_roots
 from ..timeutil import local_dates_to_utc_range
 from . import config as v2config
-from .adapters import StoreStack, effective_state, latest_frames, piece_of
+from .adapters import StoreStack, effective_state, latest_frames, piece_of, recorder_running
 
 log = logging.getLogger("screenrecall.v2.web")
 
@@ -201,7 +201,8 @@ def api_status(ctx: V2Context, _req: dict) -> dict:
     now = stack.clock()
     state, until = effective_state(ctrl, now)
     current = None
-    if ctrl.get("recorder_alive") and state == "recording" and ctrl.get("current_process"):
+    alive = recorder_running(ctrl)
+    if alive and state == "recording" and ctrl.get("current_process"):
         title = ctrl.get("current_title")
         kws = [k.casefold() for k in ctrl.get("excluded_title_keywords") or ()]
         procs = {p.casefold() for p in ctrl.get("excluded_processes") or ()}
@@ -212,7 +213,7 @@ def api_status(ctx: V2Context, _req: dict) -> dict:
     pending = int(conn.execute("SELECT COUNT(*) FROM ocr_regions WHERE status IN ('pending', 'running')")
                   .fetchone()[0])
     rev = conn.execute("SELECT value FROM meta WHERE key = 'revision'").fetchone()
-    return {"recording": state, "pause_until_ms": until, "recorder_alive": bool(ctrl.get("recorder_alive")),
+    return {"recording": state, "pause_until_ms": until, "recorder_alive": alive,
             "current": current, "pending_ocr": pending,
             "idle_work": "running" if ctx.idle_running() else "idle",
             "agent_enabled": bool(ctrl.get("agent_enabled")), "revision": int(rev[0]) if rev else 0}

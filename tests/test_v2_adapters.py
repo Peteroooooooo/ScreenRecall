@@ -275,6 +275,19 @@ def test_piece_summary_withheld_when_a_segment_is_hidden(env):
     assert f"piece={env.ids['piece']}" in tl and "整理季度报告" not in tl
 
 
+def test_search_hit_does_not_name_a_hidden_piece(env):
+    # 内容源没命中隐藏名单、它所属的片段命中了：命中照常给，但不报片段号和任务名
+    w = env.stack.writer
+    w.piece_put(F.day_base() - 1_000, F.day_base() + 10 * 60_000, app=F.APP, title="机密项目 周报",
+                segment_ids=[env.ids["segment"]], task_label="机密项目", piece_id=env.ids["piece"]).result(5)
+    q, _ = make_mcp(env)
+    kw = dict(start_ms=None, end_ms=None, app=None, task=None, limit=5)
+    hit = q.search("report", exclude=ms.Exclusion(), **kw)[0]
+    assert hit.piece_id == str(env.ids["piece"]) and hit.task == "机密项目"
+    hit = q.search("report", exclude=ms.Exclusion((), ("机密",)), **kw)[0]
+    assert hit.text == "Quarterly REPORT draft" and hit.piece_id is None and hit.task is None
+
+
 # ---------------- 第一次启动、设置文件、令牌 ----------------
 
 def test_seed_control_only_once(tmp_path, monkeypatch):
