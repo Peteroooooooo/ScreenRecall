@@ -354,6 +354,12 @@ def _pieces(conn, lo: int, hi: int, app: str | None, widen) -> tuple[int, int]:
             cleared += conn.execute(
                 "UPDATE summaries SET text = '', refs = '[]', status = 'stale' WHERE level = 'piece' AND key = ?",
                 (str(pid),)).rowcount
+            # 只有一头伸进删除范围的片段：把那一头剪到范围外（"今天"页不再显示删掉的那段时间）；
+            # 跨过整个范围的片段两头都在外面，保持原样
+            if start < lo and end < hi:
+                conn.execute("UPDATE pieces SET end_ms = ? WHERE piece_id = ?", (lo, pid))
+            elif start >= lo and end >= hi:
+                conn.execute("UPDATE pieces SET start_ms = ? WHERE piece_id = ?", (hi, pid))
     return deleted, cleared
 
 

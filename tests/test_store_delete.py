@@ -155,6 +155,22 @@ def test_piece_fully_inside_range_deleted_with_summary(tmp_path):
     w.close()
 
 
+def test_piece_partly_inside_range_is_clipped(tmp_path):
+    """"删除最近 5 分钟"时还在进行的片段：伸进删除范围的那一头剪掉；跨过整个范围的保持原样。"""
+    w = Writer(tmp_path)
+    sid, _, _ = put(w, "a.exe", "t", 1000, ["内容"])
+    tail = w.piece_put(500, 1500, app="a.exe", title="t", segment_ids=[sid]).result(5)
+    head = w.piece_put(1800, 2600, app="a.exe", title="t", segment_ids=[sid]).result(5)
+    across = w.piece_put(100, 3000, app="b.exe", title="u", segment_ids=[]).result(5)
+    w.flush()
+    w.run_raw(lambda conn: delete.delete_data(conn, tmp_path, time_from=1200, time_to=2000)).result(10)
+    c = schema.connect_ro(w.db_path)
+    got = {r[0]: (r[1], r[2]) for r in c.execute("SELECT piece_id, start_ms, end_ms FROM pieces")}
+    assert got == {tail: (500, 1200), head: (2000, 2600), across: (100, 3000)}
+    c.close()
+    w.close()
+
+
 def test_frame_deleted_while_encoding_leaves_no_file(tmp_path):
     w = Writer(tmp_path)
     gate = __import__("threading").Event()
