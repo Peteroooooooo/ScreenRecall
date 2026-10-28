@@ -6,19 +6,19 @@
 - 只收"屏幕上看得见"的：去掉标了屏外的、矩形不和窗口相交的、密码框、空文字；
   文档和终端只取 TextPattern 的"可见范围"逐行文字，不取 Value / 全文范围（那是整篇，含滚走的部分）；
 - 窗口最小化时直接不读（浏览器不会把元素标成屏外）；
-- 文字先去掉格式控制字符（资源管理器日期里的 U+200E 这类）。
+- 文字先去掉格式控制字符（资源管理器日期里的 U+200E 这类）；
+- 顺手记下最大的 Document 元素的值（浏览器里是当前网址，打开本地文件时是 file:/// 地址）和名字（网页标题）：
+  UiaResult.doc_url / doc_name。读整棵树之前先单独找一次所有 Document（很快），整棵树超时时网址照样有。
 
 线程与超时：每次读取放到独立的工作线程（各自初始化 COM，MTA），调用方最多等 timeout_s；
 目标程序卡死时放弃那个线程（它带着取消标记，之后自己退出），下次读取换新线程，调用方永远不会被拖住。
 被放弃且仍未退出的线程超过上限时直接返回 busy，不再继续开新线程。
 
-待 OCR：usable=False（程序给不出字）时整帧要 OCR；usable=True 时也可能有大片没读到字的区域（浏览器第一次被
-访问时只给外框、页面里的图片 / 画布 / 扫描 PDF），结果里的 uncovered 记下这些整宽横条；ocr_regions(result, frame)
-再按帧像素去掉空白横条，返回要登记待 OCR 的帧坐标矩形。
+要不要再 OCR 由调用方（v3/read.py）按正文字数决定；usable=False 表示程序给不出可用的字。
 
 坐标：UIA 矩形是屏幕坐标；调用进程必须先切到 Per-Monitor V2（winapi.enable_dpi_awareness），
 矩形才是物理像素、和 WGC / PrintWindow 截图一致。窗口矩形用 DWMWA_EXTENDED_FRAME_BOUNDS，
-与 WGC 帧的范围相同；换成帧坐标用 to_frame_rect。
+与 WGC 帧的范围相同。
 
 本模块自带最小的 user32 / dwmapi 调用，不依赖 screenrecall.winapi（单元测试会把它换成假的）。
 """
@@ -28,6 +28,7 @@ from __future__ import annotations
 import ctypes
 import dataclasses
 import os
+import re
 import sys
 import threading
 import time
@@ -47,6 +48,8 @@ P_PASSWORD, P_OFFSCREEN, P_FRAMEWORK = 30019, 30022, 30024
 P_HAS_TEXT, P_HAS_VALUE, P_VALUE = 30040, 30043, 30045
 TEXT_PATTERN = 10014
 TREE_SCOPE_SUBTREE = 7  # Element | Children | Descendants
+TREE_SCOPE_DESCENDANTS = 4
+CT_DOCUMENT = 50030
 TEXT_UNIT_LINE = 3
 
 CTYPES = {
@@ -92,14 +95,16 @@ class UiaResult:
     element_count: int = 0
     window_rect: Rect | None = None
     error: str | None = None
-    # usable 为 True 时也可能有大片区域没读到字（浏览器第一次被访问只给外框、页面里的图片 / 画布 / 扫描 PDF）：
-    # 这些区域是整宽的横条（屏幕物理像素），调用方用 ocr_regions() 结合帧像素决定哪些要登记待 OCR
-    uncovered: tuple[Rect, ...] = ()
-    # 窗口上部界面条（标签页条、工具栏）的最下沿，屏幕 y（chrome_bottom）；待 OCR 的区域从它下面开始
+    # 窗口上部界面条（标签页条、工具栏）的最下沿，屏幕 y（chrome_bottom）；OCR 的行只收它下面的
     chrome_bottom: int | None = None
     # 这是对这个窗口的第一次读取，预算不够、没有按 first_touch_retry_s 再读一次：浏览器这时常常只给外框
     # （没有页面），调用方（自己的线程，不怕多等）应当稍等再读一次
     first_touch: bool = False
+    # 最大的 Document 元素（ValuePattern）的值，形如 http(s)://… / file:///…：浏览器里就是当前页面的网址；
+    # 取不到时 None。整棵树读完时取最大的那个（doc_info()）；整棵树来不及读完（超时）时用读字前先单独找的
+    # 最大的 Document（ComBackend.doc，实测 40–260 ms），网址不跟着正文一起丢。密码框的值从来不取
+    doc_url: str | None = None
+    doc_name: str | None = None  # 那个 Document 的名字：浏览器里是网页自己的标题（不带"- 个人 - Microsoft Edge"）
 
     @property
     def content_chars(self) -> int:
@@ -117,10 +122,6 @@ class UiaConfig:
     min_content_chars: int = 16  # 正文类文字少于这么多字：判为"给不出可用文字"
     first_touch_retry_s: float = 0.2  # 浏览器第一次被访问只给外框，约 200 ms 后才完整
     max_abandoned: int = 3  # 被放弃仍未退出的线程上限
-    hint_fail_streak: int = 3  # 同一程序连续这么多次读不出可用文字 -> has_text_hint 返回 False
-    hint_ttl_s: float = 600.0  # 判定"没有文字"后，过这么久再试一次
-    min_gap_px: int = 48  # 没有任何文字行的横条高于这么多像素，记进 uncovered
-    container_frac: float = 0.4  # 高度超过窗口这个比例的行（窗口 / 面板的名字）不算"覆盖"了那片区域
     comtypes_cache_dir: str | None = None  # comtypes 生成的接口代码放这里，默认 %LOCALAPPDATA%\ScreenRecall\comtypes_cache
 
 
@@ -292,6 +293,39 @@ def chrome_bottom(elems: Sequence[Elem], win_rect: Rect, docs: set[int] | None =
     return bottom
 
 
+# 网址形状：协议（至少两个字母，免得把盘符 C: 当成协议）+ 冒号，后面还有东西
+_URL_SHAPE = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]+:\S")
+
+
+def url_value(value: str | None) -> str | None:
+    """Document 的值像一个网址（scheme:…、单行）时原样（去首尾空白）返回，否则 None。"""
+    v = (value or "").strip()
+    return v if v and "\n" not in v and _URL_SHAPE.match(v) else None
+
+
+def doc_info(elems: Sequence[Elem]) -> tuple[str | None, str | None]:
+    """最大的 Document 元素的 (Value, 名字)；值不像网址的 Document 不算；没有时 (None, None)。密码框不看。
+    多个 Document（页面里嵌的 iframe、PDF 查看器）取面积最大的那个，同样大取先出现的；面积为 0 的不算。"""
+    best, best_area = (None, None), -1
+    for e in elems:
+        if e.ct != "Document" or e.password:
+            continue
+        v = url_value(e.value)
+        if v is None:
+            continue
+        a = _area(e.rect)
+        if a <= 0:  # 没有大小的 Document（藏起来的 edge:// 小对话框、还没排版的页面）不算
+            continue
+        if a > best_area:
+            best, best_area = (v, clean_text(e.name) or None), a
+    return best
+
+
+def doc_url(elems: Sequence[Elem]) -> str | None:
+    """最大的 Document 元素的 Value（形如 scheme:…）；没有时 None。"""
+    return doc_info(elems)[0]
+
+
 def outermost_tp(elems: Sequence[Elem]) -> list[int]:
     """只取最外层的 TextPattern 元素，避免嵌套重复（文档里的段落也常带 TextPattern）。"""
     out = []
@@ -392,94 +426,6 @@ def collect_lines(elems: Sequence[Elem], tps: Sequence[TpLines], win_rect: Rect)
     return uniq
 
 
-def to_frame_rect(rect: Rect, frame_origin: tuple[int, int]) -> Rect:
-    """屏幕矩形换成截图（帧）坐标：减去帧左上角（窗口可见边框的左上角）。"""
-    ox, oy = frame_origin
-    return (rect[0] - ox, rect[1] - oy, rect[2] - ox, rect[3] - oy)
-
-
-def uncovered_bands(lines: Sequence[UiaLine], win_rect: Rect, min_gap_px: int = 48,
-                    container_frac: float = 0.4) -> list[Rect]:
-    """窗口里没有任何文字行的整宽横条（屏幕坐标），只返回高于 min_gap_px 的。
-
-    所有行（正文和界面文字）都算覆盖；但高度超过窗口 container_frac 的行（窗口、面板、文档本身的名字）
-    不算，否则一个整窗大小的名字就会把整个窗口标成"读到了"。只看纵向，不分左右栏。
-    """
-    l, t, r, b = win_rect
-    h = b - t
-    if h <= 0 or r <= l:
-        return []
-    spans = sorted(
-        (max(ln.rect[1], t), min(ln.rect[3], b)) for ln in lines
-        if ln.rect[3] > ln.rect[1] and (ln.rect[3] - ln.rect[1]) <= container_frac * h
-    )
-    out: list[Rect] = []
-    cur = t
-    for s0, s1 in spans:
-        if s0 - cur >= min_gap_px:
-            out.append((l, cur, r, s0))
-        cur = max(cur, s1)
-    if b - cur >= min_gap_px:
-        out.append((l, cur, r, b))
-    return out
-
-
-def has_ink(img, *, edge_level: int = 48, min_edges: int = 24) -> bool:
-    """这块图上有没有"像字的东西"：横向和纵向的强边缘（相邻像素差 > edge_level）都至少 min_edges 个。
-
-    按个数而不是比例：宽横条里只有一个短词也要算有字。两个方向都要有：一条竖分隔线只有横向边缘、
-    一条横线只有纵向边缘，都不算；纯色背景、渐变、Mica 这类轻微纹理也判为空白。
-    img：HxWx3/4 的 BGR(A) uint8，或单通道（如录制进程里的绿色通道）。
-    """
-    import numpy as np
-
-    a = np.asarray(img)
-    if a.ndim == 3:
-        a = a[:, :, 1]  # 绿色通道近似亮度，和比对用的通道一致
-    if a.ndim != 2 or a.shape[0] < 2 or a.shape[1] < 2:
-        return False
-    a = a.astype(np.int16)
-    h = int(np.count_nonzero(np.abs(np.diff(a, axis=1)) > edge_level))
-    if h < min_edges:
-        return False
-    v = int(np.count_nonzero(np.abs(np.diff(a, axis=0)) > edge_level))
-    return v >= min_edges
-
-
-def ocr_regions(res: UiaResult, frame, frame_origin: tuple[int, int] | None = None,
-                *, min_gap_px: int = 48, top: int = 0) -> list[Rect]:
-    """录制进程用：这一帧里哪些区域要登记待 OCR（帧坐标 (l, t, r, b)），空列表表示 UIA 已经够了。
-
-    - 读取失败 / 超时 / 窗口给不出可用文字：整帧（若整帧都是空白则不登记）；
-    - 读到了可用文字：只取 uncovered 横条里"有像字的东西"的那些（空白的段落间距、底部留白不登记）。
-    frame：这一帧的像素（BGR(A) 或绿色通道）；frame_origin 默认是 res.window_rect 的左上角
-    （窗口可见边框 = WGC 帧范围）。
-    top：帧里这一行以上是系统画的标题栏（见 caption_height），不登记：标题已经记在内容源里，
-    识别出来只多了"标题、□、X"这样的行。
-    """
-    import numpy as np
-
-    a = np.asarray(frame)
-    fh, fw = a.shape[0], a.shape[1]
-    top = max(0, min(int(top), fh))
-    whole = [(0, top, fw, fh)] if top == 0 or fh - top >= min_gap_px else []
-    if res.status not in ("ok", "empty") or not res.usable:
-        return whole if whole and has_ink(a[top:]) else []
-    if frame_origin is None:
-        if res.window_rect is None:
-            return whole if whole and has_ink(a[top:]) else []
-        frame_origin = (res.window_rect[0], res.window_rect[1])
-    out = []
-    for band in res.uncovered:
-        l, t, r, b = to_frame_rect(band, frame_origin)
-        l, t, r, b = max(0, l), max(top, t), min(fw, r), min(fh, b)
-        if b - t < min_gap_px or r <= l:
-            continue
-        if has_ink(a[t:b, l:r]):
-            out.append((l, t, r, b))
-    return out
-
-
 # ---------- 最小的 Win32 调用 ----------
 
 class _RECT(ctypes.Structure):
@@ -498,12 +444,6 @@ class _Win32:
         self._IsIconic.argtypes, self._IsIconic.restype = [wintypes.HWND], wintypes.BOOL
         self._GetWindowRect = u.GetWindowRect
         self._GetWindowRect.argtypes, self._GetWindowRect.restype = [wintypes.HWND, ctypes.POINTER(_RECT)], wintypes.BOOL
-        self._GetClassNameW = u.GetClassNameW
-        self._GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
-        self._GetClassNameW.restype = ctypes.c_int
-        self._GetPid = u.GetWindowThreadProcessId
-        self._GetPid.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
-        self._GetPid.restype = wintypes.DWORD
         self._Dwm = d.DwmGetWindowAttribute
         self._Dwm.argtypes = [wintypes.HWND, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD]
         self._Dwm.restype = ctypes.c_long
@@ -532,16 +472,6 @@ class _Win32:
         if not u.ClientToScreen(hwnd, ctypes.byref(pt)):
             return None
         return int(pt.y)
-
-    def window_key(self, hwnd: int) -> tuple[int, str]:
-        """同一程序的近似标识：(进程号, 窗口类名)。"""
-        from ctypes import wintypes
-
-        pid = wintypes.DWORD(0)
-        self._GetPid(hwnd, ctypes.byref(pid))
-        buf = ctypes.create_unicode_buffer(256)
-        self._GetClassNameW(hwnd, buf, 256)
-        return int(pid.value), buf.value
 
 
 MAX_CAPTION_PX = 200  # 比这还高的"标题栏"不当标题栏（怪异的窗口），整帧照常识别
@@ -576,8 +506,10 @@ def _win32() -> _Win32:
 
 class Backend(Protocol):
     def open(self) -> object: ...
-    def read(self, ctx: object, hwnd: int, win_rect: Rect, cancel: threading.Event) -> tuple[list[UiaLine], int]: ...
+    # 返回 (行, 元素数[, chrome_bottom[, doc_url[, doc_name]]])：后几项可省（测试用的后端只给前两项）
+    def read(self, ctx: object, hwnd: int, win_rect: Rect, cancel: threading.Event) -> tuple: ...
     def close(self, ctx: object) -> None: ...
+    # 可选：def doc(self, ctx, hwnd) -> (doc_url, doc_name[, 上沿 y])，读整棵树之前先单独找网址（没有这个方法就不找）
 
 
 class Cancelled(Exception):
@@ -632,6 +564,8 @@ class _ComCtx:
     auto: object
     cr: object
     uia: object
+    doc_cond: object = None   # ControlType == Document
+    doc_cr: object = None     # 只取 Value / 名字 / 是否密码框
 
 
 def _str(v) -> str:
@@ -671,7 +605,11 @@ class ComBackend:
             cr.AddProperty(pid)
         cr.TreeScope = TREE_SCOPE_SUBTREE
         cr.TreeFilter = auto.ControlViewCondition
-        return _ComCtx(auto, cr, uia)
+        doc_cr = auto.CreateCacheRequest()
+        for pid in (P_RECT, P_NAME, P_PASSWORD, P_VALUE):
+            doc_cr.AddProperty(pid)
+        doc_cond = auto.CreatePropertyCondition(P_CTYPE, CT_DOCUMENT)
+        return _ComCtx(auto, cr, uia, doc_cond, doc_cr)
 
     def close(self, ctx: _ComCtx) -> None:
         import comtypes
@@ -683,7 +621,26 @@ class ComBackend:
         uninit = getattr(comtypes, "CoUninitialize", None) or comtypes._CoUninitialize
         uninit()
 
-    def read(self, ctx: _ComCtx, hwnd: int, win_rect: Rect, cancel: threading.Event) -> tuple[list[UiaLine], int]:
+    def doc(self, ctx: _ComCtx, hwnd: int) -> tuple[str | None, str | None, int | None]:
+        """所有 Document 元素里最大的那个的 (网址, 名字, 上沿屏幕 y)，规则和 doc_info 一样：上沿就是浏览器标签页条 /
+        地址栏的下沿（整棵树超时、算不出 chrome_bottom 时 OCR 照样不收界面条里的字）。一次 FindAllBuildCache，只取四个属性
+        （实测后台 Edge 40–260 ms，而整棵树要 0.6–3 秒）。不能只取第一个：Edge 树里排在前面的可能是藏起来的
+        edge:// 小对话框，页面会被当成内部页。"""
+        root = ctx.auto.ElementFromHandle(hwnd)
+        arr = root.FindAllBuildCache(TREE_SCOPE_DESCENDANTS, ctx.doc_cond, ctx.doc_cr)
+        elems = []
+        for i in range(arr.Length if arr else 0):
+            el = arr.GetElement(i)
+            r = el.CachedBoundingRectangle
+            elems.append(Elem(parent=-1, ct="Document", name=_str(el.CachedName),
+                              value=_str(el.GetCachedPropertyValue(P_VALUE)), password=bool(el.CachedIsPassword),
+                              rect=(int(r.left), int(r.top), int(r.right), int(r.bottom))))
+        url, name = doc_info(elems)
+        top = next((e.rect[1] for e in elems if url and url_value(e.value) == url and _area(e.rect) > 0), None)
+        return url, name, top
+
+    def read(self, ctx: _ComCtx, hwnd: int, win_rect: Rect,
+             cancel: threading.Event) -> tuple[list[UiaLine], int, int | None, str | None, str | None]:
         root = ctx.auto.ElementFromHandle(hwnd)
         cached = root.BuildUpdatedCache(ctx.cr)
         if cancel.is_set():
@@ -705,7 +662,8 @@ class ComBackend:
                 tp.lines = []
             tps.append(tp)
         handles.clear()
-        return collect_lines(elems, tps, win_rect), len(elems), chrome_bottom(elems, win_rect)
+        url, name = doc_info(elems)
+        return collect_lines(elems, tps, win_rect), len(elems), chrome_bottom(elems, win_rect), url, name
 
     def _walk(self, cached, cancel: threading.Event) -> tuple[list[Elem], list]:
         elems: list[Elem] = []
@@ -774,6 +732,8 @@ class _Job:
     lines: list[UiaLine] | None = None
     count: int = 0
     chrome: int | None = None
+    doc_url: str | None = None
+    doc_name: str | None = None
     error: str | None = None
 
 
@@ -812,10 +772,25 @@ class _Worker(threading.Thread):
                 elif ctx is None:
                     job.error = self.open_error or "UIA 初始化失败"
                 else:
+                    find_doc = getattr(self.backend, "doc", None)
+                    if find_doc is not None:
+                        # 先单独找网址：整棵树来不及读完时调用方照样拿得到（job 上的值随时可读）
+                        try:
+                            got = find_doc(ctx, job.hwnd)
+                            job.doc_url, job.doc_name = got[0], got[1]
+                            job.chrome = got[2] if len(got) > 2 else None
+                        except Exception:  # noqa: BLE001 - 找不到就等整棵树里的
+                            pass
                     try:
+                        if job.cancel.is_set():
+                            raise Cancelled()
                         got = self.backend.read(ctx, job.hwnd, job.win_rect, job.cancel)
                         job.lines, job.count = got[0], got[1]
-                        job.chrome = got[2] if len(got) > 2 else None  # 测试用的后端只给两项
+                        if len(got) > 2 and got[2] is not None:  # 测试用的后端只给两项；树里算不出时留着 Document 的上沿
+                            job.chrome = got[2]
+                        if len(got) > 3 and got[3]:  # 整棵树里最大的那个 Document 为准
+                            job.doc_url = got[3]
+                            job.doc_name = got[4] if len(got) > 4 else None
                     except Cancelled:
                         job.error = "cancelled"
                     except Exception as exc:
@@ -834,7 +809,7 @@ class _Worker(threading.Thread):
 class UiaReader:
     """线程安全的 UIA 读取器。一个进程用一个实例（录制进程里）。
 
-    read(hwnd) 永远在 timeout_s（加少量调度误差）内返回；has_text_hint(hwnd) 不做跨进程调用。
+    read(hwnd) 永远在 timeout_s（加少量调度误差）内返回。
     """
 
     def __init__(self, cfg: UiaConfig | None = None, *, backend: Backend | None = None,
@@ -847,10 +822,6 @@ class UiaReader:
         self._worker: _Worker | None = None
         self._abandoned: list[_Worker] = []
         self._seen: OrderedDict[int, None] = OrderedDict()
-        self._hint_lock = threading.Lock()
-        self._hint: OrderedDict[tuple[int, str], tuple[int, float]] = OrderedDict()  # key -> (连续失败次数, 最后时间)
-        # 读出过可用文字的程序：它的某个页面读不出字（图片页、画布）不代表整个程序不行，提示一直为 True
-        self._capable: OrderedDict[tuple[int, str], None] = OrderedDict()
 
     @property
     def win(self):
@@ -893,27 +864,7 @@ class UiaReader:
                         res = dataclasses.replace(res, first_touch=True)
         finally:
             self._lock.release()
-        self._update_hint(hwnd, res)
         return res
-
-    def has_text_hint(self, hwnd: int) -> bool:
-        """便宜的提示：同一程序（进程 + 窗口类）最近连续几次都读不出可用文字时返回 False。
-
-        False 时调用方可以跳过 UIA、直接登记待 OCR；过 hint_ttl_s 后重新返回 True，再试一次。
-        本进程里读出过可用文字的程序（如浏览器）一直返回 True：它的某些页面读不出字时由每次结果的
-        usable / uncovered 处理，不连累同一程序的其他窗口和页面。
-        """
-        try:
-            key = self.win.window_key(hwnd)
-        except Exception:
-            return True
-        with self._hint_lock:
-            if key in self._capable:
-                return True
-            streak, at = self._hint.get(key, (0, 0.0))
-        if streak < self.cfg.hint_fail_streak:
-            return True
-        return self._clock() - at > self.cfg.hint_ttl_s
 
     def close(self) -> None:
         with self._lock:
@@ -948,14 +899,16 @@ class UiaReader:
             worker.submit(None)
             self._abandoned.append(worker)
             self._worker = None
-            return UiaResult("timeout", [], False, _ms(t0), window_rect=rect)
+            # 正文来不及读完，但读字前先找到的网址照样给（大页面：网址 + 调用方 OCR）
+            return UiaResult("timeout", [], False, _ms(t0), window_rect=rect, doc_url=job.doc_url,
+                             doc_name=job.doc_name, chrome_bottom=job.chrome)
         if job.error is not None:
-            return UiaResult("error", [], False, _ms(t0), window_rect=rect, error=job.error)
+            return UiaResult("error", [], False, _ms(t0), window_rect=rect, error=job.error, doc_url=job.doc_url,
+                             doc_name=job.doc_name)
         lines = job.lines or []
         usable = content_chars(lines) >= self.cfg.min_content_chars
-        gaps = tuple(uncovered_bands(lines, rect, self.cfg.min_gap_px, self.cfg.container_frac))
-        return UiaResult("ok" if lines else "empty", lines, usable, _ms(t0), job.count, rect, uncovered=gaps,
-                         chrome_bottom=job.chrome)
+        return UiaResult("ok" if lines else "empty", lines, usable, _ms(t0), job.count, rect,
+                         chrome_bottom=job.chrome, doc_url=job.doc_url, doc_name=job.doc_name)
 
     def _remember(self, hwnd: int) -> None:
         self._seen[hwnd] = None
@@ -963,51 +916,6 @@ class UiaReader:
         while len(self._seen) > 256:
             self._seen.popitem(last=False)
 
-    def _update_hint(self, hwnd: int, res: UiaResult) -> None:
-        if res.status in ("minimized", "no_window", "busy"):
-            return
-        try:
-            key = self.win.window_key(hwnd)
-        except Exception:
-            return
-        with self._hint_lock:
-            if res.usable:
-                self._hint.pop(key, None)
-                self._capable[key] = None
-                self._capable.move_to_end(key)
-                while len(self._capable) > 512:
-                    self._capable.popitem(last=False)
-                return
-            streak, _ = self._hint.pop(key, (0, 0.0))
-            self._hint[key] = (streak + 1, self._clock())
-            while len(self._hint) > 512:
-                self._hint.popitem(last=False)
-
 
 def _ms(t0: float) -> float:
     return round((time.perf_counter() - t0) * 1000.0, 1)
-
-
-_DEFAULT: UiaReader | None = None
-_DEFAULT_LOCK = threading.Lock()
-
-
-def default_reader() -> UiaReader:
-    global _DEFAULT
-    with _DEFAULT_LOCK:
-        if _DEFAULT is None:
-            _DEFAULT = UiaReader()
-        return _DEFAULT
-
-
-def read_visible_lines(hwnd: int, timeout_s: float = 0.5) -> list[UiaLine]:
-    """读窗口里屏幕上看得见的文字行（屏幕物理像素矩形）。超时、最小化、读不出时返回空列表。
-
-    录制进程应直接用 default_reader().read(hwnd)：结果里的 usable / uncovered 配合 ocr_regions()
-    决定哪些区域要登记待 OCR。
-    """
-    return default_reader().read(hwnd, timeout_s).lines
-
-
-def has_text_hint(hwnd: int) -> bool:
-    return default_reader().has_text_hint(hwnd)

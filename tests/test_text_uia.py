@@ -1,12 +1,9 @@
-"""UIA 读字的纯逻辑与线程行为：可见过滤、去重、超时放弃、提示缓存（不碰真实窗口）。"""
+"""UIA 读字的纯逻辑与线程行为：可见过滤、去重、超时放弃（不碰真实窗口）。"""
 
 from __future__ import annotations
 
 import threading
 import time
-
-import numpy as np
-from PIL import Image, ImageDraw, ImageFont
 
 from screenrecall.text import uia
 from screenrecall.text.uia import Elem, TpLines, UiaConfig, UiaLine, UiaReader, collect_lines
@@ -217,84 +214,7 @@ def test_multiline_name_split():
     assert _texts(collect_lines(elems, [], WIN)) == ["甲", "乙"]
 
 
-def test_to_frame_rect():
-    assert uia.to_frame_rect((150, 260, 300, 280), (100, 200)) == (50, 60, 200, 80)
-
-
-# ---------- 没读到字的区域与待 OCR ----------
-
-def _ln(t, b, text="正文", role="text"):
-    return UiaLine(text, (110, t, 800, b), "Text", "name", role)
-
-
-def test_uncovered_bands_chrome_only_and_container_ignored():
-    # 浏览器第一次被访问：只有顶部工具栏的字，外加一个整窗大小的窗口名
-    lines = [_ln(100, 130, "标签页标题"), _ln(135, 160, "example.test/page"),
-             UiaLine("窗口标题", WIN, "Window", "name", "ui")]
-    assert uia.uncovered_bands(lines, WIN, min_gap_px=48) == [(100, 160, 900, 700)]
-    # 段落间距小于 min_gap_px 不算；中间一大段空着算
-    lines = [_ln(100, 130), _ln(150, 180), _ln(400, 430), _ln(660, 700)]
-    assert uia.uncovered_bands(lines, WIN, min_gap_px=48) == [(100, 180, 900, 400), (100, 430, 900, 660)]
-    assert uia.uncovered_bands([], WIN) == [WIN]
-    # 重叠、乱序的行
-    assert uia.uncovered_bands([_ln(480, 700), _ln(300, 520), _ln(100, 330)], WIN) == []
-
-
-def _canvas(h=600, w=800):
-    return np.full((h, w, 3), 255, np.uint8)
-
-
-def _write(img, x, y, text="一行短字 short", size=14):
-    im = Image.fromarray(img)
-    ImageDraw.Draw(im).text((x, y), text, fill=(0, 0, 0), font=ImageFont.truetype(r"C:\Windows\Fonts\msyh.ttc", size))
-    img[:] = np.asarray(im)
-
-
-def test_has_ink():
-    img = _canvas(120, 1500)
-    assert not uia.has_ink(img)
-    _write(img, 20, 50, "短词", 12)  # 宽横条里只有一个短词也要算有字
-    assert uia.has_ink(img)
-    grad = np.tile(np.linspace(0, 255, 1500, dtype=np.uint8)[None, :, None], (120, 1, 3))
-    assert not uia.has_ink(grad)
-    div = _canvas(120, 1500)
-    div[:, 700] = 0  # 竖分隔线
-    assert not uia.has_ink(div)
-    line = _canvas(120, 1500)
-    line[60] = 0  # 横线
-    assert not uia.has_ink(line)
-    assert uia.has_ink(img[:, :, 1])  # 单通道（绿色通道）也行
-    assert not uia.has_ink(np.zeros((1, 10), np.uint8))
-
-
-def test_ocr_regions():
-    frame = _canvas()
-    _write(frame, 40, 400, "图片里的字 text inside an image")
-    origin = (WIN[0], WIN[1])  # 帧左上角 = 窗口可见边框左上角
-    bad = uia.UiaResult("timeout", [], False, 1.0, window_rect=WIN)
-    assert uia.ocr_regions(bad, frame) == [(0, 0, 800, 600)]
-    assert uia.ocr_regions(bad, _canvas()) == []  # 整帧空白：不登记
-    unusable = uia.UiaResult("ok", [_ln(100, 130, "短")], False, 1.0, window_rect=WIN)
-    assert uia.ocr_regions(unusable, frame) == [(0, 0, 800, 600)]
-    # 可用：只登记有字的那条没读到字的横条（屏幕 y 300..550 -> 帧 y 200..450），空白的横条不登记
-    good = uia.UiaResult("ok", [_ln(100, 130, "足够长的一段正文文字 enough text here")], True, 1.0,
-                         window_rect=WIN, uncovered=((100, 160, 900, 280), (100, 300, 900, 550)))
-    assert uia.ocr_regions(good, frame) == [(0, 200, 800, 450)]
-    assert uia.ocr_regions(good, frame, origin) == [(0, 200, 800, 450)]
-    assert uia.ocr_regions(uia.UiaResult("ok", good.lines, True, 1.0, window_rect=WIN), frame) == []
-
-
-def test_ocr_regions_skip_the_system_caption():
-    """系统画的标题栏（标题、□、X）不登记待 OCR：标题已经在内容源里。"""
-    frame = _canvas()
-    _write(frame, 40, 10, "合成窗口标题 - title bar")
-    bad = uia.UiaResult("timeout", [], False, 1.0, window_rect=WIN)
-    assert uia.ocr_regions(bad, frame, top=40) == []  # 只有标题栏里有字
-    _write(frame, 40, 400, "客户区里的字 client text")
-    assert uia.ocr_regions(bad, frame, top=40) == [(0, 40, 800, 600)]
-    good = uia.UiaResult("ok", [_ln(300, 330, "足够长的一段正文文字 enough text here")], True, 1.0,
-                         window_rect=WIN, uncovered=((100, 100, 900, 280), (100, 360, 900, 700)))
-    assert uia.ocr_regions(good, frame, top=40) == [(0, 260, 800, 600)]  # 第一条横条只剩标题栏：不登记
+def test_caption_height_of_non_window_is_zero():
     assert uia.caption_height(0) == 0  # 不是窗口：0，照旧整帧
 
 
@@ -313,9 +233,6 @@ class FakeWin:
 
     def frame_rect(self, hwnd):
         return WIN
-
-    def window_key(self, hwnd):
-        return (1, "Cls")
 
 
 class FakeBackend:
@@ -422,31 +339,6 @@ def test_backend_error_reported():
     assert res.status == "error" and "COMError" in res.error
 
 
-def test_has_text_hint_streak_and_ttl():
-    now = [0.0]
-    be = FakeBackend(lines=[])
-    r = UiaReader(UiaConfig(hint_fail_streak=3, hint_ttl_s=60, first_touch_retry_s=0), backend=be,
-                  win32=FakeWin(), clock=lambda: now[0])
-    for _ in range(2):
-        r.read(1)
-        assert r.has_text_hint(1)
-    r.read(1)
-    assert r.has_text_hint(1) is False
-    now[0] += 61
-    assert r.has_text_hint(1)
-    be.lines = FakeBackend().lines
-    r.read(1)  # 读到可用文字：清零
-    now[0] = 0
-    assert r.has_text_hint(1)
-    r.close()
-
-
-def test_result_carries_uncovered_bands():
-    be = FakeBackend(lines=[UiaLine("一段足够长的正文文字 enough text", (110, 110, 400, 130), "Text", "name")])
-    res = _reader(be).read(1)
-    assert res.usable and res.uncovered == ((100, 130, 900, 700),)
-
-
 def test_slow_init_is_busy_not_abandoned_and_not_counted():
     class SlowOpen(FakeBackend):
         def open(self):
@@ -454,10 +346,10 @@ def test_slow_init_is_busy_not_abandoned_and_not_counted():
             return super().open()
 
     be = SlowOpen()
-    r = _reader(be, timeout_s=0.1, hint_fail_streak=1)
+    r = _reader(be, timeout_s=0.1)
     res = r.read(1)
     assert res.status == "busy" and "初始化" in res.error
-    assert r.alive_abandoned() == 0 and r.has_text_hint(1)  # 不算目标程序卡住，也不算"没有文字"
+    assert r.alive_abandoned() == 0  # 不算目标程序卡住
     time.sleep(0.35)
     res = r.read(1)
     assert res.status == "ok" and be.opened == 1 and be.reads == 1  # 被取消的那次没有再去读
@@ -500,15 +392,72 @@ def test_timed_out_first_touch_is_retried_later():
     r.close()
 
 
-def test_hint_stays_true_for_apps_that_gave_text():
-    be = FakeBackend()
-    r = _reader(be, hint_fail_streak=2)
-    assert r.read(1).usable
-    be.lines = []  # 同一程序的另一个页面是图片 / 画布：读不出字
-    for _ in range(5):
-        assert not r.read(1).usable
-    assert r.has_text_hint(1)
-    r.close()
+def test_doc_url_takes_the_largest_document_value():
+    """最大的 Document 元素的值就是页面网址；页面里嵌的小文档、不像网址的值、密码框都不算。"""
+    elems = [
+        Elem(-1, "Window", rect=WIN),
+        Elem(0, "Document", value="https://small.test/frame", rect=(110, 110, 300, 200), has_tp=True),
+        Elem(0, "Document", value="https://page.test/a?b=1#c", rect=(100, 130, 900, 700), has_tp=True),
+        Elem(0, "Document", value="C:\\not\\a\\url.txt", rect=(0, 0, 2000, 2000)),
+        Elem(0, "Document", value="file:///secret", rect=(0, 0, 3000, 3000), password=True),
+        Elem(0, "Edit", value="https://address.bar/", rect=(0, 0, 4000, 4000)),
+    ]
+    assert uia.doc_url(elems) == "https://page.test/a?b=1#c"
+    assert uia.doc_url([Elem(-1, "Window", rect=WIN), Elem(0, "Document", value="合成的正文", rect=WIN)]) is None
+    assert uia.doc_url([Elem(0, "Document", value="about:blank", rect=WIN)]) == "about:blank"
+    elems, _ = _browser("lines")
+    assert uia.doc_url(elems) == "file:///synthetic/page.html"
+
+
+def test_doc_url_is_threaded_through_the_reader():
+    class WithUrl(FakeBackend):
+        def read(self, ctx, hwnd, win_rect, cancel):
+            lines, n = super().read(ctx, hwnd, win_rect, cancel)
+            return lines, n, 130, "https://synthetic.test/page"
+
+    res = _reader(WithUrl()).read(1)
+    assert res.doc_url == "https://synthetic.test/page" and res.chrome_bottom == 130
+    assert _reader(FakeBackend()).read(1).doc_url is None  # 只给两项的后端：None
+
+
+def test_url_found_before_walk_survives_timeout():
+    """读整棵树之前先单独找网址（backend.doc）：大页面正文超时，网址和网页标题照样给；整棵树读完时以树里最大的为准。"""
+    class Docs(FakeBackend):
+        def doc(self, ctx, hwnd):
+            return "https://synthetic.test/big", "合成长文"
+
+    be = Docs(delay=5.0)
+    res = _reader(be, timeout_s=0.1).read(1)
+    assert res.status == "timeout" and res.lines == []
+    assert (res.doc_url, res.doc_name) == ("https://synthetic.test/big", "合成长文")
+
+    class DocsAndTree(Docs):
+        def read(self, ctx, hwnd, win_rect, cancel):
+            lines, n = FakeBackend.read(self, ctx, hwnd, win_rect, cancel)
+            return lines, n, None, "https://synthetic.test/largest", "树里的标题"
+
+    res = _reader(DocsAndTree()).read(1)
+    assert res.status == "ok" and (res.doc_url, res.doc_name) == ("https://synthetic.test/largest", "树里的标题")
+
+    class BrokenDoc(FakeBackend):
+        def doc(self, ctx, hwnd):
+            raise RuntimeError("COMError")
+
+    res = _reader(BrokenDoc()).read(1)
+    assert res.status == "ok" and res.doc_url is None  # 单独找出错不影响读字
+
+
+def test_doc_info_largest_document_value_and_name():
+    elems = [uia.Elem(-1, "Window", rect=(0, 0, 1000, 800)),
+             uia.Elem(0, "Document", name="小框", value="https://ad.test/x", rect=(0, 0, 100, 100)),
+             uia.Elem(0, "Document", name=" 页面标题 ", value="https://page.test/a", rect=(0, 0, 900, 700)),
+             uia.Elem(0, "Document", name="不是网址", value="一大段\n全文", rect=(0, 0, 1000, 800))]
+    assert uia.doc_info(elems) == ("https://page.test/a", "页面标题")
+    # 没有大小的 Document（藏起来的 edge:// 小对话框）不算，哪怕它排在前面、页面还没出来
+    hidden = [uia.Elem(-1, "Document", name="对话框", value="edge://sync-confirmation-dialog", rect=(0, 0, 0, 0))]
+    assert uia.doc_info(hidden) == (None, None) and uia.doc_info(hidden + elems[2:3])[0] == "https://page.test/a"
+    assert uia.doc_url(elems) == "https://page.test/a"
+    assert uia.url_value("  app://x/index.html ") == "app://x/index.html" and uia.url_value("C:\\x") is None
 
 
 def test_first_touch_retry_keeps_richer_read():
@@ -519,3 +468,13 @@ def test_first_touch_retry_keeps_richer_read():
     res = r.read(1)  # 第二次访问不再重试
     assert be.reads == 3 and res.element_count == 7
     r.close()
+
+
+def test_timeout_keeps_document_top_as_chrome_bottom():
+    """整棵树超时：读字前找到的 Document 上沿当界面条下沿（OCR 不收标签页条 / 地址栏里的字）。"""
+    class Docs(FakeBackend):
+        def doc(self, ctx, hwnd):
+            return "https://synthetic.test/big", "合成长文", 180
+
+    res = _reader(Docs(delay=5.0), timeout_s=0.1).read(1)
+    assert res.status == "timeout" and res.chrome_bottom == 180

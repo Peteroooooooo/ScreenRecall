@@ -1,43 +1,37 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { CalendarDays, ChevronDown, CircleDot, Lock, Monitor, Moon, Pause, Play, Plug, Search, Settings, ShieldCheck, Sun } from "lucide-react";
+import { AppWindow, ChevronDown, Clock, Lock, Monitor, Moon, Pause, Play, Search, Settings, Sun } from "lucide-react";
 import { api, isUnauthorized, UNAUTHORIZED_EVENT } from "./api";
 import { LangProvider, useT, type Key } from "./i18n";
 import { navigate, THEMES, usePoll, useRoute, useTheme } from "./lib";
-import { PAUSE_KINDS, recView, usePauseActions } from "./recording";
+import { isPaused, PAUSE_MINUTES, recView, usePauseActions } from "./recording";
 import { Banner, Dot, StatusCtx, ToastHost, useStatus } from "./ui";
-import TodayPage from "./pages/TodayPage";
-import PiecePage from "./pages/PiecePage";
+import TimelinePage from "./pages/TimelinePage";
+import EntryPage from "./pages/EntryPage";
 import SearchPage from "./pages/SearchPage";
-import RecorderPage from "./pages/RecorderPage";
-import PrivacyPage from "./pages/PrivacyPage";
-import AgentPage from "./pages/AgentPage";
+import AppsPage from "./pages/AppsPage";
 import SettingsPage from "./pages/SettingsPage";
 
 /** 顶栏状态的轮询间隔；页面在后台时 usePoll 自动放慢 */
 export const STATUS_POLL_MS = 2000;
 
-type NavItem = { path: string; key: Key; short: Key; icon: typeof Search };
+type NavItem = { path: string; key: Key; icon: typeof Search };
 const NAV: NavItem[] = [
-  { path: "/", key: "nav.today", short: "nav.today", icon: CalendarDays },
-  { path: "/search", key: "nav.search", short: "nav.search", icon: Search },
-  { path: "/recorder", key: "nav.recorder", short: "nav.recorderShort", icon: CircleDot },
-  { path: "/privacy", key: "nav.privacy", short: "nav.privacyShort", icon: ShieldCheck },
-  { path: "/agent", key: "nav.agent", short: "nav.agentShort", icon: Plug },
-  { path: "/settings", key: "nav.settings", short: "nav.settings", icon: Settings },
+  { path: "/", key: "nav.timeline", icon: Clock },
+  { path: "/search", key: "nav.search", icon: Search },
+  { path: "/apps", key: "nav.apps", icon: AppWindow },
+  { path: "/settings", key: "nav.settings", icon: Settings },
 ];
 
 type Route = { page: ReactNode; nav: string; title: Key };
 
 function resolve(path: string, params: URLSearchParams): Route {
-  const piece = /^\/piece\/(\d+)$/.exec(path);
-  if (piece) return { page: <PiecePage key={piece[1]} id={Number(piece[1])} />, nav: "/", title: "title.piece" };
+  const entry = /^\/entry\/(\d+)$/.exec(path);
+  if (entry) return { page: <EntryPage key={entry[1]} id={Number(entry[1])} />, nav: "/", title: "title.entry" };
   switch (path) {
     case "/search": return { page: <SearchPage params={params} />, nav: "/search", title: "nav.search" };
-    case "/recorder": return { page: <RecorderPage />, nav: "/recorder", title: "nav.recorder" };
-    case "/privacy": return { page: <PrivacyPage />, nav: "/privacy", title: "nav.privacy" };
-    case "/agent": return { page: <AgentPage />, nav: "/agent", title: "nav.agent" };
+    case "/apps": return { page: <AppsPage />, nav: "/apps", title: "nav.apps" };
     case "/settings": return { page: <SettingsPage />, nav: "/settings", title: "nav.settings" };
-    default: return { page: <TodayPage params={params} />, nav: "/", title: "nav.today" };
+    default: return { page: <TimelinePage params={params} />, nav: "/", title: "nav.timeline" };
   }
 }
 
@@ -84,29 +78,39 @@ function MobileNav({ active }: { active: string }) {
   const { t } = useT();
   return (
     <nav className="sr-no-scrollbar flex gap-1 overflow-x-auto bg-night px-4 py-2 lg:hidden" aria-label={t("nav.main")}>
-      {NAV.map(({ path, short, icon: Icon }) => (
+      {NAV.map(({ path, key, icon: Icon }) => (
         <a key={path} href={`#${path}`} aria-current={active === path ? "page" : undefined}
           className={`inline-flex h-[34px] shrink-0 items-center gap-[7px] rounded-[9px] px-3 text-[13.5px] ${active === path ? "bg-night-3 text-white" : "text-night-faint"}`}>
-          <Icon size={15} aria-hidden />{t(short)}
+          <Icon size={15} aria-hidden />{t(key)}
         </a>
       ))}
     </nav>
   );
 }
 
+/** 顶栏状态：圆点 + 在录 / 已暂停（到几点）/ 录制进程没在运行，“最后一次拍：N 秒前” */
 function StatusPill() {
   const { t } = useT();
   const { status, lost } = useStatus();
   const v = recView(status, lost, t);
   return (
-    <a href="#/recorder" title={t("st.pillTitle")} data-testid="status-pill"
-      className="inline-flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border border-rule bg-surface px-3 text-[13.5px] text-ink hover:border-rule-strong lg:max-w-[420px] lg:flex-none">
+    <div role="status" data-testid="status-pill" title={v.detail ?? undefined}
+      className="inline-flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border border-rule bg-surface px-3 text-[13.5px] text-ink lg:max-w-[460px] lg:flex-none">
       <Dot tone={v.tone} />
-      <span className="truncate">
-        {v.label}
-        {v.detail && <span className="hidden sm:inline"> · {v.detail}</span>}
+      {/* 手机宽度：状态和“最后一次拍”分两行（一行放不下时最后一次拍不能被截掉） */}
+      <span className="flex min-w-0 flex-col leading-[1.15] sm:block sm:truncate sm:leading-normal">
+        <span className="truncate sm:inline">
+          <b className="font-semibold">{v.label}</b>
+          {v.detail && <span className="hidden sm:inline"> · {v.detail}</span>}
+        </span>
+        {v.snap && (
+          <span className="truncate text-[12px] text-graphite sm:inline sm:text-[13.5px]">
+            <span className="hidden sm:inline"> · </span>{v.snap}
+          </span>
+        )}
       </span>
-    </a>
+      {status?.disk_low && <span className="sr-tag sr-tag-warn shrink-0">{t("st.diskLow")}</span>}
+    </div>
   );
 }
 
@@ -118,7 +122,7 @@ function PauseMenu() {
   const wrap = useRef<HTMLDivElement>(null);
   const btn = useRef<HTMLButtonElement>(null);
   const items = useRef<(HTMLButtonElement | null)[]>([]);
-  const paused = status?.recording === "paused";
+  const paused = isPaused(status);
 
   useEffect(() => {
     if (!open) return;
@@ -160,13 +164,13 @@ function PauseMenu() {
       </button>
       {open && (
         <div id="pause-menu" role="menu" aria-label={t("pause.menu")} onKeyDown={onKey}
-          className="absolute left-0 top-[calc(100%+6px)] z-40 min-w-[170px] rounded-[12px] border border-rule bg-surface p-1.5 shadow-lift sm:left-auto sm:right-0">
+          className="absolute left-0 top-[calc(100%+6px)] z-40 min-w-[150px] rounded-[12px] border border-rule bg-surface p-1.5 shadow-lift sm:left-auto sm:right-0">
           <div className="px-2.5 pb-1.5 pt-1 text-xs text-faint" aria-hidden>{t("pause.menu")}</div>
-          {PAUSE_KINDS.map((k, i) => (
-            <button key={k} ref={(el) => { items.current[i] = el; }} role="menuitem" tabIndex={-1}
+          {PAUSE_MINUTES.map((n, i) => (
+            <button key={n} ref={(el) => { items.current[i] = el; }} role="menuitem" tabIndex={-1}
               className="flex h-9 w-full items-center rounded-[8px] px-2.5 text-left text-sm hover:bg-well focus-visible:bg-well"
-              onClick={() => { setOpen(false); btn.current?.focus(); void pause(k); }}>
-              {t(`pause.${k}`)}
+              onClick={() => { setOpen(false); btn.current?.focus(); void pause(n); }}>
+              {t("pause.minutes", { n })}
             </button>
           ))}
         </div>
@@ -193,12 +197,12 @@ function GlobalSearch({ path, params }: { path: string; params: URLSearchParams 
     return () => document.removeEventListener("keydown", onKey);
   }, []);
   return (
-    <form role="search" className="relative order-10 flex w-full items-center lg:order-none lg:ml-auto lg:w-[340px]"
+    <form role="search" className="relative order-10 flex w-full items-center lg:order-none lg:ml-auto lg:w-[320px]"
       onSubmit={(e) => {
         e.preventDefault();
         const v = q.trim();
         if (!v) return;
-        // 已在搜索页：保留筛选条件，只换搜索词
+        // 已在查找页：保留筛选条件，只换搜索词
         const keep = path === "/search" ? Object.fromEntries(params.entries()) : {};
         navigate("/search", { ...keep, q: v });
       }}>
