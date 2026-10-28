@@ -1,32 +1,63 @@
 import { describe, expect, it } from "vitest";
-import { act, fireEvent, renderHook, screen, waitFor, within } from "@testing-library/react";
-import { usePoll } from "../lib";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { mockFetch, status } from "../test/helpers";
 import { renderAt, toasts } from "../test/render";
 
-describe("shell", () => {
-  it("shows the recording pill and marks the current nav item", async () => {
+describe("shell + status bar", () => {
+  it("shows 在录 + 最后一次拍：N 秒前 and marks the current nav item", async () => {
     mockFetch();
     renderAt("#/");
     const pill = await screen.findByTestId("status-pill");
-    await waitFor(() => expect(pill.textContent).toContain("录制中"));
-    expect(pill.textContent).toContain("正在看：示例文档.txt");
+    await waitFor(() => expect(pill.textContent).toContain("在录"));
+    expect(pill.textContent).toContain("最后一次拍：12 秒前");
+    expect(pill.textContent).toContain("正在看：Transformer 入门");
     const navs = screen.getAllByRole("navigation", { name: "主导航" });
-    for (const n of navs) expect(within(n).getByRole("link", { name: /今天/ }).getAttribute("aria-current")).toBe("page");
-    // 旧版页面不在导航里
-    expect(screen.queryByRole("link", { name: /收藏/ })).toBeNull();
-    expect(screen.queryByRole("link", { name: /导入/ })).toBeNull();
+    for (const n of navs) {
+      expect(within(n).getByRole("link", { name: /时间线/ }).getAttribute("aria-current")).toBe("page");
+      expect(within(n).getAllByRole("link").map((a) => a.textContent)).toEqual(["时间线", "查找", "名单", "设置"]);
+    }
   });
 
-  it("pause dropdown: opens with arrow keys, Esc closes, picking 15 分钟 posts and the button becomes 继续录制", async () => {
+  it("nothing in front but a pinned window recording: 后台在录 N 个窗口", async () => {
+    mockFetch((c) => (c.path === "/api/v3/status" ? { body: status({ current: null, background: 1 }) } : null));
+    renderAt("#/");
+    const pill = await screen.findByTestId("status-pill");
+    await waitFor(() => expect(pill.textContent).toContain("后台在录 1 个窗口"));
+    expect(pill.textContent).not.toContain("前台没有要录的窗口");
+    expect(pill.textContent).toContain("最后一次拍：12 秒前");
+  });
+
+  it("paused: 已暂停 到 HH:MM, still shows the last snap", async () => {
+    const now = Date.now();
+    const until = new Date(now + 30 * 60_000);
+    const hh = `${String(until.getHours()).padStart(2, "0")}:${String(until.getMinutes()).padStart(2, "0")}`;
+    mockFetch((c) => (c.path === "/api/v3/status"
+      ? { body: status({ state: "paused", paused_until_ms: until.getTime(), now_ms: now, last_snap_ms: now - 125_000, current: null }) } : null));
+    renderAt("#/");
+    const pill = await screen.findByTestId("status-pill");
+    await waitFor(() => expect(pill.textContent).toContain("已暂停"));
+    expect(pill.textContent).toMatch(new RegExp(`到(明天)? ${hh}`)); // 过了半夜是"到明天 00:05"
+    expect(pill.textContent).toContain("最后一次拍：2 分钟前");
+    expect(await screen.findByRole("button", { name: "继续录" })).toBeTruthy();
+  });
+
+  it("recorder not running and never snapped", async () => {
+    mockFetch((c) => (c.path === "/api/v3/status" ? { body: status({ recorder_alive: false, state: "stopped", last_snap_ms: null }) } : null));
+    renderAt("#/");
+    const pill = await screen.findByTestId("status-pill");
+    await waitFor(() => expect(pill.textContent).toContain("录制进程没在运行"));
+    expect(pill.textContent).toContain("还没拍过");
+  });
+
+  it("pause menu offers 5/15/30/60 minutes, posts {minutes}, then 继续录 resumes", async () => {
     let st = status();
     const calls = mockFetch((c) => {
-      if (c.path === "/api/v2/status") return { body: st };
-      if (c.path === "/api/v2/pause") {
-        st = status({ recording: "paused", pause_until_ms: Date.now() + 15 * 60_000 });
+      if (c.path === "/api/v3/status") return { body: st };
+      if (c.path === "/api/v3/pause") {
+        st = status({ state: "paused", paused_until_ms: Date.now() + 30 * 60_000 });
         return { body: st };
       }
-      if (c.path === "/api/v2/resume") {
+      if (c.path === "/api/v3/resume") {
         st = status();
         return { body: st };
       }
@@ -37,51 +68,30 @@ describe("shell", () => {
     await waitFor(() => expect((btn as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(btn);
     const menu = screen.getByRole("menu", { name: "暂停多久" });
-    const items = within(menu).getAllByRole("menuitem").map((x) => x.textContent);
-    expect(items).toEqual(["15 分钟", "1 小时", "到明天"]);
-    expect(btn.getAttribute("aria-expanded")).toBe("true");
+    expect(within(menu).getAllByRole("menuitem").map((x) => x.textContent)).toEqual(["5 分钟", "15 分钟", "30 分钟", "60 分钟"]);
     fireEvent.keyDown(menu, { key: "Escape" });
     expect(screen.queryByRole("menu")).toBeNull();
     expect(document.activeElement).toBe(btn);
-
     fireEvent.keyDown(btn, { key: "ArrowDown" });
-    const m2 = screen.getByRole("menu");
-    await waitFor(() => expect(document.activeElement?.textContent).toBe("15 分钟"));
-    fireEvent.keyDown(m2, { key: "ArrowDown" });
-    expect(document.activeElement?.textContent).toBe("1 小时");
-    fireEvent.click(within(m2).getByRole("menuitem", { name: "15 分钟" }));
-    await waitFor(() => expect(calls.some((c) => c.path === "/api/v2/pause")).toBe(true));
-    const pc = calls.find((c) => c.path === "/api/v2/pause")!;
-    expect(pc.body).toEqual({ minutes: 15 });
-    expect(pc.headers["X-ScreenRecall"]).toBe("1");
-
-    const resume = await screen.findByRole("button", { name: "继续录制" });
-    expect(screen.getByTestId("status-pill").textContent).toContain("已暂停");
-    await waitFor(() => expect(toasts().join()).toContain("已暂停 15 分钟"));
+    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "30 分钟" }));
+    await waitFor(() => expect(calls.find((c) => c.path === "/api/v3/pause")?.body).toEqual({ minutes: 30 }));
+    expect(calls.find((c) => c.path === "/api/v3/pause")!.headers["X-ScreenRecall"]).toBe("1");
+    const resume = await screen.findByRole("button", { name: "继续录" });
+    await waitFor(() => expect(toasts().join()).toContain("已暂停 30 分钟"));
     fireEvent.click(resume);
-    await waitFor(() => expect(calls.some((c) => c.path === "/api/v2/resume" && c.method === "POST")).toBe(true));
+    await waitFor(() => expect(calls.some((c) => c.path === "/api/v3/resume" && c.method === "POST")).toBe(true));
     await screen.findByRole("button", { name: /^暂停/ });
-  });
-
-  it("到明天 sends {until: 'tomorrow'}", async () => {
-    const calls = mockFetch((c) => (c.path === "/api/v2/pause" ? { body: status({ recording: "paused" }) } : null));
-    renderAt("#/");
-    const btn = await screen.findByRole("button", { name: /暂停/ });
-    await waitFor(() => expect((btn as HTMLButtonElement).disabled).toBe(false));
-    fireEvent.click(btn);
-    fireEvent.click(screen.getByRole("menuitem", { name: "到明天" }));
-    await waitFor(() => expect(calls.find((c) => c.path === "/api/v2/pause")?.body).toEqual({ until: "tomorrow" }));
   });
 
   it("Ctrl+K focuses the global search and submitting goes to #/search?q=", async () => {
     mockFetch();
     renderAt("#/");
-    const input = await screen.findByRole("searchbox", { name: "搜索屏幕记忆" });
+    const input = await screen.findByRole("searchbox", { name: "查找看过的内容" });
     fireEvent.keyDown(document, { key: "k", ctrlKey: true });
     expect(document.activeElement).toBe(input);
-    fireEvent.change(input, { target: { value: "示例词" } });
+    fireEvent.change(input, { target: { value: "矩阵" } });
     fireEvent.submit(input.closest("form")!);
-    expect(decodeURIComponent(window.location.hash)).toBe("#/search?q=示例词");
+    expect(decodeURIComponent(window.location.hash)).toBe("#/search?q=矩阵");
   });
 
   it("a 401 replaces the page with the tray message and stops polling", async () => {
@@ -94,44 +104,13 @@ describe("shell", () => {
     expect(calls.length).toBe(n);
   });
 
-  it("theme button cycles system -> light -> dark and stores the choice", async () => {
-    mockFetch();
-    renderAt("#/");
-    const b = await screen.findByRole("button", { name: /主题：跟随系统/ });
-    fireEvent.click(b);
-    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
-    fireEvent.click(screen.getByRole("button", { name: /主题：浅色/ }));
-    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
-    expect(localStorage.getItem("sr-theme")).toBe("dark");
-    fireEvent.click(screen.getByRole("button", { name: /主题：深色/ }));
-    expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
-  });
-
   it("offline status shows the connection banner after two failures", async () => {
     mockFetch((c) => {
-      if (c.path === "/api/v2/status") throw new TypeError("Failed to fetch");
+      if (c.path === "/api/v3/status") throw new TypeError("Failed to fetch");
       return null;
     });
     renderAt("#/");
     expect(await screen.findByText("连不上后台服务", {}, { timeout: 3500 })).toBeTruthy();
     expect(screen.getByTestId("status-pill").textContent).toContain("连接中断");
-  });
-});
-
-describe("usePoll", () => {
-  it("drops a poll result that was already in flight when the status was set directly (no flash back to the old state)", async () => {
-    let release: (v: string) => void = () => {};
-    let n = 0;
-    const fn = () => {
-      n += 1;
-      return n === 1 ? Promise.resolve("recording") : new Promise<string>((r) => { release = r; });
-    };
-    const { result } = renderHook(() => usePoll(fn, 50));
-    await waitFor(() => expect(result.current.data).toBe("recording"));
-    await waitFor(() => expect(n).toBe(2)); // 第二次轮询已发出、还没回来
-    act(() => result.current.setData("paused")); // 暂停接口先回来了
-    await act(async () => release("recording")); // 旧的轮询结果后到
-    expect(result.current.data).toBe("paused");
-    await waitFor(() => expect(n).toBeGreaterThanOrEqual(3));
   });
 });

@@ -1,4 +1,4 @@
-"""v2 主进程：开机自启（HKCU Run，用临时值名，测试后删除）。"""
+"""主进程：开机自启（HKCU Run，用临时值名，测试后删除）。"""
 from __future__ import annotations
 
 import subprocess
@@ -37,7 +37,7 @@ def test_default_command_runs_the_package_from_any_cwd(tmp_path):
     console = cmd.replace("pythonw.exe", "python.exe", 1)
     r = subprocess.run(console, cwd=tmp_path, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
-    assert "ScreenRecall v2" in r.stdout
+    assert "ScreenRecall v3" in r.stdout
 
 
 def test_quote_in_root_rejected():

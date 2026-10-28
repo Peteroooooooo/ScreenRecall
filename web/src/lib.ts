@@ -13,7 +13,7 @@ export const setTimeLang = (l: string) => {
 };
 const en = () => timeLang === "en";
 
-/** 本机日期 YYYY-MM-DD（<input type="date"> 与 /api/v2/day?date= 的格式） */
+/** 本机日期 YYYY-MM-DD（<input type="date"> 与 /api/v3/timeline?day= 的格式） */
 export const localDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 /** YYYY-MM-DDTHH:MM（<input type="datetime-local"> 的格式） */
 export const localDateTime = (d: Date) => `${localDate(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -85,10 +85,47 @@ export function fmtBytes(n: number): string {
 
 export const fmtInt = (n: number) => n.toLocaleString(en() ? "en-US" : "zh-CN");
 
+/** 12 秒前 / 3 分钟前 / 14:02（now 用服务端给的 now_ms，免得本机和服务端的钟差几秒） */
+export function fmtAgo(ms: number | null | undefined, now = Date.now()): string | null {
+  if (ms == null) return null;
+  const s = Math.max(0, Math.round((now - ms) / 1000));
+  if (s < 60) return en() ? `${s} s ago` : `${s} 秒前`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return en() ? `${m} min ago` : `${m} 分钟前`;
+  return fmtWhen(ms, now);
+}
+
 /** 应用的显示名：去掉 .exe */
 export const appName = (app: string) => app.replace(/\.exe$/i, "");
 /** 头像用的首字 */
 export const initial = (app: string) => (Array.from(appName(app).trim())[0] ?? "?").toUpperCase();
+
+/** 出处的显示名（约定 §3.3）：name > 清理后的标题 > 网址主机名 + 路径 / 文件名 > 软件名 */
+export function sourceName(s: { name?: string | null; title?: string; url?: string | null; path?: string | null; app: string }): string {
+  if (s.name) return s.name;
+  if (s.title) return s.title;
+  if (s.url) {
+    try {
+      const u = new URL(s.url);
+      return `${u.hostname}${u.pathname === "/" ? "" : u.pathname}`;
+    } catch {
+      return s.url;
+    }
+  }
+  if (s.path) return s.path.split(/[\\/]/).pop() || s.path;
+  return appName(s.app);
+}
+
+/** 只放 http / https 的网址（页面上可点开的链接）；别的协议（javascript:、file: …）返回 null */
+export function safeHttpUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:" ? u.href : null;
+  } catch {
+    return null;
+  }
+}
 
 // ---------- 命中高亮：spans 是服务端（Python）给的字符偏移，按 Unicode 码点计，不是 UTF-16 ----------
 

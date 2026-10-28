@@ -2,15 +2,13 @@
 
 - norm(text)：NFKC + casefold + 去掉全部空白。行匹配（同一行是否又出现）和检索都用它，
   所以 "微 信"/"微信"、全角/半角、大小写都视为相同；显示一律用原文 text；
-- 跨行：每行的检索文档 = norm + tail，tail 是同一块里下一行 norm 的前 TAIL_CHARS 个字。
-  这样从行尾折到下一行开头的短语也能搜到（最多延伸到下一行 TAIL_CHARS 个字）；
-  只落在 tail 里的命中不算本行（由检索端核验排除，避免重复计数）；
+- 文档里的 tail 是 v2 跨行检索留下的参数，v3 一律传 ""（每行只按自己的字建索引）；
 - lines_tri：文档 = norm + tail，三元组、detail=none，只用来出候选；
 - lines_bi：程序生成的词元，空格分隔交给 ascii 分词器：
   中日韩连续段的相邻两字（"微信号" → 微信 信号）+ 段尾单字（号），使 1 个字可用前缀查询 "号"*；
   其余字母数字按原文空白和标点切成词（小写）。
 - 两张表都是普通 contentless 表，删除必须提供与写入时一模一样的文档（delete 命令），
-  因此文档只能由行里存着的 text / norm / tail 确定性地算出来。
+  因此文档只能由行里存着的 text / norm 确定性地算出来。
 """
 
 from __future__ import annotations
@@ -18,9 +16,7 @@ from __future__ import annotations
 import re
 import sqlite3
 import unicodedata
-from typing import Iterable, Sequence
-
-TAIL_CHARS = 16
+from typing import Iterable
 
 
 def fold(text: str) -> str:
@@ -76,10 +72,6 @@ def bi_doc(text: str, norm_text: str, tail: str) -> str:
     return " ".join(dict.fromkeys(toks))
 
 
-def tail_of(next_norm: str | None) -> str:
-    return (next_norm or "")[:TAIL_CHARS]
-
-
 # ---------------- 索引维护（须在调用方事务内） ----------------
 
 Row = tuple[int, str, str, str]  # (line_id, text, norm, tail)
@@ -100,41 +92,3 @@ def unindex_rows(conn: sqlite3.Connection, rows: Iterable[Row]) -> None:
                      [(lid, tri_doc(n, t)) for lid, _, n, t in rows])
     conn.executemany("INSERT INTO lines_bi (lines_bi, rowid, k) VALUES ('delete', ?, ?)",
                      [(lid, bi_doc(x, n, t)) for lid, x, n, t in rows])
-
-
-def rebuild_index(conn: sqlite3.Connection, batch: int = 5000) -> int:
-    """清空两张全文表，按当前规则从 lines 重新生成全部文档（须在调用方写事务内）。返回行数。
-
-    'delete-all' 丢弃全部索引段；连接开着 secure_delete，释放的页面会被清零。
-    """
-    conn.execute("INSERT INTO lines_tri (lines_tri) VALUES ('delete-all')")
-    conn.execute("INSERT INTO lines_bi (lines_bi) VALUES ('delete-all')")
-    last, n = 0, 0
-    while True:
-        rows = conn.execute("SELECT line_id, text, norm, tail FROM lines WHERE line_id > ? ORDER BY line_id LIMIT ?",
-                            (last, batch)).fetchall()
-        if not rows:
-            return n
-        index_rows(conn, [(int(r[0]), r[1], r[2], r[3]) for r in rows])
-        last = int(rows[-1][0])
-        n += len(rows)
-
-
-def set_tails(conn: sqlite3.Connection, changes: Sequence[tuple[int, str, int | None]]) -> None:
-    """更新若干行的 tail：先按旧文档删索引，再写新 tail 与新文档。changes = [(line_id, tail, tail_line_id)]。"""
-    if not changes:
-        return
-    old: list[Row] = []
-    new: list[Row] = []
-    for line_id, tail, tail_line in changes:
-        row = conn.execute("SELECT text, norm, tail FROM lines WHERE line_id = ?", (line_id,)).fetchone()
-        if row is None:
-            continue
-        if row[2] == tail:
-            conn.execute("UPDATE lines SET tail_line_id = ? WHERE line_id = ?", (tail_line, line_id))
-            continue
-        old.append((line_id, row[0], row[1], row[2]))
-        new.append((line_id, row[0], row[1], tail))
-        conn.execute("UPDATE lines SET tail = ?, tail_line_id = ? WHERE line_id = ?", (tail, tail_line, line_id))
-    unindex_rows(conn, old)
-    index_rows(conn, new)

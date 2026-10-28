@@ -1,91 +1,80 @@
 import { describe, expect, it } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
-import type { SettingsPatch } from "../api";
-import { mockFetch, settings } from "../test/helpers";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { entryDetail, mockFetch, settings, source } from "../test/helpers";
 import { renderAt, toasts } from "../test/render";
 
-function server() {
-  let cur = settings();
-  return mockFetch((c) => {
-    if (c.path === "/api/v2/settings" && c.method === "POST") {
-      cur = { ...cur, ...(c.body as SettingsPatch) };
-      return { body: cur };
-    }
-    if (c.path === "/api/v2/settings/llm") return { body: { ...cur, llm: { configured: true, model: (c.body as { model: string }).model, host: "new.example.invalid" } } };
-    if (c.path === "/api/v2/settings/llm/test") return { body: { ok: true, model: "sample-model", latency_ms: 812 } };
-    return null;
-  });
-}
-
-describe("settings page", () => {
-  it("shows the LLM status without any key, and saves the form keeping the key when left empty", async () => {
-    const calls = server();
+describe("settings", () => {
+  it("shows numbers read-only with the config note, LLM state, data dir", async () => {
+    mockFetch();
     renderAt("#/settings");
-    expect(await screen.findByText("已配置")).toBeTruthy();
-    expect(screen.getByText("模型 sample-model")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "修改" }));
-    const key = screen.getByLabelText("密钥") as HTMLInputElement;
-    expect(key.type).toBe("password");
-    expect(key.value).toBe("");
-    fireEvent.click(screen.getByRole("button", { name: "显示" }));
-    expect(key.type).toBe("text");
-    fireEvent.change(screen.getByLabelText("接口地址（OpenAI 兼容）"), { target: { value: "https://llm.example.invalid/v1" } });
-    fireEvent.change(screen.getByLabelText("模型"), { target: { value: "other-model" } });
-    fireEvent.submit(key.closest("form")!);
-    await waitFor(() => expect(calls.find((c) => c.path === "/api/v2/settings/llm")?.body)
-      .toEqual({ base_url: "https://llm.example.invalid/v1", model: "other-model" }));
-    expect(await screen.findByText("模型 other-model")).toBeTruthy();
-
-    // 填了密钥才发 api_key，保存后清空输入框
-    fireEvent.change(key, { target: { value: "sk-test-synthetic" } });
-    fireEvent.submit(key.closest("form")!);
-    await waitFor(() => expect(calls.filter((c) => c.path === "/api/v2/settings/llm")).toHaveLength(2));
-    expect((calls.filter((c) => c.path === "/api/v2/settings/llm")[1].body as { api_key?: string }).api_key).toBe("sk-test-synthetic");
-    await waitFor(() => expect(key.value).toBe(""));
-
-    // 只有空白 = 留空（不会把已存的密钥换成空白）；带空白的密钥去掉首尾空白再发
-    fireEvent.change(key, { target: { value: "   " } });
-    fireEvent.submit(key.closest("form")!);
-    await waitFor(() => expect(calls.filter((c) => c.path === "/api/v2/settings/llm")).toHaveLength(3));
-    expect(calls.filter((c) => c.path === "/api/v2/settings/llm")[2].body).not.toHaveProperty("api_key");
-    fireEvent.change(key, { target: { value: " sk-test-synthetic2\n" } });
-    fireEvent.submit(key.closest("form")!);
-    await waitFor(() => expect(calls.filter((c) => c.path === "/api/v2/settings/llm")).toHaveLength(4));
-    expect((calls.filter((c) => c.path === "/api/v2/settings/llm")[3].body as { api_key?: string }).api_key).toBe("sk-test-synthetic2");
+    expect(await screen.findByText("停下多久算停下")).toBeTruthy();
+    expect(screen.getByText("still_ms")).toBeTruthy();
+    const values = Array.from(document.querySelectorAll("dd")).map((x) => x.textContent);
+    expect(values).toContain("2 秒");
+    expect(values).toContain("5 分钟");                    // merge_ms
+    expect(values).toContain("30%");                       // ocr_min_body_ratio
+    expect(values).toContain("30 天");                     // image_days
+    expect(screen.getByText(/\[v3\]/)).toBeTruthy();
+    expect(screen.getByText("没有配置")).toBeTruthy();
+    expect(screen.getByText("C:\\example\\data-v3")).toBeTruthy();
+    expect(screen.queryByRole("spinbutton")).toBeNull();     // 只读，不能在页面上改
   });
 
-  it("测试连接 reports latency and model", async () => {
-    const calls = server();
+  it("toggles the agent switch and autostart; shows the connection configs", async () => {
+    const calls = mockFetch((c) => (c.path === "/api/v3/settings" && c.method === "POST"
+      ? { body: settings({ ...(c.body as object) }) } : null));
     renderAt("#/settings");
-    fireEvent.click(await screen.findByRole("button", { name: "测试连接" }));
-    await waitFor(() => expect(calls.find((c) => c.path === "/api/v2/settings/llm/test")?.method).toBe("POST"));
-    await waitFor(() => expect(toasts().join()).toContain("连接正常 · 0.8 秒 · sample-model"));
-  });
-
-  it("saves idle minutes, OCR model and autostart", async () => {
-    const calls = server();
-    renderAt("#/settings");
-    fireEvent.change(await screen.findByRole("combobox", { name: "键鼠多久没动开始整理" }), { target: { value: "10" } });
-    await waitFor(() => expect(calls.filter((c) => c.method === "POST").at(-1)?.body).toEqual({ idle_minutes: 10 }));
-    fireEvent.click(screen.getByRole("radio", { name: /大模型/ }));
-    await waitFor(() => expect(calls.filter((c) => c.method === "POST").at(-1)?.body).toEqual({ ocr_model: "small" }));
+    const sw = await screen.findByRole("switch", { name: "允许 Claude Code / Codex 查这里的记录" });
+    fireEvent.click(sw);
+    await waitFor(() => expect(calls.find((c) => c.method === "POST")?.body).toEqual({ agent_enabled: false }));
+    expect(await screen.findByText("现在 Agent 查不到任何记录。")).toBeTruthy();
     fireEvent.click(screen.getByRole("switch", { name: "开机自动启动" }));
-    await waitFor(() => expect(calls.filter((c) => c.method === "POST").at(-1)?.body).toEqual({ autostart: true }));
-    await waitFor(() => expect(screen.getByRole("switch", { name: "开机自动启动" }).getAttribute("aria-checked")).toBe("true"));
+    await waitFor(() => expect(calls.filter((c) => c.method === "POST").map((c) => c.body)).toContainEqual({ autostart: true }));
+    expect(await screen.findByText("http://127.0.0.1:8611/mcp")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Claude Code" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText("copied")).toBeTruthy();
   });
 
-  it("switching the language re-renders in English", async () => {
-    server();
+  it("deletes the last N minutes after confirming", async () => {
+    const calls = mockFetch((c) => (c.path === "/api/v3/delete" ? { body: { visits: 2 } } : null));
     renderAt("#/settings");
-    fireEvent.click(await screen.findByRole("radio", { name: "English" }));
-    expect(await screen.findByRole("heading", { level: 1, name: "Settings" })).toBeTruthy();
-    expect(localStorage.getItem("sr-lang")).toBe("en");
+    fireEvent.change(await screen.findByRole("combobox", { name: "删最近" }), { target: { value: "60" } });
+    fireEvent.click(screen.getByRole("button", { name: "删除" }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "删除" }));
+    await waitFor(() => expect(calls.find((c) => c.path === "/api/v3/delete")?.body).toEqual({ minutes: 60 }));
+    await waitFor(() => expect(toasts().join()).toContain("已删掉最近 1 小时的记录"));
+  });
+});
+
+describe("entry page", () => {
+  it("shows lines with new ones marked, the http link in a new tab and screenshots", async () => {
+    mockFetch();
+    renderAt("#/entry/1");
+    expect(await screen.findByRole("heading", { level: 1, name: "Transformer 入门" })).toBeTruthy();
+    const link = screen.getByRole("link", { name: /blog\.example\.com\/transformer-intro/ });
+    expect(link.getAttribute("target")).toBe("_blank");
+    const lines = screen.getByRole("list", { name: /这一条看到的字/ });
+    const li = within(lines).getAllByRole("listitem");
+    expect(within(li[0]).getByText("新")).toBeTruthy();
+    expect(within(li[1]).queryByText("新")).toBeNull();
+    expect(screen.getByRole("button", { name: /看 14:00 的截图/ })).toBeTruthy();
   });
 
-  it("has no legacy import link (v2 privacy delete could not reach imported files)", async () => {
-    server();
-    renderAt("#/settings");
-    await screen.findByText("数据文件夹");
-    expect(screen.queryByRole("link", { name: "打开导入页" })).toBeNull();
+  it("non-http urls are not links; files get 在文件夹中显示 which posts reveal", async () => {
+    const file = source({ source_id: 7, kind: "file", url: null, path: "C:\\docs\\讲义.pdf", title: "讲义.pdf" });
+    const calls = mockFetch((c) => {
+      if (c.path === "/api/v3/entries/2") return { body: entryDetail({ entry: { ...entryDetail().entry, visit_id: 2, source: file, name: "讲义.pdf" }, lines: [] }) };
+      if (c.path === "/api/v3/entries/3") return { body: entryDetail({ entry: { ...entryDetail().entry, visit_id: 3, source: source({ url: "javascript:alert(1)" }) } }) };
+      if (c.path === "/api/v3/sources/7/reveal") return { body: { ok: true } };
+      return null;
+    });
+    renderAt("#/entry/2");
+    expect(await screen.findByText("本地文件不存字（原件就在电脑里），只记文件路径和几点看的。")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "在文件夹中显示" }));
+    await waitFor(() => expect(calls.some((c) => c.path === "/api/v3/sources/7/reveal" && c.method === "POST")).toBe(true));
+    window.location.hash = "#/entry/3";
+    expect(await screen.findByText("javascript:alert(1)")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /javascript/ })).toBeNull();
   });
 });

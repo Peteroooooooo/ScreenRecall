@@ -1,17 +1,30 @@
-// 设置：大模型接口（掩码密钥 + 测试）、空闲整理、OCR 模型、语言与外观、开机启动、高级（旧版导入）。
-import { useState, type FormEvent, type ReactNode } from "react";
-import { Check, LoaderCircle } from "lucide-react";
-import { api, type Settings } from "../api";
-import { useT, type Lang } from "../i18n";
+// 设置：能调的数字（只读，写明在 config 的 [v3] 里改）、大模型有没有配（不显示密钥和地址）、Agent 开关 + 连接说明、
+// 语言与外观、开机自启、数据目录、删最近 N 分钟。
+import { useState, type ReactNode } from "react";
+import { Check, Trash2 } from "lucide-react";
+import { api } from "../api";
+import { hasKey, useT, type Lang, type T } from "../i18n";
 import { errText, fmtInt, useTheme, type Theme } from "../lib";
 import { useSettings } from "../settings";
-import { Card, LoadError, PageHeader, Segmented, Skeleton, Switch, useStatus, useToast } from "../ui";
+import { Card, ConfirmDialog, LoadError, PageHeader, Segmented, Skeleton, Switch, useToast, type ConfirmSpec } from "../ui";
+import { AgentConnect } from "./AgentPage";
 
-export const IDLE_CHOICES = [3, 5, 10, 15, 30];
+/** 删最近多少分钟 */
+export const DELETE_CHOICES = [5, 15, 60, 24 * 60];
 
 const Row = ({ children, first = false }: { children: ReactNode; first?: boolean }) => (
   <div className={`flex flex-wrap items-center justify-between gap-x-5 gap-y-3 ${first ? "pb-3.5" : "border-t border-rule py-3.5"}`}>{children}</div>
 );
+
+/** 数字按单位显示：*_ms → 秒 / 分钟，*_gb → GB，*_ratio / *_area → 百分比，*_days → 天 */
+export function fmtNumber(key: string, v: number, t: T): string {
+  if (key.endsWith("_ms")) return v >= 60_000 && v % 60_000 === 0 ? t("unit.min", { n: v / 60_000 }) : t("unit.s", { n: +(v / 1000).toFixed(2) });
+  if (key.endsWith("_gb")) return `${v} GB`;
+  if (key.endsWith("_ratio") || key.endsWith("_area")) return `${Math.round(v * 100)}%`;
+  if (key.endsWith("_days")) return t("unit.days", { n: v });
+  if (key === "idle_s") return t("unit.min", { n: +(v / 60).toFixed(1) });
+  return fmtInt(v);
+}
 
 export default function SettingsPage() {
   const { t, lang, setLang } = useT();
@@ -26,38 +39,17 @@ export default function SettingsPage() {
         st.error ? <LoadError text={t("set.loadFail", { e: errText(st.error, t("common.offline")) })} onRetry={() => st.reload()} /> : <Skeleton rows={4} />
       ) : (
         <div className="space-y-4">
-          <LlmCard s={s} onSaved={st.setData} />
-
-          <Card title={t("set.idle")} id="idle-h">
-            <Row first>
-              <div className="min-w-0 flex-1">
-                <b><label htmlFor="idle-min">{t("set.idleMin")}</label></b>
-                <p className="mt-0.5 text-[13px] text-graphite">{t("set.idleNote")}</p>
-              </div>
-              <select id="idle-min" name="idle_minutes" className="sr-field w-auto" value={String(s.idle_minutes)} disabled={st.saving}
-                onChange={(e) => void st.save({ idle_minutes: Number(e.target.value) }, t("common.saved"))}>
-                {[...new Set([...IDLE_CHOICES, s.idle_minutes])].sort((a, b) => a - b).map((n) => (
-                  <option key={n} value={String(n)}>{t("set.minutes", { n })}</option>
-                ))}
-              </select>
-            </Row>
-            <IdleQueueRow />
-          </Card>
-
-          <Card title={<span id="lbl-ocr">{t("set.ocr")}</span>}>
-            <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-labelledby="lbl-ocr">
-              {(["tiny", "small"] as const).map((m) => (
-                <label key={m} className={`flex cursor-pointer items-start gap-2.5 rounded-[11px] border px-3.5 py-3 ${s.ocr_model === m ? "border-cobalt shadow-[0_0_0_3px_var(--cobalt-soft)]" : "border-rule-strong"}`}>
-                  <input type="radio" name="ocr" value={m} className="mt-[3px] accent-[var(--cobalt)]" checked={s.ocr_model === m} disabled={st.saving}
-                    onChange={() => void st.save({ ocr_model: m }, t("common.saved"))} />
-                  <span>
-                    <b className="block text-sm font-semibold">{t(m === "tiny" ? "set.tiny" : "set.small")}</b>
-                    <span className="block text-[13px] text-graphite">{t(m === "tiny" ? "set.tinyNote" : "set.smallNote")}</span>
-                  </span>
-                </label>
-              ))}
+          <Card title={t("set.llm")} id="llm-h">
+            <div className="flex flex-wrap items-center gap-2">
+              {s.llm.configured ? <span className="sr-tag sr-tag-ok"><Check size={13} aria-hidden />{t("set.llmOk")}</span>
+                : <span className="sr-tag sr-tag-warn">{t("set.llmNo")}</span>}
+              {s.llm.model && <span>{t("set.llmModel", { x: s.llm.model })}</span>}
             </div>
+            <p className="mt-1.5 text-[13px] text-graphite">{t(s.llm.configured ? "set.llmNote" : "set.llmNoNote")}</p>
           </Card>
+
+          <AgentConnect enabled={s.agent_enabled} saving={st.saving}
+            onToggle={(v) => void st.save({ agent_enabled: v }, v ? t("agent.enabled") : t("agent.disabled"))} />
 
           <Card title={t("set.look")} id="look-h">
             <Row first>
@@ -78,158 +70,64 @@ export default function SettingsPage() {
             </Row>
           </Card>
 
-          <details className="sr-card p-4 sm:p-5">
-            <summary className="font-semibold">{t("set.adv")}</summary>
-            <div className="mt-3.5 space-y-4">
-              <div>
-                <b>{t("set.dataDir")}</b>
-                <p className="mt-1 rounded-lg border border-rule bg-well px-2.5 py-2 font-mono text-[13px] [overflow-wrap:anywhere]">{s.data_dir}</p>
-                <p className="mt-2 text-[13px]"><a className="text-cobalt hover:underline" href="#/privacy">{t("set.keepLink")} →</a></p>
-              </div>
-            </div>
-          </details>
+          <DeleteCard />
+
+          <Card title={t("set.numbers")} id="num-h">
+            <p className="mb-3 text-[13px] text-graphite">{t("set.numbersNote")}</p>
+            <dl className="grid gap-x-6 sm:grid-cols-2" aria-labelledby="num-h">
+              {Object.entries(s.numbers).map(([k, v]) => {
+                const lk = `num.${k}`;
+                return (
+                  <div key={k} className="flex min-w-0 items-baseline justify-between gap-3 border-t border-rule py-2 text-[13.5px]">
+                    <dt className="min-w-0">
+                      <span className="block">{hasKey(lk) ? t(lk) : k}</span>
+                      <code className="font-mono text-[11.5px] text-faint">{k}</code>
+                    </dt>
+                    <dd className="sr-num shrink-0 font-medium">{fmtNumber(k, v, t)}</dd>
+                  </div>
+                );
+              })}
+            </dl>
+          </Card>
+
+          <Card title={t("set.dataDir")} id="dir-h">
+            <p className="rounded-lg border border-rule bg-well px-2.5 py-2 font-mono text-[13px] [overflow-wrap:anywhere]">{s.data_dir}</p>
+            <p className="mt-2 text-[13px] text-graphite">{t("set.dataDirNote")}</p>
+          </Card>
         </div>
       )}
     </div>
   );
 }
 
-/** 现在的队列（只有数量）+ “现在就整理”：马上启动空闲整理进程，状态跟着轮询更新 */
-function IdleQueueRow() {
+function DeleteCard() {
   const { t } = useT();
   const toast = useToast();
-  const { status, setStatus } = useStatus();
-  const [busy, setBusy] = useState(false);
-  const running = status?.idle_work === "running";
-  const q = status?.queue ?? (status ? { ocr: status.pending_ocr, vectors: 0, summaries: 0 } : null);
-  const parts = q ? [
-    t("set.queueN", { n: fmtInt(q.ocr) }),
-    q.vectors > 0 && t("set.queueVec", { n: fmtInt(q.vectors) }),
-    q.summaries > 0 && t("set.queueSum", { n: fmtInt(q.summaries) }),
-    running ? t("set.queueRun") : t("set.queueIdle"),
-  ].filter(Boolean).join(" · ") : "—";
-  const run = async () => {
-    setBusy(true);
-    try {
-      setStatus(await api.runIdle());
-      toast(t("set.runStarted"));
-    } catch (e) {
-      toast(t("set.runFail", { e: errText(e, t("common.offline")) }), "alarm");
-    } finally {
-      setBusy(false);
-    }
-  };
+  const [minutes, setMinutes] = useState(DELETE_CHOICES[1]);
+  const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
+  const label = (n: number) => (n >= 60 ? t("set.delHours", { n: n / 60 }) : t("set.delMinutes", { n }));
+  const ask = () => setConfirm({
+    title: t("set.delTitle", { x: label(minutes) }), body: t("set.delBody"),
+    run: async () => {
+      try {
+        await api.remove({ minutes });
+        toast(t("set.delDone", { x: label(minutes) }));
+      } catch (e) {
+        toast(t("set.delFail", { e: errText(e, t("common.offline")) }), "alarm");
+      }
+    },
+  });
   return (
-    <Row>
-      <div className="min-w-0 flex-1">
-        <b>{t("set.queue")}</b>
-        <p className="sr-num mt-0.5 text-[13px] text-graphite" aria-live="polite">{parts}</p>
-        <p className="mt-0.5 text-[12.5px] text-faint">{t("set.runNote")}</p>
+    <Card title={t("set.delete")} id="del-h">
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor="del-min" className="text-[13.5px]">{t("set.delLabel")}</label>
+        <select id="del-min" name="minutes" className="sr-field w-auto" value={String(minutes)} onChange={(e) => setMinutes(Number(e.target.value))}>
+          {DELETE_CHOICES.map((n) => <option key={n} value={String(n)}>{label(n)}</option>)}
+        </select>
+        <button className="sr-btn sr-btn-danger sr-btn-sm" onClick={ask}><Trash2 size={15} aria-hidden />{t("common.delete")}</button>
       </div>
-      <button className="sr-btn sr-btn-line sr-btn-sm" onClick={run} disabled={busy || running || !status}>
-        {(busy || running) && <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" aria-hidden />}
-        {running ? t("set.queueRun") : t("set.runNow")}
-      </button>
-    </Row>
-  );
-}
-
-function LlmCard({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => void }) {
-  const { t } = useT();
-  const toast = useToast();
-  const [open, setOpen] = useState(false);
-  const [baseUrl, setBaseUrl] = useState("");
-  const [model, setModel] = useState(s.llm.model ?? "");
-  const [key, setKey] = useState("");
-  const [show, setShow] = useState(false);
-  const [busy, setBusy] = useState<"save" | "test" | null>(null);
-  const llm = s.llm;
-
-  const save = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!baseUrl.trim() || !model.trim()) {
-      toast(t("set.needUrl"), "warn");
-      return;
-    }
-    setBusy("save");
-    try {
-      const body: { base_url: string; model: string; api_key?: string } = { base_url: baseUrl.trim(), model: model.trim() };
-      const k = key.trim(); // 粘贴时带进来的空白不算；只有空白 = 留空
-      if (k) body.api_key = k; // 留空 = 保留原来的密钥
-      onSaved(await api.saveLlm(body));
-      setKey("");
-      setShow(false);
-      toast(t("set.llmSaved"));
-    } catch (err) {
-      toast(t("common.saveFail", { e: errText(err, t("common.offline")) }), "alarm");
-    } finally {
-      setBusy(null);
-    }
-  };
-  const test = async () => {
-    setBusy("test");
-    try {
-      const r = await api.testLlm();
-      if (r.ok) toast(t("set.testOk", { s: ((r.latency_ms ?? 0) / 1000).toFixed(1), m: r.model ?? "—" }));
-      else toast(t("set.testFail", { e: r.error ?? "—" }), "alarm");
-    } catch (err) {
-      toast(t("set.testFail", { e: errText(err, t("common.offline")) }), "alarm");
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  return (
-    <Card title={t("set.llm")} id="llm-h">
-      <Row first>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {llm.configured ? <span className="sr-tag sr-tag-ok"><Check size={13} aria-hidden />{t("set.llmOk")}</span>
-              : <span className="sr-tag sr-tag-warn">{t("set.llmNo")}</span>}
-            {llm.model && <span>{t("set.llmModel", { x: llm.model })}</span>}
-            {llm.host && <span className="text-[13px] text-graphite [overflow-wrap:anywhere]">{t("set.llmHost", { x: llm.host })}</span>}
-          </div>
-          <p className="mt-1 text-[13px] text-graphite">{t("set.llmNote")}</p>
-        </div>
-        <div className="flex gap-2">
-          {llm.configured && (
-            <button className="sr-btn sr-btn-line sr-btn-sm" onClick={test} disabled={!!busy}>
-              {busy === "test" && <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" aria-hidden />}
-              {busy === "test" ? t("set.testing") : t("set.test")}
-            </button>
-          )}
-          <button className="sr-btn sr-btn-line sr-btn-sm" aria-expanded={open} aria-controls="llm-form" onClick={() => setOpen((o) => !o)}>
-            {open ? t("set.collapse") : t("set.edit")}
-          </button>
-        </div>
-      </Row>
-      {open && (
-        <form id="llm-form" className="grid gap-x-4 gap-y-3 border-t border-rule pt-3.5 sm:grid-cols-2" onSubmit={save}>
-          <label className="flex min-w-0 flex-col gap-1.5 sm:col-span-2">
-            <span className="text-[12.5px] font-medium text-graphite">{t("set.baseUrl")}</span>
-            <input className="sr-field font-mono" name="base_url" type="url" required autoComplete="off" spellCheck={false}
-              placeholder={llm.host ? `https://${llm.host}/v1` : "https://…/v1"} value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
-          </label>
-          <label className="flex min-w-0 flex-col gap-1.5">
-            <span className="text-[12.5px] font-medium text-graphite">{t("set.model")}</span>
-            <input className="sr-field" name="model" required autoComplete="off" value={model} onChange={(e) => setModel(e.target.value)} />
-          </label>
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <label htmlFor="llm-key" className="text-[12.5px] font-medium text-graphite">{t("set.key")}</label>
-            <div className="flex gap-1.5">
-              <input id="llm-key" name="api_key" className="sr-field font-mono" type={show ? "text" : "password"} autoComplete="new-password" spellCheck={false}
-                placeholder={llm.configured ? t("set.keyKeep") : ""} value={key} onChange={(e) => setKey(e.target.value)} />
-              <button type="button" className="sr-btn sr-btn-line" aria-pressed={show} onClick={() => setShow((v) => !v)}>{show ? t("set.hide") : t("set.show")}</button>
-            </div>
-            <span className="text-xs text-faint">{t("set.keyHint")}</span>
-          </div>
-          <div className="flex flex-wrap gap-2 sm:col-span-2">
-            <button className="sr-btn sr-btn-primary sr-btn-sm" type="submit" disabled={!!busy}>
-              {busy === "save" && <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" aria-hidden />}{t("common.save")}
-            </button>
-          </div>
-        </form>
-      )}
+      <p className="mt-2 text-[13px] text-graphite">{t("set.delNote")}</p>
+      <ConfirmDialog spec={confirm} onClose={() => setConfirm(null)} />
     </Card>
   );
 }
