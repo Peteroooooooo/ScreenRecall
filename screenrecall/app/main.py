@@ -1,12 +1,12 @@
-"""v2 主进程：python -m screenrecall.app [--data-dir D] [--port P] [--no-tray] [--no-browser] [--fake-queries]
+"""v3 主进程：python -m screenrecall.app [--data-dir D] [--port P] [--no-tray] [--no-browser] [--fake-queries]
 
-做的事（按顺序）：单实例检查 → 建好只有本人能读的目录 → v2 存储（写线程、只读查询、检索服务；第一次用的数据目录
-写入默认规则并开始录制）→ 令牌与 endpoint.json → 绑定端口 → 拼网页应用（/api/v2 + 旧版 webapi + /mcp +
-登录入口，外面包 AuthGuard）并在线程里运行 → 写 MCP 工具缓存 → 启动子进程看护（录制进程一直在；
-空闲整理进程只在电脑空闲时运行）→ 空闲监视 → 托盘（主线程）→ 退出时依次收尾。
+做的事（按顺序）：单实例检查 → 建好只有本人能读的目录 → v3 存储（Store 写：暂停、名单、设置；Queries 读；
+第一次用的数据目录把默认名单写成"录"）→ 令牌与 endpoint.json → 绑定端口 → 拼网页应用（/api/v3 + 旧版 webapi
+只发网页文件 + /mcp + 登录入口，外面包 AuthGuard）并在线程里运行 → 写 MCP 工具缓存 → 启动子进程看护
+（录制进程一直在；空闲整理进程只在电脑空闲时运行）→ 空闲监视 → 托盘（主线程）→ 退出时依次收尾。
 
 已经有一个实例在运行时，第二次启动只是让它打开主页，然后退出。
---fake-queries（测试 / 演示）：不接 v2 存储、不启动子进程，MCP 用合成数据，托盘动作用 PlaceholderController。
+--fake-queries（测试 / 演示）：不接 v3 存储、不启动子进程，MCP 用合成数据，托盘动作用 PlaceholderController。
 """
 from __future__ import annotations
 
@@ -37,10 +37,9 @@ from . import auth, idle, mcp_server, mcp_shim, paths, server, supervisor, tray
 DEFAULT_PORT = 8611
 RECORDER_CHILD = "recorder"
 IDLE_CHILD = "idle-worker"
-RECORDER_MODULE = "screenrecall.v2.recorder"
-WORKER_MODULE = "screenrecall.v2.worker"
-V2_NOTICE = "页面只在本机访问（127.0.0.1），需要从托盘图标的“打开主页”登录。"
-HOUSEKEEPING_S = 2.0
+RECORDER_MODULE = "screenrecall.v3.recorder"
+WORKER_MODULE = "screenrecall.v3.worker"
+NOTICE = "页面只在本机访问（127.0.0.1），需要从托盘图标的“打开主页”登录。"
 log = logging.getLogger("screenrecall.app")
 
 
@@ -74,10 +73,10 @@ class SingleInstance:
             self._handle = None
 
 
-# ---------------- 托盘动作（集成前的占位） ----------------
+# ---------------- 托盘动作 ----------------
 
 class Controller(Protocol):
-    """托盘要用的录制控制（集成阶段由录制进程的控制通道实现）。"""
+    """托盘要用的录制控制（v3.controller.TrayController 实现）。"""
 
     def pause_until(self, until: datetime | None) -> None: ...
     def resume(self) -> None: ...
@@ -86,7 +85,7 @@ class Controller(Protocol):
 
 
 class PlaceholderController:
-    """只在内存里记暂停状态；删除只写日志。"""
+    """--fake-queries 用：只在内存里记暂停状态；删除只写日志。"""
 
     def __init__(self) -> None:
         self.paused_until: datetime | None = None
@@ -94,13 +93,13 @@ class PlaceholderController:
 
     def pause_until(self, until: datetime | None) -> None:
         self.paused, self.paused_until = True, until
-        log.info("暂停到 %s（录制进程尚未接入）", until)
+        log.info("暂停到 %s（没接存储）", until)
 
     def resume(self) -> None:
         self.paused, self.paused_until = False, None
 
     def delete_recent(self, minutes: int) -> None:
-        log.info("删除最近 %d 分钟（数据层尚未接入，什么都没删）", minutes)
+        log.info("删除最近 %d 分钟（没接存储，什么都没删）", minutes)
 
     def status(self) -> tray.TrayStatus:
         if self.paused and self.paused_until and datetime.now() >= self.paused_until:
@@ -108,22 +107,22 @@ class PlaceholderController:
         if self.paused:
             until = f"到 {self.paused_until:%m-%d %H:%M}" if self.paused_until else ""
             return tray.TrayStatus(f"已暂停{until}", paused=True)
-        return tray.TrayStatus("开发版：录制进程尚未接入")
+        return tray.TrayStatus("演示模式：没接录制进程")
 
 
 # ---------------- 主程序 ----------------
 
 class StaticOnly:
-    """v2 存储模式下旧版 webapi 只用来发网页文件（/、/assets）。它的 /api/*（导入、搜索、删除……）读写的是
-    数据目录里的旧版库 screenrecall.sqlite3：v2 页面不读它，v2 的隐私删除和占用统计也管不到它，
-    所以一律 404，不让任何东西写进去。"""
+    """存储模式下旧版 webapi 只用来发网页文件（/、/assets）。它的 /api/*（导入、搜索、删除……）读写的是
+    数据目录里的旧版库 screenrecall.sqlite3：v3 页面不读它，v3 的隐私删除也管不到它，所以一律 404。
+    /api/v3、/api/app 是 extra_routes，在 Router 里排在旧版应用前面，到不了这里。"""
 
     def __init__(self, app):
         self.app = app  # server._inner_lifespan 顺着 .app 找旧版应用的 lifespan
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http" and (scope.get("path") or "").startswith("/api/"):
-            await JSONResponse({"error": "这个旧版接口在 v2 里不可用"}, status_code=404,
+            await JSONResponse({"error": "这个旧版接口在 v3 里不可用"}, status_code=404,
                                headers={"Cache-Control": "no-store"})(scope, receive, send)
             return
         await self.app(scope, receive, send)
@@ -141,21 +140,8 @@ class AppOptions:
     extra_origins: tuple[str, ...] = ()
     children: list[supervisor.ChildSpec] = field(default_factory=list)
     idle_threshold_s: float = 300.0
-    store: bool = False             # 接 v2 存储（/api/v2、MCP 查询、托盘控制）；命令行在没有 --fake-queries 时打开
-    cfg: Any = None                 # v2.config.V2Config；store=True 且没给时按 data_dir / home 读
-
-
-def isolated_window_list():
-    """只给测试用：设了 SCREENRECALL_TEST_ONLY_HWNDS（录制子进程也认它）时，/api/v2/windows（固定窗口的选择列表）
-    和设置里的 found 只看这些窗口，端到端测试打开选择列表时不会列出别的窗口的标题。没设时返回 None（列出全部）。"""
-    from ..v2.recorder import TEST_ONLY_HWNDS_ENV, only_hwnds
-
-    only = only_hwnds(os.environ.get(TEST_ONLY_HWNDS_ENV, ""))
-    if not only:
-        return None
-    from .. import winapi
-
-    return lambda: [w for w in winapi.list_windows() if int(w.hwnd) in only]
+    store: bool = False             # 接 v3 存储（/api/v3、MCP 查询、托盘控制）；命令行在没有 --fake-queries 时打开
+    cfg: Any = None                 # v3.config.V3Config；store=True 且没给时按 data_dir / home 读
 
 
 def build_children(cfg, *, home: Path, recorder_module: str = RECORDER_MODULE,
@@ -174,36 +160,6 @@ def build_children(cfg, *, home: Path, recorder_module: str = RECORDER_MODULE,
     return specs
 
 
-class StorageCap:
-    """主进程定时查空间上限（隐私与删除页的"空间上限"）：每 cap_check_s 秒读一次占用（库文件大小 + 库里记的截图
-    字节数 + 向量目录），超了当场从最旧的截图删起（v2.work_frames，和空闲整理进程同一套规则、同一把锁）。
-    上限改了马上生效（每次现读页面设置）。"""
-
-    def __init__(self, stack, clock=time.monotonic):
-        from ..v2.work_common import Ctx, StopFlag
-        from ..v2.work_frames import FrameCleanup
-
-        self._clock = clock
-        self.ctx = Ctx(stack.cfg, stack.writer, StopFlag(), clock=stack.clock)
-        self.cleanup = FrameCleanup(self.ctx)
-        self._next = clock() + 60.0  # 启动后先等一分钟，别和第一次加载抢
-        self.deleted = 0
-
-    def tick(self) -> int:
-        now = self._clock()
-        if now < self._next:
-            return 0
-        self._next = now + max(30.0, float(self.cleanup.retention.cap_check_s))
-        n = self.cleanup.enforce_cap()
-        if n:
-            log.info("超出空间上限：删除了 %d 张最旧的截图", n)
-        self.deleted += n
-        return n
-
-    def close(self) -> None:
-        self.ctx.close()
-
-
 class MainApp:
     def __init__(self, opts: AppOptions, *, queries: mcp_server.Queries | None = None,
                  controller: Controller | None = None, policy: mcp_server.AgentPolicy | None = None):
@@ -214,11 +170,11 @@ class MainApp:
         self.queries = queries or (mcp_server.FakeQueries() if opts.fake_queries else mcp_server.NotReadyQueries())
         self.controller = controller or PlaceholderController()
         self.policy = policy or mcp_server.AgentPolicy()
-        self.stack = None               # v2.adapters.StoreStack（store=True 时）
-        self.summaries = None           # v2.summarize_now.SummaryRunner（store=True 时）
-        self.storage_cap: StorageCap | None = None
+        self.cfg = opts.cfg             # v3.config.V3Config（store=True 时）
+        self.store = None               # v3.store.Store：主进程的写（暂停、名单、不录规则、设置、删除）
+        self.reads = None               # v3.store.Queries：网页、MCP、托盘共用的只读查询
+        self.vectors = None             # v3.vectors.LineVectors（cfg.vectors 时）
         self.guard: auth.AuthGuard | None = None
-        self._housekeeping: threading.Thread | None = None
         self.nonces = auth.NonceStore()
         self.instance = SingleInstance(self.home)
         self.stopped = threading.Event()
@@ -236,51 +192,42 @@ class MainApp:
         from .. import webapi
         from ..config import load_config
 
-        notice = V2_NOTICE if self.opts.store else webapi.NO_AUTH_NOTICE
+        notice = NOTICE if self.opts.store else webapi.NO_AUTH_NOTICE
         app = webapi.create_app(load_config(self.data_dir), port=port, extra_origins=self.opts.extra_origins,
                                 notice=notice)
         return StaticOnly(app) if self.opts.store else app
 
     def _start_store(self) -> list:
-        """v2 存储与 /api/v2 路由；返回要挂上的路由。"""
-        from ..v2 import adapters, web
-        from ..v2.config import load_v2
-        from ..v2.summarize_now import SummaryRunner
+        """v3 存储与 /api/v3 路由；返回要挂上的路由。"""
+        from ..v3 import web
+        from ..v3.config import load_v3
+        from ..v3.controller import TrayController, agent_policy
+        from ..v3.mcp_queries import McpQueries
+        from ..v3.store import Queries, Store
 
-        cfg = self.opts.cfg or load_v2(self.data_dir, home=self.home)
-        self.stack = adapters.StoreStack(cfg)
-        if self.stack.seed_control():
-            log.info("新的数据目录：已写入默认排除规则并开始录制")
+        self.cfg = cfg = self.cfg or load_v3(self.data_dir, home=self.home)
+        self.store = Store(cfg)
+        if self.store.init_defaults(cfg.default_record_apps):
+            log.info("新的数据目录：名单写入 %d 个默认软件", len(cfg.default_record_apps))
+        self.reads = Queries(cfg)
+        semantic = None
+        if cfg.vectors:
+            from ..v3.vectors import LineVectors
+
+            self.vectors = LineVectors(cfg, readonly=True)
+            semantic = self.vectors.search
         queries, controller, policy = self._given
-        self.queries = queries or adapters.StoreQueriesAdapter(self.stack.queries, self.stack.search)
-        self.controller = controller or adapters.StoreController(self.stack)
-        self.policy = policy or adapters.agent_policy(self.stack.control)
-        self.summaries = SummaryRunner(cfg, self.stack.writer, self._llm_client, clock=self.stack.clock)
-        self.storage_cap = StorageCap(self.stack)
-        ctx = web.V2Context(self.stack, self.home, idle_running=self._idle_running, rotate_token=self._rotate_token,
-                            on_settings=self._on_settings, list_windows=isolated_window_list(),
-                            run_idle=self.run_idle_now, summaries=self.summaries)
-        return web.routes(ctx)
-
-    def _llm_client(self, stop):
-        """马上写概括用的大模型客户端：和空闲整理进程读同样的 .env（仓库的 + 应用目录的）。"""
-        from . import llm
-
-        return llm.LlmClient.from_env(env_files=[llm.REPO_ROOT / ".env", self.home / ".env"],
-                                      sleep=lambda s: stop.wait(s))
-
-    def run_idle_now(self) -> bool:
-        """"现在就整理"：马上启动空闲整理进程（已在运行就什么都不做）。返回是否在运行。"""
-        if not (self.sup and IDLE_CHILD in self.sup.status()):
-            return False
-        log.info("手动开始空闲整理")
-        return self.sup.start_child(IDLE_CHILD)
+        self.queries = queries or McpQueries(self.reads, semantic=semantic)
+        self.controller = controller or TrayController(self.store, self.reads)
+        self.policy = policy or agent_policy(self.reads)
+        return web.routes(web.V3Context(cfg, self.store, self.reads, self.home, rotate_token=self._rotate_token,
+                                        semantic=semantic))
 
     def start(self) -> "MainApp":
         t0 = time.perf_counter()
         paths.ensure_private_dir(self.home)
         paths.ensure_private_dir(self.data_dir)
-        v2_routes = self._start_store() if self.opts.store else []
+        v3_routes = self._start_store() if self.opts.store else []
         token = auth.load_or_create_token(self.home)
         sock = server.bind_socket(self.opts.port)
         port = sock.getsockname()[1]
@@ -293,7 +240,7 @@ class MainApp:
 
         self.guard = server.build_app(port=port, token=token, nonces=self.nonces, mcp=mcp,
                                       legacy=self._legacy_app(port),
-                                      extra_routes=[Route("/api/app/quit", quit_route, methods=["POST"]), *v2_routes],
+                                      extra_routes=[Route("/api/app/quit", quit_route, methods=["POST"]), *v3_routes],
                                       extra_origins=self.opts.extra_origins)
         self.web = server.ServerThread(self.guard, sock).start()
         self.endpoint = auth.Endpoint(port, token, os.getpid())
@@ -301,33 +248,9 @@ class MainApp:
         log.info("主进程已启动：http://127.0.0.1:%d（数据目录 %s，用时 %.2f 秒）", port, self.data_dir,
                  time.perf_counter() - t0)
         self.sup = supervisor.Supervisor(self.opts.children).start()
-        threshold = self.stack.cfg.idle.threshold_s if self.stack is not None else self.opts.idle_threshold_s
+        threshold = float(self.cfg.idle_s) if self.cfg is not None else self.opts.idle_threshold_s
         self.idle = idle.IdleWatcher(threshold, on_idle_start=self._on_idle, on_idle_end=self._on_active).start()
-        if hasattr(self.controller, "tick"):
-            self._housekeeping = threading.Thread(target=self._housekeep, name="screenrecall-housekeeping",
-                                                  daemon=True)
-            self._housekeeping.start()
         return self
-
-    def _housekeep(self) -> None:
-        """暂停到点改回录制、补删没删掉的向量（StoreController.tick）；定时查空间上限（StorageCap）。"""
-        while not self.stopped.wait(HOUSEKEEPING_S):
-            try:
-                self.controller.tick()
-            except Exception:  # noqa: BLE001 - 定时任务不能停
-                log.warning("定时检查出错", exc_info=True)
-            if self.storage_cap is not None:
-                try:
-                    self.storage_cap.tick()
-                except Exception:  # noqa: BLE001
-                    log.warning("检查空间上限出错", exc_info=True)
-
-    def _idle_running(self) -> bool:
-        return bool(self.sup and IDLE_CHILD in self.sup.status() and self.sup.pid(IDLE_CHILD) is not None)
-
-    def _on_settings(self, changes: dict) -> None:
-        if "idle_minutes" in changes and self.idle is not None:
-            self.idle.threshold_s = float(changes["idle_minutes"]) * 60.0
 
     def _rotate_token(self) -> str:
         """"重置访问令牌"：新令牌写进 endpoint.json（转发程序每次调用现读），旧令牌和旧 Cookie 立即失效。
@@ -387,7 +310,7 @@ class MainApp:
         return 0
 
     def shutdown(self) -> None:
-        """先停空闲监视（它会启动空闲整理进程），再停子进程（不再录），最后停网页服务；令牌保留，pid 清空。"""
+        """先停空闲监视（它会启动空闲整理进程），再停子进程（不再录），再停网页服务，最后关库；令牌保留，pid 清空。"""
         self.stopped.set()
         if self.idle:
             self.idle.stop()
@@ -395,17 +318,13 @@ class MainApp:
             self.sup.stop_all()
         if self.web:
             self.web.stop()
-        if self._housekeeping is not None:
-            self._housekeeping.join(5)
-        if self.summaries is not None:
-            self.summaries.close()  # 正在等的大模型回答不等了；写了一半的待办由空闲整理进程接着做
-        if self.storage_cap is not None:
-            self.storage_cap.close()
-        if self.stack is not None:
-            try:
-                self.stack.close()
-            except Exception:  # noqa: BLE001
-                log.warning("关闭存储出错", exc_info=True)
+        for part in (self.vectors, self.reads, self.store):
+            if part is not None:
+                try:
+                    part.close()
+                except Exception:  # noqa: BLE001
+                    log.warning("关闭存储出错", exc_info=True)
+        self.vectors = self.reads = self.store = None
         if self.endpoint:
             try:
                 auth.write_endpoint(auth.Endpoint(self.endpoint.port, self.endpoint.token, None), self.home)
@@ -449,25 +368,24 @@ def _setup_logging(home: Path) -> None:
 
 
 def app_switches(cfg, args) -> tuple[bool, bool]:
-    """(显示托盘, 启动后打开主页)：配置 [v2.app] tray / open_browser，命令行 --no-tray / --no-browser / --autostart 只能关。"""
-    app = getattr(cfg, "app", None)
-    tray_on = bool(getattr(app, "tray", True)) and not args.no_tray
-    browser_on = bool(getattr(app, "open_browser", True)) and not (args.no_browser or args.autostart)
+    """(显示托盘, 启动后打开主页)：配置 [v3] tray / open_browser，命令行 --no-tray / --no-browser / --autostart 只能关。"""
+    tray_on = bool(getattr(cfg, "tray", True)) and not args.no_tray
+    browser_on = bool(getattr(cfg, "open_browser", True)) and not (args.no_browser or args.autostart)
     return tray_on, browser_on
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="python -m screenrecall.app", description="ScreenRecall v2 主进程")
-    ap.add_argument("--data-dir", help="数据目录（默认 <应用目录>\\data）")
+    ap = argparse.ArgumentParser(prog="python -m screenrecall.app", description="ScreenRecall v3 主进程")
+    ap.add_argument("--data-dir", help="数据目录（默认 SCREENRECALL_V3_DATA_DIR、[v3] data_dir 或 <仓库>\\data-v3）")
     ap.add_argument("--home", help="应用目录（默认 SCREENRECALL_HOME 或 %%LOCALAPPDATA%%\\ScreenRecall）；"
                                    "开机自启和快捷方式用它代替环境变量")
     ap.add_argument("--port", type=int, default=None,
-                    help=f"优先使用的端口（默认取配置 [v2.app] port，即 {DEFAULT_PORT}；被占用时自动换一个；0 = 任意）")
+                    help=f"优先使用的端口（默认取配置 [v3] port，即 {DEFAULT_PORT}；被占用时自动换一个；0 = 任意）")
     ap.add_argument("--no-tray", action="store_true", help="不显示托盘图标（按 Ctrl+C 退出）")
     ap.add_argument("--no-browser", action="store_true", help="启动后不打开主页")
     ap.add_argument("--autostart", action="store_true", help="开机自启时使用：不打开主页")
     ap.add_argument("--fake-queries", action="store_true", help="MCP 用合成数据（开发 / 演示）")
-    ap.add_argument("--no-legacy-web", action="store_true", help="不挂旧版 webapi")
+    ap.add_argument("--no-legacy-web", action="store_true", help="不挂旧版 webapi（它只发 web/dist 的网页文件）")
     ap.add_argument("--dev-origin", action="append", default=[], help="开发时允许的前端地址")
     ap.add_argument("--no-children", action="store_true", help="不启动录制进程和空闲整理进程（只开网页和 MCP）")
     # 测试用：换掉子进程模块（真实窗口测试用替身，不录用户自己的屏幕）
@@ -484,17 +402,17 @@ def main(argv: list[str] | None = None) -> int:
     cfg = None
     children: list[supervisor.ChildSpec] = []
     if store:
-        from ..v2.config import load_v2
+        from ..v3.config import load_v3
 
-        cfg = load_v2(a.data_dir, home=home)
+        cfg = load_v3(a.data_dir, home=home)
         if not a.no_children:
             children = build_children(cfg, home=home, recorder_module=a.recorder_module,
                                       worker_module=a.worker_module or None)
-    port = a.port if a.port is not None else (cfg.app.port if cfg is not None else DEFAULT_PORT)
+    port = a.port if a.port is not None else (cfg.port if cfg is not None else DEFAULT_PORT)
     tray_on, browser_on = app_switches(cfg, a)
     opts = AppOptions(home=home, data_dir=Path(cfg.data_dir) if cfg else (Path(a.data_dir) if a.data_dir else None),
                       port=port, tray=tray_on, open_browser=browser_on,
                       fake_queries=a.fake_queries, legacy_web=not a.no_legacy_web, extra_origins=tuple(a.dev_origin),
                       children=children, store=store, cfg=cfg,
-                      idle_threshold_s=cfg.idle.threshold_s if cfg else 300.0)
+                      idle_threshold_s=cfg.idle_s if cfg else 300.0)
     return MainApp(opts).run()

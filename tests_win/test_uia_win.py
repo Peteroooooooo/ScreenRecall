@@ -2,7 +2,7 @@
 
 - 控制台（conhost）：TextPattern 可见范围逐行读字，滚走的行不出现，矩形在窗口内、从上到下；
 - Edge（临时配置目录、本地合成页面）：可见段落读到、屏外段落不出现、密码框的值不出现；
-- tkinter：Tk 8.6 不提供文字，判为"给不出可用文字"，has_text_hint 随后返回 False；
+- tkinter：Tk 8.6 不提供文字，判为"给不出可用文字"；
 - 卡死的窗口：读取在超时内返回；最小化：直接返回 minimized。
 """
 
@@ -199,64 +199,16 @@ def _close_edge(proc: subprocess.Popen, profile: Path) -> None:
             time.sleep(0.5)
 
 
-@pytest.mark.skipif(not EDGE.exists(), reason="本机没有 Edge")
-def test_edge_first_touch_page_not_lost(comtypes_cache, tmp_path):
-    """默认 0.5 s 预算、新浏览器进程第一次被访问：只给外框（标签、地址栏）也算 usable，
-    但页面区域必须出现在 uncovered 里，调用方才会登记待 OCR，不会把这一屏的正文丢掉。"""
-    marker = uuid.uuid4().hex[:6]
-    title = f"sr-uia-ft-{marker}"
-    paras = "".join(f"<p>SRFT-{i} 合成段落 synthetic paragraph {i}</p>" for i in range(40))
-    page = tmp_path / "ft.html"
-    page.write_text(f"<!doctype html><meta charset=utf-8><title>{title}</title><body>{paras}</body>", encoding="utf-8")
-    profile = Path(tempfile.mkdtemp(prefix="sr-uia-edge-"))
-    proc = subprocess.Popen([
-        str(EDGE), f"--user-data-dir={profile}", "--no-first-run", "--no-default-browser-check",
-        "--disable-extensions", "--disable-sync", "--new-window", "--window-size=1000,800",
-        "--window-position=60,60", page.as_uri(),
-    ])
-    try:
-        hwnd = _find_hwnd(title, timeout=30)
-        time.sleep(2.0)
-        r = uia.UiaReader(uia.UiaConfig(comtypes_cache_dir=str(comtypes_cache)))
-        first = r.read(hwnd)
-        later = None
-        for _ in range(10):
-            time.sleep(0.5)
-            later = r.read(hwnd)
-            if any("SRFT-" in ln.text for ln in later.lines):
-                break
-        r.close()
-        page_lines = [ln for ln in later.lines if "SRFT-" in ln.text]
-        assert page_lines, "之后的读取应读到页面正文"
-        first_hits = sum(1 for ln in first.lines if "SRFT-" in ln.text)
-        if first_hits == 0:
-            # 第一次没读到正文：正文所在的位置必须落在 uncovered 横条里
-            for ln in page_lines:
-                mid = (ln.rect[1] + ln.rect[3]) // 2
-                assert any(b[1] <= mid < b[3] for b in first.uncovered), (ln.rect, first.uncovered)
-        # 读到正文后，正文区域不再整片算作没读到
-        page_top = min(ln.rect[1] for ln in page_lines)
-        page_bottom = max(ln.rect[3] for ln in page_lines)
-        inside = sum(max(0, min(b[3], page_bottom) - max(b[1], page_top)) for b in later.uncovered)
-        assert inside < 0.2 * (page_bottom - page_top)
-        print(f"edge first touch: status={first.status} usable={first.usable} page-lines={first_hits} "
-              f"uncovered={len(first.uncovered)}; later page-lines={len(page_lines)} uncovered={len(later.uncovered)}")
-    finally:
-        _close_edge(proc, profile)
-
-
-def test_tk_no_usable_text_and_hint(tmp_path):
+def test_tk_no_usable_text(tmp_path):
     proc, hwnd = _start_tk(tmp_path)
     try:
-        r = uia.UiaReader(uia.UiaConfig(timeout_s=1.5, hint_fail_streak=3))
-        assert r.has_text_hint(hwnd)
+        r = uia.UiaReader(uia.UiaConfig(timeout_s=1.5))
         res = None
         for _ in range(3):
             res = r.read(hwnd)
         assert res.status in ("ok", "empty")
         assert not res.usable
         assert not any("SRTK-ALPHA" in ln.text for ln in res.lines)
-        assert r.has_text_hint(hwnd) is False
         # 最小化：直接返回，不读
         ctypes.windll.user32.ShowWindow(hwnd, 6)  # SW_MINIMIZE
         time.sleep(0.5)
@@ -291,21 +243,3 @@ def test_hung_window_returns_within_timeout(tmp_path):
         r.close()
     finally:
         _kill_tree(proc.pid)
-
-
-def test_read_visible_lines_api(tmp_path):
-    marker = uuid.uuid4().hex[:6]
-    title = f"sr-uia-con2-{marker}"
-    proc = _start_console(tmp_path, [f"title {title}", f"echo SRAPI-{marker}-HELLO"])
-    try:
-        hwnd = _find_hwnd(title)
-        time.sleep(0.8)
-        lines = uia.read_visible_lines(hwnd, timeout_s=1.5)
-        assert any(f"SRAPI-{marker}-HELLO" in ln.text for ln in lines)
-    finally:
-        _kill_tree(proc.pid)
-        uia.default_reader().close()
-
-
-if os.name != "nt":  # pragma: no cover
-    pytest.skip("仅 Windows", allow_module_level=True)

@@ -2,6 +2,22 @@
 
 轻量本地屏幕记忆系统（NUS-ISS PRS Practice Module，Group 9）。用原词、语义或大致画面描述找回保存过的屏幕，并回到原图核对来源与时间。产品首期目标是 Windows 10/11 单用户、本地 CPU 推理。实施依据：《ScreenMemory_Brain_详细实现方案_独立版》与 `readable_Proposal.md`。
 
+## v3（2026-10-28，分支 `feat/recall-v3`）：能读成字的就存字，读不成字的就存截图
+
+```powershell
+.venv\Scripts\python.exe -m screenrecall.app            # 主进程 + 录制子进程 + 空闲整理子进程；托盘 + http://127.0.0.1:8611
+.venv\Scripts\python.exe -m screenrecall.app --no-children --data-dir <目录>   # 只看页面 / MCP，不录
+.venv\Scripts\python.exe -m screenrecall.v3.demo --data-dir <空目录>          # 合成演示数据（方案"实际跑一遍"）
+cd web; npm run build                                     # 前端（页面由主进程发 web/dist）
+```
+
+- 默认只录浏览器（名单在 `/apps` 改：录 / 一直录 / 不录）；数据在 `<仓库>/data-v3`（库 `recall-v3.sqlite3` + `shots/`），和旧版、v2 的库互不相干。
+- 所有能调的数字都在 `config.default.toml` 的 `[v3]` 一节（本机覆盖写 `config.local.toml`）。
+- Claude Code / Codex：设置页"Agent"卡片里有 MCP 配置（工具 search / read / timeline / summary / get_frame / copied）。
+- 代码：`screenrecall/v3/`（接口和文件归属见 `V3_CONTRACT.md`）；测试 `pytest tests`、前端 `cd web; npx vitest run`。进度见 PROGRESS.md 的"2026-10-28 v3"。
+
+下面是 v1（旧版界面与评测）的记录。
+
 ## 当前状态（2026-10-25，`main`）
 
 | 项目 | 状态 |
