@@ -10,7 +10,7 @@ import pytest
 from screenrecall.rec.frames import Frame
 from screenrecall.rec.inputmon import FakeInput, TypingState
 from screenrecall.rec.wgc import _SlotSource
-from screenrecall.rec.windows import FakeWindows
+from screenrecall.rec.windows import FakeWindows, popup_owner
 from screenrecall.v3 import loop as loop_mod
 from screenrecall.v3.config import build
 from screenrecall.v3.loop import CaptureLoop
@@ -288,6 +288,48 @@ def test_recorded_foreground_snaps_still_after_switch_in(env):
     assert snaps[0].hwnd == 1 and not snaps[0].background and snaps[0].frame is not None
     env.run(5000)
     assert env.events(SnapEvent) == []  # 画面没变：不再拍
+
+
+def test_popup_owner_rule():
+    """无标题、同进程、所有者能录的附属小窗 → 主窗口；其余情况都按小窗自己算。"""
+    wins = {1: dict(owner=1, pid=10, title="页面 - Edge", ok=True),
+            9: dict(owner=1, pid=10, title="", ok=True),          # 查找栏这类：换成主窗口
+            8: dict(owner=1, pid=10, title="另存为", ok=True),     # 有自己标题的对话框：不换
+            7: dict(owner=1, pid=99, title="", ok=True),          # 别的进程的小窗：不换
+            6: dict(owner=5, pid=10, title="", ok=True),
+            5: dict(owner=5, pid=10, title="主窗口", ok=False)}   # 所有者最小化 / 隐藏：不换
+
+    def rule(h):
+        return popup_owner(h, root_owner=lambda x: wins[x]["owner"], pid=lambda x: wins[x]["pid"],
+                           title=lambda x: wins[x]["title"], usable=lambda x: wins[x]["ok"])
+
+    assert [rule(h) for h in (1, 9, 8, 7, 6)] == [1, 1, 8, 7, 6]
+
+    def boom(_h):
+        raise OSError("gone")
+
+    assert popup_owner(9, root_owner=boom, pid=boom, title=boom, usable=boom) == 9
+
+
+def test_find_bar_popup_keeps_main_window_in_front(env):
+    """浏览器的查找栏是有所有者的无标题顶层窗口：它拿着焦点时还是主窗口在前台，不报新的 FocusEvent，照常拍主窗口。"""
+    env.win.windows[1]["pid"] = 4242
+    env.win.add(9, "msedge.exe", "", owner=1, pid=4242)
+    env.win.fg = 1
+    env.run(100)
+    env.show(1, img())
+    env.run(2500)
+    assert len(env.events(SnapEvent)) == 1
+    env.win.fg = 9   # Ctrl+F
+    env.show(1, changed(img(), 100, 20, 120, 300, seed=3))
+    env.run(2500)
+    evs = env.events()
+    assert [type(e) for e in evs] == [SnapEvent]
+    assert (evs[0].hwnd, evs[0].title) == (1, "文章 - Edge")
+    env.win.windows[1]["minimized"] = True   # 主窗口不能录了：小窗按自己算（无标题也照样走正常规则）
+    env.run(100)
+    focus = env.events(FocusEvent)
+    assert focus and focus[-1].hwnd == 9
 
 
 def test_unlisted_app_grey_with_app(env):

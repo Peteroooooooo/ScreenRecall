@@ -47,6 +47,25 @@ def rule_reason(process: str | None, title: str | None, rules: RulesConfig | Non
     return _rules_check(process, title, rules)
 
 
+def popup_owner(hwnd: int, *, root_owner: Callable[[int], int], pid: Callable[[int], int | None],
+                title: Callable[[int], str], usable: Callable[[int], bool]) -> int:
+    """前台是没有标题的附属小窗（查找栏、下拉框、菜单这类有所有者的弹出窗口）时，算它的主窗口在前台。
+
+    这类小窗自己是一个顶层窗口，GetForegroundWindow 拿到的是它，但人在看的还是主窗口里的页面：
+    截图、标题、出处都应该按主窗口算。条件（都满足才换）：小窗没有标题；最顶层所有者（GA_ROOTOWNER）不是它自己；
+    所有者和它是同一个进程；所有者现在能录（存在、可见、没最小化、没被隐藏）。
+    有自己标题的窗口（另存为、设置、单独弹出的聊天窗口）是另一个画面，照旧按它自己算。不按软件名判断。"""
+    try:
+        owner = int(root_owner(hwnd) or 0)
+        if not owner or owner == hwnd or (title(hwnd) or "").strip():
+            return hwnd
+        if pid(owner) != pid(hwnd) or not usable(owner):
+            return hwnd
+        return owner
+    except Exception:  # noqa: BLE001 - 查不到就按原来的窗口算
+        return hwnd
+
+
 @dataclass(frozen=True)
 class WindowState:
     exists: bool
@@ -85,7 +104,15 @@ class RealWindows:
         self._proc: dict[int, tuple[int, str]] = {}
 
     def foreground(self) -> int:
-        return self._w.foreground_window()
+        """前台窗口；没有标题的附属小窗（查找栏这类）拿着焦点时是它的主窗口（popup_owner）。"""
+        from .. import winapi
+
+        h = self._w.foreground_window()
+        if not h:
+            return 0
+        w = self._w
+        return popup_owner(h, root_owner=w.root_owner, pid=winapi.window_pid, title=winapi.window_title,
+                           usable=lambda o: self.state(o).gap_reason is None)
 
     def state(self, hwnd: int) -> WindowState:
         w = self._w
@@ -206,7 +233,12 @@ class FakeWindows:
         self.windows[hwnd] = dict(process=process, title=title, minimized=False, cloaked=False, shell=False, **state)
 
     def foreground(self) -> int:
-        return self.fg
+        """和 RealWindows 一样：add(…, owner=主窗口) 的无标题小窗在前台时算主窗口。"""
+        h = self.fg
+        if h not in self.windows:
+            return h
+        return popup_owner(h, root_owner=lambda x: self.windows.get(x, {}).get("owner") or x, pid=self.pid,
+                           title=lambda x: self.windows[x]["title"], usable=lambda o: self.state(o).gap_reason is None)
 
     def state(self, hwnd: int) -> WindowState:
         w = self.windows.get(hwnd)
