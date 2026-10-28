@@ -63,6 +63,7 @@ _GetTickCount = _fn(_kernel32, "GetTickCount", wintypes.DWORD)
 _DWMWA_EXTENDED_FRAME_BOUNDS = 9
 _DWMWA_CLOAKED = 14
 _GA_ROOT = 2
+_GA_ROOTOWNER = 3
 
 
 # ---------- 窗口状态 ----------
@@ -88,6 +89,11 @@ def is_cloaked(hwnd: int) -> bool:
 
 def foreground_window() -> int:
     return int(_GetForegroundWindow() or 0)
+
+
+def root_owner(hwnd: int) -> int:
+    """沿父窗口和所有者一直往上找到的最顶层窗口（GA_ROOTOWNER）；没有所有者时就是它自己。"""
+    return int(_GetAncestor(hwnd, _GA_ROOTOWNER) or hwnd)
 
 
 def frame_bounds(hwnd: int) -> tuple[int, int, int, int] | None:

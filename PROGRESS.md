@@ -109,6 +109,23 @@ screenpipe 对照（读的是 screenpipe/screenpipe main 分支源码）：方�
 - 微信 / QQ 前台复制和滚动：要用户先把窗口打开放着，再在空闲时测。
 - 真的走开 5 分钟（不缩短 `away_ms`）没测；逻辑和 60 秒版一样。
 
+### 微信 / QQ 前台测试 + 修复轮（2026-10-29，`423b353` 之后，未提交）
+
+测试员（用户打开了微信和 QQ 的窗口；只做前置、滚轮、气泡里拖选、Ctrl+C）：8 项里 7 项通过。
+- 通过：微信（弱标签"微信"，全 OCR）和 QQ（弱标签"QQ"，UIA 为主）滚动每停一次都有新字、见过的去重，一条只留新字最多的那 1 张；Ctrl+C 记下复制（API / MCP `copied` 都有）；5 分钟内微信 → QQ → 微信合成一条，"看了多久"对得上；搜存过的词能回到条目、有图有黄框。录制进程平均 24% 单核、内存平均 208 MB，OCR 约 0.7–0.8 秒一次，0 错误。
+- 没过：真 Edge 里 Ctrl+F 仍然 `skip_no_url`、`url_reused` 从没出现。
+
+修了什么
+- 查找栏：Edge / Chrome 的查找栏是自己一个顶层窗口（无标题、所有者是主窗口、同进程），`GetForegroundWindow` 返回它，拍的窗口和标题都成了这个小窗，`_known_url` 按窗口 + 标题对不上。通用规则 `rec/windows.py` `popup_owner`：前台是无标题、有所有者（`GA_ROOTOWNER`，`rec/win32.py` `root_owner`）、同进程、所有者能录的小窗时，算主窗口在前台（截图、标题、出处都按主窗口）；有自己标题的对话框、别的进程的小窗、主窗口最小化时照旧。`RealWindows` 和 `FakeWindows`（`add(…, owner=)`）都走这条。测试 `test_popup_owner_rule`、`test_find_bar_popup_keeps_main_window_in_front`（查找栏前置后没有新的 FocusEvent，照常拍主窗口）。
+- 重启后聊天窗口多出 fallback 图（同一库重开录制进程，滚回看过的消息，微信 / QQ 各多 1 张）：没有上一拍的小块指纹可比时整幅都算新，头像 / 表情被当成新照片。现在没有指纹、而这一屏的字全都存过（新 0、见过 > 0）时这一拍只当参照、不算"像图"面积；之后真变了照样 fallback，读不出字的画面第一次见照旧算新（`v3/pipeline.py`，`test_no_fallback_on_first_sight_when_all_text_seen`）。代价：重启后第一拍正好是"字都见过 + 新图"时这张图不留，要等下一次画面变化。
+
+没改的
+- 长时间没碰电脑后，程序前置窗口（SetForegroundWindow 不算输入）要等第一次输入才拍（微信 6.5 秒）：走开状态本来就不算在看，真人切窗口（点击、Alt+Tab）就是输入。以后的前台测试先发一个无害输入或预期这段延迟。
+
+测了什么
+- `pytest tests`：668 passed（新增 3 个）；没改前端。只读检查了真桌面上的 `root_owner` / `RealWindows.foreground`（普通窗口映射到自己）。
+- 查找栏这条没在真 Edge 里按 Ctrl+F 复测。
+
 ## 一句话状态
 
 - **2026-10-25 最新**：`feat/merge-datasets` 已由 PR #7 合入 main；接手后第一轮（分支 `feat/polish`）见下方"2026-10-25"一节。下面各条是当时的记录。

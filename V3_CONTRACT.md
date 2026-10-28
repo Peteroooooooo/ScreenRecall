@@ -63,7 +63,8 @@ screenrecall/
 ```
 
 **原样复用（不改）**：`rec/clock.py`、`rec/frames.py`、`rec/motion.py`（只用 `Fp`、`tile_changes`、`MotionMask`）、`rec/volatile.py`、
-`rec/sessions.py`、`rec/wgc.py`、`rec/win32.py`、`rec/windows.py`（`RealWindows`、`ForegroundWatcher`、`FakeWindows`、`is_shell`、`locked`）、
+`rec/sessions.py`、`rec/wgc.py`、`rec/win32.py`、`rec/windows.py`（`RealWindows`、`ForegroundWatcher`、`FakeWindows`、`is_shell`、`locked`；
+2026-10-29 起 `foreground()` 经 `popup_owner`：无标题、同进程、有所有者的小窗（查找栏这类）在前台时返回主窗口）、
 `text/ocr2.py`（`OcrEngine`）、`text/encoder.py`、`store/fts/docs.py`（`norm`、`fold`、`index_rows`、`unindex_rows`，tail 一律传 `""`）、
 `store/vectors.py`（`VectorStore`）、`app/auth.py`、`app/paths.py`、`app/llm.py`（`LlmClient.from_env`、`ENV_KEYS`、`read_env_file`）、
 `app/idle.py`、`app/agents.py`、`app/mcp_shim.py`、`app/autostart.py`、`app/shortcut.py`、`winapi.py`、`timeutil.py`（`utc_ms`）、`webapi.py`（只用来发 `web/dist`）。
@@ -506,6 +507,7 @@ class Pipeline:
       6. snap_id = store.add_snap(…, via='black' if black else res.via)；store.heartbeat(last_snap_ms=t)；
       7. d = policy.decide(…, uncovered_change=shots.uncovered_change_ratio(ev.changed, frame 形状, res.lines))：
          'first' / 'fallback' / 'visit' → encode_jpeg + shot_boxes → store.save_shot(kind=…, replaces=policy.replaces(…))。
+         这个出处没有上一拍的小块指纹（重启后第一拍）且新字 0、见过的字 > 0 时 uncovered_change 记 0（只当参照）。
     GreyEvent → store.grey_enter / grey_leave；AwayEvent → 和当前前台条目重叠的部分累加到"这一段的走开时间"；
     CopyEvent → 这个窗口最近一次的出处（没有就 label_source(app, title, None)）→ store.add_clip(…)。
     own_origins：每 5 秒读一次 <home>/endpoint.json（app.auth.read_endpoint）的端口 → http://127.0.0.1:端口、http://localhost:端口。"""
