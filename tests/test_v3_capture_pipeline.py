@@ -380,6 +380,30 @@ def test_fallback_shot_for_unreadable_new_picture(P):
     assert len(P.store_.of("save_shot")) == 2
 
 
+def test_no_fallback_on_first_sight_when_all_text_seen(P, monkeypatch):
+    """重启后第一拍（没有上一拍的指纹可比）、字全都存过：头像这类像图的地方不当新照片；之后真变了照样 fallback。"""
+    seen_area = []
+
+    def ratio(changed, shape, lines, tiles=None, bgr=None):
+        seen_area.append(tiles)
+        return 0.0 if tiles is not None and not np.asarray(tiles).any() else 0.5
+
+    sigs = iter([np.zeros((2, 2), dtype=np.uint64), np.zeros((2, 2), dtype=np.uint64),
+                 np.ones((2, 2), dtype=np.uint64)])
+    monkeypatch.setattr(P, "_api", SimpleNamespace(**{**vars(FAKE_API), "uncovered_change_ratio": ratio,
+                                                     "tile_signature": lambda bgr: next(sigs)}))
+    P.store_.norms["见过的"] = 7
+    P.reader_.result = TextResult(lines("见过的"), "ocr")
+    P.process(FocusEvent(1000, 1, 1001, "WeChat.exe", "微信"))
+    P.process(snap(3000, app="WeChat.exe", title="微信"))
+    assert P.store_.of("save_shot") == [] and seen_area == []   # 只当参照，不算面积
+    P.process(snap(5000, app="WeChat.exe", title="微信"))       # 同一屏：没变
+    assert P.store_.of("save_shot") == []
+    P.process(snap(7000, app="WeChat.exe", title="微信"))       # 字还是见过的，但出了新图
+    save = P.store_.of("save_shot")
+    assert len(save) == 1 and save[0][4] == "fallback"
+
+
 def test_copy_attributed_to_last_source(P):
     P.process(FocusEvent(1000, 1, 1001, "msedge.exe", "文章"))
     P.reader_.result = TextResult(lines("一行字"), "uia", url="https://blog.example.com/a")

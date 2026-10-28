@@ -21,7 +21,7 @@
   6. add_snap（via='black' 或 res.via）；heartbeat(last_snap_ms=t)；
   7. ShotPolicy.decide：'first' / 'fallback' / 'visit' → 编码 + 存；'visit' 在这一条已经有图、这一拍新字更多时
      替换那张（policy.replaces）。"读不出字的新画面"按这个出处上一拍的小块指纹（shots.tile_signature）比：
-     回到看过的页面不算新画面。
+     回到看过的页面不算新画面；没有上一拍可比（重启后第一拍）而字全都存过时也不算，这一拍只当参照。
 - GreyEvent → grey_enter / grey_leave（暂停 / 锁屏开始时后台条目也离开）；
   AwayEvent → 和当前前台条目重叠的部分累加到"这一段的走开时间"；
 - CopyEvent → 这个窗口最近一次拍的出处（标题没变时；否则按 软件 + 标题 记弱标签）→ add_clip；
@@ -423,7 +423,13 @@ class Pipeline:
         if len(self._sigs) > MAX_SIGNATURES:
             self._sigs.popitem(last=False)
         tiles = (prev != sig) if prev is not None and prev.shape == sig.shape else None  # None：这个出处第一次 = 整幅都新
-        uncovered = api.uncovered_change_ratio(None, (h, w), lines, tiles=tiles, bgr=ev.frame.bgr)
+        if prev is None and new == 0 and seen > 0:
+            # 没有上一拍可比（录制进程刚重启、指纹被挤掉），而这一屏的字全都存过：多半是看过的画面，
+            # 头像、表情、图标这类"像图"的地方不能当成新出来的照片（否则每次重启都多一张 fallback）。
+            # 这一拍只当参照，之后真变了照样按 fallback 算。读不出字的画面（照片）第一次见照旧算新。
+            uncovered = 0.0
+        else:
+            uncovered = api.uncovered_change_ratio(None, (h, w), lines, tiles=tiles, bgr=ev.frame.bgr)
         d = self.policy.decide(label=label, source_id=source_id, visit_id=visit_id, source_has_shot=has_shot,
                                t_ms=t, new_lines=new, has_text=bool(res.lines), uncovered_change=uncovered,
                                black=black)
