@@ -411,14 +411,43 @@ def test_url_app_without_url_stores_nothing(P):
     assert P.store_.calls == []
 
 
+def test_url_missing_once_mid_visit_reuses_last_url(P):
+    """同一窗口、同一标题的网页，中间一拍没读到网址（查找栏拿着焦点）：沿用上一拍的网址照常存，不整拍丢掉；
+    标题变了就不沿用（还是 skip_no_url）。"""
+    P.process(FocusEvent(1000, 1, 1001, "msedge.exe", "文章"))
+    P.reader_.result = TextResult(lines("第一行"), "uia", url="https://blog.example.com/a")
+    P.process(snap(3000))
+    P.reader_.result = TextResult(lines("第一行", "粘贴的新一行"), "uia", url=None)
+    P.process(snap(6000))
+    s = P.store_
+    assert P.counts.get("skip_no_url", 0) == 0 and P.counts["url_reused"] == 1
+    assert len(s.of("add_snap")) == 2 and len(s.of("visit_enter")) == 1  # 同一出处、同一条目
+    assert len({c[1:3] for c in s.of("upsert_source")}) == 1
+    P.process(FocusEvent(7000, 1, 1001, "msedge.exe", "别的页"))
+    P.process(snap(9000, title="别的页"))
+    assert P.counts["skip_no_url"] == 1 and len(s.of("add_snap")) == 2
+
+
+def test_reused_url_still_checked_against_excluded_hosts(P):
+    """沿用的网址照样过不录网站的判断。"""
+    P.process(FocusEvent(1000, 1, 1001, "msedge.exe", "文章"))
+    P.reader_.result = TextResult(lines("第一行"), "uia", url="https://blog.example.com/a")
+    P.process(snap(3000))
+    P.set_excluded_hosts(["blog.example.com"])
+    P.reader_.result = TextResult(lines("第二行"), "uia", url=None)
+    P.process(snap(6000))
+    assert P.counts["skip_excluded"] == 1 and len(P.store_.of("add_snap")) == 1
+
+
 def test_app_that_gave_urls_needs_url_from_then_on(P):
     """不在默认名单里的软件出过网址出处以后，也按"读不到网址就不存"处理；库里出过网址的软件启动时就认。"""
     P.process(FocusEvent(1000, 1, 1001, "newbrowser.exe", "页面"))
     P.reader_.result = TextResult(lines("一行字"), "uia", url="https://a.example.com/")
     P.process(snap(3000, app="newbrowser.exe", title="页面"))
+    P.process(FocusEvent(5000, 1, 1001, "newbrowser.exe", "另一页"))
     P.store_.calls.clear()
     P.reader_.result = TextResult(lines("另一行"), "ocr", url=None)
-    P.process(snap(6000, app="newbrowser.exe", title="页面"))
+    P.process(snap(6000, app="newbrowser.exe", title="另一页"))
     assert P.store_.calls == []
     P.store_.learned_url_apps = {"OtherBrowser.exe"}
     P._url_apps = None

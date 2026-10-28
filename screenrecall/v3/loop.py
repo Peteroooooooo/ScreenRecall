@@ -347,16 +347,7 @@ class CaptureLoop:
         for h in [h for h in self.triggers if h not in self.pool]:
             del self.triggers[h]
 
-        # 帧：只取在录窗口的；延迟停的会话不取（槽里留着最新一帧）
-        for h, src in self.pool.sources().items():
-            if h not in recording:
-                continue
-            f = src.take(now)
-            if f is not None:
-                self.counts["frames"] += 1
-                self._trigger(h).feed(f, f.t_ms)
-
-        # 打字
+        # 打字（先于取帧：正在打字的页面不学"一直在变的小块"）
         lt = getattr(self.inputs, "last_typing_ms", None)
         if lt is not None and lt != self._last_typing_seen:
             self._last_typing_seen = lt
@@ -365,6 +356,16 @@ class CaptureLoop:
         quiet = self.cfg.typing_quiet_ms
         for k in [k for k, t in self._typing_at.items() if now - t >= quiet]:
             del self._typing_at[k]
+
+        # 帧：只取在录窗口的；延迟停的会话不取（槽里留着最新一帧）
+        for h, src in self.pool.sources().items():
+            if h not in recording:
+                continue
+            f = src.take(now)
+            if f is not None:
+                self.counts["frames"] += 1
+                _pid, _app, title, bg = recording[h]
+                self._trigger(h).feed(f, f.t_ms, typing=(not bg) and self._typing(h, title, now))
 
         # 复制
         copies = []
