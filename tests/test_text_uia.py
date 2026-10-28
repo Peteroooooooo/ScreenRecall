@@ -478,3 +478,46 @@ def test_timeout_keeps_document_top_as_chrome_bottom():
 
     res = _reader(Docs(delay=5.0), timeout_s=0.1).read(1)
     assert res.status == "timeout" and res.chrome_bottom == 180
+
+
+def test_doc_info_prefers_outer_document_of_same_size():
+    """Chrome 的 PDF 查看器（实测）：外层 Document 的值是 PDF 网址，里面套一层同样大小的 chrome-extension:// 查看器页面，
+    再里面是没有值的 PDF 文档。一样大取树里排在前面的（外层），网址是 PDF 的、不会被当成内部页。"""
+    r = (101, 221, 2000, 1430)
+    elems = [uia.Elem(-1, "Window", rect=(90, 90, 2010, 1440)),
+             uia.Elem(0, "Document", value="https://arxiv.example/pdf/1706.03762", rect=r),
+             uia.Elem(1, "Document", value="chrome-extension://abcdefghijklmnop/index.html", rect=r),
+             uia.Elem(2, "Document", name="包含 15 页内容的 PDF 文档", rect=(645, 305, 1877, 24364))]
+    assert uia.doc_info(elems) == ("https://arxiv.example/pdf/1706.03762", None)
+    local = [elems[0], uia.Elem(0, "Document", value="file:///C:/Docs/%E5%90%88.pdf", rect=r), elems[2]]
+    assert uia.doc_info(local)[0] == "file:///C:/Docs/%E5%90%88.pdf"
+
+
+def test_window_names_root_and_direct_children():
+    """窗口根元素和直接子元素的名字（Chrome 无痕窗口：根下面的 Pane 名字带"（无痕）"，窗口标题不带）。"""
+    elems = [uia.Elem(-1, "Window", name="合成页 - 浏览器"),
+             uia.Elem(0, "Pane", name=" 合成页 - 浏览器（无痕） "),
+             uia.Elem(1, "Button", name="无痕模式"),
+             uia.Elem(0, "Pane", name="合成页 - 浏览器"),
+             uia.Elem(0, "Pane", name="")]
+    assert uia.window_names(elems) == ("合成页 - 浏览器", "合成页 - 浏览器（无痕）")
+    assert uia.window_names([]) == ()
+
+
+def test_window_names_from_doc_and_tree_reach_result():
+    """读字前单独找的（doc 第四项）和整棵树里的（read 第六项）合起来给调用方；正文超时也有。"""
+    class Names(FakeBackend):
+        def doc(self, ctx, hwnd):
+            return "https://synthetic.test/a", "合成页", 100, ("合成页 - 浏览器", "合成页 - 浏览器（无痕）")
+
+    res = _reader(Names(delay=5.0), timeout_s=0.1).read(1)
+    assert res.status == "timeout" and res.window_names == ("合成页 - 浏览器", "合成页 - 浏览器（无痕）")
+
+    class Both(Names):
+        def read(self, ctx, hwnd, win_rect, cancel):
+            lines, n = FakeBackend.read(self, ctx, hwnd, win_rect, cancel)
+            return lines, n, None, "https://synthetic.test/a", "合成页", ("合成页 - 浏览器", "树里的名字")
+
+    res = _reader(Both()).read(1)
+    assert res.window_names == ("合成页 - 浏览器", "合成页 - 浏览器（无痕）", "树里的名字")
+    assert _reader(FakeBackend()).read(1).window_names == ()

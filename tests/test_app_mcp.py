@@ -172,6 +172,18 @@ def test_timeline_and_summaries():
         call(mcp, "summary", {"level": "week", "key": "x"})
 
 
+def test_timeline_relative_start_after_midnight_reaches_now():
+    """0:30 查 "2h ago"：开始在昨天 22:30，默认结束要到今天结束（包含现在），不是昨天结束。"""
+    late = datetime(2026, 10, 28, 0, 30)
+    q = ms.FakeQueries(now_ms=ms_of(late))
+    mcp = ms.build_mcp(q, ms.AgentPolicy(), port=18612, clock=lambda: late)
+    call(mcp, "timeline", {"time_from": "2h ago"})
+    assert q.calls[-1][1]["start_ms"] == ms_of(datetime(2026, 10, 27, 22, 30))
+    assert q.calls[-1][1]["end_ms"] == ms_of(datetime(2026, 10, 29))
+    call(mcp, "timeline", {"time_from": "yesterday 14:00"})  # 写了哪天的：仍到那天结束
+    assert q.calls[-1][1]["end_ms"] == ms_of(datetime(2026, 10, 28))
+
+
 def test_timeline_keeps_the_newest_pieces_and_says_older_ones_were_left_out():
     q = ms.FakeQueries(now_ms=ms_of(NOW))
     t = ms_of(datetime(2026, 10, 27, 8))

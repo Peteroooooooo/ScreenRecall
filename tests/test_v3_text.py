@@ -272,3 +272,16 @@ def test_timeout_ocr_drops_lines_above_document_top(cfg):
     ocr = FakeOcr([_ol("标签页条里的字", 20, 10, 300, 30), _ol("网页正文的字", 20, 400, 300, 420)])
     res = TextReader(cfg, uia=FakeUia(slow), ocr=ocr, title_of=lambda h: "").read_text(HWND, _frame())
     assert [ln.text for ln in res.lines] == ["网页正文的字"]
+
+
+def test_window_names_reach_result_and_want_ocr(cfg):
+    """辅助功能里的窗口名字（无痕标记可能只在这里）交给调用方：要 OCR 之前问的那一份也带着，调用方可以不 OCR 就跳过。"""
+    names = ("合成页 - 浏览器", "合成页 - 浏览器（无痕）")
+    asked = []
+    ocr = FakeOcr([_ol("不会读到", 20, 400, 300, 420)])
+    uia = FakeUia(_ok([], doc_url="https://synthetic.test/a", doc_name="合成页", window_names=names))
+    r = TextReader(cfg, uia=uia, ocr=ocr, title_of=lambda h: "合成页 - 浏览器")
+    res = r.read_text(HWND, _frame(), want_ocr=lambda part: asked.append(part.window_names) or False)
+    assert asked == [names] and ocr.calls == 0 and res.window_names == names
+    r = TextReader(cfg, uia=FakeUia(_ok(_body(5))), ocr=ocr, title_of=lambda h: "")
+    assert r.read_text(HWND, _frame()).window_names == ()

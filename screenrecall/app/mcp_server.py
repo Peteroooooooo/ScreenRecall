@@ -595,8 +595,10 @@ def build_mcp(queries: Queries, policy: AgentPolicy | None = None, *, port: int 
         now = clock()
         a = parse_time(time_from or "today", now=now)
         b = parse_time(time_to, end=True, now=now)
-        if b is None:
-            b = parse_time(datetime.fromtimestamp(a / 1000).date().isoformat(), end=True, now=now)
+        if b is None:  # 默认到开始那天结束；开始是"2h ago"这类相对时间时到今天结束（半夜跨过 0 点也包含现在）
+            rel = _REL.match(" ".join(str(time_from or "").strip().lower().split()))
+            day = now.date() if rel else datetime.fromtimestamp(a / 1000).date()
+            b = parse_time(day.isoformat(), end=True, now=now)
         if b <= a:
             raise ToolError("结束时间必须晚于开始时间。(time_to must be later than time_from.)")
         # 多要一条：拿到 max_hits + 1 条说明还有更早的没列出
