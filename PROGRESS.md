@@ -88,6 +88,27 @@ screenpipe 对照（读的是 screenpipe/screenpipe main 分支源码）：方�
 - 前台检查（方向键 / 翻页不算打字、真打字后 5 秒才拍、Ctrl+C 复制记出处、微信 / QQ 里 Ctrl+C 和滚动、不在名单的软件出灰字 + "以后录它"、5 分钟内回来合并 / 超过另开、走开 5 分钟以上不算"看了多久"、状态栏在录 / 最后一次拍 / 暂停 5 分钟）仍要用户真的走开 15 分钟以上再测，或用户自己手动试。
 - 被挡住的后台浏览器读不到网页、微信 / QQ 标题固定：同上一轮，记为已知限制。
 
+### 前台测试 + 修复轮（2026-10-29 凌晨 02:00 之后，未提交）
+
+前台测试员（用户空闲时，自己开的访客 Edge + charmap，SendInput，`away_ms` / `merge_ms` 临时缩到 60 秒）：7 项里 6 项通过，微信 / QQ 没跑。
+- 通过：字母打字 5 秒后才拍（Edge 4.92 s、charmap 4.86 s）；方向键 / PageDown / Home / End / Ctrl+A / Ctrl+V 都约 2 秒就拍，不算打字；Ctrl+C 立刻拍一张 copy、记下复制（网址出处），`/api/v3/copied` 和 MCP `copied` 都查得到；不在名单的 charmap 切进去 17 ms 出灰字，`POST /api/v3/apps` 改成录以后下次切进去就拍、灰字不再显示按钮；"看了多久" = 切进来到切走，60 秒内回来合成一条（3 段 41.2 s，对照 38.9 s），超过另开一条；走开 90 秒那段不算进去（96.3 s 前台只记 6.1 s）；暂停 / 继续正常。
+- 没跑：微信、QQ 都只在托盘里、没有可见窗口，按规则不去打开。
+- 资源（约 100 秒采样）：录制进程平均 36% 单核、峰值 226%（OCR 多线程），内存平均 269 MB、峰值 587 MB；主进程 0.2%、79 MB。4.8 分钟存了 3.3 MB 库 + 5 张图 0.93 MB。
+
+修了什么
+- 查找栏（Ctrl+F）拿着焦点时整拍丢掉（两次都 `skip_no_url`=1，粘贴后那页 20 秒没存）：浏览器这一拍读不到网址，但同一窗口上一拍存下的就是这个标题的网址出处时，沿用那个网址（照样过内部页 / 自己的网页 / 不录网站的判断，计数 `url_reused`）；标题变了、上一拍被跳过、不是网址出处时不沿用（`v3/pipeline.py` `_known_url`，单元测试 `test_url_missing_once_mid_visit_reuses_last_url`、`test_reused_url_still_checked_against_excluded_hosts`）。没查清 UIA 在查找栏打开时具体返回了什么，只按"读不到"处理。
+- 点"继续"后的响应还写着 paused：`Queries.status` 之前把录制端心跳里的 `paused` 也当暂停，心跳要 1–2 秒才更新。录制端的暂停只由 `paused_until_ms` 决定，所以状态改为只看它（`v3/store/queries.py`，`test_status_recorder_alive_and_states` 加了这一步）。真实主进程 + 录制进程复测：暂停 → paused，3 秒后 paused，`POST /resume` 响应 recording，3 秒后 recording。
+- 打字时也在学"一直在变的小块"（代码检查发现，测试里没漏拍）：`SnapTrigger.feed` 加 `typing`，打字时不学；`loop.py` 先算打字再取帧，只有前台窗口传 typing（`test_trigger_does_not_learn_volatile_while_typing`，带对照）。
+
+测了什么
+- `pytest tests`：665 passed；前端 `npm run typecheck`、`npx vitest run`（37）、`npm run build` 通过。
+- 真实主进程 + 录制进程（临时目录，`--only-pids` 一个不存在的进程号，不录任何窗口、没发键鼠）：上面的暂停 / 继续复测，录制进程退出码 0、日志 0 错误；临时目录已删。
+
+还剩的
+- 查找栏那一条只有单元测试，没在真窗口里再按 Ctrl+F 复测（要抢前台、等用户空闲）。
+- 微信 / QQ 前台复制和滚动：要用户先把窗口打开放着，再在空闲时测。
+- 真的走开 5 分钟（不缩短 `away_ms`）没测；逻辑和 60 秒版一样。
+
 ## 一句话状态
 
 - **2026-10-25 最新**：`feat/merge-datasets` 已由 PR #7 合入 main；接手后第一轮（分支 `feat/polish`）见下方"2026-10-25"一节。下面各条是当时的记录。

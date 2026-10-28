@@ -108,6 +108,25 @@ def test_trigger_typing_defers_then_fires(cfg):
     assert tr.tick(12100, typing=False) == "still"
 
 
+def test_trigger_does_not_learn_volatile_while_typing(cfg):
+    """打字时同一行的小块一直在变，不能学成"一直在变"：停手后再改这一行照样算变化。"""
+    def run(typing: bool):
+        tr = SnapTrigger(cfg)
+        base = img()
+        tr.feed(fr(base, 0), 0)
+        tr.tick(2000, typing=False)
+        tr.snapped(2000)
+        for i, t in enumerate(range(2200, 6200, 200)):  # 在同一块里连续打字 4 秒
+            tr.feed(fr(changed(base, 100, 64, 20, 30, i), t), t, typing=typing)
+        tr.tick(12000, typing=False)
+        tr.snapped(12000)
+        tr.feed(fr(changed(base, 100, 64, 20, 30, 500), 12500), 12500)  # 停手后又改了这一行
+        return tr.tick(14500, typing=False)
+
+    assert run(typing=True) == "still"
+    assert run(typing=False) is None  # 对照：不带 typing 时会被学成一直在变、改动被忽略
+
+
 def test_trigger_reset_fires_for_static_window(cfg):
     tr = SnapTrigger(cfg)
     tr.feed(fr(img(), 0), 0)
