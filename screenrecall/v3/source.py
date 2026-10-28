@@ -1,7 +1,7 @@
 """③ 记出处：这一拍看的是哪个东西（方案"记出处"一节），以及几条按网址 / 标题跳过的规则。全部是纯函数。
 
 - 强标签：网址（系统文字里最大的 Document 元素的值，去掉 #片段 和 utm_* 参数）或本地文件的完整路径
-  （file:/// 网址，或标题里写着完整路径）；
+  （file:/// 网址，或标题里写着完整路径）；标题用网页 / 文档自己的名字，文件没有名字时用文件名；
 - 弱标签：软件名 + 窗口标题（去掉未读数 "(3)"、转圈符号）。
 所有软件一套规则：这里不出现任何软件名，名单、关键词都由调用方从配置 / 库里传进来。
 """
@@ -152,24 +152,29 @@ def _file_key(path: str) -> str:
     return path.lower()
 
 
+def _file_name(path: str | None) -> str:
+    """完整路径的最后一节（文件名）；没有时 ''。"""
+    return (path or "").rstrip("\\").rpartition("\\")[2]
+
+
 def label_source(app: str, title: str, url: str | None, page_title: str | None = None) -> SourceLabel:
     """这一拍的出处：http(s) 网址 → url；file:/// 网址或标题里有完整路径 → file；否则 app_title。
-    page_title：网址所在 Document 的名字（网页自己的标题）；有网址时用它当标题，免得窗口标题里浏览器加的
+    标题：网址出处用 page_title（网址所在 Document 的名字，网页自己的标题）；文件出处用 page_title，没有时用文件名
+    （浏览器的 PDF 查看器不给 Document 名字）。都没有才退回清理后的窗口标题。免得窗口标题里浏览器 / 编辑器加的
     "- 个人 - Microsoft Edge"这类尾巴跟进时间线和搜索结果。"""
     t = clean_title(title)
+    page = clean_title(page_title or "")
     scheme = url_scheme(url)
-    if scheme in ("http", "https", "file"):
-        t = clean_title(page_title or "") or t
     if scheme in ("http", "https"):
         u = clean_url(url)
-        return SourceLabel(KIND_URL, u, app, t, url=u)
+        return SourceLabel(KIND_URL, u, app, page or t, url=u)
     if scheme == "file":
         u = clean_url(url)
         path = file_path_from_url(url)
-        return SourceLabel(KIND_FILE, _file_key(path or u), app, t, url=u, path=path)
+        return SourceLabel(KIND_FILE, _file_key(path or u), app, page or _file_name(path) or t, url=u, path=path)
     path = path_in_title(title)
     if path:
-        return SourceLabel(KIND_FILE, _file_key(path), app, t, path=path)
+        return SourceLabel(KIND_FILE, _file_key(path), app, _file_name(path) or t, path=path)
     return SourceLabel(KIND_APP, f"{(app or '').lower()}\t{t}", app, t)
 
 

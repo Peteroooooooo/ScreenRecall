@@ -734,3 +734,50 @@ def test_recorder_process_wiring(cfg, monkeypatch):
     assert store.of("heartbeat")[-1][1]["recorder_state"] == "stopped"
     assert store.names()[-1] == "close"
     assert p.stats()["loop"]["snaps"] == 1
+
+
+def test_private_window_name_skips_everything(P, monkeypatch):
+    """无痕窗口的标记只在辅助功能的窗口名字里（Chrome 实测：标题"V2EX - Google Chrome"，根下面的 Pane 叫
+    "V2EX - Google Chrome（无痕）"）：这一拍什么都不写、不 OCR，复制也不记，心跳不写它的标题。"""
+    from screenrecall.v3.read import ReadResult
+    from screenrecall.v3.source import is_private_title
+
+    monkeypatch.setattr(FAKE_API, "is_private_title", is_private_title, raising=False)
+    title = "合成页 - 合成浏览器"
+    P.process(FocusEvent(1000, 1, 1001, "chrome.exe", title))
+    P.reader_.result = ReadResult(lines("一行字"), "uia", url="https://a.example.com/",
+                                  window_names=(title, title + "（无痕）"))
+    P.process(snap(3000, app="chrome.exe", title=title))
+    assert P.store_.calls == [] and P.counts["skip_private"] == 1
+    assert P.reader_.ocr_asked is False and P.is_skipped(1, title)
+    P.process(CopyEvent(3100, 1, "chrome.exe", title, "复制"))
+    assert P.store_.calls == []
+    # 普通窗口：名字里没有关键词，照常存
+    P.reader_.result = ReadResult(lines("一行字"), "uia", url="https://a.example.com/", window_names=(title,))
+    P.process(snap(6000, app="chrome.exe", title=title))
+    assert "record_lines" in P.store_.names()
+
+
+def test_page_name_strips_learned_window_title_tail(P):
+    """网页没给 Document 名字（浏览器的 PDF 查看器）：用窗口标题去掉这个软件的尾巴，尾巴从有网页标题的拍里学。"""
+    labels = []
+    P.api.label_source = lambda *a: labels.append(a) or _label(*a)
+    try:
+        P.process(FocusEvent(1000, 1, 1001, "chrome.exe", "x.pdf - 合成浏览器"))
+        P.reader_.result = TextResult(lines("PDF 的字"), "uia", url="https://a.example.com/x.pdf")
+        P.process(snap(3000, app="chrome.exe", title="x.pdf - 合成浏览器"))
+        assert labels[-1][3] is None  # 还没学到：label_source 退回窗口标题
+        P.process(FocusEvent(4000, 1, 1001, "chrome.exe", "文章 - 合成浏览器"))
+        P.reader_.result = TextResult(lines("一行字"), "uia", url="https://b.example.com/", page_title="文章")
+        P.process(snap(6000, app="chrome.exe", title="文章 - 合成浏览器"))
+        P.process(FocusEvent(7000, 1, 1001, "chrome.exe", "x.pdf - 合成浏览器"))
+        P.reader_.result = TextResult(lines("PDF 的字"), "uia", url="https://a.example.com/x.pdf")
+        P.process(snap(9000, app="chrome.exe", title="x.pdf - 合成浏览器"))
+        assert labels[-1][3] == "x.pdf"
+        # 别的软件不用这条尾巴；不带网址的不改
+        P.process(FocusEvent(10_000, 2, 1002, "other.exe", "y.pdf - 合成浏览器"))
+        P.reader_.result = TextResult(lines("别的字"), "uia", url="https://c.example.com/y.pdf")
+        P.process(snap(12_000, hwnd=2, app="other.exe", title="y.pdf - 合成浏览器"))
+        assert labels[-1][3] is None
+    finally:
+        P.api.label_source = _label

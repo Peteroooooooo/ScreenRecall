@@ -10,6 +10,7 @@
    按 (y, x) 排阅读顺序；norm 少于 2 个字的行、只有时间 / 日期的行、OCR 出来的别的行开头的一截（列表里截断的预览）不要；
 4. url = 最大的 Document 元素的值（UiaResult.doc_url；正文读超时时是读字前单独找的那个），page_title = 它的名字；
    window_title = 读完系统文字时窗口的标题（调用方据此认出"拍完到读字之间换了页面"）；
+   window_names = 辅助功能里的窗口名字（ReadResult，调用方据此认出标题里不写"无痕"的无痕窗口）；
 5. 要 OCR 之前问调用方 want_ocr(到这一步的结果)：这一拍反正不存（内部页、本地文件、换了页面）就不 OCR。
 从不抛异常：出错时 status='error'、lines 为空。日志只记次数和原因，从不记屏幕上的字。
 """
@@ -42,6 +43,14 @@ _DAY = r"(?:上午|下午|中午|晚上|凌晨|今天|昨天|前天|星期[一�
 _TIME_ONLY = re.compile(rf"^{_DAY}?(?:\d{{1,4}}[年/\-]\d{{1,2}}(?:[月/\-]\d{{1,2}}日?)?|\d{{1,2}}月\d{{1,2}}日)?{_DAY}?"
                         rf"(?:\d{{1,2}}:\d{{2}}(?::\d{{2}})?)?{_DAY}?$")
 _UIA_SKIP = ("minimized", "no_window")   # 窗口不在 / 最小化：读不了，也不算"读过"
+
+
+@dataclasses.dataclass(frozen=True)
+class ReadResult(TextResult):
+    """TextResult 再加一项（types.py 冻结，先在这里加；调用方用 getattr(res, "window_names", ()) 读）：
+    window_names：辅助功能里窗口根元素和直接子元素的名字（UiaResult.window_names）。有的浏览器的无痕窗口
+    只在这里写着"（无痕）"、窗口标题里没有，调用方拿它和窗口标题一起按无痕关键词判。"""
+    window_names: tuple[str, ...] = ()
 
 
 def _usable(res) -> bool:
@@ -279,6 +288,7 @@ class TextReader:
         # 网址：正文读超时 / 出错时也有（读字前单独找的）；窗口不在、最小化时没有
         url = getattr(res, "doc_url", None) if res is not None and res.status not in _UIA_SKIP else None
         page_title = getattr(res, "doc_name", None) if url else None
+        names = tuple(getattr(res, "window_names", None) or ()) if res is not None else ()
         window_title = self._window_title(hwnd)
 
         body: list[TextLine] = []
@@ -300,7 +310,8 @@ class TextReader:
         ocr_ms = 0.0
         ocr_skipped = False
         if need_ocr and want_ocr is not None:
-            partial = TextResult((), "none", url=url, page_title=page_title, window_title=window_title)
+            partial = ReadResult((), "none", url=url, page_title=page_title, window_title=window_title,
+                                 window_names=names)
             if not want_ocr(partial):
                 need_ocr, ocr_skipped = False, True
                 self.stats["ocr_skipped"] += 1
@@ -340,8 +351,8 @@ class TextReader:
             via = "none"
         else:
             status = "ok" if lines else "empty"
-        return TextResult(
+        return ReadResult(
             lines=tuple(lines), via=via, url=url,
             uia_chars=uia_chars, body_chars=body_chars, uia_ms=uia_ms, ocr_ms=ocr_ms, status=status,
-            page_title=page_title, window_title=window_title, ocr_skipped=ocr_skipped,
+            page_title=page_title, window_title=window_title, ocr_skipped=ocr_skipped, window_names=names,
         )

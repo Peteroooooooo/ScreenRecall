@@ -9,6 +9,9 @@
 - 文字先去掉格式控制字符（资源管理器日期里的 U+200E 这类）；
 - 顺手记下最大的 Document 元素的值（浏览器里是当前网址，打开本地文件时是 file:/// 地址）和名字（网页标题）：
   UiaResult.doc_url / doc_name。读整棵树之前先单独找一次所有 Document（很快），整棵树超时时网址照样有。
+  同样大的几个 Document（Chrome 的 PDF 查看器：外层是 PDF 的网址，里面套一层 chrome-extension:// 的查看器页面，
+  矩形完全一样）取树里排在前面的那个，也就是外层的；
+- 同时记下窗口根元素和直接子元素的名字（UiaResult.window_names）：有的浏览器的无痕窗口只在这里写着"（无痕）"。
 
 线程与超时：每次读取放到独立的工作线程（各自初始化 COM，MTA），调用方最多等 timeout_s；
 目标程序卡死时放弃那个线程（它带着取消标记，之后自己退出），下次读取换新线程，调用方永远不会被拖住。
@@ -49,6 +52,7 @@ P_HAS_TEXT, P_HAS_VALUE, P_VALUE = 30040, 30043, 30045
 TEXT_PATTERN = 10014
 TREE_SCOPE_SUBTREE = 7  # Element | Children | Descendants
 TREE_SCOPE_DESCENDANTS = 4
+TREE_SCOPE_CHILDREN = 2
 CT_DOCUMENT = 50030
 TEXT_UNIT_LINE = 3
 
@@ -105,6 +109,9 @@ class UiaResult:
     # 最大的 Document（ComBackend.doc，实测 40–260 ms），网址不跟着正文一起丢。密码框的值从来不取
     doc_url: str | None = None
     doc_name: str | None = None  # 那个 Document 的名字：浏览器里是网页自己的标题（不带"- 个人 - Microsoft Edge"）
+    # 窗口根元素和它的直接子元素的名字（辅助功能里的窗口标题）。有的浏览器的无痕窗口只在这里写着"（无痕）"，
+    # 窗口标题里没有（实测 Chrome 中文版：窗口标题"V2EX - Google Chrome"，根下面的 Pane 叫"V2EX - Google Chrome（无痕）"）
+    window_names: tuple[str, ...] = ()
 
     @property
     def content_chars(self) -> int:
@@ -326,6 +333,17 @@ def doc_url(elems: Sequence[Elem]) -> str | None:
     return doc_info(elems)[0]
 
 
+def window_names(elems: Sequence[Elem]) -> tuple[str, ...]:
+    """窗口根元素（elems[0]）和它的直接子元素的名字，去空白、去重、保持顺序。"""
+    out: list[str] = []
+    for i, e in enumerate(elems):
+        if i == 0 or e.parent == 0:
+            n = clean_text(e.name)
+            if n and n not in out:
+                out.append(n)
+    return tuple(out)
+
+
 def outermost_tp(elems: Sequence[Elem]) -> list[int]:
     """只取最外层的 TextPattern 元素，避免嵌套重复（文档里的段落也常带 TextPattern）。"""
     out = []
@@ -506,10 +524,11 @@ def _win32() -> _Win32:
 
 class Backend(Protocol):
     def open(self) -> object: ...
-    # 返回 (行, 元素数[, chrome_bottom[, doc_url[, doc_name]]])：后几项可省（测试用的后端只给前两项）
+    # 返回 (行, 元素数[, chrome_bottom[, doc_url[, doc_name[, window_names]]]])：后几项可省（测试用的后端只给前两项）
     def read(self, ctx: object, hwnd: int, win_rect: Rect, cancel: threading.Event) -> tuple: ...
     def close(self, ctx: object) -> None: ...
-    # 可选：def doc(self, ctx, hwnd) -> (doc_url, doc_name[, 上沿 y])，读整棵树之前先单独找网址（没有这个方法就不找）
+    # 可选：def doc(self, ctx, hwnd) -> (doc_url, doc_name[, 上沿 y[, window_names]])，读整棵树之前先单独找网址
+    #（没有这个方法就不找）
 
 
 class Cancelled(Exception):
@@ -566,6 +585,8 @@ class _ComCtx:
     uia: object
     doc_cond: object = None   # ControlType == Document
     doc_cr: object = None     # 只取 Value / 名字 / 是否密码框
+    name_cr: object = None    # 只取名字（窗口根下面的直接子元素）
+    child_cond: object = None  # 控件视图里的元素（直接子元素用）
 
 
 def _str(v) -> str:
@@ -609,7 +630,10 @@ class ComBackend:
         for pid in (P_RECT, P_NAME, P_PASSWORD, P_VALUE):
             doc_cr.AddProperty(pid)
         doc_cond = auto.CreatePropertyCondition(P_CTYPE, CT_DOCUMENT)
-        return _ComCtx(auto, cr, uia, doc_cond, doc_cr)
+        name_cr = auto.CreateCacheRequest()
+        name_cr.AddProperty(P_NAME)
+        name_cr.TreeFilter = auto.ControlViewCondition
+        return _ComCtx(auto, cr, uia, doc_cond, doc_cr, name_cr, auto.ControlViewCondition)
 
     def close(self, ctx: _ComCtx) -> None:
         import comtypes
@@ -621,11 +645,12 @@ class ComBackend:
         uninit = getattr(comtypes, "CoUninitialize", None) or comtypes._CoUninitialize
         uninit()
 
-    def doc(self, ctx: _ComCtx, hwnd: int) -> tuple[str | None, str | None, int | None]:
+    def doc(self, ctx: _ComCtx, hwnd: int) -> tuple[str | None, str | None, int | None, tuple[str, ...]]:
         """所有 Document 元素里最大的那个的 (网址, 名字, 上沿屏幕 y)，规则和 doc_info 一样：上沿就是浏览器标签页条 /
         地址栏的下沿（整棵树超时、算不出 chrome_bottom 时 OCR 照样不收界面条里的字）。一次 FindAllBuildCache，只取四个属性
         （实测后台 Edge 40–260 ms，而整棵树要 0.6–3 秒）。不能只取第一个：Edge 树里排在前面的可能是藏起来的
-        edge:// 小对话框，页面会被当成内部页。"""
+        edge:// 小对话框，页面会被当成内部页。
+        第四项：窗口根元素和直接子元素的名字（window_names；无痕窗口的标记可能只在这里），整棵树超时也有。"""
         root = ctx.auto.ElementFromHandle(hwnd)
         arr = root.FindAllBuildCache(TREE_SCOPE_DESCENDANTS, ctx.doc_cond, ctx.doc_cr)
         elems = []
@@ -637,10 +662,19 @@ class ComBackend:
                               rect=(int(r.left), int(r.top), int(r.right), int(r.bottom))))
         url, name = doc_info(elems)
         top = next((e.rect[1] for e in elems if url and url_value(e.value) == url and _area(e.rect) > 0), None)
-        return url, name, top
+        names: list[Elem] = []
+        try:  # 取不到名字不影响网址
+            names.append(Elem(parent=-1, ct="Window", name=_str(root.CurrentName)))
+            if ctx.name_cr is not None:
+                kids = root.FindAllBuildCache(TREE_SCOPE_CHILDREN, ctx.child_cond, ctx.name_cr)
+                for i in range(kids.Length if kids else 0):
+                    names.append(Elem(parent=0, ct="", name=_str(kids.GetElement(i).CachedName)))
+        except Exception:  # noqa: BLE001
+            pass
+        return url, name, top, window_names(names)
 
     def read(self, ctx: _ComCtx, hwnd: int, win_rect: Rect,
-             cancel: threading.Event) -> tuple[list[UiaLine], int, int | None, str | None, str | None]:
+             cancel: threading.Event) -> tuple[list[UiaLine], int, int | None, str | None, str | None, tuple[str, ...]]:
         root = ctx.auto.ElementFromHandle(hwnd)
         cached = root.BuildUpdatedCache(ctx.cr)
         if cancel.is_set():
@@ -663,7 +697,8 @@ class ComBackend:
             tps.append(tp)
         handles.clear()
         url, name = doc_info(elems)
-        return collect_lines(elems, tps, win_rect), len(elems), chrome_bottom(elems, win_rect), url, name
+        return (collect_lines(elems, tps, win_rect), len(elems), chrome_bottom(elems, win_rect), url, name,
+                window_names(elems))
 
     def _walk(self, cached, cancel: threading.Event) -> tuple[list[Elem], list]:
         elems: list[Elem] = []
@@ -734,6 +769,7 @@ class _Job:
     chrome: int | None = None
     doc_url: str | None = None
     doc_name: str | None = None
+    window_names: tuple[str, ...] = ()
     error: str | None = None
 
 
@@ -779,6 +815,7 @@ class _Worker(threading.Thread):
                             got = find_doc(ctx, job.hwnd)
                             job.doc_url, job.doc_name = got[0], got[1]
                             job.chrome = got[2] if len(got) > 2 else None
+                            job.window_names = tuple(got[3]) if len(got) > 3 else ()
                         except Exception:  # noqa: BLE001 - 找不到就等整棵树里的
                             pass
                     try:
@@ -791,6 +828,8 @@ class _Worker(threading.Thread):
                         if len(got) > 3 and got[3]:  # 整棵树里最大的那个 Document 为准
                             job.doc_url = got[3]
                             job.doc_name = got[4] if len(got) > 4 else None
+                        if len(got) > 5 and got[5]:  # 两边的名字合起来（无痕标记在哪一边都算）
+                            job.window_names = tuple(dict.fromkeys((*job.window_names, *got[5])))
                     except Cancelled:
                         job.error = "cancelled"
                     except Exception as exc:
@@ -901,14 +940,15 @@ class UiaReader:
             self._worker = None
             # 正文来不及读完，但读字前先找到的网址照样给（大页面：网址 + 调用方 OCR）
             return UiaResult("timeout", [], False, _ms(t0), window_rect=rect, doc_url=job.doc_url,
-                             doc_name=job.doc_name, chrome_bottom=job.chrome)
+                             doc_name=job.doc_name, chrome_bottom=job.chrome, window_names=job.window_names)
         if job.error is not None:
             return UiaResult("error", [], False, _ms(t0), window_rect=rect, error=job.error, doc_url=job.doc_url,
-                             doc_name=job.doc_name)
+                             doc_name=job.doc_name, window_names=job.window_names)
         lines = job.lines or []
         usable = content_chars(lines) >= self.cfg.min_content_chars
         return UiaResult("ok" if lines else "empty", lines, usable, _ms(t0), job.count, rect,
-                         chrome_bottom=job.chrome, doc_url=job.doc_url, doc_name=job.doc_name)
+                         chrome_bottom=job.chrome, doc_url=job.doc_url, doc_name=job.doc_name,
+                         window_names=job.window_names)
 
     def _remember(self, hwnd: int) -> None:
         self._seen[hwnd] = None
