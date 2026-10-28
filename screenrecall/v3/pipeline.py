@@ -10,7 +10,8 @@
      只在根下面的 Pane 名字里写"（无痕）"）；读字时窗口标题和拍的时候不一样（stale_page：拍完换了页面，图和字对不上）；
      source.url_skip_reason(...) 不为 None（浏览器内部页、新标签页、ScreenRecall 自己的网页、不录网站）；
      "带网址的软件"（默认名单 cfg.default_record_apps，加上库里出过网址出处的软件；只是数据）这一拍没读到网址
-     → skip_no_url：认不出是不是内部页、自己的网页、不录网站，宁可不存。别的软件的 Document 值不是 http(s) 时
+     → skip_no_url：认不出是不是内部页、自己的网页、不录网站，宁可不存（同一窗口上一拍存下的就是这个标题的网址出处时
+     沿用那个网址，_known_url；查找栏拿着焦点时读不到网址）。别的软件的 Document 值不是 http(s) 时
      （app://、程序目录里的 file:///…）不当网址（_page_url），按 软件 + 标题 记；
   3. label = source.label_source(app, title, url, 网页标题)；网页没给标题（浏览器的 PDF 查看器）时用窗口标题去掉
      这个软件的尾巴（_page_name，从有网页标题的拍里学）；black = shots.is_black(frame.bgr)；
@@ -110,6 +111,7 @@ class Pipeline:
         self._bg: dict[int, _Bg] = {}
         self._greys: dict[tuple[str, str | None], int] = {}
         self._last_by_hwnd: dict[int, tuple[int, str]] = {}   # 窗口 → (最近一次拍的出处, 当时的标题)
+        self._url_by_hwnd: dict[int, tuple[str, str]] = {}    # 窗口 → (标题, 网址)：最近一次存下的网址出处（_known_url）
         self._sigs: OrderedDict[int, object] = OrderedDict()  # 出处 → 上一拍的小块指纹
         self._url_apps: set[str] | None = None                # 带网址的软件（进程名小写）
         self._title_tails: dict[str, str] = {}                # 软件 → 窗口标题里加在网页标题后面的尾巴（_page_name）
@@ -350,7 +352,7 @@ class Pipeline:
         t = ev.t_ms
 
         def want_ocr(part) -> bool:  # 这一拍反正不存（跳过、本地文件）就别花一秒 OCR
-            url = self._page_url(ev.app, part.url)
+            url = self._known_url(ev, self._page_url(ev.app, part.url), count=False)
             if self._skip_reason(ev, url, part.window_title, getattr(part, "window_names", ())) is not None:
                 return False
             return api.label_source(ev.app, ev.title, url).kind != KIND_FILE
@@ -359,16 +361,23 @@ class Pipeline:
         res = self.reader.read_text(ev.hwnd, ev.frame, want_ocr=want_ocr)
         self.timing["read_ms"] += (time.perf_counter() - t0) * 1000
         self.timing["snaps"] += 1
-        url = self._page_url(ev.app, res.url)
+        url = self._known_url(ev, self._page_url(ev.app, res.url))
         skip = self._skip_reason(ev, url, res.window_title, getattr(res, "window_names", ()))
         if skip is not None:
             self._count("skip_" + skip)
             if skip != "stale_page":  # 换了页面不是"这个页面要跳过"：下一拍（新页面画完停下）照常
                 self._remember(ev.hwnd, None, ev.title)
+                self._url_by_hwnd.pop(ev.hwnd, None)
             return
         label = api.label_source(ev.app, ev.title, url, self._page_name(ev.app, ev.title, url, res.page_title))
         if label.kind == KIND_URL:
             self._url_apps_set().add((ev.app or "").lower())
+            self._url_by_hwnd.pop(ev.hwnd, None)
+            self._url_by_hwnd[ev.hwnd] = (ev.title, url)
+            if len(self._url_by_hwnd) > MAX_WINDOWS_REMEMBERED:
+                self._url_by_hwnd.pop(next(iter(self._url_by_hwnd)))
+        else:
+            self._url_by_hwnd.pop(ev.hwnd, None)
         black = bool(api.is_black(ev.frame.bgr))
         source_id, has_shot = store.upsert_source(label, t)
 
@@ -449,6 +458,19 @@ class Pipeline:
         if tail and self.api.url_scheme(url) in ("http", "https") and t.endswith(tail) and t[:-len(tail)].strip():
             return t[:-len(tail)]
         return page_title
+
+    def _known_url(self, ev: SnapEvent, url: str | None, *, count: bool = True) -> str | None:
+        """带网址的软件这一拍没读到网址（查找栏、地址栏这类小框拿着焦点时 UIA 找不到网页的 Document），
+        但同一窗口上一拍存下的就是这个标题的网页：沿用那一拍的网址（还会照常过内部页 / 自己的网页 / 不录网站的判断），
+        不整拍丢掉。标题变了、上一拍跳过了或不是网址出处时不沿用。"""
+        if url or not self._needs_url(ev.app):
+            return url
+        last = self._url_by_hwnd.get(ev.hwnd)
+        if last is None or last[0] != ev.title:
+            return url
+        if count:
+            self._count("url_reused")
+        return last[1]
 
     def _page_url(self, app: str, url: str | None) -> str | None:
         """不带网址的软件（聊天、会议这类用网页技术画界面的程序）的 Document 值是 app:// 或

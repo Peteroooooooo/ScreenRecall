@@ -68,8 +68,9 @@ class SnapTrigger:
         self._change_start = None
         self._last_change = t_ms
 
-    def feed(self, frame, t_ms: int) -> None:
-        """新的一帧。有变化（非一直在变的小块）→ 记变化起点 / 最后变化时间，累积 changed 框。"""
+    def feed(self, frame, t_ms: int, *, typing: bool = False) -> None:
+        """新的一帧。有变化（非一直在变的小块）→ 记变化起点 / 最后变化时间，累积 changed 框。
+        typing=True（这个页面刚打过字）时不学"一直在变的小块"：不然正在打的那一行会被当成一直在变、改动被忽略。"""
         prev, self.latest = self.latest, frame
         self.frames += 1
         if prev is None or prev.shape != frame.shape:
@@ -84,7 +85,8 @@ class SnapTrigger:
         vol = self._vol.volatile(t_ms)
         if vol is not None and vol.shape == tiles.shape and vol.mean() <= VOLATILE_MAX_SHARE:
             eff = tiles & ~vol
-        self._vol.look(tiles, t_ms)
+        if not typing:
+            self._vol.look(tiles, t_ms)
         if not eff.any():
             return
         h, w = frame.shape

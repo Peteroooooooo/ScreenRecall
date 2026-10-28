@@ -193,7 +193,9 @@ class Queries:
         return self._disk_low
 
     def status(self, now_ms: int | None = None) -> dict:
-        """Status：state = stopped（心跳超过 10 秒或已停）/ paused / locked / recording。"""
+        """Status：state = stopped（心跳超过 10 秒或已停）/ paused / locked / recording。
+        暂停只看 control.paused_until_ms（录制端的暂停也只由它决定）：刚点继续、录制端心跳还写着 'paused' 的
+        那一两秒按 recording 算，按钮马上翻过来。"""
         now = self.clock() if now_ms is None else int(now_ms)
         ctl = self.control()
         hb = ctl.get("heartbeat_ms")
@@ -202,7 +204,7 @@ class Queries:
         paused = until is not None and until > now
         if not alive:
             state = "stopped"
-        elif paused or ctl.get("recorder_state") == "paused":
+        elif paused:
             state = "paused"
         elif ctl.get("recorder_state") == "locked":
             state = "locked"

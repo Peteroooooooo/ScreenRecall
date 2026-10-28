@@ -192,6 +192,12 @@ def test_status_recorder_alive_and_states(env):
     assert s["current"] is None
     st.set_control(paused_until_ms=PAUSE_FOREVER_MS)
     assert q.status(T0 + 1000)["paused_forever"] is True
+    st.heartbeat(recorder_state="paused", current_app=None, current_title=None)
+    st.set_control(paused_until_ms=None)  # 刚点继续：录制端心跳还写着 paused，但按 recording 算
+    s = q.status(T0 + 1000)
+    assert s["state"] == "recording" and s["paused_until_ms"] is None and s["current"] is None
+    st.set_control(paused_until_ms=T0 - 1)  # 暂停到点了也一样
+    assert q.status(T0 + 1000)["state"] == "recording"
     st.set_control(paused_until_ms=None)
     st.heartbeat(recorder_state="locked")
     assert q.status(T0 + 1000)["state"] == "locked"
