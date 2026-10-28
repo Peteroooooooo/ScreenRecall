@@ -6,12 +6,14 @@
 - SnapEvent：
   1. res = reader.read_text(hwnd, frame, want_ocr=…)：系统文字读完、要 OCR 之前先按 2 判一次，反正不存
      （或是本地文件、不存字）就不 OCR；
-  2. 跳过（_skip_reason），什么都不写：读字时窗口标题和拍的时候不一样（stale_page：拍完换了页面，图和字对不上）；
+  2. 跳过（_skip_reason），什么都不写：辅助功能里的窗口名字带无痕关键词（private：Chrome 的无痕窗口标题里不写"无痕"，
+     只在根下面的 Pane 名字里写"（无痕）"）；读字时窗口标题和拍的时候不一样（stale_page：拍完换了页面，图和字对不上）；
      source.url_skip_reason(...) 不为 None（浏览器内部页、新标签页、ScreenRecall 自己的网页、不录网站）；
      "带网址的软件"（默认名单 cfg.default_record_apps，加上库里出过网址出处的软件；只是数据）这一拍没读到网址
      → skip_no_url：认不出是不是内部页、自己的网页、不录网站，宁可不存。别的软件的 Document 值不是 http(s) 时
      （app://、程序目录里的 file:///…）不当网址（_page_url），按 软件 + 标题 记；
-  3. label = source.label_source(app, title, url, 网页标题)；black = shots.is_black(frame.bgr)；
+  3. label = source.label_source(app, title, url, 网页标题)；网页没给标题（浏览器的 PDF 查看器）时用窗口标题去掉
+     这个软件的尾巴（_page_name，从有网页标题的拍里学）；black = shots.is_black(frame.bgr)；
   4. upsert_source；前台：出处和当前条目的不一样（第一次拍、或同一窗口换了网址）→ 离开旧的、visit_enter(切进来时间或 t)；
      后台：visit_enter(background=True)；visit_touch；
   5. 不是本地文件、不是全黑 → record_lines；
@@ -59,6 +61,7 @@ def _apis():
 
     return SimpleNamespace(url_skip_reason=source.url_skip_reason, label_source=source.label_source,
                            clean_title=source.clean_title, url_scheme=source.url_scheme,
+                           is_private_title=source.is_private_title,
                            is_black=shots.is_black, encode_jpeg=shots.encode_jpeg, shot_boxes=shots.shot_boxes,
                            uncovered_change_ratio=shots.uncovered_change_ratio, tile_signature=shots.tile_signature)
 
@@ -109,6 +112,7 @@ class Pipeline:
         self._last_by_hwnd: dict[int, tuple[int, str]] = {}   # 窗口 → (最近一次拍的出处, 当时的标题)
         self._sigs: OrderedDict[int, object] = OrderedDict()  # 出处 → 上一拍的小块指纹
         self._url_apps: set[str] | None = None                # 带网址的软件（进程名小写）
+        self._title_tails: dict[str, str] = {}                # 软件 → 窗口标题里加在网页标题后面的尾巴（_page_name）
         self._lock = threading.RLock()
         self._thread: threading.Thread | None = None
         self._stop_evt = threading.Event()
@@ -347,7 +351,7 @@ class Pipeline:
 
         def want_ocr(part) -> bool:  # 这一拍反正不存（跳过、本地文件）就别花一秒 OCR
             url = self._page_url(ev.app, part.url)
-            if self._skip_reason(ev, url, part.window_title) is not None:
+            if self._skip_reason(ev, url, part.window_title, getattr(part, "window_names", ())) is not None:
                 return False
             return api.label_source(ev.app, ev.title, url).kind != KIND_FILE
 
@@ -356,13 +360,13 @@ class Pipeline:
         self.timing["read_ms"] += (time.perf_counter() - t0) * 1000
         self.timing["snaps"] += 1
         url = self._page_url(ev.app, res.url)
-        skip = self._skip_reason(ev, url, res.window_title)
+        skip = self._skip_reason(ev, url, res.window_title, getattr(res, "window_names", ()))
         if skip is not None:
             self._count("skip_" + skip)
             if skip != "stale_page":  # 换了页面不是"这个页面要跳过"：下一拍（新页面画完停下）照常
                 self._remember(ev.hwnd, None, ev.title)
             return
-        label = api.label_source(ev.app, ev.title, url, res.page_title)
+        label = api.label_source(ev.app, ev.title, url, self._page_name(ev.app, ev.title, url, res.page_title))
         if label.kind == KIND_URL:
             self._url_apps_set().add((ev.app or "").lower())
         black = bool(api.is_black(ev.frame.bgr))
@@ -428,6 +432,24 @@ class Pipeline:
                 elif d == SHOT_VISIT:
                     self.policy.saved_visit(visit_id, sid, new, t)
 
+    def _page_name(self, app: str, title: str, url: str | None, page_title: str | None) -> str | None:
+        """网页自己的标题。有 Document 名字时就是它，顺便记下这个软件加在窗口标题后面的尾巴
+        （窗口标题 = 网页标题 + 尾巴，如 " - Google Chrome"、" - 个人 - Microsoft Edge"）；
+        http(s) 网页没有 Document 名字（浏览器的 PDF 查看器）时用窗口标题去掉学到的尾巴，学不到时 None
+        （label_source 退回窗口标题）。尾巴是从这个软件自己的拍里学的数据，不按软件名写规则。"""
+        clean = self.api.clean_title
+        t, p = clean(title or ""), clean(page_title or "")
+        key = (app or "").lower()
+        if p:
+            tail = t[len(p):]
+            if t.startswith(p) and tail[:1].isspace() and tail.strip():
+                self._title_tails[key] = tail
+            return page_title
+        tail = self._title_tails.get(key)
+        if tail and self.api.url_scheme(url) in ("http", "https") and t.endswith(tail) and t[:-len(tail)].strip():
+            return t[:-len(tail)]
+        return page_title
+
     def _page_url(self, app: str, url: str | None) -> str | None:
         """不带网址的软件（聊天、会议这类用网页技术画界面的程序）的 Document 值是 app:// 或
         file:///…/index.html 这类程序自己的地址，不是在看的网页 / 文件：不当网址（否则会被当成浏览器内部页跳过、
@@ -436,12 +458,18 @@ class Pipeline:
             return None
         return url
 
-    def _skip_reason(self, ev: SnapEvent, url: str | None, window_title: str | None) -> str | None:
+    def _skip_reason(self, ev: SnapEvent, url: str | None, window_title: str | None,
+                     window_names: Sequence[str] = ()) -> str | None:
         """这一拍不存的原因，没有时 None：
+        'private'：辅助功能里的窗口名字（window_names）带无痕关键词（cfg.private_title_keywords）：有的浏览器的
+        无痕窗口只在这里写着"（无痕）"，窗口标题里没有，捕获循环按标题认不出来；
         'stale_page'：读字时窗口标题和拍的时候不一样（拍完到读字之间换了页面：图是旧页面、字是新页面，对不上）；
         'internal' / 'own' / 'excluded'：source.url_skip_reason；
         'no_url'：带网址的软件这一拍读不到网址（认不出是不是内部页、自己的网页、不录网站，宁可不存）。"""
         api, cfg = self.api, self.cfg
+        private = getattr(api, "is_private_title", None)
+        if private is not None and any(private(n, cfg.private_title_keywords) for n in window_names or ()):
+            return "private"
         if window_title is not None and api.clean_title(window_title) != api.clean_title(ev.title):
             return "stale_page"
         skip = api.url_skip_reason(url, schemes=cfg.record_url_schemes, own_origins=self._own(ev.t_ms),

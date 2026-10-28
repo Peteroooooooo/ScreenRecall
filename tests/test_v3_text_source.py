@@ -119,6 +119,21 @@ def test_url_label_prefers_page_title():
     assert S.label_source("chat.exe", "群聊", None, "不会用到").title == "群聊"
 
 
+def test_file_label_uses_document_name_or_file_name():
+    """本地文件：有 Document 名字用它；没有（浏览器的 PDF 查看器）用文件名；标题里的路径也只留文件名。
+    窗口标题里浏览器 / 编辑器加的尾巴都不进出处名字。"""
+    win = "合成 报告.pdf - 个人 - Microsoft\u200b Edge"
+    f = S.label_source("msedge.exe", win, "file:///C:/Docs/%E5%90%88%E6%88%90%20%E6%8A%A5%E5%91%8A.pdf", None)
+    assert f.kind == KIND_FILE and f.title == "合成 报告.pdf" and f.path == "C:\\Docs\\合成 报告.pdf"
+    assert S.label_source("msedge.exe", win, "file:///C:/Docs/a.pdf", "  ").title == "a.pdf"
+    h = S.label_source("msedge.exe", "合成页 - 个人 - Microsoft Edge", "file:///C:/Docs/x.html", "合成页")
+    assert h.title == "合成页"
+    t = S.label_source("Editor.exe", "*c:\\Docs\\X.PDF - 合成编辑器", None)
+    assert t.kind == KIND_FILE and t.title == "X.PDF"
+    u = S.label_source("viewer.exe", "\\\\server\\share\\dir\\y.txt | 合成阅读器", None)
+    assert u.title == "y.txt"
+
+
 def test_internal_prefixes_skip_new_tab_pages():
     kw = dict(schemes=("http", "https", "file"), own_origins=(), excluded_hosts=())
     pre = ("https://ntp.msn.com/edge/ntp",)
