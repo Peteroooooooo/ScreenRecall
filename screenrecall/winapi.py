@@ -316,6 +316,112 @@ def list_windows() -> list[WindowInfo]:
     return out
 
 
+class _ICONINFO(ctypes.Structure):
+    _fields_ = [("fIcon", _BOOL), ("xHotspot", _DWORD), ("yHotspot", _DWORD),
+                ("hbmMask", wintypes.HBITMAP), ("hbmColor", wintypes.HBITMAP)]
+
+
+_PrivateExtractIconsW = _fn(_user32, "PrivateExtractIconsW", _UINT, wintypes.LPCWSTR, _INT, _INT, _INT,
+                            ctypes.POINTER(wintypes.HICON), ctypes.c_void_p, _UINT, _UINT)
+_GetIconInfo = _fn(_user32, "GetIconInfo", _BOOL, wintypes.HICON, ctypes.POINTER(_ICONINFO))
+_DestroyIcon = _fn(_user32, "DestroyIcon", _BOOL, wintypes.HICON)
+
+
+def _bitmap_bgra(dc, bmp, size: int) -> np.ndarray | None:
+    bmi = _BITMAPINFO()
+    bmi.bmiHeader.biSize = ctypes.sizeof(_BITMAPINFOHEADER)
+    bmi.bmiHeader.biWidth, bmi.bmiHeader.biHeight = size, -size
+    bmi.bmiHeader.biPlanes, bmi.bmiHeader.biBitCount, bmi.bmiHeader.biCompression = 1, 32, _BI_RGB
+    buf = np.zeros((size, size, 4), dtype=np.uint8)
+    if _GetDIBits(dc, bmp, 0, size, buf.ctypes.data, ctypes.byref(bmi), _DIB_RGB_COLORS) != size:
+        return None
+    return buf
+
+
+def exe_icon_rgba(path: str, size: int = 64) -> np.ndarray | None:
+    """exe 自带的图标（size×size，RGBA）；取不到（没有图标、商店应用的目录没权限）时 None。"""
+    hicon = wintypes.HICON()
+    if _PrivateExtractIconsW(path, 0, size, size, ctypes.byref(hicon), None, 1, 0) < 1 or not hicon:
+        return None
+    info = _ICONINFO()
+    dc = _GetDC(None)
+    try:
+        if not _GetIconInfo(hicon, ctypes.byref(info)) or not info.hbmColor:
+            return None
+        color = _bitmap_bgra(dc, info.hbmColor, size)
+        if color is None:
+            return None
+        rgba = color[:, :, [2, 1, 0, 3]].copy()
+        if not rgba[:, :, 3].any():  # 老图标没有透明通道：按掩码（白 = 透明）
+            mask = _bitmap_bgra(dc, info.hbmMask, size) if info.hbmMask else None
+            rgba[:, :, 3] = 255 if mask is None else np.where(mask[:, :, 0] > 0, 0, 255)
+        return rgba
+    finally:
+        _ReleaseDC(None, dc)
+        for b in (info.hbmColor, info.hbmMask):
+            if b:
+                _DeleteObject(b)
+        _DestroyIcon(hicon)
+
+
+def registered_exe_path(process: str) -> str | None:
+    """App Paths 里登记的这个 exe 的完整路径；没登记时 None。"""
+    import winreg
+
+    name = os.path.basename(process or "")
+    if not name:
+        return None
+    sub = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" + name
+    for root, view in ((winreg.HKEY_CURRENT_USER, 0), (winreg.HKEY_LOCAL_MACHINE, winreg.KEY_WOW64_64KEY),
+                       (winreg.HKEY_LOCAL_MACHINE, winreg.KEY_WOW64_32KEY)):
+        try:
+            with winreg.OpenKey(root, sub, 0, winreg.KEY_READ | view) as k:
+                v = str(winreg.QueryValueEx(k, "")[0]).strip().strip('"')
+                if v and os.path.isfile(os.path.expandvars(v)):
+                    return os.path.expandvars(v)
+        except OSError:
+            continue
+    return None
+
+
+def installed_exe_paths() -> dict[str, str]:
+    """"已安装的程序"（Uninstall 表）里每个软件的图标 exe：进程名（小写）→ 完整路径。
+    很多软件（微信、QQ）不在 App Paths 里登记，但这里的 DisplayIcon 指向它的主程序。"""
+    import winreg
+
+    out: dict[str, str] = {}
+    sub = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
+    for root, view in ((winreg.HKEY_CURRENT_USER, 0), (winreg.HKEY_LOCAL_MACHINE, winreg.KEY_WOW64_64KEY),
+                       (winreg.HKEY_LOCAL_MACHINE, winreg.KEY_WOW64_32KEY)):
+        try:
+            base = winreg.OpenKey(root, sub, 0, winreg.KEY_READ | view)
+        except OSError:
+            continue
+        with base:
+            for i in range(winreg.QueryInfoKey(base)[0]):
+                try:
+                    with winreg.OpenKey(base, winreg.EnumKey(base, i)) as k:
+                        v = str(winreg.QueryValueEx(k, "DisplayIcon")[0])
+                except OSError:
+                    continue
+                p = os.path.expandvars(v.split(",")[0].strip().strip('"'))
+                if p.lower().endswith(".exe") and os.path.isfile(p):
+                    out.setdefault(os.path.basename(p).lower(), p)
+    return out
+
+
+def running_exe_paths() -> dict[str, str]:
+    """现在开着窗口的软件：进程名（小写）→ exe 完整路径。"""
+    out: dict[str, str] = {}
+    for w in list_windows():
+        low = w.process.lower()
+        if low not in out:
+            p = process_path(w.pid)
+            if p:
+                out[low] = p
+    return out
+
+
 def app_installed(process: str) -> bool:
     """这个 exe 在"App Paths"里登记过（安装程序一般都写；名单页据此把没装的默认浏览器收起来），或者正开着窗口。"""
     import winreg
