@@ -425,8 +425,8 @@ class Queries:
         # {"apps": [{"process", "tier", "added_ms"}], "unlisted": [{"app", "last_ms", "total_ms"}…最近 30 天 grey_spans 里的，按 last_ms],
         #  "excludes": [...]}
     # ---- 给空闲整理用 ----
-    def unnamed_sources(self, limit: int = 20) -> list[dict]          # [{"source_id", "kind", "app", "title", "url", "path", "sample": [最多 20 行原文]}]
-    def hours_without_line(self, before_ms: int, limit: int = 24) -> list[int]   # 有条目、还没写 hour_lines 的本机整点（只要 < before_ms 的完整小时）
+    def unnamed_sources(self, limit: int = 20, stale_before_ms: int = 0) -> list[dict]   # 没名字或名字是 stale_before_ms 以前起的：[{"source_id", "kind", "app", "title", "url", "path", "sample": [最多 20 行原文]}]
+    def hours_without_line(self, before_ms: int, limit: int = 24, stale_before_ms: int = 0) -> list[int]   # 有条目、还没写 hour_lines（或 stale_before_ms 以前写的）的本机整点（只要 < before_ms 的完整小时）
     def hour_digest(self, hour_ms: int) -> list[dict]                 # 这一小时里的条目 [{"name", "app", "dwell_ms", "new_lines", "copied"}]
     def lines_after(self, line_id: int, limit: int = 1000) -> list[tuple[int, str, int, int]]   # (line_id, text, last_seen_ms, 最近的 source_id)
 ```
@@ -540,8 +540,9 @@ class Worker:
         每一项之间看停止标记（stdin EOF / Ctrl+Break）；数据目录里 worker.lock 保证只有一个在跑。返回各步计数。日志 <home>/logs/idle-worker.log。"""
 
 # v3/names.py
-def name_sources(queries, store, llm, *, max_calls: int, stop) -> int    # 给 unnamed_sources 起 ≤ 12 字的名字（屏幕文字是不可信数据，提示词里注明）
-def hour_lines(queries, store, llm, *, before_ms: int, max_calls: int, stop) -> int  # 每个完整小时一句话
+def name_sources(queries, store, llm, *, max_calls: int, stop, lang="en", stale_before_ms=0, limit=14) -> int    # 给 unnamed_sources 用界面语言起 ≤ llm_name_max 的名字（汉字算 1、字母算 0.5，超了在词边界截；屏幕文字是不可信数据，提示词里注明）
+def hour_lines(queries, store, llm, *, before_ms: int, max_calls: int, stop, lang="en", stale_before_ms=0, limit=40) -> int  # 每个完整小时一句话
+def language(store, now_ms, *, override=None) -> tuple[str, int]  # (meta ui_lang，不知道用 "en"；换语言的时间，更早写的要重写)
 
 # v3/vectors.py（可选，最后做）
 class LineVectors:
@@ -661,7 +662,7 @@ Status        {state: "recording"|"paused"|"locked"|"stopped", paused_until_ms, 
 搜索结果多久内合成一条 `search_merge_ms=600000` · 截图留几天 `image_days=30`。
 另有：`default_record_apps`（默认名单 = 浏览器）、`private_title_keywords`、`record_url_schemes`、`max_background_windows`、`fps`、`title_settle_ms`、
 `uia_timeout_ms=1500`、`uia_max_nodes=5000`、`ocr_model`、`ocr_threads`、`ocr_models_dir`、`jpeg_quality=80`、`shot_max_width=1920`、
-`fallback_min_area=0.05`、`min_free_gb=5.0`、`clip_max_chars`、`idle_s`、`llm_names`、`llm_max_calls`、`vectors=true`、`semantic_min_score=0.60`、`semantic_min_chars=6`、`port`、`open_browser`、`tray`、`data_dir`。
+`fallback_min_area=0.05`、`min_free_gb=5.0`、`clip_max_chars`、`idle_s`、`llm_names`、`llm_max_calls`、`llm_name_max=14`、`llm_hour_max=40`、`vectors=true`、`semantic_min_score=0.60`、`semantic_min_chars=6`、`port`、`open_browser`、`tray`、`data_dir`。
 
 数据目录：`--data-dir` > `SCREENRECALL_V3_DATA_DIR` > `[v3] data_dir` > `<仓库>/data-v3`。库文件 `recall-v3.sqlite3`。测试用 `config.build({}, data_dir=tmp, home=tmp)`。
 

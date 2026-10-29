@@ -1,11 +1,12 @@
 """空闲整理进程：电脑空闲时由主进程启动（低优先级，stdin 接管道），做完一轮就退出。
 
-    python -m screenrecall.v3.worker --data-dir D --home H [--once] [--no-llm]
+    python -m screenrecall.v3.worker --data-dir D --home H [--once] [--no-llm] [--lang zh|en]
 
 按顺序做：
 1. 删过期截图：Store.expire_shots(现在 - image_days 天)；字一直留着；
 2. 可选：大模型起名字、每小时一句话（names）。cfg.llm_names 打开且 .env 配了大模型（LLM_BASE_URL / LLM_API_KEY /
    LLM_MODEL，读 <仓库>/.env 和 <home>/.env）才做，两步合计最多 cfg.llm_max_calls 次；没配就跳过（页面显示标题）；
+   用界面的语言写（meta 'ui_lang'，主进程按网页请求头记；--lang 可以直接指定），别的语言写的会重写；
 3. 文字向量（vectors，cfg.vectors 默认开；第一次把已有的行全补上）。
 v3 每次就做这一轮（要做的事很少）：做完退出码 0，主进程下次空闲再启动；--once 和 run(once=True) 保留给命令行和测试，
 效果相同。每一项之间看停止标记：stdin 读到 EOF（主进程发现用户回来了会关掉管道）或 Ctrl+Break / Ctrl+C，
@@ -126,16 +127,19 @@ class Worker:
     测试换成假的。use_llm=False 对应命令行 --no-llm。"""
 
     def __init__(self, cfg: V3Config, *, store=None, queries=None, llm_factory=None, encoder_factory=None,
-                 stop: StopFlag | None = None, clock: Callable[[], int] | None = None, use_llm: bool = True):
+                 stop: StopFlag | None = None, clock: Callable[[], int] | None = None, use_llm: bool = True,
+                 ui_lang: str | None = None):
         self.cfg = cfg
         self.store, self.queries = store, queries
         self.stop = stop or StopFlag()
         self.clock = clock or utc_ms
         self.use_llm = use_llm
+        self.ui_lang = ui_lang          # 命令行 --lang：当作界面换成了这种语言
         self._llm_factory = llm_factory or default_llm_factory(cfg, self.stop)
         self._encoder_factory = encoder_factory
         self._llm: _Counted | None = None
         self._llm_off = False
+        self._lang: tuple[str, int] | None = None
 
     # ---------------- 大模型 ----------------
 
@@ -157,6 +161,12 @@ class Worker:
     def _budget(self) -> int:
         return max(0, int(self.cfg.llm_max_calls) - (self._llm.calls if self._llm else 0))
 
+    def _language(self) -> tuple[str, int]:
+        """(这次用的语言, 这个时间以前写的名字 / 每小时一句话要重写)；一轮里只定一次。"""
+        if self._lang is None:
+            self._lang = names.language(self.store, self.clock(), override=self.ui_lang)
+        return self._lang
+
     # ---------------- 各步 ----------------
 
     def _expire(self) -> int:
@@ -166,14 +176,17 @@ class Worker:
         llm = self._client()
         if llm is None or self._budget() <= 0:
             return 0
-        return names.name_sources(self.queries, self.store, llm, max_calls=self._budget(), stop=self.stop)
+        lang, stale = self._language()
+        return names.name_sources(self.queries, self.store, llm, max_calls=self._budget(), stop=self.stop,
+                                  lang=lang, stale_before_ms=stale, limit=self.cfg.llm_name_max)
 
     def _hours(self) -> int:
         llm = self._client()
         if llm is None or self._budget() <= 0:
             return 0
+        lang, stale = self._language()
         return names.hour_lines(self.queries, self.store, llm, before_ms=self.clock(), max_calls=self._budget(),
-                                stop=self.stop)
+                                stop=self.stop, lang=lang, stale_before_ms=stale, limit=self.cfg.llm_hour_max)
 
     def _vectors(self) -> int:
         if not self.cfg.vectors:
@@ -276,6 +289,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--home", default=None, help="应用目录（默认 SCREENRECALL_HOME 或 %%LOCALAPPDATA%%\\ScreenRecall）")
     ap.add_argument("--once", action="store_true", help="只做一轮（v3 本来就只做一轮，保留给测试）")
     ap.add_argument("--no-llm", action="store_true", help="不调大模型（不起名字、不写每小时一句话）")
+    ap.add_argument("--lang", choices=names.LANGS, default=None,
+                    help="当作界面换成了这种语言（记进库里），按它起名字、写每小时一句话（别的语言写的会重写）")
     ap.add_argument("--log-level", default="INFO")
     args = ap.parse_args(argv)
     home = Path(args.home).resolve() if args.home else None
@@ -290,7 +305,7 @@ def main(argv: list[str] | None = None) -> int:
     watch_stop(stop)
     ensure_private_dir(cfg.data_dir)
     try:
-        report = Worker(cfg, stop=stop, use_llm=not args.no_llm).run(once=args.once)
+        report = Worker(cfg, stop=stop, use_llm=not args.no_llm, ui_lang=args.lang).run(once=args.once)
     except Exception:  # noqa: BLE001
         log.exception("空闲整理进程出错退出")
         return 1
