@@ -196,6 +196,7 @@ screenpipe 对照（读的是 screenpipe/screenpipe main 分支源码）：方�
 - 换了语言要重写：meta `llm_lang` / `llm_lang_ms` 记已有的名字和每小时一句话是哪种语言、从什么时候起（没有记录 = 旧版写的中文）。界面语言和它不一样时记下现在的时间，这个时间以前起的名字（`sources.name_ms`）和写的每小时一句话（`hour_lines.made_ms`）都算过期，`unnamed_sources` / `hours_without_line` 照样交给大模型重写，仍在 `llm_max_calls` 之内，没写完的下次空闲接着写；重写前页面还显示旧的，不清空。库结构不变，别的表不动。
 - 长度：一个全角字（汉字）算 1，英文字母、数字、半角符号算 0.5。`[v3] llm_name_max = 14`（中文 14 个字，英文约 28 个字母），`llm_hour_max = 40`（写进提示词；回答超过两倍才截）。超了在最后一个放得下的词 / 字后面截，去掉末尾标点加"…"，不把英文单词截成两半（只有第一个词就比上限长时才没办法）。设置页能看到这两个数。
 - 命令行：`python -m screenrecall.v3.worker --data-dir D --home H --lang en` 当作界面换成英文，马上按英文重写（演示数据用）。
+- 真实库副本上用真实大模型试（2 批名字 + 1 句）：只说"English name"时，屏幕上是中文的出处仍有一半回中文（"微信聊天列表"）；两种提示词都加一句"不管材料是什么语言，都用中文 / 英文写（专有名词可保留原文）"后 16 个名字全是英文（"WeChat Chats"、"kiro2api Account Pool"），中文提示词照样写中文（"Transformer 维基百科"）。旧名字里能看到原来按字数截断的毛病（"kiro2api账号池管"、"Lightsail代理架"）。
 
 测了什么
 - `pytest tests`：690 passed（新增 7 个：提示词按 meta 的语言、不知道用英文、换语言后旧的算过期、两种查询都拿到换语言的时间、长度算法、截在词边界、记界面语言只在变了时写）；前端 `npx vitest run`（42）、`npm run build` 通过（只加了设置页两个数的名字）。
