@@ -238,6 +238,16 @@ def test_timeline_day_and_range(client, env):
     assert client.get("/api/v3/timeline", params={"from_ms": 200}).status_code == 400
 
 
+def test_app_names_and_icons_on_timeline_entry_search_copied(client, env):
+    items = client.get("/api/v3/timeline", params={"day": "2026-10-28"}).json()["items"]
+    assert (items[0]["source"]["app_name"], items[0]["source"]["app_icon"]) == ("Microsoft Edge", True)
+    assert (items[1]["app_name"], items[1]["app_icon"]) == (None, False)  # 灰色行（Code.exe）
+    assert client.get("/api/v3/entries/1").json()["entry"]["source"]["app_name"] == "Microsoft Edge"
+    assert client.get("/api/v3/search", params={"q": "矩阵"}).json()["results"][0]["source"]["app_icon"] is True
+    assert client.get("/api/v3/copied").json()["items"][0]["app_name"] is None  # weixin.exe 取不到
+    assert client.get("/api/v3/sources/2").json()["source"]["app_icon"] is False
+
+
 def test_entry_and_source(client, env):
     r = client.get("/api/v3/entries/1")
     assert r.status_code == 200 and r.json()["entry"]["type"] == "entry" and r.json()["lines"][0]["new"] is True

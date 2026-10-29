@@ -76,6 +76,22 @@ describe("timeline", () => {
     expect(rowsEl[0].textContent).toContain("起");
   });
 
+  it("shows the app's own icon and name; drops the app name from the end of a window title", async () => {
+    mockFetch((c) => (c.path.startsWith("/api/v3/timeline") ? {
+      body: timeline({ items: [entry({ visit_id: 9, name: "main.py - 项目 - Visual Studio Code",
+        source: { ...entry().source, kind: "app_title", app: "Code.exe", url: null, app_name: "Visual Studio Code", app_icon: true } }),
+      grey({ span_id: 2, app: "WindowsTerminal.exe", app_name: "Windows Terminal", app_icon: true })] }),
+    } : null));
+    const { container } = renderAt("#/");
+    const list = await screen.findByRole("list", { name: LIST });
+    const card = topRows(list).find((r) => r.textContent?.includes("main.py"))!;
+    expect(card.textContent).toContain("main.py - 项目");
+    expect(card.textContent).not.toContain("项目 - Visual Studio Code");
+    expect(card.textContent).toContain("Visual Studio Code");
+    expect(container.querySelector(`img[src="/api/v3/apps/icon?process=Code.exe"]`)).toBeTruthy();
+    expect(screen.getByTestId("grey-row").textContent).toContain("在用没录的软件：Windows Terminal");
+  });
+
   it("an entry named by a program path shows the app name instead", async () => {
     mockFetch((c) => (c.path.startsWith("/api/v3/timeline") ? {
       body: timeline({ items: [entry({ visit_id: 8, name: "C:\\Program Files\\x\\pythonw.exe",
