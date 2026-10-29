@@ -135,7 +135,6 @@ function ResultCard({ r, i, onShot }: { r: SearchResult; i: number; onShot: (sho
           </ul>
         )}
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-          {r.match.map((m) => <span key={m} className="sr-tag">{t(`match.${m}`)}</span>)}
           {r.more_hits > 0 && <span className="text-[12.5px] text-faint">{t("search.more", { n: r.more_hits })}</span>}
           <span className="flex-1" />
           {r.visit_id != null && <a className="sr-btn sr-btn-line sr-btn-sm" href={hrefOf(`/entry/${r.visit_id}`)}>{t("search.openEntry")}</a>}

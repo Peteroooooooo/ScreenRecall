@@ -137,6 +137,8 @@
   input, select, button, textarea { font: inherit; color: inherit; }
   summary { list-style: none; }
   summary::-webkit-details-marker { display: none; }
+  summary::before { content: "▸"; display: inline-block; width: 1.1em; color: var(--graphite); transition: transform .15s; }
+  details[open] > summary::before { transform: rotate(90deg); }
 }
 
 @layer components {

@@ -1,5 +1,5 @@
-// 设置：能调的数字（只读，写明在 config 的 [v3] 里改）、大模型有没有配（不显示密钥和地址）、Agent 开关 + 连接说明、
-// 语言与外观、开机自启、数据目录、删最近 N 分钟。
+// 设置：语言与外观、开机自启、Agent（连上了没有 + 一键连接）、删最近 N 分钟；
+// "高级（开发用）"里收着大模型有没有配、能调的数字（只读，在 config 的 [v3] 里改）、数据目录。
 import { useState, type ReactNode } from "react";
 import { Check, Trash2 } from "lucide-react";
 import { api } from "../api";
@@ -39,18 +39,6 @@ export default function SettingsPage() {
         st.error ? <LoadError text={t("set.loadFail", { e: errText(st.error, t("common.offline")) })} onRetry={() => st.reload()} /> : <Skeleton rows={4} />
       ) : (
         <div className="space-y-4">
-          <Card title={t("set.llm")} id="llm-h">
-            <div className="flex flex-wrap items-center gap-2">
-              {s.llm.configured ? <span className="sr-tag sr-tag-ok"><Check size={13} aria-hidden />{t("set.llmOk")}</span>
-                : <span className="sr-tag sr-tag-warn">{t("set.llmNo")}</span>}
-              {s.llm.model && <span>{t("set.llmModel", { x: s.llm.model })}</span>}
-            </div>
-            <p className="mt-1.5 text-[13px] text-graphite">{t(s.llm.configured ? "set.llmNote" : "set.llmNoNote")}</p>
-          </Card>
-
-          <AgentConnect enabled={s.agent_enabled} saving={st.saving}
-            onToggle={(v) => void st.save({ agent_enabled: v }, v ? t("agent.enabled") : t("agent.disabled"))} />
-
           <Card title={t("set.look")} id="look-h">
             <Row first>
               <b id="lbl-lang">{t("lang.label")}</b>
@@ -70,7 +58,21 @@ export default function SettingsPage() {
             </Row>
           </Card>
 
+          <AgentConnect enabled={s.agent_enabled} saving={st.saving}
+            onToggle={(v) => void st.save({ agent_enabled: v }, v ? t("agent.enabled") : t("agent.disabled"))} />
+
           <DeleteCard />
+
+          <details className="space-y-4">
+          <summary className="cursor-pointer px-1 text-[15px] font-semibold text-graphite">{t("set.advanced")}</summary>
+          <Card title={t("set.llm")} id="llm-h" className="mt-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {s.llm.configured ? <span className="sr-tag sr-tag-ok"><Check size={13} aria-hidden />{t("set.llmOk")}</span>
+                : <span className="sr-tag sr-tag-warn">{t("set.llmNo")}</span>}
+              {s.llm.model && <span>{t("set.llmModel", { x: s.llm.model })}</span>}
+            </div>
+            <p className="mt-1.5 text-[13px] text-graphite">{t(s.llm.configured ? "set.llmNote" : "set.llmNoNote")}</p>
+          </Card>
 
           <Card title={t("set.numbers")} id="num-h">
             <p className="mb-3 text-[13px] text-graphite">{t("set.numbersNote")}</p>
@@ -94,6 +96,7 @@ export default function SettingsPage() {
             <p className="rounded-lg border border-rule bg-well px-2.5 py-2 font-mono text-[13px] [overflow-wrap:anywhere]">{s.data_dir}</p>
             <p className="mt-2 text-[13px] text-graphite">{t("set.dataDirNote")}</p>
           </Card>
+          </details>
         </div>
       )}
     </div>

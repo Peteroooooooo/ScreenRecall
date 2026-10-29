@@ -1,6 +1,6 @@
 // 连接 Agent（设置页里的一块）：总开关、本机地址与重置令牌、可复制的 MCP 配置（/api/app/agent-configs）、工具说明。
 import { useRef, useState, type KeyboardEvent } from "react";
-import { Copy, RefreshCw } from "lucide-react";
+import { Check, Copy, RefreshCw } from "lucide-react";
 import { api } from "../api";
 import { useT } from "../i18n";
 import { errText, useLoad } from "../lib";
@@ -50,12 +50,15 @@ export function AgentConnect({ enabled, saving, onToggle }: { enabled: boolean; 
       <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3 pb-3.5">
         <div className="min-w-0 flex-1">
           <b id="lbl-agent">{t("agent.allow")}</b>
-          <p className="mt-0.5 text-[13px] text-graphite">{t("agent.allowNote")}</p>
+          <p className="mt-0.5 text-[13px] text-graphite">{t("agent.note")}</p>
         </div>
         <Switch on={enabled} labelledBy="lbl-agent" disabled={saving} onChange={onToggle} />
       </div>
       {!enabled && <Banner tone="warn" className="mb-3.5">{t("agent.offBanner")}</Banner>}
-      <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-rule py-3.5">
+      <AgentStatusRow />
+      <details className="border-t border-rule pt-3">
+      <summary className="cursor-pointer text-[13px] text-graphite">{t("agent.manual")}</summary>
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-x-5 gap-y-3 py-3.5">
         <div className="min-w-0 flex-1">
           <b>{t("agent.addr")}</b>
           <p className="mt-0.5 font-mono text-[13px] text-graphite [overflow-wrap:anywhere]">{cfg.data?.mcp_url ?? "—"}</p>
@@ -101,8 +104,48 @@ export function AgentConnect({ enabled, saving, onToggle }: { enabled: boolean; 
           ))}
         </ul>
       </div>
+      </details>
       <ConfirmDialog spec={confirm} onClose={() => setConfirm(null)} />
     </Card>
+  );
+}
+
+/** Claude Code / Codex 连上了没有 + 一键连接（把 MCP 转发程序登记进它们的配置） */
+function AgentStatusRow() {
+  const { t } = useT();
+  const toast = useToast();
+  const st = useLoad((signal) => api.agents(signal), []);
+  const [busy, setBusy] = useState(false);
+  const s = st.data;
+  const connect = async () => {
+    setBusy(true);
+    try {
+      const r = await api.installAgents();
+      st.setData(r);
+      toast(r.claude || r.codex ? t("agent.connectDone") : t("agent.connectFail", { e: r.messages.join(" ") }), r.claude || r.codex ? "ok" : "warn");
+    } catch (e) {
+      toast(t("agent.connectFail", { e: errText(e, t("common.offline")) }), "alarm");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const item = (name: string, ok: boolean) => (
+    <span className={`sr-tag ${ok ? "sr-tag-ok" : "sr-tag-warn"}`}>
+      {ok && <Check size={13} aria-hidden />}{name}：{ok ? t("agent.connected") : t("agent.notConnected")}
+    </span>
+  );
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-t border-rule py-3.5" data-testid="agent-status">
+      {!s ? (st.error ? <span className="text-sm text-faint">{errText(st.error, t("common.offline"))}</span> : <Skeleton rows={1} />) : <>
+        {item("Claude Code", s.claude)}
+        {item("Codex", s.codex)}
+        <span className="flex-1" />
+        <button className="sr-btn sr-btn-line sr-btn-sm" disabled={busy} onClick={() => void connect()}>
+          <RefreshCw size={15} aria-hidden />{s.claude && s.codex ? t("agent.reconnect") : t("agent.connect")}
+        </button>
+        {!s.claude_cli && <p className="w-full text-[12.5px] text-faint">{t("agent.noCli")}</p>}
+      </>}
+    </div>
   );
 }
 

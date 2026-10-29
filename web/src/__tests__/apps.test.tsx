@@ -5,8 +5,8 @@ import { apps, mockFetch, type Call } from "../test/helpers";
 import { renderAt, toasts } from "../test/render";
 
 /** 假的名单服务：POST 按请求改内存里的名单，返回整份 */
-function server() {
-  let a: AppsInfo = apps();
+function server(start: AppsInfo = apps()) {
+  let a: AppsInfo = start;
   return mockFetch((c: Call) => {
     if (c.path !== "/api/v3/apps" && !c.path.startsWith("/api/v3/excludes")) return null;
     if (c.method === "GET") return { body: a };
@@ -25,46 +25,52 @@ function server() {
   });
 }
 
+const posted = (calls: Call[], body: object) => calls.some((c) => c.method === "POST" && JSON.stringify(c.body) === JSON.stringify(body));
+
 describe("apps (名单)", () => {
-  it("switches an app between 录 / 一直录 / 不录", async () => {
+  it("one switch per app: off = 不录, on = 录; 后台也录 = 一直录", async () => {
     const calls = server();
     renderAt("#/apps");
-    const group = await screen.findByRole("radiogroup", { name: "msedge.exe 的档" });
-    expect(within(group).getByRole("radio", { name: "录" }).getAttribute("aria-checked")).toBe("true");
-    fireEvent.click(within(group).getByRole("radio", { name: "一直录" }));
-    await waitFor(() => expect(calls.find((c) => c.method === "POST")?.body).toEqual({ process: "msedge.exe", tier: "always" }));
-    await waitFor(() => expect(within(screen.getByRole("radiogroup", { name: "msedge.exe 的档" })).getByRole("radio", { name: "一直录" }).getAttribute("aria-checked")).toBe("true"));
-    expect(toasts().join()).toContain("msedge：一直录");
+    const sw = await screen.findByRole("switch", { name: "msedge" });
+    expect(sw.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(sw);
+    await waitFor(() => expect(posted(calls, { process: "msedge.exe", tier: "never" })).toBe(true));
+    await waitFor(() => expect(screen.getByRole("switch", { name: "msedge" }).getAttribute("aria-checked")).toBe("false"));
+    fireEvent.click(within(screen.getAllByTestId("app-row")[1]).getByRole("checkbox", { name: "后台也录" }));
+    await waitFor(() => expect(posted(calls, { process: "chrome.exe", tier: "always" })).toBe(true));
+    expect(toasts().join()).toContain("chrome：一直录");
   });
 
-  it("adds a recently seen unlisted app with one click, and a typed one", async () => {
+  it("default browsers that aren't installed fold into one line", async () => {
+    server(apps({ apps: [{ process: "chrome.exe", tier: "record", added_ms: 0, installed: true },
+      { process: "brave.exe", tier: "record", added_ms: 0, installed: false }] }));
+    renderAt("#/apps");
+    await screen.findByRole("switch", { name: "chrome" });
+    expect(screen.queryByRole("switch", { name: "brave" })).toBeNull();
+    expect(screen.getByText(/这台电脑上没找到这些浏览器.*brave/)).toBeTruthy();
+  });
+
+  it("picks from open and recently used apps with one click, or a typed name", async () => {
     const calls = server();
     renderAt("#/apps");
-    fireEvent.click(await screen.findByRole("button", { name: "录 Code" }));
-    await waitFor(() => expect(calls.some((c) => c.method === "POST" && JSON.stringify(c.body) === JSON.stringify({ process: "Code.exe", tier: "record" }))).toBe(true));
-    await waitFor(() => expect(screen.getByText("最近没有用过别的软件。")).toBeTruthy());
+    const rows = await screen.findAllByTestId("open-app");
+    expect(rows.map((r) => r.textContent)).toEqual([expect.stringContaining("窗口“微信”"), expect.stringContaining("最近用过")]);
+    fireEvent.click(screen.getByRole("button", { name: "录 Weixin" }));
+    await waitFor(() => expect(posted(calls, { process: "Weixin.exe", tier: "record" })).toBe(true));
+    fireEvent.click(screen.getByRole("button", { name: "录 Code" }));
+    await waitFor(() => expect(posted(calls, { process: "Code.exe", tier: "record" })).toBe(true));
     fireEvent.click(screen.getByText("找不到？手动填进程名"));
     fireEvent.change(screen.getByRole("textbox", { name: "进程名" }), { target: { value: "Zoom.exe" } });
     fireEvent.change(screen.getByRole("combobox", { name: "加到哪一档" }), { target: { value: "always" } });
     fireEvent.click(screen.getAllByRole("button", { name: "添加" })[0]);
-    await waitFor(() => expect(calls.some((c) => JSON.stringify(c.body) === JSON.stringify({ process: "Zoom.exe", tier: "always" }))).toBe(true));
-    expect(await screen.findByRole("radiogroup", { name: "Zoom.exe 的档" })).toBeTruthy();
+    await waitFor(() => expect(posted(calls, { process: "Zoom.exe", tier: "always" })).toBe(true));
   });
 
-  it("lists open apps not yet recorded and records one with a click", async () => {
+  it("adds and removes skip rules for titles and sites (under 高级)", async () => {
     const calls = server();
     renderAt("#/apps");
-    const rows = await screen.findAllByTestId("open-app");
-    expect(rows.map((r) => r.textContent)).toEqual([expect.stringContaining("窗口“微信”")]);
-    fireEvent.click(screen.getByRole("button", { name: "一直录 Weixin" }));
-    await waitFor(() => expect(calls.some((c) => JSON.stringify(c.body) === JSON.stringify({ process: "Weixin.exe", tier: "always" }))).toBe(true));
-    await waitFor(() => expect(screen.getByText("开着的软件都已经在录了。")).toBeTruthy());
-  });
-
-  it("adds and removes skip rules for titles and sites", async () => {
-    const calls = server();
-    renderAt("#/apps");
-    fireEvent.change(await screen.findByRole("textbox", { name: "窗口标题里有这些词" }), { target: { value: "网银" } });
+    fireEvent.click(await screen.findByText("高级：不录的窗口和网站"));
+    fireEvent.change(screen.getByRole("textbox", { name: "窗口标题里有这些词" }), { target: { value: "网银" } });
     fireEvent.submit(screen.getByRole("textbox", { name: "窗口标题里有这些词" }).closest("form")!);
     await waitFor(() => expect(calls.find((c) => c.path === "/api/v3/excludes")?.body).toEqual({ kind: "title", value: "网银" }));
     fireEvent.click(await screen.findByRole("button", { name: "移除 bank.example.com" }));

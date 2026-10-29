@@ -228,6 +228,57 @@ def codex_status(entry: dict | None = None, path: Path | None = None) -> str:
     return "Codex：已登记。" + note
 
 
+# ---------------- 设置页用 ----------------
+
+def claude_config_path() -> Path:
+    return Path.home() / ".claude.json"
+
+
+def claude_registered(path: Path | None = None) -> bool:
+    """~/.claude.json 里（user 范围或任一项目）有没有 screenrecall。直接读文件：不起 claude 命令行（要好几秒）。"""
+    try:
+        data = json.loads((path or claude_config_path()).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    if NAME in (data.get("mcpServers") or {}):
+        return True
+    return any(NAME in ((p or {}).get("mcpServers") or {}) for p in (data.get("projects") or {}).values()
+               if isinstance(p, dict))
+
+
+def codex_registered(path: Path | None = None) -> bool:
+    try:
+        text = _read(path or codex_config_path())
+        return bool(text) and NAME in (tomllib.loads(text).get("mcp_servers") or {})
+    except (OSError, tomllib.TOMLDecodeError):
+        return False
+
+
+def quick_status(*, claude_path: Path | None = None, codex_path: Path | None = None) -> dict[str, Any]:
+    """{claude: 已登记?, codex: 已登记?, claude_cli: 找得到 claude 命令?}"""
+    return {"claude": claude_registered(claude_path), "codex": codex_registered(codex_path),
+            "claude_cli": claude_exe() is not None}
+
+
+def install_all(*, run: Runner = _run, codex_path: Path | None = None, python: str | None = None) -> list[str]:
+    """两个都登记一遍（已经登记的照样重写成本机现在的命令）。返回每一项的结果说明；某一项失败不影响另一项。"""
+    entry = shim_entry(python)
+    msgs: list[str] = []
+    exe = claude_exe() if run is _run else "claude"
+    if exe is None:
+        msgs.append("Claude Code：找不到 claude 命令，跳过。")
+    else:
+        try:
+            msgs.append(claude_install(entry, run, exe))
+        except (InstallError, OSError, subprocess.SubprocessError) as e:
+            msgs.append(f"Claude Code：{e}")
+    try:
+        msgs.append(codex_install(entry, codex_path))
+    except (InstallError, OSError) as e:
+        msgs.append(f"Codex：{e}")
+    return msgs
+
+
 # ---------------- 命令行 ----------------
 
 @dataclass

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import io
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from PIL import Image
@@ -307,11 +308,30 @@ def test_thumb_cache_is_bounded(env):
     assert (1, 100, str(env.queries.shot_path)) in env.ctx._thumbs
 
 
+def test_apps_installed_only_judged_for_default_browsers(client, env):
+    env.ctx.installed = lambda p: p.lower() == "msedge.exe"
+    client.post("/api/v3/apps", json={"process": "Weixin.exe", "tier": "record"}, headers=POST_H)
+    got = {a["process"]: a["installed"] for a in client.get("/api/v3/apps").json()["apps"]}
+    assert got["weixin.exe"] is True
+    assert got.get("msedge.exe", True) is True and got.get("brave.exe", False) is False
+
+
+def test_agents_status_and_install(client, env):
+    calls = []
+    env.ctx.agents = SimpleNamespace(quick_status=lambda: {"claude": bool(calls), "codex": False, "claude_cli": True},
+                                     install_all=lambda: calls.append(1) or ["Claude Code：已登记。"])
+    assert client.get("/api/v3/agents").json() == {"claude": False, "codex": False, "claude_cli": True}
+    assert client.post("/api/v3/agents/install", json={}).status_code == 403
+    r = client.post("/api/v3/agents/install", json={}, headers=POST_H).json()
+    assert r["claude"] is True and r["messages"] == ["Claude Code：已登记。"]
+
+
 def test_apps_tiers(client, env):
     r = client.get("/api/v3/apps")
     assert r.status_code == 200 and set(r.json()) == {"apps", "unlisted", "excludes"}
     r = client.post("/api/v3/apps", json={"process": "Code.exe", "tier": "record"}, headers=POST_H)
-    assert r.status_code == 200 and {"process": "code.exe", "tier": "record", "added_ms": NOW} in r.json()["apps"]
+    assert r.status_code == 200
+    assert {"process": "code.exe", "tier": "record", "added_ms": NOW, "installed": True} in r.json()["apps"]
     for bad in ({"process": "Code.exe", "tier": "sometimes"}, {"process": "", "tier": "record"},
                 {"process": "  ", "tier": "never"}, {"process": "x" * 261, "tier": "record"},
                 {"process": "C:\\a\\b.exe", "tier": "record"}, {"tier": "record"}, {"process": 3, "tier": "record"},
