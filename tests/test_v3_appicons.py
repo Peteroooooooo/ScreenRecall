@@ -13,9 +13,11 @@ def fake_winapi(calls):
 
     return SimpleNamespace(
         running_exe_paths=lambda: {"chrome.exe": r"C:\run\chrome.exe"},
+        process_exe_path=lambda p: r"D:\Soft\Weixin\Weixin.exe" if p == "weixin.exe" else None,
         registered_exe_path=lambda p: r"C:\reg\code.exe" if p == "code.exe" else None,
         installed_exe_paths=lambda: calls.append(("installed",)) or {"qq.exe": r"C:\inst\QQ.exe"},
-        file_description=lambda path: {"C:\\run\\chrome.exe": "Google Chrome", "C:\\inst\\QQ.exe": " QQ "}.get(path),
+        file_description=lambda path: {"C:\\run\\chrome.exe": "Google Chrome", "C:\\inst\\QQ.exe": " QQ ",
+                                       "D:\\Soft\\Weixin\\Weixin.exe": "Weixin"}.get(path),
         exe_icon_rgba=icon,
     )
 
@@ -27,9 +29,10 @@ def test_finds_exe_from_running_then_registry_then_installed_list_and_caches():
     assert chrome["name"] == "Google Chrome" and chrome["png"].startswith(b"\x89PNG")
     assert icons.info("code.exe")["name"] is None
     assert icons.info("QQ.exe")["name"] == "QQ"
-    assert icons.info("Weixin.exe") is None
+    assert icons.info("Weixin.exe")["name"] == "Weixin"  # 缩在托盘里没窗口：从进程列表找到
+    assert icons.info("Zoom.exe") is None
     n = len(calls)
-    assert icons.info("chrome.exe") is chrome and icons.info("weixin.exe") is None
+    assert icons.info("chrome.exe") is chrome and icons.info("zoom.exe") is None
     assert len(calls) == n  # 找到的一直缓存；没找到的 60 秒内不再找
     assert calls.count(("installed",)) == 1
 
