@@ -310,27 +310,62 @@ def url_value(value: str | None) -> str | None:
     return v if v and "\n" not in v and _URL_SHAPE.match(v) else None
 
 
-def doc_info(elems: Sequence[Elem]) -> tuple[str | None, str | None]:
-    """最大的 Document 元素的 (Value, 名字)；值不像网址的 Document 不算；没有时 (None, None)。密码框不看。
-    多个 Document（页面里嵌的 iframe、PDF 查看器）取面积最大的那个，同样大取先出现的；面积为 0 的不算。"""
-    best, best_area = (None, None), -1
-    for e in elems:
-        if e.ct != "Document" or e.password:
+def page_doc(elems: Sequence[Elem], title: str | None = None) -> int | None:
+    """正在看的那个网页的 Document 下标；值不像网址的 Document 不算；没有时 None。密码框不看，面积为 0 的不算
+    （藏起来的 edge:// 小对话框、还没排版的页面）。
+    浏览器会把切走的标签页的网页留在树里、也不标成看不见，和正在看的一样大：先在名字（网页标题）是窗口标题开头的
+    Document 里挑（窗口标题 = 网页标题 + 浏览器的尾巴）；都对不上（没给标题、PDF 查看器）时在全部里挑。
+    多个 Document（页面里嵌的 iframe、PDF 查看器）取面积最大的那个，同样大取先出现的。"""
+    cands = []
+    for i, e in enumerate(elems):
+        if e.ct != "Document" or e.password or url_value(e.value) is None or _area(e.rect) <= 0:
             continue
-        v = url_value(e.value)
-        if v is None:
-            continue
-        a = _area(e.rect)
-        if a <= 0:  # 没有大小的 Document（藏起来的 edge:// 小对话框、还没排版的页面）不算
-            continue
+        cands.append(i)
+    t = clean_text(title or "")
+    named = [i for i in cands if (n := clean_text(elems[i].name)) and t.startswith(n)] if t else []
+    best, best_area = None, -1
+    for i in named or cands:
+        a = _area(elems[i].rect)
         if a > best_area:
-            best, best_area = (v, clean_text(e.name) or None), a
+            best, best_area = i, a
     return best
 
 
-def doc_url(elems: Sequence[Elem]) -> str | None:
-    """最大的 Document 元素的 Value（形如 scheme:…）；没有时 None。"""
-    return doc_info(elems)[0]
+def doc_info(elems: Sequence[Elem], title: str | None = None) -> tuple[str | None, str | None]:
+    """正在看的网页（page_doc）的 (Value, 名字)；没有时 (None, None)。"""
+    i = page_doc(elems, title)
+    if i is None:
+        return None, None
+    return url_value(elems[i].value), clean_text(elems[i].name) or None
+
+
+def doc_url(elems: Sequence[Elem], title: str | None = None) -> str | None:
+    """正在看的网页的 Value（形如 scheme:…）；没有时 None。"""
+    return doc_info(elems, title)[0]
+
+
+def hide_other_pages(elems: list[Elem], page: int | None) -> None:
+    """别的标签页留在树里的网页（带网址的 Document，和正在看的那个互不包含）连同里面的元素都当成看不见，
+    它们的字不收（不然会记到正在看的网页名下）。页面里嵌的 iframe 在正在看的网页里面，照收。"""
+    if page is None:
+        return
+
+    def inside(i: int, anc: int) -> bool:
+        p = elems[i].parent
+        while p >= 0:
+            if p == anc:
+                return True
+            p = elems[p].parent
+        return False
+
+    foreign = {i for i, e in enumerate(elems)
+               if i != page and e.ct == "Document" and url_value(e.value) is not None
+               and not inside(i, page) and not inside(page, i)}
+    if not foreign:
+        return
+    for i, e in enumerate(elems):
+        if i in foreign or _has_ancestor(elems, i, lambda p: p in foreign):
+            e.offscreen = True
 
 
 def window_names(elems: Sequence[Elem]) -> tuple[str, ...]:
@@ -660,8 +695,6 @@ class ComBackend:
             elems.append(Elem(parent=-1, ct="Document", name=_str(el.CachedName),
                               value=_str(el.GetCachedPropertyValue(P_VALUE)), password=bool(el.CachedIsPassword),
                               rect=(int(r.left), int(r.top), int(r.right), int(r.bottom))))
-        url, name = doc_info(elems)
-        top = next((e.rect[1] for e in elems if url and url_value(e.value) == url and _area(e.rect) > 0), None)
         names: list[Elem] = []
         try:  # 取不到名字不影响网址
             names.append(Elem(parent=-1, ct="Window", name=_str(root.CurrentName)))
@@ -671,6 +704,9 @@ class ComBackend:
                     names.append(Elem(parent=0, ct="", name=_str(kids.GetElement(i).CachedName)))
         except Exception:  # noqa: BLE001
             pass
+        page = page_doc(elems, names[0].name if names else None)
+        url, name = doc_info(elems, names[0].name if names else None)
+        top = elems[page].rect[1] if page is not None else None
         return url, name, top, window_names(names)
 
     def read(self, ctx: _ComCtx, hwnd: int, win_rect: Rect,
@@ -680,8 +716,11 @@ class ComBackend:
         if cancel.is_set():
             raise Cancelled()
         elems, handles = self._walk(cached, cancel)
+        title = elems[0].name if elems else None   # 窗口根元素的名字 = 窗口标题
+        page = page_doc(elems, title)
+        hide_other_pages(elems, page)
         tps = []
-        for i in outermost_tp(elems)[: self.cfg.max_text_patterns]:
+        for i in [i for i in outermost_tp(elems) if not elems[i].offscreen][: self.cfg.max_text_patterns]:
             if cancel.is_set():
                 raise Cancelled()
             tp = TpLines(i)
@@ -696,7 +735,7 @@ class ComBackend:
                 tp.lines = []
             tps.append(tp)
         handles.clear()
-        url, name = doc_info(elems)
+        url, name = doc_info(elems, title)
         return (collect_lines(elems, tps, win_rect), len(elems), chrome_bottom(elems, win_rect), url, name,
                 window_names(elems))
 
