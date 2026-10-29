@@ -101,13 +101,30 @@ export const appName = (app: string) => app.replace(/\.exe$/i, "");
 export const SYSTEM_APPS = new Set(["explorer.exe", "werfault.exe", "unknown", "applicationframehost.exe", "searchhost.exe",
   "shellexperiencehost.exe", "startmenuexperiencehost.exe", "lockapp.exe", "textinputhost.exe", "consent.exe"]);
 export const isSystemApp = (app: string | null | undefined) => !app || SYSTEM_APPS.has(app.toLowerCase());
+
+/** 软件的显示名：exe 里写的名字（Visual Studio Code），没有时用进程名去掉 .exe */
+export const appLabel = (x: { app: string | null; app_name?: string | null }) => x.app_name || appName(x.app ?? "");
+/** 软件图标地址：后端说取得到才给 */
+export const appIcon = (x: { app: string | null; app_icon?: boolean }) =>
+  x.app_icon && x.app ? `/api/v3/apps/icon?process=${encodeURIComponent(x.app)}` : undefined;
+
+/** 窗口标题末尾的软件名（"文件 - 项目 - Visual Studio Code"）去掉：头像和下面一行已经写了是哪个软件 */
+export function trimAppTail(title: string, label: string): string {
+  const t = title.trim();
+  if (!label) return t;
+  for (const sep of [" - ", " — ", " – ", " | "]) {
+    const tail = sep + label;
+    if (t.length > tail.length && t.toLowerCase().endsWith(tail.toLowerCase())) return t.slice(0, -tail.length).trim();
+  }
+  return t;
+}
 /** 头像用的首字 */
 export const initial = (app: string) => (Array.from(appName(app).trim())[0] ?? "?").toUpperCase();
 
 /** 出处的显示名（约定 §3.3）：name > 清理后的标题 > 网址主机名 + 路径 / 文件名 > 软件名 */
-export function sourceName(s: { name?: string | null; title?: string; url?: string | null; path?: string | null; app: string }): string {
+export function sourceName(s: { name?: string | null; title?: string; url?: string | null; path?: string | null; app: string; app_name?: string | null }): string {
   if (s.name) return s.name;
-  if (s.title) return s.title;
+  if (s.title) return trimAppTail(s.title, appLabel(s)) || s.title;
   if (s.url) {
     try {
       const u = new URL(s.url);
@@ -117,7 +134,7 @@ export function sourceName(s: { name?: string | null; title?: string; url?: stri
     }
   }
   if (s.path) return s.path.split(/[\\/]/).pop() || s.path;
-  return appName(s.app);
+  return appLabel(s);
 }
 
 /** 只放 http / https 的网址（页面上可点开的链接）；别的协议（javascript:、file: …）返回 null */

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { api, shotThumbUrl, type Entry, type Grey, type Timeline } from "../api";
 import { useT, type T } from "../i18n";
-import { addDays, appName, errText, fmtClock, fmtDuration, fmtInt, fmtMonthDay, hrefOf, isSystemApp, localDate, navigate, parseLocalDate, useLoad, weekday } from "../lib";
+import { addDays, appIcon, appLabel, errText, fmtClock, fmtDuration, fmtInt, fmtMonthDay, hrefOf, isSystemApp, localDate, navigate, parseLocalDate, trimAppTail, useLoad, weekday } from "../lib";
 import { isPaused, usePauseActions } from "../recording";
 import { Av, Empty, LoadError, PageHeader, Skeleton, useStatus, useToast } from "../ui";
 
@@ -200,10 +200,10 @@ function Rail({ live = false, grey = false }: { live?: boolean; grey?: boolean }
 }
 
 /** 出处种类：网页 / 本地文件 / 软件名 */
-export function kindLabel(e: { source: { kind: string; app: string } }, t: T): string {
+export function kindLabel(e: { source: { kind: string; app: string; app_name?: string | null } }, t: T): string {
   if (e.source.kind === "url") return t("kind.url");
   if (e.source.kind === "file") return t("kind.file");
-  return appName(e.source.app);
+  return appLabel(e.source);
 }
 
 /** 为什么拍：停下 / 一直在动 / 复制 */
@@ -212,9 +212,10 @@ export function reasonsText(reasons: string[], t: T): string | null {
   return known.length ? t("tl.why", { x: known.map((r) => t(`why.${r}`)).join(t("common.sep")) }) : null;
 }
 
-/** 卡片上的名字：窗口标题只是一串程序路径（终端这类）时用软件名 */
+/** 卡片上的名字：窗口标题末尾的软件名去掉（下面一行已经写了）；只是一串程序路径（终端这类）时用软件名 */
 export function displayName(e: Entry): string {
-  return /^(?:[A-Za-z]:[\\/]|\\\\|\/)/.test(e.name.trim()) ? appName(e.source.app) : e.name;
+  const label = appLabel(e.source);
+  return /^(?:[A-Za-z]:[\\/]|\\\\|\/)/.test(e.name.trim()) ? label : trimAppTail(e.name, label) || label;
 }
 
 function EntryRow({ e }: { e: Entry }) {
@@ -228,7 +229,7 @@ function EntryRow({ e }: { e: Entry }) {
       <Rail live={e.open} />
       <a href={hrefOf(`/entry/${e.visit_id}`)} aria-label={t("tl.entryLabel", { name, kind: kindLabel(e, t), a, b })}
         className="my-1.5 flex min-w-0 gap-2.5 rounded-card border border-rule bg-surface p-3 text-inherit shadow-card transition-[border-color,box-shadow] hover:border-rule-strong hover:shadow-lift sm:gap-3 sm:px-4 sm:py-3.5">
-        <Av app={e.source.app} />
+        <Av app={appLabel(e.source)} icon={appIcon(e.source)} />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 sm:flex-nowrap">
             <span className="min-w-0 truncate font-semibold">{name}</span>
@@ -289,11 +290,11 @@ function GreyGroup({ items, onAdded }: { items: Grey[]; onAdded: () => void }) {
   for (const g of items) if (!apps.some((x) => x.app!.toLowerCase() === g.app!.toLowerCase())) apps.push(g);
   const first = items[0];
   const last = items[items.length - 1];
-  const add = async (app: string) => {
+  const add = async (g: Grey) => {
     setBusy(true);
     try {
-      await api.setTier(app, "record");
-      toast(t("grey.added", { app: appName(app) }));
+      await api.setTier(g.app!, "record");
+      toast(t("grey.added", { app: appLabel(g) }));
       onAdded();
     } catch (e) {
       toast(t("common.saveFail", { e: errText(e, t("common.offline")) }), "alarm");
@@ -307,14 +308,15 @@ function GreyGroup({ items, onAdded }: { items: Grey[]; onAdded: () => void }) {
       <Rail grey />
       <details className={GREY_BOX}>
         <summary className="cursor-pointer [overflow-wrap:anywhere]">
-          {t("tl.greyGroup", { x: apps.map((g) => appName(g.app!)).join(t("common.sep")) })}
+          {t("tl.greyGroup", { x: apps.map((g) => appLabel(g)).join(t("common.sep")) })}
         </summary>
         <ul className="mt-1.5">
           {apps.map((g) => (
             <li key={g.app} className="flex flex-wrap items-center gap-2 border-t border-rule py-1.5">
-              <span className="min-w-0 flex-1">{t("grey.unlisted", { app: appName(g.app!) })}</span>
+              <Av app={appLabel(g)} icon={appIcon(g)} small />
+              <span className="min-w-0 flex-1">{t("grey.unlisted", { app: appLabel(g) })}</span>
               {(g.tier ?? "never") === "never"
-                ? <button className="sr-btn sr-btn-line sr-btn-sm" onClick={() => void add(g.app!)} disabled={busy}>{t("grey.add")}</button>
+                ? <button className="sr-btn sr-btn-line sr-btn-sm" onClick={() => void add(g)} disabled={busy}>{t("grey.add")}</button>
                 : <span className="sr-tag">{t("grey.nowListed")}</span>}
             </li>
           ))}
