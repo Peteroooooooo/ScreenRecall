@@ -4,12 +4,12 @@ import { mockFetch, status } from "../test/helpers";
 import { renderAt, toasts } from "../test/render";
 
 describe("shell + status bar", () => {
-  it("shows 在录 + 最后一次拍：N 秒前 and marks the current nav item", async () => {
+  it("shows 在录 + 上次拍：N 秒前 and marks the current nav item", async () => {
     mockFetch();
     renderAt("#/");
     const pill = await screen.findByTestId("status-pill");
     await waitFor(() => expect(pill.textContent).toContain("在录"));
-    expect(pill.textContent).toContain("最后一次拍：12 秒前");
+    expect(pill.textContent).toContain("上次拍：12 秒前");
     expect(pill.textContent).toContain("正在看：Transformer 入门");
     const navs = screen.getAllByRole("navigation", { name: "主导航" });
     for (const n of navs) {
@@ -24,7 +24,7 @@ describe("shell + status bar", () => {
     const pill = await screen.findByTestId("status-pill");
     await waitFor(() => expect(pill.textContent).toContain("后台在录 1 个窗口"));
     expect(pill.textContent).not.toContain("前台没有要录的窗口");
-    expect(pill.textContent).toContain("最后一次拍：12 秒前");
+    expect(pill.textContent).toContain("上次拍：12 秒前");
   });
 
   it("paused: 已暂停 到 HH:MM, still shows the last snap", async () => {
@@ -37,7 +37,7 @@ describe("shell + status bar", () => {
     const pill = await screen.findByTestId("status-pill");
     await waitFor(() => expect(pill.textContent).toContain("已暂停"));
     expect(pill.textContent).toMatch(new RegExp(`到(明天)? ${hh}`)); // 过了半夜是"到明天 00:05"
-    expect(pill.textContent).toContain("最后一次拍：2 分钟前");
+    expect(pill.textContent).toContain("上次拍：2 分钟前");
     expect(await screen.findByRole("button", { name: "继续录" })).toBeTruthy();
   });
 
@@ -45,7 +45,7 @@ describe("shell + status bar", () => {
     mockFetch((c) => (c.path === "/api/v3/status" ? { body: status({ recorder_alive: false, state: "stopped", last_snap_ms: null }) } : null));
     renderAt("#/");
     const pill = await screen.findByTestId("status-pill");
-    await waitFor(() => expect(pill.textContent).toContain("录制进程没在运行"));
+    await waitFor(() => expect(pill.textContent).toContain("没在录"));
     expect(pill.textContent).toContain("还没拍过");
   });
 
