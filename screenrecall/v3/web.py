@@ -79,6 +79,21 @@ class V3Context:
     llm_environ: dict[str, str] | None = None       # None = os.environ
     _thumbs: OrderedDict = field(default_factory=OrderedDict, init=False, repr=False)
     _thumb_lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
+    _ui_lang: str | None = field(default=None, init=False, repr=False)
+    _lang_lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
+
+    def note_ui_lang(self, lang: str) -> None:
+        """记下界面现在用的语言（meta 'ui_lang'，空闲整理按它起名字）；和上次一样就不碰库。"""
+        if lang == self._ui_lang:
+            return
+        from .names import UI_LANG_KEY
+
+        with self._lang_lock:
+            if lang == self._ui_lang:
+                return
+            if self.store.meta_get(UI_LANG_KEY) != lang:
+                self.store.meta_put(UI_LANG_KEY, lang)
+            self._ui_lang = lang
 
     def env_files(self) -> list[Path]:
         if self.llm_env_files is not None:
@@ -668,8 +683,9 @@ def _endpoint(ctx: V3Context, fn: Callable[[V3Context, dict], Any], *, mutation:
                 if not isinstance(body, dict):
                     return _error(400, "请求内容应为 JSON 对象")
         req = {"query": dict(request.query_params), "path": dict(request.path_params), "body": body}
+        lang = request.headers.get("x-lang", "").strip().lower()
         try:
-            out = await run_in_threadpool(fn, ctx, req)
+            out = await run_in_threadpool(_call, ctx, fn, req, lang if lang in ("zh", "en") else None)
         except ApiError as exc:
             return _error(exc.status, exc.message)
         except Exception:  # noqa: BLE001
@@ -680,6 +696,16 @@ def _endpoint(ctx: V3Context, fn: Callable[[V3Context, dict], Any], *, mutation:
         return JSONResponse(out, headers={"Cache-Control": "no-store"})
 
     return handler
+
+
+def _call(ctx: V3Context, fn: Callable[[V3Context, dict], Any], req: dict, lang: str | None) -> Any:
+    """网页的请求带了界面语言（X-Lang）就先记下（记不下只写日志，不影响这个请求），再调接口。"""
+    if lang is not None:
+        try:
+            ctx.note_ui_lang(lang)
+        except Exception:  # noqa: BLE001
+            log.warning("记不下界面语言", exc_info=True)
+    return fn(ctx, req)
 
 
 def _error(status: int, msg: str) -> JSONResponse:
