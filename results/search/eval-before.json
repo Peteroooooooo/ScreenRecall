@@ -1,0 +1,78 @@
+{
+ "label": "before",
+ "sort": "api-default",
+ "limit": 10,
+ "corpus": {
+  "segments": 30,
+  "lines": 338,
+  "queries": 84,
+  "kinds": {
+   "exact": 14,
+   "partial": 6,
+   "paraphrase": 23,
+   "xling": 23,
+   "typo": 6,
+   "unrelated": 12
+  }
+ },
+ "embed": {
+  "lines": 338,
+  "seconds": 2.27,
+  "vectors": 71,
+  "rechunked": 0,
+  "chunks": 71
+ },
+ "summary": {
+  "exact": {
+   "n": 14,
+   "found@5": 0.929,
+   "recall@5": 0.929,
+   "MRR": 0.939,
+   "junk_groups": 0.36
+  },
+  "partial": {
+   "n": 6,
+   "found@5": 1.0,
+   "recall@5": 1.0,
+   "MRR": 1.0,
+   "junk_groups": 0.0
+  },
+  "paraphrase": {
+   "n": 23,
+   "found@5": 0.261,
+   "recall@5": 0.217,
+   "MRR": 0.132,
+   "junk_groups": 0.57
+  },
+  "xling": {
+   "n": 23,
+   "found@5": 0.348,
+   "recall@5": 0.304,
+   "MRR": 0.223,
+   "junk_groups": 0.61
+  },
+  "typo": {
+   "n": 6,
+   "found@5": 0.5,
+   "recall@5": 0.5,
+   "MRR": 0.333,
+   "junk_groups": 0.33
+  },
+  "unrelated": {
+   "n": 12,
+   "fp_rate": 0.0
+  },
+  "all_related": {
+   "n": 72,
+   "found@5": 0.5,
+   "recall@5": 0.472,
+   "MRR": 0.407,
+   "junk_groups": 0.47
+  }
+ },
+ "latency_ms": {
+  "cold_first": 1185.1,
+  "warm_p50": 6.5,
+  "warm_p95": 8.6
+ }
+}

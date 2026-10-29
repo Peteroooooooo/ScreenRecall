@@ -1,38 +1,188 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { ApiError, isUnauthorized } from "./api";
 
-// ---------- 时间显示（浏览器与后台在同一台机器上，按本机时区显示，与 timeutil.fmt_local 一致） ----------
+// ---------- 时间显示：接口给 UTC 毫秒，这里一律按本机时区显示 ----------
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const WEEK_ZH = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+const WEEK_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 let timeLang = "zh";
 export const setTimeLang = (l: string) => {
   timeLang = l;
 };
+const en = () => timeLang === "en";
 
-export function fmtTime(ms: number | null | undefined, withSeconds = true): string {
-  if (!ms) return "—";
-  const d = new Date(ms);
-  const sameYear = d.getFullYear() === new Date().getFullYear();
-  const clock = `${pad(d.getHours())}:${pad(d.getMinutes())}${withSeconds ? ":" + pad(d.getSeconds()) : ""}`;
-  if (timeLang === "en") return `${MONTHS[d.getMonth()]} ${d.getDate()}${sameYear ? "" : ", " + d.getFullYear()} ${clock}`;
-  return `${sameYear ? "" : d.getFullYear() + "年"}${d.getMonth() + 1}月${d.getDate()}日 ${clock}`;
+/** 本机日期 YYYY-MM-DD（<input type="date"> 与 /api/v3/timeline?day= 的格式） */
+export const localDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+/** YYYY-MM-DDTHH:MM（<input type="datetime-local"> 的格式） */
+export const localDateTime = (d: Date) => `${localDate(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+/** "YYYY-MM-DD" -> 本机那天 0 点；格式不对返回 null */
+export function parseLocalDate(s: string | null | undefined): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s ?? "");
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return Number.isNaN(d.getTime()) || localDate(d) !== s ? null : d;
 }
 
-export function fmtAge(ms: number | null | undefined, now: number): string {
-  if (!ms) return "—";
+export function addDays(date: string, n: number): string {
+  const d = parseLocalDate(date) ?? new Date();
+  return localDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n));
+}
+
+export const startOfToday = (now = Date.now()) => {
+  const d = new Date(now);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+};
+
+export function fmtClock(ms: number | null | undefined, withSeconds = false): string {
+  if (ms == null) return "—";
+  const d = new Date(ms);
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}${withSeconds ? ":" + pad(d.getSeconds()) : ""}`;
+}
+
+/** 月日（同年不写年份） */
+export function fmtMonthDay(d: Date): string {
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  if (en()) return `${MONTHS[d.getMonth()]} ${d.getDate()}${sameYear ? "" : ", " + d.getFullYear()}`;
+  return `${sameYear ? "" : d.getFullYear() + "年"}${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
+export const weekday = (d: Date) => (en() ? WEEK_EN : WEEK_ZH)[d.getDay()];
+
+/** 今天 09:41 / 昨天 20:15 / 10月25日 14:02 */
+export function fmtWhen(ms: number | null | undefined, now = Date.now()): string {
+  if (ms == null) return "—";
+  const d = new Date(ms);
+  const day0 = startOfToday(now);
+  const clock = fmtClock(ms);
+  if (ms >= day0 && ms < day0 + 86_400_000) return `${en() ? "Today" : "今天"} ${clock}`;
+  const y0 = new Date(day0);
+  const yesterday = new Date(y0.getFullYear(), y0.getMonth(), y0.getDate() - 1).getTime();
+  if (ms >= yesterday && ms < day0) return `${en() ? "Yesterday" : "昨天"} ${clock}`;
+  return `${fmtMonthDay(d)} ${clock}`;
+}
+
+/** 36 分钟 / 1 小时 12 分 / 不到 1 分钟 */
+export function fmtDuration(ms: number): string {
+  const min = Math.round(Math.max(0, ms) / 60_000);
+  if (min < 1) return en() ? "< 1 min" : "不到 1 分钟";
+  if (min < 60) return en() ? `${min} min` : `${min} 分钟`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (en()) return m ? `${h} h ${m} min` : `${h} h`;
+  return m ? `${h} 小时 ${m} 分` : `${h} 小时`;
+}
+
+export function fmtBytes(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return "0 B";
+  const u = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.min(u.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
+  const v = n / 1024 ** i;
+  return `${v >= 100 || i === 0 ? Math.round(v) : v.toFixed(1)} ${u[i]}`;
+}
+
+export const fmtInt = (n: number) => n.toLocaleString(en() ? "en-US" : "zh-CN");
+
+/** 12 秒前 / 3 分钟前 / 14:02（now 用服务端给的 now_ms，免得本机和服务端的钟差几秒） */
+export function fmtAgo(ms: number | null | undefined, now = Date.now()): string | null {
+  if (ms == null) return null;
   const s = Math.max(0, Math.round((now - ms) / 1000));
-  const en = timeLang === "en";
-  if (s < 120) return en ? `${s} s` : `${s} 秒`;
-  if (s < 7200) return en ? `${Math.floor(s / 60)} min` : `${Math.floor(s / 60)} 分钟`;
-  return en ? `${Math.floor(s / 3600)} h` : `${Math.floor(s / 3600)} 小时`;
+  if (s < 60) return en() ? `${s} s ago` : `${s} 秒前`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return en() ? `${m} min ago` : `${m} 分钟前`;
+  return fmtWhen(ms, now);
+}
+
+/** 应用的显示名：去掉 .exe */
+export const appName = (app: string) => app.replace(/\.exe$/i, "");
+/** Windows 自己的程序（资源管理器、报错窗口、搜索框……）：时间线不提，"加软件"里也不列 */
+export const SYSTEM_APPS = new Set(["explorer.exe", "werfault.exe", "unknown", "applicationframehost.exe", "searchhost.exe",
+  "shellexperiencehost.exe", "startmenuexperiencehost.exe", "lockapp.exe", "textinputhost.exe", "consent.exe"]);
+export const isSystemApp = (app: string | null | undefined) => !app || SYSTEM_APPS.has(app.toLowerCase());
+
+/** 软件的显示名：exe 里写的名字（Visual Studio Code），没有时用进程名去掉 .exe */
+export const appLabel = (x: { app: string | null; app_name?: string | null }) => x.app_name || appName(x.app ?? "");
+/** 软件图标地址：后端说取得到才给 */
+export const appIcon = (x: { app: string | null; app_icon?: boolean }) =>
+  x.app_icon && x.app ? `/api/v3/apps/icon?process=${encodeURIComponent(x.app)}` : undefined;
+
+/** 窗口标题末尾的软件名（"文件 - 项目 - Visual Studio Code"）去掉：头像和下面一行已经写了是哪个软件 */
+export function trimAppTail(title: string, label: string): string {
+  const t = title.trim();
+  if (!label) return t;
+  for (const sep of [" - ", " — ", " – ", " | "]) {
+    const tail = sep + label;
+    if (t.length > tail.length && t.toLowerCase().endsWith(tail.toLowerCase())) return t.slice(0, -tail.length).trim();
+  }
+  return t;
+}
+/** 头像用的首字 */
+export const initial = (app: string) => (Array.from(appName(app).trim())[0] ?? "?").toUpperCase();
+
+/** 出处的显示名（约定 §3.3）：name > 清理后的标题 > 网址主机名 + 路径 / 文件名 > 软件名 */
+export function sourceName(s: { name?: string | null; title?: string; url?: string | null; path?: string | null; app: string; app_name?: string | null }): string {
+  if (s.name) return s.name;
+  if (s.title) return trimAppTail(s.title, appLabel(s)) || s.title;
+  if (s.url) {
+    try {
+      const u = new URL(s.url);
+      return `${u.hostname}${u.pathname === "/" ? "" : u.pathname}`;
+    } catch {
+      return s.url;
+    }
+  }
+  if (s.path) return s.path.split(/[\\/]/).pop() || s.path;
+  return appLabel(s);
+}
+
+/** 只放 http / https 的网址（页面上可点开的链接）；别的协议（javascript:、file: …）返回 null */
+export function safeHttpUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:" ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------- 命中高亮：spans 是服务端（Python）给的字符偏移，按 Unicode 码点计，不是 UTF-16 ----------
+
+export type Seg = { text: string; hit: boolean };
+
+export function highlight(text: string, spans: [number, number][]): Seg[] {
+  const cps = Array.from(text);
+  const n = cps.length;
+  const rs = spans
+    .map(([a, b]) => [Math.max(0, Math.min(n, a)), Math.max(0, Math.min(n, b))] as [number, number])
+    .filter(([a, b]) => b > a)
+    .sort((x, y) => x[0] - y[0]);
+  const merged: [number, number][] = [];
+  for (const r of rs) {
+    const last = merged[merged.length - 1];
+    if (last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1]);
+    else merged.push([r[0], r[1]]);
+  }
+  const out: Seg[] = [];
+  let at = 0;
+  for (const [a, b] of merged) {
+    if (a > at) out.push({ text: cps.slice(at, a).join(""), hit: false });
+    out.push({ text: cps.slice(a, b).join(""), hit: true });
+    at = b;
+  }
+  if (at < n || !out.length) out.push({ text: cps.slice(at).join(""), hit: false });
+  return out;
 }
 
 // ---------- 哈希路由：#/路径?参数，支持深链接与浏览器后退 ----------
 
 function readHash() {
   const h = window.location.hash.replace(/^#/, "") || "/";
-  const [path, qs] = h.split("?");
-  return { path: path || "/", params: new URLSearchParams(qs ?? "") };
+  const i = h.indexOf("?");
+  const path = (i < 0 ? h : h.slice(0, i)) || "/";
+  return { path, params: new URLSearchParams(i < 0 ? "" : h.slice(i + 1)) };
 }
 
 let snapshot = readHash();
@@ -53,59 +203,183 @@ export function useRoute() {
   return useSyncExternalStore(subscribe, getSnapshot);
 }
 
-export function navigate(path: string, params?: Record<string, string | undefined | null>, replace = false) {
+export function hrefOf(path: string, params?: Record<string, string | number | undefined | null>) {
   const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(params ?? {})) if (v !== undefined && v !== null && v !== "") qs.set(k, v);
+  for (const [k, v] of Object.entries(params ?? {})) if (v !== undefined && v !== null && v !== "") qs.set(k, String(v));
   const s = qs.toString();
-  const url = `#${path}${s ? "?" + s : ""}`;
+  return `#${path}${s ? "?" + s : ""}`;
+}
+
+export function navigate(path: string, params?: Record<string, string | number | undefined | null>, replace = false) {
+  const url = hrefOf(path, params);
   if (replace) {
     history.replaceState(null, "", url);
     window.dispatchEvent(new HashChangeEvent("hashchange"));
   } else window.location.hash = url;
 }
 
+// ---------- 错误文案 ----------
+
+export const isAbort = (e: unknown) => e instanceof DOMException && e.name === "AbortError";
+
+/** 服务端给的中文说明原样显示；连不上（fetch 抛 TypeError 等）用 offline 文案 */
+export function errText(e: unknown, offline: string): string {
+  if (e instanceof ApiError) return e.message;
+  return offline;
+}
+
 // ---------- 数据加载 ----------
 
-export function useLoad<T>(fn: () => Promise<T>, deps: unknown[]) {
+/** 加载一次（deps 变化时重新加载）。换了 deps 或卸载时中止上一个请求。reload(true) = 后台刷新，不显示加载状态。 */
+export function useLoad<T>(fn: (signal: AbortSignal) => Promise<T>, deps: unknown[]) {
   const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const seq = useRef(0);
-  const reload = useCallback(() => {
+  const ctrl = useRef<AbortController | null>(null);
+  const reload = useCallback((silent = false) => {
     const n = ++seq.current;
-    setLoading(true);
-    fn()
-      .then((d) => n === seq.current && (setData(d), setError(null)))
-      .catch((e: Error) => n === seq.current && setError(e.message))
+    ctrl.current?.abort();
+    const c = new AbortController();
+    ctrl.current = c;
+    if (!silent) setLoading(true);
+    fn(c.signal)
+      .then((d) => {
+        if (n !== seq.current) return;
+        setData(d);
+        setError(null);
+      })
+      .catch((e: unknown) => {
+        if (n !== seq.current || c.signal.aborted || isAbort(e)) return;
+        if (!silent) setError(e);
+      })
       .finally(() => n === seq.current && setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
   useEffect(() => {
     reload();
   }, [reload]);
+  useEffect(() => () => ctrl.current?.abort(), []);
   return { data, error, loading, reload, setData };
 }
 
-export function usePoll<T>(fn: () => Promise<T>, ms: number) {
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<string | null>(null);
+// ---------- 状态轮询：连不上时明确标出"连接中断"，不让旧状态冒充当前状态 ----------
+
+/** 单次轮询超过这么久没回应就算失败（服务卡死时 fetch 不会自己报错） */
+export const POLL_TIMEOUT_MS = 4000;
+/** 连续失败 2 次，或距上次成功超过这么久，就判为连接中断 */
+export const LOST_AFTER_MS = 5000;
+/** 页面在后台时轮询放慢的倍数 */
+export const HIDDEN_FACTOR = 5;
+
+export function usePoll<T>(fn: (signal: AbortSignal) => Promise<T>, ms: number, timeoutMs = POLL_TIMEOUT_MS) {
+  const [data, setDataState] = useState<T | null>(null);
+  const [lost, setLost] = useState(false);
+  const kick = useRef<() => void>(() => {});
+  // 外部直接写入（比如暂停接口返回的新状态）之后，比它早发出的那次轮询结果是旧的，丢掉，免得顶栏闪回旧状态
+  const epoch = useRef(0);
+  const setData = useCallback((d: T) => {
+    epoch.current += 1;
+    setDataState(d);
+  }, []);
   useEffect(() => {
     let alive = true;
     let timer: number | undefined;
-    const tick = () => {
-      fn()
-        .then((d) => alive && (setData(d), setError(null)))
-        .catch((e: Error) => alive && setError(e.message))
-        .finally(() => {
-          if (alive) timer = window.setTimeout(tick, document.hidden ? ms * 3 : ms);
-        });
+    let ctrl: AbortController | null = null;
+    let inflight = false;
+    let fails = 0;
+    let lastOk = Date.now();
+    const schedule = (delay: number) => {
+      window.clearTimeout(timer);
+      if (alive && !isUnauthorized()) timer = window.setTimeout(tick, delay);
     };
+    function tick() {
+      if (!alive || isUnauthorized() || inflight) return;
+      inflight = true;
+      const c = new AbortController();
+      ctrl = c;
+      const to = window.setTimeout(() => c.abort(), timeoutMs);
+      const startEpoch = epoch.current;
+      fn(c.signal)
+        .then((d) => {
+          if (!alive) return;
+          fails = 0;
+          lastOk = Date.now();
+          if (startEpoch === epoch.current) setDataState(d);
+          setLost(false);
+        })
+        .catch(() => {
+          if (!alive) return;
+          fails += 1;
+          if (fails >= 2 || Date.now() - lastOk >= LOST_AFTER_MS) setLost(true);
+        })
+        .finally(() => {
+          inflight = false;
+          window.clearTimeout(to);
+          schedule(document.hidden ? ms * HIDDEN_FACTOR : ms);
+        });
+    }
+    // 页面回到前台时立即刷新一次，不等放慢后的下一轮
+    const onVisible = () => !document.hidden && schedule(0);
+    document.addEventListener("visibilitychange", onVisible);
+    kick.current = () => schedule(0);
     tick();
     return () => {
       alive = false;
       window.clearTimeout(timer);
+      ctrl?.abort();
+      document.removeEventListener("visibilitychange", onVisible);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ms]);
-  return { data, error };
+  const refresh = useCallback(() => kick.current(), []);
+  return { data, lost, setData, refresh };
+}
+
+// ---------- 主题：跟随系统 / 浅色 / 深色（只是本机浏览器的偏好，存 localStorage） ----------
+
+export type Theme = "system" | "light" | "dark";
+export const THEMES: Theme[] = ["system", "light", "dark"];
+const THEME_KEY = "sr-theme";
+
+function readTheme(): Theme {
+  try {
+    const v = localStorage.getItem(THEME_KEY);
+    if (v === "light" || v === "dark") return v;
+  } catch {
+    /* 隐私模式等读不到存储：跟随系统 */
+  }
+  return "system";
+}
+
+let theme: Theme = readTheme();
+const themeSubs = new Set<() => void>();
+
+function applyTheme(t: Theme) {
+  if (t === "system") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", t);
+}
+applyTheme(theme);
+
+export function setTheme(t: Theme) {
+  theme = t;
+  applyTheme(t);
+  try {
+    if (t === "system") localStorage.removeItem(THEME_KEY);
+    else localStorage.setItem(THEME_KEY, t);
+  } catch {
+    /* 存不下也不影响本次切换 */
+  }
+  themeSubs.forEach((f) => f());
+}
+
+export function useTheme(): [Theme, (t: Theme) => void] {
+  const t = useSyncExternalStore(
+    (cb) => {
+      themeSubs.add(cb);
+      return () => themeSubs.delete(cb);
+    },
+    () => theme,
+  );
+  return [t, setTheme];
 }

@@ -1,0 +1,23 @@
+{
+  "checked": "2026-10-27, huggingface_hub.list_repo_files at the revisions pinned in screenrecall/models.py",
+  "repos": {
+    "sentence-transformers/clip-ViT-B-32@327ab6726d33c0e22f920c83f2ff9e4bd38ca37f": {
+      "role": "image encoder (512-d)",
+      "official_onnx": false,
+      "onnx_files": [],
+      "repo_file_count": 12
+    },
+    "sentence-transformers/clip-ViT-B-32-multilingual-v1@58edf8cada9e398793dca955574a48cbb7f18be2": {
+      "role": "multilingual text side for image queries",
+      "official_onnx": true,
+      "onnx_files": [
+        "onnx/model.onnx", "onnx/model_O1.onnx", "onnx/model_O2.onnx", "onnx/model_O3.onnx", "onnx/model_O4.onnx",
+        "onnx/model_qint8_arm64.onnx", "onnx/model_qint8_avx512.onnx", "onnx/model_qint8_avx512_vnni.onnx",
+        "onnx/model_quint8_avx2.onnx"
+      ],
+      "repo_file_count": 30,
+      "caveat": "not downloaded or verified; these exports are normally the DistilBERT transformer only, so the 2_Dense 768->512 projection would still have to be applied in numpy from 2_Dense weights"
+    }
+  },
+  "decision": "no CLIP ONNX path implemented: the image encoder has no official ONNX at the pinned revision"
+}
