@@ -43,6 +43,15 @@ _DAY = r"(?:上午|下午|中午|晚上|凌晨|今天|昨天|前天|星期[一�
 _TIME_ONLY = re.compile(rf"^{_DAY}?(?:\d{{1,4}}[年/\-]\d{{1,2}}(?:[月/\-]\d{{1,2}}日?)?|\d{{1,2}}月\d{{1,2}}日)?{_DAY}?"
                         rf"(?:\d{{1,2}}:\d{{2}}(?::\d{{2}})?)?{_DAY}?$")
 _UIA_SKIP = ("minimized", "no_window")   # 窗口不在 / 最小化：读不了，也不算"读过"
+# 鼠标停在链接上时，浏览器在窗口左下角弹出的小框里写着链接地址：屏幕上有，但不是页面内容
+_HOVER_LINK = re.compile(r"^(?:[a-z][a-z0-9+.\-]*://)?[\w.\-]+(?::\d+)?/\S*$", re.IGNORECASE)
+HOVER_ZONE_Y = 0.92       # 框的中线在帧的这么低以下
+HOVER_ZONE_X = 0.5        # 并且从帧的左半边开始
+
+
+def _hover_link(text: str, box: tuple[float, float, float, float], fw: float, fh: float) -> bool:
+    l, t, r, b = box
+    return bool(_HOVER_LINK.match(text)) and (t + b) / 2 > HOVER_ZONE_Y * fh and l < HOVER_ZONE_X * fw
 
 
 @dataclasses.dataclass(frozen=True)
@@ -341,6 +350,8 @@ class TextReader:
                         l, t = max(0.0, o.x0), max(0.0, o.y0)
                         r, b = min(float(fw), o.x1), min(float(fh), o.y1)
                         if r <= l or b <= t or not o.text.strip():
+                            continue
+                        if _hover_link(o.text.strip(), (l, t, r, b), fw, fh):
                             continue
                         ocr_lines.append(TextLine(o.text.strip(), _box(l, t, r, b), "ocr"))
 

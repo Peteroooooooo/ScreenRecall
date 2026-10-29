@@ -122,9 +122,9 @@ def test_hidden_apps_are_excluded_twice():
     out = text_of(call(mcp, "search", {"query": "秘密"}))
     assert "secret.exe" not in out and "0 条" in out
     assert q.calls[-1][0] == "search"
-    tl = text_of(call(mcp, "timeline", {"time_from": "today"}))
+    tl = text_of(call(mcp, "list_timeline", {"time_from": "today"}))
     assert "secret.exe" not in tl and "v1" in tl
-    assert "secret.exe" not in text_of(call(mcp, "copied", {}))
+    assert "secret.exe" not in text_of(call(mcp, "list_copied", {}))
     with pytest.raises(ToolError) as e:
         call(mcp, "get_frame", {"frame_id": "s9"})
     with pytest.raises(ToolError) as e2:
@@ -142,8 +142,8 @@ def test_exclusion_is_passed_to_queries_and_title_keywords_work():
 
 def test_agent_switch_off_blocks_every_tool():
     _, mcp = make(enabled=lambda: False)
-    for name, args in [("search", {"query": "x"}), ("timeline", {}), ("summary", {"level": "day", "key": "today"}),
-                       ("get_frame", {"frame_id": "s1"}), ("read", {"piece_id": "v1"}), ("copied", {})]:
+    for name, args in [("search", {"query": "x"}), ("list_timeline", {}), ("get_summary", {"level": "day", "key": "today"}),
+                       ("get_frame", {"frame_id": "s1"}), ("read", {"piece_id": "v1"}), ("list_copied", {})]:
         with pytest.raises(ToolError, match="已关闭 Agent 访问"):
             call(mcp, name, args)
 
@@ -159,17 +159,17 @@ def test_result_caps():
 
 def test_timeline_and_summaries():
     q, mcp = make()
-    tl = text_of(call(mcp, "timeline", {"time_from": "today"}))
+    tl = text_of(call(mcp, "list_timeline", {"time_from": "today"}))
     assert "piece=v1" in tl and "piece=v2" in tl and "看了 14 分钟 · 新存 12 行" in tl and "复制 1 次" in tl
     assert q.calls[-1][1]["end_ms"] == ms_of(datetime(2026, 10, 28))
-    piece = text_of(call(mcp, "summary", {"level": "piece", "key": "v2"}))
+    piece = text_of(call(mcp, "get_summary", {"level": "piece", "key": "v2"}))
     assert "> retrieval.py - Example Repo" in piece and "> 看了 14 分钟" in piece and ms.UNTRUSTED_NOTE in piece
-    day = text_of(call(mcp, "summary", {"level": "day", "key": "today"}))
+    day = text_of(call(mcp, "get_summary", {"level": "day", "key": "today"}))
     assert q.calls[-1][1] == {"level": "day", "key": "2026-10-27"} and "> 14:00 看课程通知" in day
-    none = text_of(call(mcp, "summary", {"level": "piece", "key": "v404"}))
+    none = text_of(call(mcp, "get_summary", {"level": "piece", "key": "v404"}))
     assert "没有可提供的概况" in none
     with pytest.raises(ToolError):
-        call(mcp, "summary", {"level": "week", "key": "x"})
+        call(mcp, "get_summary", {"level": "week", "key": "x"})
 
 
 def test_timeline_relative_start_after_midnight_reaches_now():
@@ -177,10 +177,10 @@ def test_timeline_relative_start_after_midnight_reaches_now():
     late = datetime(2026, 10, 28, 0, 30)
     q = ms.FakeQueries(now_ms=ms_of(late))
     mcp = ms.build_mcp(q, ms.AgentPolicy(), port=18612, clock=lambda: late)
-    call(mcp, "timeline", {"time_from": "2h ago"})
+    call(mcp, "list_timeline", {"time_from": "2h ago"})
     assert q.calls[-1][1]["start_ms"] == ms_of(datetime(2026, 10, 27, 22, 30))
     assert q.calls[-1][1]["end_ms"] == ms_of(datetime(2026, 10, 29))
-    call(mcp, "timeline", {"time_from": "yesterday 14:00"})  # 写了哪天的：仍到那天结束
+    call(mcp, "list_timeline", {"time_from": "yesterday 14:00"})  # 写了哪天的：仍到那天结束
     assert q.calls[-1][1]["end_ms"] == ms_of(datetime(2026, 10, 28))
 
 
@@ -190,19 +190,19 @@ def test_timeline_keeps_the_newest_pieces_and_says_older_ones_were_left_out():
     q.pieces = [ms.Piece(f"n{i}", "Code.exe", f"file{i}.py", t + i * 60_000, t + i * 60_000 + 30_000)
                 for i in range(30)]
     _, mcp = make(q, max_hits=5)
-    tl = text_of(call(mcp, "timeline", {"time_from": "today"}))
+    tl = text_of(call(mcp, "list_timeline", {"time_from": "today"}))
     shown = [f"piece=n{i}" for i in range(30) if f"piece=n{i} " in tl or tl.count(f"piece=n{i}\n")]
     assert shown == [f"piece=n{i}" for i in range(25, 30)]  # 最新的 5 段，按时间先后
     assert tl.index("piece=n25") < tl.index("piece=n29")
     assert "更早的没有列出" in tl and "5 条" in tl
     assert q.calls[-1][1]["limit"] == 6
     q.pieces = q.pieces[:5]
-    assert "更早的没有列出" not in text_of(call(mcp, "timeline", {"time_from": "today"}))
+    assert "更早的没有列出" not in text_of(call(mcp, "list_timeline", {"time_from": "today"}))
 
 
 def test_day_summary_touching_hidden_app_is_withheld():
     _, mcp = make(exclusion=lambda: ms.Exclusion(apps=("MSEDGE.exe",)))
-    assert "没有可提供的概况" in text_of(call(mcp, "summary", {"level": "day", "key": "today"}))
+    assert "没有可提供的概况" in text_of(call(mcp, "get_summary", {"level": "day", "key": "today"}))
 
 
 def test_get_frame_returns_jpeg_rects_and_highlight():
@@ -241,7 +241,7 @@ def test_not_ready_queries_explain():
 def test_tool_schemas_are_json():
     _, mcp = make()
     tools = anyio.run(ms.tool_schemas, mcp)
-    assert [t["name"] for t in tools] == ["search", "read", "timeline", "summary", "get_frame", "copied"]
+    assert [t["name"] for t in tools] == ["search", "read", "list_timeline", "get_summary", "get_frame", "list_copied"]
     assert "query" in tools[0]["inputSchema"]["required"]
     assert set(tools[5]["inputSchema"]["properties"]) == {"time_from", "time_to", "query"}
     json.dumps(tools)
@@ -271,8 +271,8 @@ def test_mcp_http_requires_token_and_own_origin():
         r = c.post("/mcp", json=init, headers=h | {"Origin": base})
         assert r.status_code == 200 and r.json()["result"]["serverInfo"]["name"] == "ScreenRecall"
         r = c.post("/mcp", json=_rpc("tools/list", i=2), headers=h | {"MCP-Protocol-Version": "2025-06-18"})
-        assert [t["name"] for t in r.json()["result"]["tools"]] == ["search", "read", "timeline", "summary",
-                                                                     "get_frame", "copied"]
+        assert [t["name"] for t in r.json()["result"]["tools"]] == ["search", "read", "list_timeline", "get_summary",
+                                                                     "get_frame", "list_copied"]
 
 
 # ---------- stdio 转发程序端到端 ----------
@@ -306,11 +306,11 @@ def test_shim_end_to_end(live):
                 names = [t.name for t in (await s.list_tools()).tools]
                 res = {
                     "search": await s.call_tool("search", {"query": "组会", "time_from": "2h ago"}),
-                    "timeline": await s.call_tool("timeline", {"time_from": "2h ago"}),
-                    "summary": await s.call_tool("summary", {"level": "piece", "key": "v1"}),
+                    "list_timeline": await s.call_tool("list_timeline", {"time_from": "2h ago"}),
+                    "get_summary": await s.call_tool("get_summary", {"level": "piece", "key": "v1"}),
                     "get_frame": await s.call_tool("get_frame", {"frame_id": "s1", "highlight_line_id": 10}),
-                    "copied": await s.call_tool("copied", {"query": "4-2"}),
-                    "bad": await s.call_tool("summary", {"level": "nope", "key": "x"}),
+                    "list_copied": await s.call_tool("list_copied", {"query": "4-2"}),
+                    "bad": await s.call_tool("get_summary", {"level": "nope", "key": "x"}),
                 }
                 th.stop()  # 主程序退出后
                 res["offline"] = await s.call_tool("search", {"query": "x"})
@@ -318,11 +318,11 @@ def test_shim_end_to_end(live):
                 return names, res
 
     names, res = anyio.run(go)
-    assert names == ["search", "read", "timeline", "summary", "get_frame", "copied"]
+    assert names == ["search", "read", "list_timeline", "get_summary", "get_frame", "list_copied"]
     assert "> 组会安排" in text_of(res["search"].content) and not res["search"].isError
-    assert "piece=v1" in text_of(res["timeline"].content)
-    assert "看了 9 分钟" in text_of(res["summary"].content)
-    assert "> Room 4-2" in text_of(res["copied"].content)
+    assert "piece=v1" in text_of(res["list_timeline"].content)
+    assert "看了 9 分钟" in text_of(res["get_summary"].content)
+    assert "> Room 4-2" in text_of(res["list_copied"].content)
     kinds = [type(b).__name__ for b in res["get_frame"].content]
     assert kinds == ["ImageContent", "TextContent"]
     assert res["bad"].isError and "piece 或 day" in text_of(res["bad"].content)

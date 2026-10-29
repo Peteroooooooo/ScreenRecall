@@ -572,6 +572,7 @@ def agent_policy(queries) -> AgentPolicy                     # enabled = control
 ```
 
 `app/mcp_server.py`（worker 单元改）：保留现有 5 个工具名和参数（search / read / timeline / summary / get_frame），说明文字改成 v3 的意思
+（2026-10-29 改名为 list_timeline / get_summary，copied 改为 list_copied：工具名都以读类动词开头，见 mcp_server.py 开头）
 （没有"原地改写"，piece = 时间线上的一条，frame = 截图）；加只读工具 **`copied(time_from, time_to, query)`**：复制了什么、在哪复制的、几点。
 `Queries` 协议加 `copied(...)`；`FakeQueries` 跟着改；不可信内容的引用规则和大小上限不变。GAP_LABEL 加 `unlisted`："不在名单里的软件（未录）"。
 

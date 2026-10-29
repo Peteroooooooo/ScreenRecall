@@ -13,7 +13,7 @@ cd web; npm run build                                     # 前端（页面由�
 
 - 默认只录浏览器（名单在 `/apps` 改：录 / 一直录 / 不录）；数据在 `<仓库>/data-v3`（库 `recall-v3.sqlite3` + `shots/`），和旧版、v2 的库互不相干。
 - 所有能调的数字都在 `config.default.toml` 的 `[v3]` 一节（本机覆盖写 `config.local.toml`）。
-- Claude Code / Codex：设置页"Agent"卡片里有 MCP 配置（工具 search / read / timeline / summary / get_frame / copied）。
+- Claude Code / Codex：设置页"Agent"卡片里有 MCP 配置（工具 search / read / list_timeline / get_summary / get_frame / list_copied）。
 - 代码：`screenrecall/v3/`（接口和文件归属见 `V3_CONTRACT.md`）；测试 `pytest tests`、前端 `cd web; npx vitest run`。进度见 PROGRESS.md 的"2026-10-28 v3"。
 
 下面是 v1（旧版界面与评测）的记录。
