@@ -97,6 +97,10 @@ export function fmtAgo(ms: number | null | undefined, now = Date.now()): string 
 
 /** 应用的显示名：去掉 .exe */
 export const appName = (app: string) => app.replace(/\.exe$/i, "");
+/** Windows 自己的程序（资源管理器、报错窗口、搜索框……）：时间线不提，"加软件"里也不列 */
+export const SYSTEM_APPS = new Set(["explorer.exe", "werfault.exe", "unknown", "applicationframehost.exe", "searchhost.exe",
+  "shellexperiencehost.exe", "startmenuexperiencehost.exe", "lockapp.exe", "textinputhost.exe", "consent.exe"]);
+export const isSystemApp = (app: string | null | undefined) => !app || SYSTEM_APPS.has(app.toLowerCase());
 /** 头像用的首字 */
 export const initial = (app: string) => (Array.from(appName(app).trim())[0] ?? "?").toUpperCase();
 

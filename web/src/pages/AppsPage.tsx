@@ -2,9 +2,9 @@
 // 不录的窗口关键词和网站收在"高级"里。没装的默认浏览器收成一行。所有软件走同一套规则，名单只是数据。
 import { useState, type FormEvent } from "react";
 import { Plus, RefreshCw } from "lucide-react";
-import { api, type AppsInfo, type Tier } from "../api";
+import { api, appIconUrl, type AppsInfo, type Tier } from "../api";
 import { useT } from "../i18n";
-import { appName, errText, useLoad } from "../lib";
+import { appName, errText, isSystemApp, useLoad } from "../lib";
 import { Av, Card, Chips, LoadError, PageHeader, Skeleton, Switch, useToast } from "../ui";
 
 const TIERS: Tier[] = ["record", "always", "never"];
@@ -31,19 +31,23 @@ export default function AppsPage() {
       setBusy(false);
     }
   };
-  const setTier = (process: string, tier: Tier) =>
-    run(() => api.setTier(process, tier), t("apps.set", { app: appName(process), tier: t(`tier.${tier}`) }));
-
   const shown = (d?.apps ?? []).filter((a) => a.installed !== false);
   const missing = (d?.apps ?? []).filter((a) => a.installed === false);
   const recorded = new Set((d?.apps ?? []).filter((a) => a.tier !== "never").map((a) => a.process.toLowerCase()));
-  const open = (running.data?.running ?? []).filter((a) => !recorded.has(a.process.toLowerCase()));
+  const open = (running.data?.running ?? []).filter((a) => !recorded.has(a.process.toLowerCase()) && !isSystemApp(a.process));
   const openSet = new Set(open.map((a) => a.process.toLowerCase()));
-  const recent = (d?.unlisted ?? []).filter((u) => !openSet.has(u.app.toLowerCase()) && !recorded.has(u.app.toLowerCase()));
+  const recent = (d?.unlisted ?? []).filter((u) => !openSet.has(u.app.toLowerCase()) && !recorded.has(u.app.toLowerCase()) && !isSystemApp(u.app));
   const picks = [
-    ...open.map((a) => ({ process: a.process, name: a.name, note: a.title && a.title !== a.name ? t("apps.win", { t: a.title }) : "" })),
-    ...recent.map((u) => ({ process: u.app, name: appName(u.app), note: t("apps.recent") })),
+    ...open.map((a) => ({ process: a.process, name: a.name || appName(a.process), icon: a.icon,
+      note: a.title && a.title !== a.name ? t("apps.win", { t: a.title }) : "" })),
+    ...recent.map((u) => ({ process: u.app, name: u.name || appName(u.app), icon: u.icon, note: t("apps.recent") })),
   ];
+  /** 显示名：exe 里写的软件名（如 Google Chrome），取不到用进程名 */
+  const names = new Map<string, string>();
+  for (const a of [...(running.data?.running ?? []), ...(d?.apps ?? []), ...picks]) if (a.name) names.set(a.process.toLowerCase(), a.name);
+  const nameOf = (process: string) => names.get(process.toLowerCase()) ?? appName(process);
+  const setTier = (process: string, tier: Tier) =>
+    run(() => api.setTier(process, tier), t("apps.set", { app: nameOf(process), tier: t(`tier.${tier}`) }));
 
   return (
     <div>
@@ -60,8 +64,8 @@ export default function AppsPage() {
                   const id = `app-${a.process}`;
                   return (
                     <li key={a.process} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5" data-testid="app-row">
-                      <Av app={a.process} small />
-                      <span className="min-w-0 flex-1 truncate font-medium" id={id}>{appName(a.process)}</span>
+                      <Av app={nameOf(a.process)} icon={a.icon ? appIconUrl(a.process) : undefined} small />
+                      <span className="min-w-0 flex-1 truncate font-medium" id={id} title={a.process}>{nameOf(a.process)}</span>
                       {on && (
                         <label className="flex items-center gap-1.5 text-[13px] text-graphite" title={t("apps.bgTip")}>
                           <input type="checkbox" className="h-4 w-4 accent-signal" checked={a.tier === "always"} disabled={busy}
@@ -78,7 +82,7 @@ export default function AppsPage() {
             ) : <p className="text-sm text-faint">{t("apps.none")}</p>}
             {missing.length > 0 && (
               <p className="mt-2.5 border-t border-rule pt-2.5 text-[12.5px] text-faint">
-                {t("apps.notInstalled", { x: missing.map((a) => appName(a.process)).join(t("common.sep")) })}
+                {t("apps.notInstalled", { x: missing.map((a) => nameOf(a.process)).join(t("common.sep")) })}
               </p>
             )}
           </Card>
@@ -95,7 +99,7 @@ export default function AppsPage() {
               <ul className="divide-y divide-rule" aria-labelledby="pick-h">
                 {picks.map((a) => (
                   <li key={a.process} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5" data-testid="open-app">
-                    <Av app={a.name} small />
+                    <Av app={a.name} icon={a.icon ? appIconUrl(a.process) : undefined} small />
                     <span className="min-w-0 flex-1">
                       <b className="block truncate font-medium">{a.name}</b>
                       {a.note && <span className="block truncate text-[12.5px] text-graphite">{a.note}</span>}

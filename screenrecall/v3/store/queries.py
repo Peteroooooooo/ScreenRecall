@@ -476,7 +476,8 @@ class Queries:
     def apps(self, c) -> dict:
         """名单 + 最近 30 天出现过、现在还不在"录 / 一直录"里的软件 + 不录规则。"""
         now = self.clock()
-        apps = [dict(r) for r in c.execute("SELECT process, tier, added_ms FROM apps ORDER BY tier, process")]
+        # 按加进来的先后排（改档不改 added_ms）：开关一拨，这一行不会跳到别处
+        apps = [dict(r) for r in c.execute("SELECT process, tier, added_ms FROM apps ORDER BY added_ms, process")]
         listed = {a["process"].lower() for a in apps if a["tier"] != "never"}
         unlisted = [dict(r) for r in c.execute(
             "SELECT app, MAX(COALESCE(end_ms, :now)) AS last_ms, SUM(max(0, COALESCE(end_ms, :now) - start_ms)) "
