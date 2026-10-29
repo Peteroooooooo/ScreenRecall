@@ -441,7 +441,8 @@ def collect_lines(elems: Sequence[Elem], tps: Sequence[TpLines], win_rect: Rect)
         if e.name.strip():
             cands.append((e.name, "name"))
         v = e.value
-        if v.strip() and v != e.name:
+        # 链接的值是它指向的网址，屏幕上并没有画出来
+        if v.strip() and v != e.name and e.ct != "Hyperlink":
             whole_doc = e.has_tp and ("\n" in v or "\r" in v or len(v) > _LONG_VALUE)
             if not whole_doc:
                 cands.append((v, "value"))

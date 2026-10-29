@@ -86,8 +86,8 @@ def test_store_mode_serves_v3_api_and_mcp(app):
         r = c.post("/mcp", json=init, headers=mh)
         assert r.status_code == 200 and r.json()["result"]["serverInfo"]["name"] == "ScreenRecall"
         r = c.post("/mcp", json=_rpc("tools/list", i=2), headers=mh | {"MCP-Protocol-Version": "2025-06-18"})
-        assert [t["name"] for t in r.json()["result"]["tools"]] == ["search", "read", "timeline", "summary",
-                                                                     "get_frame", "copied"]
+        assert [t["name"] for t in r.json()["result"]["tools"]] == ["search", "read", "list_timeline", "get_summary",
+                                                                     "get_frame", "list_copied"]
     assert not (app.data_dir / "screenrecall.sqlite3").exists()  # 旧版库没被建出来
 
 

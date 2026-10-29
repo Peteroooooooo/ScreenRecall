@@ -7,8 +7,8 @@ import { errText, useLoad } from "../lib";
 import { Banner, Card, ConfirmDialog, LoadError, Skeleton, Switch, copyText, useToast, type ConfirmSpec } from "../ui";
 
 const ORDER = ["claude_code", "codex", "claude_desktop", "cursor"];
-const TOOLS = [["search", "agent.tSearch"], ["read", "agent.tRead"], ["timeline", "agent.tTimeline"], ["summary", "agent.tSummary"],
-  ["get_frame", "agent.tFrame"], ["copied", "agent.tCopied"]] as const;
+const TOOLS = [["search", "agent.tSearch"], ["read", "agent.tRead"], ["list_timeline", "agent.tTimeline"], ["get_summary", "agent.tSummary"],
+  ["get_frame", "agent.tFrame"], ["list_copied", "agent.tCopied"]] as const;
 
 export function AgentConnect({ enabled, saving, onToggle }: { enabled: boolean; saving: boolean; onToggle: (v: boolean) => void }) {
   const { t } = useT();

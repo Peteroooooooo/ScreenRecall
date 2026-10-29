@@ -74,7 +74,7 @@ def test_search_hit_shows_first_and_last_seen_where_and_tags():
 def test_no_hits_suggests_next_steps_in_both_languages():
     _, mcp = make()
     out = text_of(call(mcp, "search", {"query": "zzz-nothing"}))
-    assert "没有找到" in out and "No hits" in out and "timeline" in out
+    assert "没有找到" in out and "No hits" in out and "list_timeline" in out
 
 
 # ---------- read ----------
@@ -122,7 +122,7 @@ def test_read_line_text_cannot_forge_tool_lines():
 
 def test_timeline_has_day_header_and_unrecorded_gaps():
     _, mcp = make()
-    out = text_of(call(mcp, "timeline", {"time_from": "today"}))
+    out = text_of(call(mcp, "list_timeline", {"time_from": "today"}))
     assert "== 2026-10-27 周二 ==" in out
     i_gap = out.index("没有录（不在名单里的软件（未录））")
     assert out.index("piece=v1") < i_gap < out.index("piece=v2")
@@ -131,20 +131,20 @@ def test_timeline_has_day_header_and_unrecorded_gaps():
 
 def test_copied_shows_what_where_and_when():
     _, mcp = make()
-    out = text_of(call(mcp, "copied", {"time_from": "today", "query": "Room"}))
+    out = text_of(call(mcp, "list_copied", {"time_from": "today", "query": "Room"}))
     assert "复制过的 \"Room\"" in out and "1 段" in out
     assert "[1] 2026-10-27 周二 14:12 · chrome.exe · piece=v1\n    标题 > 课程通知 - Example Mail\n" in out
     assert "    > Room 4-2" in out and ms.UNTRUSTED_NOTE in out
-    assert "没有复制记录" in text_of(call(mcp, "copied", {"query": "nothing-like-this"}))
+    assert "没有复制记录" in text_of(call(mcp, "list_copied", {"query": "nothing-like-this"}))
 
 
 def test_every_tool_is_marked_read_only_and_errors_are_bilingual():
     _, mcp = make(enabled=lambda: False)
     tools = anyio.run(ms.tool_schemas, mcp)
-    assert [t["name"] for t in tools] == ["search", "read", "timeline", "summary", "get_frame", "copied"]
+    assert [t["name"] for t in tools] == ["search", "read", "list_timeline", "get_summary", "get_frame", "list_copied"]
     assert all(t["annotations"]["readOnlyHint"] is True and t["annotations"]["destructiveHint"] is False
                for t in tools)
-    assert "原地改写" not in ms.INSTRUCTIONS and "copied" in ms.INSTRUCTIONS
+    assert "原地改写" not in ms.INSTRUCTIONS and "list_copied" in ms.INSTRUCTIONS
     with pytest.raises(ToolError) as e:
         call(mcp, "read", {"line_id": 1})
     assert "已关闭 Agent 访问" in str(e.value) and "turned off" in str(e.value)
@@ -157,7 +157,7 @@ def test_every_tool_is_marked_read_only_and_errors_are_bilingual():
 
 def test_not_ready_queries_cover_copied():
     with pytest.raises(ToolError, match="还没有接入"):
-        call(ms.build_mcp(ms.NotReadyQueries(), port=1), "copied", {})
+        call(ms.build_mcp(ms.NotReadyQueries(), port=1), "list_copied", {})
 
 
 # ---------- McpQueries（v3 形状的假 Queries） ----------
@@ -179,8 +179,8 @@ def test_v3_search_then_read_then_frame(v3):
 
 def test_v3_timeline_and_piece_summary(v3):
     _, mcp = v3
-    tl = text_of(call(mcp, "timeline", {"time_from": "today 14:00", "time_to": "today 15:00"}))
+    tl = text_of(call(mcp, "list_timeline", {"time_from": "today 14:00", "time_to": "today 15:00"}))
     assert "[1] 14:00–14:09 · msedge.exe · piece=v10 · 看了 9 分钟 · 新存 12 行 · 复制 1 次" in tl
     assert "    文件 > C:\\docs\\notes.pdf" in tl and "14:10–14:14 没有录（不在名单里的软件（未录））" in tl
-    sm = text_of(call(mcp, "summary", {"level": "piece", "key": "v11"}))
+    sm = text_of(call(mcp, "get_summary", {"level": "piece", "key": "v11"}))
     assert "> 为什么拍：画面停下、复制" in sm and "> 5 分钟内回来过 1 次（合成这一条）" in sm
