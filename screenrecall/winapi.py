@@ -410,6 +410,40 @@ def installed_exe_paths() -> dict[str, str]:
     return out
 
 
+class _PROCESSENTRY32W(ctypes.Structure):
+    _fields_ = [("dwSize", _DWORD), ("cntUsage", _DWORD), ("th32ProcessID", _DWORD),
+                ("th32DefaultHeapID", ctypes.c_size_t), ("th32ModuleID", _DWORD), ("cntThreads", _DWORD),
+                ("th32ParentProcessID", _DWORD), ("pcPriClassBase", ctypes.c_long), ("dwFlags", _DWORD),
+                ("szExeFile", ctypes.c_wchar * 260)]
+
+
+_TH32CS_SNAPPROCESS = 0x00000002
+_CreateToolhelp32Snapshot = _fn(_kernel32, "CreateToolhelp32Snapshot", _HANDLE, _DWORD, _DWORD)
+_Process32FirstW = _fn(_kernel32, "Process32FirstW", _BOOL, _HANDLE, ctypes.POINTER(_PROCESSENTRY32W))
+_Process32NextW = _fn(_kernel32, "Process32NextW", _BOOL, _HANDLE, ctypes.POINTER(_PROCESSENTRY32W))
+
+
+def process_exe_path(process: str) -> str | None:
+    """在所有正在运行的进程里找这个 exe（没窗口的也算，比如缩在托盘里的软件），返回它的完整路径。"""
+    low = os.path.basename(process or "").lower()
+    snap = _CreateToolhelp32Snapshot(_TH32CS_SNAPPROCESS, 0)
+    if not snap or snap == _HANDLE(-1).value:
+        return None
+    try:
+        e = _PROCESSENTRY32W()
+        e.dwSize = ctypes.sizeof(e)
+        ok = _Process32FirstW(snap, ctypes.byref(e))
+        while ok:
+            if e.szExeFile.lower() == low:
+                p = process_path(int(e.th32ProcessID))
+                if p:
+                    return p
+            ok = _Process32NextW(snap, ctypes.byref(e))
+    finally:
+        _CloseHandle(snap)
+    return None
+
+
 def running_exe_paths() -> dict[str, str]:
     """现在开着窗口的软件：进程名（小写）→ exe 完整路径。"""
     out: dict[str, str] = {}

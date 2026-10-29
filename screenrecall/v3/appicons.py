@@ -1,6 +1,7 @@
 """名单页用的软件图标和名字：从 exe 本身读（图标资源 + "文件说明"），不按软件写死。
 
-找 exe 的顺序：正开着的窗口 → App Paths 登记 → "已安装的程序"表。都找不到就没有图标（页面显示首字母）。
+找 exe 的顺序：正开着的窗口 → 正在运行的进程（缩在托盘里没窗口的也算）→ App Paths 登记 → "已安装的程序"表。
+都找不到（没在运行、也没登记过）就没有图标（页面显示首字母）。
 找到的结果一直缓存；找不到的 60 秒后再找（软件可能刚打开）。"""
 from __future__ import annotations
 
@@ -33,6 +34,10 @@ class AppIcons:
             running = fn() if fn else {}
         if low in running:
             return running[low]
+        proc = self._fn("process_exe_path")
+        p = proc(low) if proc else None
+        if p:
+            return p
         reg = self._fn("registered_exe_path")
         p = reg(low) if reg else None
         if p:
