@@ -90,6 +90,8 @@ class V3Config:
     idle_s: float = 300.0              # 键鼠这么久没动开始空闲整理
     llm_names: bool = True             # 用 .env 里配的大模型给每样东西起名字、每小时写一句话；没配就用标题
     llm_max_calls: int = 100           # 一次空闲整理最多调用大模型几次
+    llm_name_max: int = 14             # 名字最多多长：一个汉字算 1，英文字母 / 数字算 0.5（英文约 28 个字母）；超了在词边界截
+    llm_hour_max: int = 40             # 每小时一句话最多多长（同样的算法）；回答超过两倍才在词边界截
     vectors: bool = True               # 按意思搜（MiniLM 文字向量）：空闲时给每行字算向量，第一次会把旧的行补上
     semantic_min_score: float = 0.60   # 按意思搜：相似度（余弦）到这么多才算搜到；低了无关的词也会带出一堆
     semantic_min_chars: int = 6        # 按意思搜：少于这么多字的行不算（"数据看板"这类短的零碎字和什么都像）

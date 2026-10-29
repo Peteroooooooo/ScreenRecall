@@ -322,6 +322,8 @@ const zh = {
   "num.max_background_windows": "一直录的窗口最多同时几个",
   "num.idle_s": "键鼠多久没动开始空闲整理",
   "num.llm_max_calls": "一次空闲整理最多调用大模型几次",
+  "num.llm_name_max": "名字最多多长（汉字算 1，字母算 0.5）",
+  "num.llm_hour_max": "每小时一句话最多多长（汉字算 1，字母算 0.5）",
   "num.semantic_min_score": "按意思搜：相似度至少多少才算搜到",
   "num.semantic_min_chars": "按意思搜：少于多少字的行不算",
 };
@@ -647,6 +649,8 @@ const en: Record<Key, string> = {
   "num.max_background_windows": "Max always-recorded windows at once",
   "num.idle_s": "Idle work starts after no input for",
   "num.llm_max_calls": "Max model calls per idle run",
+  "num.llm_name_max": "Max name length (Chinese char 1, letter 0.5)",
+  "num.llm_hour_max": "Max hourly line length (Chinese char 1, letter 0.5)",
   "num.semantic_min_score": "Search by meaning: min similarity",
   "num.semantic_min_chars": "Search by meaning: skip lines shorter than (chars)",
 };

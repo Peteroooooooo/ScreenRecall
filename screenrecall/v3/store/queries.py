@@ -508,10 +508,12 @@ class Queries:
     # ---------------- 给空闲整理用 ----------------
 
     @_reads(lambda *a, **kw: [])
-    def unnamed_sources(self, c, limit: int = 20) -> list[dict]:
+    def unnamed_sources(self, c, limit: int = 20, stale_before_ms: int = 0) -> list[dict]:
+        """没名字的出处，和名字是 stale_before_ms 以前起的（界面换了语言，要按新语言重写）；最近看到的在前。"""
         out = []
-        for r in c.execute("SELECT * FROM sources WHERE name IS NULL ORDER BY last_seen_ms DESC LIMIT ?",
-                           (max(1, int(limit)),)).fetchall():
+        for r in c.execute("SELECT * FROM sources WHERE name IS NULL OR COALESCE(name_ms, 0) < ? "
+                           "ORDER BY last_seen_ms DESC LIMIT ?",
+                           (int(stale_before_ms), max(1, int(limit)))).fetchall():
             sample = [x[0] for x in c.execute(
                 "SELECT l.text FROM source_lines sl JOIN lines l ON l.line_id = sl.line_id WHERE sl.source_id = ? "
                 "ORDER BY sl.first_seen_ms, l.line_id LIMIT 20", (r["source_id"],))]
@@ -520,9 +522,10 @@ class Queries:
         return out
 
     @_reads(lambda *a, **kw: [])
-    def hours_without_line(self, c, before_ms: int, limit: int = 24) -> list[int]:
-        """有条目、还没写 hour_lines 的本机整点（只要 < before_ms 的完整小时）；最近的 limit 个，从早到晚。"""
-        have = {r[0] for r in c.execute("SELECT hour_ms FROM hour_lines")}
+    def hours_without_line(self, c, before_ms: int, limit: int = 24, stale_before_ms: int = 0) -> list[int]:
+        """有条目、还没写 hour_lines（或是 stale_before_ms 以前写的）的本机整点（只要 < before_ms 的完整小时）；
+        最近的 limit 个，从早到晚。"""
+        have = {r[0] for r in c.execute("SELECT hour_ms FROM hour_lines WHERE made_ms >= ?", (int(stale_before_ms),))}
         hours: set[int] = set()
         for r in c.execute("SELECT start_ms, end_ms FROM visits WHERE start_ms < ?", (int(before_ms),)):
             h = hour_floor(r[0])
