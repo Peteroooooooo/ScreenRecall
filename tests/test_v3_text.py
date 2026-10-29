@@ -169,6 +169,16 @@ def test_uia_error_and_ocr_missing_is_error_not_exception(cfg):
     assert built == [1]  # 缺模型只试一次
 
 
+def test_timeout_is_reported_and_use_uia_false_never_touches_uia(cfg):
+    ocr = FakeOcr([_ol("只靠识别读到的字", 10, 300, 300, 330)])
+    uia = FakeUia(UiaResult("timeout", [], False, 1500.0, window_rect=WIN))
+    r = TextReader(cfg, uia=uia, ocr=ocr)
+    assert r.read_text(HWND, _frame()).uia_timed_out
+    uia.calls.clear()
+    res = r.read_text(HWND, _frame(), use_uia=False)
+    assert uia.calls == [] and res.via == "ocr" and len(res.lines) == 1 and not res.uia_timed_out
+
+
 def test_uia_raising_still_ocrs(cfg):
     ocr = FakeOcr([_ol("只靠识别读到的字", 10, 300, 300, 330)])
     res = TextReader(cfg, uia=FakeUia(RuntimeError("合成")), ocr=ocr).read_text(HWND, _frame())
