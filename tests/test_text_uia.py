@@ -493,6 +493,28 @@ def test_doc_info_prefers_outer_document_of_same_size():
     assert uia.doc_info(local)[0] == "file:///C:/Docs/%E5%90%88.pdf"
 
 
+def test_switched_away_tab_left_in_tree_is_not_the_page():
+    """Chrome（实测）：切走的标签页的网页还留在树里、不标看不见、和正在看的一样大、排在前面。
+    按窗口标题认出正在看的那个：网址取它的，切走的那个网页里的字不收。"""
+    big = (527, 248, 2288, 1313)
+    elems = [uia.Elem(-1, "Window", name="合成页 B - 浏览器", rect=(520, 71, 2295, 1320)),
+             uia.Elem(0, "Document", name="合成页 A", value="https://a.test/", rect=(527, 71, 2288, 1136), has_tp=True),
+             uia.Elem(1, "Text", name="切走的 A 页上的字", rect=(600, 300, 900, 330)),
+             uia.Elem(0, "Document", name="合成页 B", value="http://127.0.0.1:8611/", rect=big, has_tp=True),
+             uia.Elem(3, "Document", name="B 里嵌的框", value="https://frame.test/", rect=(600, 400, 900, 600)),
+             uia.Elem(4, "Text", name="B 里嵌的框里的字", rect=(610, 410, 890, 440)),
+             uia.Elem(3, "Text", name="正在看的 B 页上的字", rect=(600, 700, 900, 730))]
+    assert uia.page_doc(elems, elems[0].name) == 3
+    assert uia.doc_info(elems, elems[0].name) == ("http://127.0.0.1:8611/", "合成页 B")
+    assert uia.doc_info(elems)[0] == "https://a.test/"  # 不给标题：照旧取一样大里排前面的
+    uia.hide_other_pages(elems, 3)
+    got = _texts(collect_lines(elems, [], (520, 71, 2295, 1320)))
+    assert "正在看的 B 页上的字" in got and "B 里嵌的框里的字" in got
+    assert "切走的 A 页上的字" not in got
+    # 标题对不上任何网页（没给标题的页面）：在全部里挑最大的
+    assert uia.page_doc(elems, "别的窗口标题") == 1
+
+
 def test_window_names_root_and_direct_children():
     """窗口根元素和直接子元素的名字（Chrome 无痕窗口：根下面的 Pane 名字带"（无痕）"，窗口标题不带）。"""
     elems = [uia.Elem(-1, "Window", name="合成页 - 浏览器"),
