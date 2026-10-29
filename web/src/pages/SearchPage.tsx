@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ClipboardCopy, Image as ImageIcon, Search as SearchIcon } from "lucide-react";
 import { api, type Clip, type SearchResult } from "../api";
 import { useT } from "../i18n";
-import { appName, errText, fmtClock, fmtWhen, highlight, hrefOf, navigate, safeHttpUrl, sourceName, startOfToday, useLoad } from "../lib";
+import { appIcon, appLabel, errText, fmtClock, fmtWhen, highlight, hrefOf, navigate, safeHttpUrl, sourceName, startOfToday, trimAppTail, useLoad } from "../lib";
 import { Av, Banner, Card, Empty, LoadError, PageHeader, Segmented, Skeleton } from "../ui";
 import { ShotImage, ShotViewer, type ViewerState } from "../viewer";
 
@@ -111,11 +111,11 @@ function ResultCard({ r, i, onShot }: { r: SearchResult; i: number; onShot: (sho
     <li className="sr-card grid animate-rise gap-4 p-4 sm:grid-cols-[minmax(0,1fr)_200px] sm:p-5" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2.5">
-          <Av app={src.app} />
+          <Av app={appLabel(src)} icon={appIcon(src)} />
           <div className="min-w-0 flex-1">
             <b className="block truncate">{name}</b>
             <div className="sr-num truncate text-[12.5px] text-graphite">
-              {src.kind === "url" ? t("kind.url") : src.kind === "file" ? t("kind.file") : appName(src.app)} · {when}
+              {src.kind === "url" ? t("kind.url") : src.kind === "file" ? t("kind.file") : appLabel(src)} · {when}
             </div>
           </div>
         </div>
@@ -165,7 +165,7 @@ function CopiedGroup({ items }: { items: Clip[] }) {
             <li key={c.clip_id} className="rounded-[9px] bg-canvas px-3 py-2">
               <p className="line-clamp-4 whitespace-pre-wrap [overflow-wrap:anywhere]">{c.text}</p>
               <p className="sr-num mt-1 text-[12px] text-graphite [overflow-wrap:anywhere]">
-                {t("search.copiedWhere", { x: c.source ? sourceName(c.source) : c.title || appName(c.app), t: fmtWhen(c.t_ms) })}
+                {t("search.copiedWhere", { x: c.source ? sourceName(c.source) : (c.title && trimAppTail(c.title, appLabel(c))) || appLabel(c), t: fmtWhen(c.t_ms) })}
               </p>
               {c.visit_id != null && <a className="text-[12px] text-cobalt hover:underline" href={hrefOf(`/entry/${c.visit_id}`)}>{t("search.openEntry")}</a>}
             </li>

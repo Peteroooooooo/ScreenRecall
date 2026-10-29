@@ -84,6 +84,9 @@ export interface Source {
   path: string | null;
   /** 可选：大模型起的名字 */
   name: string | null;
+  /** 后端加的：exe 里写的软件名（取不到 = null）、有没有图标可取 */
+  app_name?: string | null;
+  app_icon?: boolean;
   first_seen_ms: number;
   last_seen_ms: number;
   shot_id: number | null;
@@ -118,6 +121,8 @@ export interface Grey {
   end_ms: number | null;
   /** app 现在在名单里的档；“以后录它”只在 unlisted 且 tier == never 时显示 */
   tier: Tier | null;
+  app_name?: string | null;
+  app_icon?: boolean;
 }
 
 export interface Timeline {
@@ -169,6 +174,8 @@ export interface Clip {
   title: string;
   source: Source | null;
   visit_id: number | null;
+  app_name?: string | null;
+  app_icon?: boolean;
 }
 
 export interface EntryDetail {

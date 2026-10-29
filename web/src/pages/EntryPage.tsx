@@ -3,10 +3,10 @@ import { useState } from "react";
 import { ArrowLeft, ExternalLink, FolderOpen, Image as ImageIcon } from "lucide-react";
 import { api, type EntryDetail } from "../api";
 import { useT } from "../i18n";
-import { errText, fmtClock, fmtDuration, fmtInt, fmtWhen, hrefOf, localDate, safeHttpUrl, useLoad } from "../lib";
+import { appIcon, appLabel, errText, fmtClock, fmtDuration, fmtInt, fmtWhen, hrefOf, localDate, safeHttpUrl, useLoad } from "../lib";
 import { Av, Card, LoadError, PageHeader, Skeleton, useToast } from "../ui";
 import { ShotImage, ShotViewer, type ViewerState } from "../viewer";
-import { kindLabel, reasonsText } from "./TimelinePage";
+import { displayName, kindLabel, reasonsText } from "./TimelinePage";
 
 export default function EntryPage({ id }: { id: number }) {
   const { t } = useT();
@@ -102,7 +102,7 @@ function EntryHead({ d }: { d: EntryDetail }) {
       <a className="mb-2 inline-flex items-center gap-1 text-[13px] text-graphite hover:text-ink" href={hrefOf("/", { day: localDate(new Date(e.start_ms)) === localDate(new Date()) ? undefined : localDate(new Date(e.start_ms)) })}>
         <ArrowLeft size={14} aria-hidden />{t("entry.back")}
       </a>
-      <PageHeader title={e.name} before={<Av app={src.app} />}
+      <PageHeader title={displayName(e)} before={<Av app={appLabel(src)} icon={appIcon(src)} />}
         sub={<span className="sr-num">
           {kindLabel(e, t)} · {fmtWhen(e.start_ms)}–{e.open ? t("tl.stillLooking") : fmtClock(e.end_ms)}
           {(!e.open || e.background) && ` · ${t("entry.dwell", { x: fmtDuration(e.dwell_ms) })}`}

@@ -253,6 +253,42 @@ def api_resume(ctx: V3Context, _req: dict) -> dict:
     return ctx.queries.status(ctx.clock())
 
 
+_NO_APP_KEYS = frozenset({"lines", "hits", "boxes", "hours"})  # 这些列表里没有软件，不用翻
+
+
+def _with_app_looks(ctx: V3Context, out):
+    """返回里每个带 app（进程名）的对象加上 app_name（exe 里写的软件名，取不到 = null）和
+    app_icon（有没有图标可取，appIconUrl）。时间线、条目、查找、复制过的都用，页面不用再显示进程名。"""
+    icons = ctx.get_icons()
+    running: dict[str, str] | None = None
+    looks: dict[str, tuple[str | None, bool]] = {}
+
+    def look(app: str) -> tuple[str | None, bool]:
+        nonlocal running
+        low = app.lower()
+        if low not in looks:
+            if running is None:
+                running = icons.running_paths()
+            info = icons.info(app, running)
+            looks[low] = ((info or {}).get("name"), bool(info and info.get("png")))
+        return looks[low]
+
+    def walk(x) -> None:
+        if isinstance(x, dict):
+            app = x.get("app")
+            if isinstance(app, str) and app:
+                x["app_name"], x["app_icon"] = look(app)
+            for k, v in x.items():
+                if k not in _NO_APP_KEYS and isinstance(v, (dict, list)):
+                    walk(v)
+        elif isinstance(x, list):
+            for v in x:
+                walk(v)
+
+    walk(out)
+    return out
+
+
 def api_timeline(ctx: V3Context, req: dict) -> dict:
     qp = req["query"]
     now = ctx.clock()
@@ -263,12 +299,12 @@ def api_timeline(ctx: V3Context, req: dict) -> dict:
     else:
         d = _parse_day(qp.get("day"))
         lo, hi = local_dates_to_utc_range(d, d)
-    return ctx.queries.timeline(lo, hi, now_ms=now)
+    return _with_app_looks(ctx, ctx.queries.timeline(lo, hi, now_ms=now))
 
 
 def api_entry(ctx: V3Context, req: dict) -> dict:
     vid = _int(req["path"]["visit_id"], "visit_id", lo=1)
-    return _found(ctx.queries.entry(vid), "条目")
+    return _with_app_looks(ctx, _found(ctx.queries.entry(vid), "条目"))
 
 
 def api_source(ctx: V3Context, req: dict) -> dict:
@@ -276,7 +312,7 @@ def api_source(ctx: V3Context, req: dict) -> dict:
     qp = req["query"]
     offset = _int(qp.get("offset"), "offset", lo=0, hi=1_000_000, default=0)
     limit = _int(qp.get("limit"), "limit", lo=1, hi=MAX_SOURCE_LINES, default=200)
-    return _found(ctx.queries.source(sid, offset=offset, limit=limit), "出处")
+    return _with_app_looks(ctx, _found(ctx.queries.source(sid, offset=offset, limit=limit), "出处"))
 
 
 def api_search(ctx: V3Context, req: dict) -> dict:
@@ -294,7 +330,7 @@ def api_search(ctx: V3Context, req: dict) -> dict:
     for r in res.get("results") or []:
         for h in r.get("hits") or []:
             h["spans"] = match_spans(h.get("text") or "", terms, tails=not h.get("semantic"))
-    return res
+    return _with_app_looks(ctx, res)
 
 
 def api_copied(ctx: V3Context, req: dict) -> dict:
@@ -304,7 +340,7 @@ def api_copied(ctx: V3Context, req: dict) -> dict:
         raise ApiError(400, f"搜索的文字太长了（最多 {MAX_QUERY_CHARS} 字）")
     lo, hi = _range(qp)
     limit = _int(qp.get("limit"), "limit", lo=1, hi=MAX_COPIED_LIMIT, default=100)
-    return {"items": ctx.queries.copied(q=q, start_ms=lo, end_ms=hi, limit=limit)}
+    return _with_app_looks(ctx, {"items": ctx.queries.copied(q=q, start_ms=lo, end_ms=hi, limit=limit)})
 
 
 def _shot_id(req: dict) -> int:
