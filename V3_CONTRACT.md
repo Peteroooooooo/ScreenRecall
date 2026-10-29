@@ -57,7 +57,7 @@ screenrecall/
     web.py             [web]     /api/v3/* 路由
     worker.py          [worker]  空闲整理子进程
     names.py           [worker]  可选：大模型起名字、每小时一句话
-    vectors.py         [worker]  可选（有空再做）：MiniLM 文字向量 + 按意思搜
+    vectors.py         [worker]  MiniLM 文字向量 + 按意思搜（默认开）
     mcp_queries.py     [worker]  app/mcp_server.Queries 的 v3 实现
     controller.py      [worker]  托盘控制（暂停 / 继续 / 删最近 / 状态）+ Agent 策略
 ```
@@ -661,7 +661,7 @@ Status        {state: "recording"|"paused"|"locked"|"stopped", paused_until_ms, 
 搜索结果多久内合成一条 `search_merge_ms=600000` · 截图留几天 `image_days=30`。
 另有：`default_record_apps`（默认名单 = 浏览器）、`private_title_keywords`、`record_url_schemes`、`max_background_windows`、`fps`、`title_settle_ms`、
 `uia_timeout_ms=1500`、`uia_max_nodes=5000`、`ocr_model`、`ocr_threads`、`ocr_models_dir`、`jpeg_quality=80`、`shot_max_width=1920`、
-`fallback_min_area=0.05`、`min_free_gb=5.0`、`clip_max_chars`、`idle_s`、`llm_names`、`llm_max_calls`、`vectors=false`、`port`、`open_browser`、`tray`、`data_dir`。
+`fallback_min_area=0.05`、`min_free_gb=5.0`、`clip_max_chars`、`idle_s`、`llm_names`、`llm_max_calls`、`vectors=true`、`semantic_min_score=0.60`、`semantic_min_chars=6`、`port`、`open_browser`、`tray`、`data_dir`。
 
 数据目录：`--data-dir` > `SCREENRECALL_V3_DATA_DIR` > `[v3] data_dir` > `<仓库>/data-v3`。库文件 `recall-v3.sqlite3`。测试用 `config.build({}, data_dir=tmp, home=tmp)`。
 

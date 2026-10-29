@@ -6,7 +6,7 @@
 1. 删过期截图：Store.expire_shots(现在 - image_days 天)；字一直留着；
 2. 可选：大模型起名字、每小时一句话（names）。cfg.llm_names 打开且 .env 配了大模型（LLM_BASE_URL / LLM_API_KEY /
    LLM_MODEL，读 <仓库>/.env 和 <home>/.env）才做，两步合计最多 cfg.llm_max_calls 次；没配就跳过（页面显示标题）；
-3. 可选：文字向量（vectors，cfg.vectors 默认关）。
+3. 文字向量（vectors，cfg.vectors 默认开；第一次把已有的行全补上）。
 v3 每次就做这一轮（要做的事很少）：做完退出码 0，主进程下次空闲再启动；--once 和 run(once=True) 保留给命令行和测试，
 效果相同。每一项之间看停止标记：stdin 读到 EOF（主进程发现用户回来了会关掉管道）或 Ctrl+Break / Ctrl+C，
 在当前这一项做完时停下（等大模型回答时立即放弃）。同一数据目录同时只允许一个整理进程（data_dir/worker.lock）。
