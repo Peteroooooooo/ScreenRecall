@@ -1,7 +1,7 @@
 // 名单：三档（录 / 一直录 / 不录）切换、最近出现过的未录软件一键加入、不录的窗口关键词和网站。
 // 不在名单里的软件就是“不录”。所有软件走同一套规则，名单只是数据。
 import { useState, type FormEvent } from "react";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import { api, type AppsInfo, type Tier } from "../api";
 import { useT } from "../i18n";
 import { appName, errText, fmtDuration, fmtWhen, useLoad } from "../lib";
@@ -32,6 +32,11 @@ export default function AppsPage() {
   };
   const setTier = (process: string, tier: Tier) =>
     run(() => api.setTier(process, tier), t("apps.set", { app: appName(process), tier: t(`tier.${tier}`) }));
+  const running = useLoad((signal) => api.runningApps(signal), []);
+  const recorded = new Set((d?.apps ?? []).filter((a) => a.tier !== "never").map((a) => a.process.toLowerCase()));
+  const open = (running.data?.running ?? []).filter((a) => !recorded.has(a.process.toLowerCase()));
+  const openSet = new Set(open.map((a) => a.process.toLowerCase()));
+  const unlisted = (d?.unlisted ?? []).filter((u) => !openSet.has(u.app.toLowerCase()));
 
   return (
     <div>
@@ -57,14 +62,50 @@ export default function AppsPage() {
                 ))}
               </ul>
             ) : <p className="text-sm text-faint">{t("apps.none")}</p>}
-            <AddApp busy={busy} onAdd={(p, tier) => setTier(p, tier)} />
+          </Card>
+
+          <Card title={t("apps.pick")} id="pick-h" aside={
+            <button className="sr-btn sr-btn-line sr-btn-sm" disabled={running.loading} onClick={() => running.reload()}>
+              <RefreshCw size={15} aria-hidden />{t("apps.refresh")}
+            </button>
+          }>
+            <p className="mb-2.5 text-[13px] text-graphite">{t("apps.pickNote")}</p>
+            {running.error ? (
+              <p className="text-sm text-alarm">{t("apps.pickFail", { e: errText(running.error, t("common.offline")) })}</p>
+            ) : !running.data ? <Skeleton rows={2} /> : open.length ? (
+              <ul className="divide-y divide-rule" aria-labelledby="pick-h">
+                {open.map((a) => (
+                  <li key={a.process} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5" data-testid="open-app">
+                    <Av app={a.name} small />
+                    <span className="min-w-0 flex-1">
+                      <b className="block truncate font-medium">{a.name}</b>
+                      <span className="block truncate text-[12.5px] text-graphite">
+                        {a.process}{a.title && a.title !== a.name ? ` · ${t("apps.win", { t: a.title })}` : ""}
+                      </span>
+                    </span>
+                    <button className="sr-btn sr-btn-primary sr-btn-sm" disabled={busy} aria-label={t("apps.addRecord", { app: a.name })}
+                      onClick={() => void setTier(a.process, "record")}>
+                      <Plus size={15} aria-hidden />{t("tier.record")}
+                    </button>
+                    <button className="sr-btn sr-btn-line sr-btn-sm" disabled={busy} aria-label={t("apps.addAlways", { app: a.name })}
+                      onClick={() => void setTier(a.process, "always")}>
+                      {t("tier.always")}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="text-sm text-faint">{t("apps.pickNone")}</p>}
+            <details className="mt-3 border-t border-rule pt-3">
+              <summary className="cursor-pointer text-[13px] text-graphite">{t("apps.manual")}</summary>
+              <AddApp busy={busy} onAdd={(p, tier) => setTier(p, tier)} />
+            </details>
           </Card>
 
           <Card title={t("apps.unlisted")} id="unl-h">
             <p className="mb-2.5 text-[13px] text-graphite">{t("apps.unlistedNote")}</p>
-            {d.unlisted.length ? (
+            {unlisted.length ? (
               <ul className="divide-y divide-rule" aria-labelledby="unl-h">
-                {d.unlisted.map((u) => (
+                {unlisted.map((u) => (
                   <li key={u.app} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
                     <Av app={u.app} small />
                     <span className="min-w-0 flex-1">
@@ -113,7 +154,7 @@ function AddApp({ busy, onAdd }: { busy: boolean; onAdd: (process: string, tier:
     if (await onAdd(p, tier)) setV("");
   };
   return (
-    <form className="mt-3 flex flex-wrap gap-2 border-t border-rule pt-3.5" onSubmit={submit}>
+    <form className="mt-2.5 flex flex-wrap gap-2" onSubmit={submit}>
       <label className="sr-only" htmlFor="add-app">{t("apps.addLabel")}</label>
       <input id="add-app" name="process" className="sr-field min-w-0 flex-[1_1_200px]" autoComplete="off" spellCheck={false}
         placeholder={t("apps.addPh")} value={v} onChange={(e) => setV(e.target.value)} />
