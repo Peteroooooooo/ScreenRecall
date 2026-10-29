@@ -6,23 +6,24 @@ import { renderAt, toasts } from "../test/render";
 
 /** 时间线最外层的行（不含灰色行点开后的小列表） */
 const topRows = (list: HTMLElement) => Array.from(list.children) as HTMLElement[];
+const LIST = "时间线（最新的在上面）";
 
 describe("timeline", () => {
-  it("lists entries with name, time, dwell, lines, copies and thumb; no internal tags", async () => {
+  it("lists entries newest first with name, time, dwell, lines, copies and thumb; no internal tags", async () => {
     mockFetch();
     renderAt("#/");
-    const list = await screen.findByRole("list", { name: "时间线（从早到晚）" });
+    const list = await screen.findByRole("list", { name: LIST });
     const items = topRows(list);
     expect(items).toHaveLength(4);
-    expect(items[0].textContent).toContain("Transformer 入门");
-    expect(items[0].textContent).toContain("5 分钟");
-    expect(items[0].textContent).toContain("存了 12 行");
-    expect(items[0].textContent).not.toContain("为什么拍");
-    expect(within(items[0]).getByRole("img").getAttribute("src")).toBe("/api/v3/shots/1/thumb?w=240");
-    expect(items[2].textContent).toContain("复制过 1 段");
-    expect(items[3].textContent).toContain("还在看");
-    expect(items[3].textContent).not.toMatch(/没有新字|已有图|无图/);
-    expect(within(items[0]).getByRole("link").getAttribute("href")).toBe("#/entry/1");
+    expect(items[0].textContent).toContain("还在看");
+    expect(items[0].textContent).not.toMatch(/没有新字|已有图|无图/);
+    expect(items[1].textContent).toContain("复制过 1 段");
+    expect(items[3].textContent).toContain("Transformer 入门");
+    expect(items[3].textContent).toContain("5 分钟");
+    expect(items[3].textContent).toContain("存了 12 行");
+    expect(items[3].textContent).not.toContain("为什么拍");
+    expect(within(items[3]).getByRole("img").getAttribute("src")).toBe("/api/v3/shots/1/thumb?w=240");
+    expect(within(items[3]).getByRole("link").getAttribute("href")).toBe("#/entry/1");
   });
 
   it("first visit shows the 3-step guide until 知道了", async () => {
@@ -68,11 +69,11 @@ describe("timeline", () => {
     renderAt("#/");
     const rowsEl = await screen.findAllByTestId("grey-row");
     expect(rowsEl.map((r) => r.textContent)).toEqual([
-      expect.stringContaining("在用没录的软件：Code、WindowsTerminal"), expect.stringContaining("暂停了（未录）"),
-      expect.stringContaining("锁屏（未录）")]);
-    expect(rowsEl[0].textContent).not.toMatch(/explorer|WerFault/);
+      expect.stringContaining("锁屏（未录）"), expect.stringContaining("暂停了（未录）"),
+      expect.stringContaining("在用没录的软件：Code、WindowsTerminal")]);
+    expect(rowsEl[2].textContent).not.toMatch(/explorer|WerFault/);
     expect(within(rowsEl[1]).queryByRole("button")).toBeNull();
-    expect(rowsEl[2].textContent).toContain("起");
+    expect(rowsEl[0].textContent).toContain("起");
   });
 
   it("an entry named by a program path shows the app name instead", async () => {
@@ -81,7 +82,7 @@ describe("timeline", () => {
         source: { ...entry().source, kind: "app_title", app: "WindowsTerminal.exe", url: null } })] }),
     } : null));
     renderAt("#/");
-    const list = await screen.findByRole("list", { name: "时间线（从早到晚）" });
+    const list = await screen.findByRole("list", { name: LIST });
     expect(topRows(list)[0].textContent).toContain("WindowsTerminal");
     expect(topRows(list)[0].textContent).not.toContain("pythonw.exe");
   });
@@ -91,16 +92,18 @@ describe("timeline", () => {
       body: timeline({ items: [entry({ visit_id: 7, background: true, open: true, dwell_ms: 12 * 60_000 })] }),
     } : null));
     renderAt("#/");
-    const list = await screen.findByRole("list", { name: "时间线（从早到晚）" });
+    const list = await screen.findByRole("list", { name: LIST });
     expect(topRows(list)[0].textContent).toContain("后台 · 12 分钟");
   });
 
-  it("asks for the chosen day and inserts hour lines in order", async () => {
+  it("asks for the chosen day; newest hour first, each hour line above its own entries", async () => {
     const calls = mockFetch();
     renderAt("#/?day=2026-10-27");
-    await screen.findByRole("list", { name: "时间线（从早到晚）" });
+    await screen.findByRole("list", { name: LIST });
     expect(calls.some((c) => c.path === "/api/v3/timeline?day=2026-10-27")).toBe(true);
     const r = rows(timeline({ hours: [{ hour_ms: at(14), text: "下午在读 Transformer" }, { hour_ms: at(15), text: "晚些" }] }));
-    expect(r.map((x) => x.kind)).toEqual(["hour", "item", "greys", "item", "item", "hour"]);
+    expect(r.map((x) => x.kind)).toEqual(["hour", "hour", "item", "item", "greys", "item"]);
+    expect(r.map((x) => (x.kind === "hour" ? x.text : x.kind === "item" ? ("visit_id" in x.item ? x.item.visit_id : "grey") : "greys"))).toEqual(
+      ["晚些", "下午在读 Transformer", 3, 2, "greys", 1]);
   });
 });

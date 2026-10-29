@@ -1,4 +1,4 @@
-// 时间线（按天）：每条写名字、几点到几点、看了多久（或“还在看”）、存了几行、复制过几段、小图（或“无图” / “已有图”）、为什么拍；
+// 时间线（按天，最新的在上面）：每条写名字、几点到几点、看了多久（或“还在看”）、存了几行、复制过几段、小图；
 // 不在名单的软件、暂停、锁屏是灰色行（“在 XX 里（未录）” + “以后录它”）；有每小时一句话时插在整点。点一条进 /entry/:id。
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Play } from "lucide-react";
@@ -136,9 +136,18 @@ type Row = { kind: "hour"; hour_ms: number; text: string } | { kind: "item"; ite
 const isUnlisted = (it: Entry | Grey): it is Grey => it.type === "grey" && it.reason === "unlisted";
 const hiddenGrey = (it: Entry | Grey) => isUnlisted(it) && isSystemApp(it.app);
 
-/** 条目按开始时间从早到晚；连着的几段"在没录的软件里"合成一行（系统程序不算）；
- * 每小时一句话插在那个整点之后的第一条前面 */
+/** 最新的在上面：先按从早到晚排好（连着的几段"在没录的软件里"合成一行，系统程序不算；
+ * 每小时一句话插在那个整点之后的第一条前面），再整小时一段倒过来，每段里小时那句话仍在最上面、条目新的在上 */
 export function rows(d: Timeline): Row[] {
+  const segs: Row[][] = [];
+  for (const r of chronological(d)) {
+    if (r.kind === "hour" || !segs.length) segs.push([r]);
+    else segs[segs.length - 1].push(r);
+  }
+  return segs.reverse().flatMap((s) => (s[0].kind === "hour" ? [s[0], ...s.slice(1).reverse()] : s.reverse()));
+}
+
+function chronological(d: Timeline): Row[] {
   const hours = [...d.hours].sort((a, b) => a.hour_ms - b.hour_ms);
   const out: Row[] = [];
   let h = 0;
