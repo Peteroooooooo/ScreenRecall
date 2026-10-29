@@ -211,18 +211,49 @@ def window_pid(hwnd: int) -> int:
     return int(pid.value)
 
 
-def process_name(pid: int) -> str:
+def process_path(pid: int) -> str | None:
     handle = _OpenProcess(_PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
     if not handle:
-        return "unknown"
+        return None
     try:
         size = _DWORD(32768)
         buf = ctypes.create_unicode_buffer(size.value)
         if _QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
-            return os.path.basename(buf.value)
-        return "unknown"
+            return buf.value
+        return None
     finally:
         _CloseHandle(handle)
+
+
+def process_name(pid: int) -> str:
+    path = process_path(pid)
+    return os.path.basename(path) if path else "unknown"
+
+
+def file_description(path: str) -> str | None:
+    """exe 版本信息里的"文件说明"（如 Weixin.exe → 微信）；没有就 None。"""
+    try:
+        version = ctypes.WinDLL("version")
+    except OSError:
+        return None
+    size = version.GetFileVersionInfoSizeW(path, None)
+    if not size:
+        return None
+    data = ctypes.create_string_buffer(size)
+    if not version.GetFileVersionInfoW(path, 0, size, data):
+        return None
+    ptr, n = ctypes.c_void_p(), _UINT(0)
+    langs = [(0x0409, 0x04B0), (0x0804, 0x04B0), (0x0000, 0x04B0), (0x0409, 0x04E4)]
+    if version.VerQueryValueW(data, "\\VarFileInfo\\Translation", ctypes.byref(ptr), ctypes.byref(n)) and n.value >= 4:
+        pairs = (wintypes.WORD * (n.value // 2)).from_address(ptr.value)
+        langs = [(pairs[i], pairs[i + 1]) for i in range(0, len(pairs) - 1, 2)] + langs
+    for lang, cp in langs:
+        key = f"\\StringFileInfo\\{lang:04x}{cp:04x}\\FileDescription"
+        if version.VerQueryValueW(data, key, ctypes.byref(ptr), ctypes.byref(n)) and n.value > 1:
+            text = ctypes.wstring_at(ptr.value, n.value - 1).strip()
+            if text:
+                return text
+    return None
 
 
 def _window_rect(hwnd: int) -> _RECT | None:
@@ -283,6 +314,187 @@ def list_windows() -> list[WindowInfo]:
         if info and info.title.strip():
             out.append(info)
     return out
+
+
+class _ICONINFO(ctypes.Structure):
+    _fields_ = [("fIcon", _BOOL), ("xHotspot", _DWORD), ("yHotspot", _DWORD),
+                ("hbmMask", wintypes.HBITMAP), ("hbmColor", wintypes.HBITMAP)]
+
+
+_PrivateExtractIconsW = _fn(_user32, "PrivateExtractIconsW", _UINT, wintypes.LPCWSTR, _INT, _INT, _INT,
+                            ctypes.POINTER(wintypes.HICON), ctypes.c_void_p, _UINT, _UINT)
+_GetIconInfo = _fn(_user32, "GetIconInfo", _BOOL, wintypes.HICON, ctypes.POINTER(_ICONINFO))
+_DestroyIcon = _fn(_user32, "DestroyIcon", _BOOL, wintypes.HICON)
+
+
+def _bitmap_bgra(dc, bmp, size: int) -> np.ndarray | None:
+    bmi = _BITMAPINFO()
+    bmi.bmiHeader.biSize = ctypes.sizeof(_BITMAPINFOHEADER)
+    bmi.bmiHeader.biWidth, bmi.bmiHeader.biHeight = size, -size
+    bmi.bmiHeader.biPlanes, bmi.bmiHeader.biBitCount, bmi.bmiHeader.biCompression = 1, 32, _BI_RGB
+    buf = np.zeros((size, size, 4), dtype=np.uint8)
+    if _GetDIBits(dc, bmp, 0, size, buf.ctypes.data, ctypes.byref(bmi), _DIB_RGB_COLORS) != size:
+        return None
+    return buf
+
+
+def exe_icon_rgba(path: str, size: int = 64) -> np.ndarray | None:
+    """exe 自带的图标（size×size，RGBA）；取不到（没有图标、商店应用的目录没权限）时 None。"""
+    hicon = wintypes.HICON()
+    if _PrivateExtractIconsW(path, 0, size, size, ctypes.byref(hicon), None, 1, 0) < 1 or not hicon:
+        return None
+    info = _ICONINFO()
+    dc = _GetDC(None)
+    try:
+        if not _GetIconInfo(hicon, ctypes.byref(info)) or not info.hbmColor:
+            return None
+        color = _bitmap_bgra(dc, info.hbmColor, size)
+        if color is None:
+            return None
+        rgba = color[:, :, [2, 1, 0, 3]].copy()
+        if not rgba[:, :, 3].any():  # 老图标没有透明通道：按掩码（白 = 透明）
+            mask = _bitmap_bgra(dc, info.hbmMask, size) if info.hbmMask else None
+            rgba[:, :, 3] = 255 if mask is None else np.where(mask[:, :, 0] > 0, 0, 255)
+        return rgba
+    finally:
+        _ReleaseDC(None, dc)
+        for b in (info.hbmColor, info.hbmMask):
+            if b:
+                _DeleteObject(b)
+        _DestroyIcon(hicon)
+
+
+def registered_exe_path(process: str) -> str | None:
+    """App Paths 里登记的这个 exe 的完整路径；没登记时 None。"""
+    import winreg
+
+    name = os.path.basename(process or "")
+    if not name:
+        return None
+    sub = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" + name
+    for root, view in ((winreg.HKEY_CURRENT_USER, 0), (winreg.HKEY_LOCAL_MACHINE, winreg.KEY_WOW64_64KEY),
+                       (winreg.HKEY_LOCAL_MACHINE, winreg.KEY_WOW64_32KEY)):
+        try:
+            with winreg.OpenKey(root, sub, 0, winreg.KEY_READ | view) as k:
+                v = str(winreg.QueryValueEx(k, "")[0]).strip().strip('"')
+                if v and os.path.isfile(os.path.expandvars(v)):
+                    return os.path.expandvars(v)
+        except OSError:
+            continue
+    return None
+
+
+def installed_exe_paths() -> dict[str, str]:
+    """"已安装的程序"（Uninstall 表）里每个软件的图标 exe：进程名（小写）→ 完整路径。
+    很多软件（微信、QQ）不在 App Paths 里登记，但这里的 DisplayIcon 指向它的主程序。"""
+    import winreg
+
+    out: dict[str, str] = {}
+    sub = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
+    for root, view in ((winreg.HKEY_CURRENT_USER, 0), (winreg.HKEY_LOCAL_MACHINE, winreg.KEY_WOW64_64KEY),
+                       (winreg.HKEY_LOCAL_MACHINE, winreg.KEY_WOW64_32KEY)):
+        try:
+            base = winreg.OpenKey(root, sub, 0, winreg.KEY_READ | view)
+        except OSError:
+            continue
+        with base:
+            for i in range(winreg.QueryInfoKey(base)[0]):
+                try:
+                    with winreg.OpenKey(base, winreg.EnumKey(base, i)) as k:
+                        v = str(winreg.QueryValueEx(k, "DisplayIcon")[0])
+                except OSError:
+                    continue
+                p = os.path.expandvars(v.split(",")[0].strip().strip('"'))
+                if p.lower().endswith(".exe") and os.path.isfile(p):
+                    out.setdefault(os.path.basename(p).lower(), p)
+    return out
+
+
+class _PROCESSENTRY32W(ctypes.Structure):
+    _fields_ = [("dwSize", _DWORD), ("cntUsage", _DWORD), ("th32ProcessID", _DWORD),
+                ("th32DefaultHeapID", ctypes.c_size_t), ("th32ModuleID", _DWORD), ("cntThreads", _DWORD),
+                ("th32ParentProcessID", _DWORD), ("pcPriClassBase", ctypes.c_long), ("dwFlags", _DWORD),
+                ("szExeFile", ctypes.c_wchar * 260)]
+
+
+_TH32CS_SNAPPROCESS = 0x00000002
+_CreateToolhelp32Snapshot = _fn(_kernel32, "CreateToolhelp32Snapshot", _HANDLE, _DWORD, _DWORD)
+_Process32FirstW = _fn(_kernel32, "Process32FirstW", _BOOL, _HANDLE, ctypes.POINTER(_PROCESSENTRY32W))
+_Process32NextW = _fn(_kernel32, "Process32NextW", _BOOL, _HANDLE, ctypes.POINTER(_PROCESSENTRY32W))
+
+
+def process_exe_path(process: str) -> str | None:
+    """在所有正在运行的进程里找这个 exe（没窗口的也算，比如缩在托盘里的软件），返回它的完整路径。"""
+    low = os.path.basename(process or "").lower()
+    snap = _CreateToolhelp32Snapshot(_TH32CS_SNAPPROCESS, 0)
+    if not snap or snap == _HANDLE(-1).value:
+        return None
+    try:
+        e = _PROCESSENTRY32W()
+        e.dwSize = ctypes.sizeof(e)
+        ok = _Process32FirstW(snap, ctypes.byref(e))
+        while ok:
+            if e.szExeFile.lower() == low:
+                p = process_path(int(e.th32ProcessID))
+                if p:
+                    return p
+            ok = _Process32NextW(snap, ctypes.byref(e))
+    finally:
+        _CloseHandle(snap)
+    return None
+
+
+def running_exe_paths() -> dict[str, str]:
+    """现在开着窗口的软件：进程名（小写）→ exe 完整路径。"""
+    out: dict[str, str] = {}
+    for w in list_windows():
+        low = w.process.lower()
+        if low not in out:
+            p = process_path(w.pid)
+            if p:
+                out[low] = p
+    return out
+
+
+def app_installed(process: str) -> bool:
+    """这个 exe 在"App Paths"里登记过（安装程序一般都写；名单页据此把没装的默认浏览器收起来），或者正开着窗口。"""
+    import winreg
+
+    name = os.path.basename(process or "")
+    if not name:
+        return False
+    sub = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" + name
+    for root, view in ((winreg.HKEY_CURRENT_USER, 0), (winreg.HKEY_LOCAL_MACHINE, winreg.KEY_WOW64_64KEY),
+                       (winreg.HKEY_LOCAL_MACHINE, winreg.KEY_WOW64_32KEY)):
+        try:
+            winreg.CloseKey(winreg.OpenKey(root, sub, 0, winreg.KEY_READ | view))
+            return True
+        except OSError:
+            continue
+    low = name.lower()
+    return any(w.process.lower() == low for w in list_windows())
+
+
+# UWP 应用的窗口都属于 ApplicationFrameHost.exe，选它等于选了所有商店应用，名字也看不懂
+_NOT_PICKABLE = frozenset({"applicationframehost.exe", "explorer.exe", "searchhost.exe", "startmenuexperiencehost.exe",
+                           "shellexperiencehost.exe", "textinputhost.exe", "lockapp.exe", "unknown"})
+
+
+def running_apps(skip_pids: frozenset[int] = frozenset()) -> list[dict]:
+    """现在开着窗口的软件（按进程名合并）：[{process, name, title, windows}]，窗口多的在前。名单页点选用。
+    name = exe 的"文件说明"（没有就用进程名）；title = 它第一个窗口的标题（有的软件说明是英文，标题才是"微信"）。"""
+    seen: dict[str, dict] = {}
+    for w in list_windows():
+        if w.pid in skip_pids or w.process.lower() in _NOT_PICKABLE:
+            continue
+        hit = seen.get(w.process.lower())
+        if hit:
+            hit["windows"] += 1
+            continue
+        path = process_path(w.pid)
+        name = (file_description(path) if path else None) or os.path.splitext(w.process)[0]
+        seen[w.process.lower()] = {"process": w.process, "name": name, "title": w.title.strip()[:80], "windows": 1}
+    return sorted(seen.values(), key=lambda a: (-a["windows"], a["name"].lower()))
 
 
 # ---------- 捕获 ----------

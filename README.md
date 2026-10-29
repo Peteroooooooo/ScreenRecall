@@ -2,18 +2,37 @@
 
 轻量本地屏幕记忆系统（NUS-ISS PRS Practice Module，Group 9）。用原词、语义或大致画面描述找回保存过的屏幕，并回到原图核对来源与时间。产品首期目标是 Windows 10/11 单用户、本地 CPU 推理。实施依据：《ScreenMemory_Brain_详细实现方案_独立版》与 `readable_Proposal.md`。
 
-## 当前分支状态：`feat/dataset-collection`
+## v3（2026-10-28，分支 `feat/recall-v3`）：能读成字的就存字，读不成字的就存截图
+
+```powershell
+.venv\Scripts\python.exe -m screenrecall.app            # 主进程 + 录制子进程 + 空闲整理子进程；托盘 + http://127.0.0.1:8611
+.venv\Scripts\python.exe -m screenrecall.app --no-children --data-dir <目录>   # 只看页面 / MCP，不录
+.venv\Scripts\python.exe -m screenrecall.v3.demo --data-dir <空目录>          # 合成演示数据（方案"实际跑一遍"）
+cd web; npm run build                                     # 前端（页面由主进程发 web/dist）
+```
+
+- 默认只录浏览器（名单在 `/apps` 改：录 / 一直录 / 不录）；数据在 `<仓库>/data-v3`（库 `recall-v3.sqlite3` + `shots/`），和旧版、v2 的库互不相干。
+- 所有能调的数字都在 `config.default.toml` 的 `[v3]` 一节（本机覆盖写 `config.local.toml`）。
+- Claude Code / Codex：设置页"Agent"卡片里有 MCP 配置（工具 search / read / list_timeline / get_summary / get_frame / list_copied）。
+- 代码：`screenrecall/v3/`（接口和文件归属见 `V3_CONTRACT.md`）；测试 `pytest tests`、前端 `cd web; npx vitest run`。进度见 PROGRESS.md 的"2026-10-28 v3"。
+
+下面是 v1（旧版界面与评测）的记录。
+
+## 当前状态（2026-10-25，`main`）
 
 | 项目 | 状态 |
 | --- | --- |
-| 基于 | `feat/lifecycle` @ `1e124b5`（草稿 PR #5）← `feat/evidence-browse`（草稿 PR #4）← `feat/vector-search`（草稿 PR #3）← `feat/capture-cadence`（草稿 PR #2）← `main`（已含 P0，PR #1 于 10-16 合入） |
-| PR | 草稿 [PR #6](https://github.com/Peteroooooooo/ScreenRecall/pull/6)，base `main`（PR #1–#5 已于 2026-10-21 用 merge commit 合入 `main` @ `effee82`），详见 [PROGRESS.md](PROGRESS.md) |
-| 本分支新增 | 受控数据集的**采集与标注规程**（[datasets/COLLECTION.md](datasets/COLLECTION.md)）、80 个任务的任务表、40 条查询的分配表、清单 / 事实 / 标注模板；工具 `python -m screenrecall.collect`（清单、检查、导入、标注表、事实→相关帧）和 `python -m screenrecall.indexer`（不采集、只跑 OCR 与向量，Mac 上可用）；导入支持逐张的应用、窗口标题和捕获时间 |
-| 测试 | **macOS**：`pytest tests` 199/199；其中 1 条用真实 RapidOCR，其余是逻辑测试；命令行全流程用真实 OCR + 真实向量模型跑通 |
-| 数据 | 曹贺乔 1,343 张原始截图（只在本机、被 git 忽略），剔除 281，**人工验收（初标 + 第二人复核、非仿界面）1,033 帧**：code 249 / chat 306 / web 265 / table_doc 213；类别表 2026-10-21 冻结（`datasets/labelset.json`）。任务内近重复 322 对由 kiro-ai 按 OCR 差异判定（非人工，见 PROGRESS 第 13 项）。肖天奕的约 1,000 帧尚未合并。初步分类结果 cao-v0（只用曹的数据）：test Macro F1 1.000、val 0.854，基线 0.113 / 0.573，**偏乐观，不是最终结果**；曹的 20 条查询已起草（草稿，待复核）。**还没有检索实验结果** |
-| Windows 实机 | 本分支新增内容未在 Windows 上运行；`collect` / `indexer` 不依赖窗口 API，预期可用，**待验证** |
+| 产品 | 录制（等稳 / 排错 / 补拍 / 规则）、文字与画面两种搜索、原图核验与前后浏览、收藏 / 三种删除 / 到期 / 配额、批量导入、内容类别；网页界面（`screenrecall/webapi.py` + `web/`，中英文）替换了 Streamlit 页面（`app.py` 保留） |
+| 数据 | 两人受控数据 2,184 个验收帧（chat 593 / code 596 / web 514 / table_doc 481），双人复核；库不在 git 里（仓库公开），按 PROGRESS 的说明另行传递 |
+| 分类 | 最终模型 `results/classifier/v1`：test Macro F1 0.868、准确率 87.4%（基线 0.105 / 0.377）；默认配置已启用 |
+| 检索 | 60 条查询，规则冻结后盲测只跑一次：产品文字模式 Hit@5 22/30、MRR@10 0.61（纯词法 8/30）；见 `results/retrieval/` |
+| 性能（Windows 实测） | 热查询 P95 ≤0.37 s，OCR 就绪 P95 7.8 s，向量就绪 P95 约 9.5 s；见 `results/windows/` |
+| 测试 | `pytest tests`（Windows 11），前端 `cd web; npm test` |
+| 进度与交接 | [PROGRESS.md](PROGRESS.md) |
 
-## 本分支新增内容（受控数据采集与标注，方案 6.1、6.2、6.4）
+以下各节按开发顺序记录每块功能做了什么、怎么验证的。
+
+## 受控数据采集与标注（方案 6.1、6.2、6.4，原 `feat/dataset-collection`）
 
 | 能力 | 做了什么 | 代码 / 文件 | 验证 |
 | --- | --- | --- | --- |
@@ -78,9 +97,10 @@
 | 继承向量检索（`feat/vector-search`） | 数据库 v3、文本块与向量、向量任务处理、文字模式（词法 + 语义 RRF）、画面模式（多语言 CLIP）、页面文字/画面切换与模型缓存 | 已实现；真实模型测试通过（Mac 与 Windows）；Windows 实机端到端通过（肖天奕 10-14 记录） |
 | 继承证据浏览（`feat/evidence-browse`） | 证据浏览与并排、放宽匹配、A05–A10 自动化验收、批量导入、数据库 v4 | 已实现；Windows 11 实机验证通过（10-16，肖天奕） |
 | 继承 `feat/lifecycle` | 收藏、三种删除、30/90 天到期、配额与空间不足暂停、A11/A12 可在 Mac 上验证的部分、数据库 v5/v6；测量工具；标注 / 划分工具与分类器流程；检索评测脚本 | 已实现；收藏删除到期配额 Windows 实机通过（10-16）；分类与评测只用合成数据 / 替身编码器验证流程；**没有测量数字、分类结果和检索实验结果** |
-| 本分支新增 | 受控数据采集与标注规程、任务表与查询分配、`collect` 与 `indexer` 工具 | 已实现；Mac 测试通过；**尚无真实数据** |
+| 受控数据集（`feat/dataset-collection`） | 采集与标注规程、任务表与查询分配、`collect` 与 `indexer` 工具；捕获覆盖、编码对照、失败待办人工重试 | 已实现；两人数据已采完、合库、复核 |
+| 合库与实验（`feat/merge-datasets`，PR #7） | 合库、60 条查询、正式划分、最终分类、五组检索（dev + 盲测一次）、Windows 资源实测、编码对照；网页界面 | 已完成，结果在 `results/` |
 
-还没有开始：真实数据采集与标注（规程和工具已就绪，见 `datasets/COLLECTION.md`）、40 条查询真值、分类与五组检索实验的真实运行和报告、维护页人工重试、资源测量的实际运行（脚本已写，未在测试机上跑）、A13 实机核验。顺序见 PROGRESS.md「下一步」。
+还没有做：捕获覆盖实验的 Windows 实测、A13 实机核验（断网、缩放）；报告、Slides、演示视频。见 PROGRESS.md。
 
 ## 运行
 
@@ -93,6 +113,10 @@ py -3.12 -m venv .venv; .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python -m screenrecall.models --download   # 联网一次，下载锁定版本的三套模型
 
+# 一键启动：后台（新窗口）+ 网页界面，自动打开浏览器；前端没构建或有改动时先构建（需要 Node.js 20+）
+.\start.ps1                          # 可加 -DataDir data-dataset；只查不录加 -NoDaemon
+
+# 或者分开手动启动：
 # 终端 1（仓库根目录）：后台。只做环境检查可加 --check（"向量模型"一项应为 OK）
 python -m screenrecall.daemon
 

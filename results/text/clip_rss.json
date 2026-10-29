@@ -1,0 +1,38 @@
+{
+  "images": 32,
+  "size": "1600x1000",
+  "threads": 4,
+  "before": {
+    "rss_mib": 183,
+    "private_mib": 651
+  },
+  "load_s": 14.62,
+  "loaded": {
+    "rss_mib": 1164,
+    "private_mib": 2121
+  },
+  "encode_s_per_image": 0.105,
+  "during": {
+    "rss_mib": 1194,
+    "private_mib": 2150
+  },
+  "torch_threads_in_batch": 4,
+  "after": {
+    "rss_mib": 2,
+    "private_mib": 1556
+  },
+  "torch_threads_after": 10,
+  "vec_shape": [
+    32,
+    512
+  ],
+  "second_during": {
+    "rss_mib": 691,
+    "private_mib": 2167
+  },
+  "second_after": {
+    "rss_mib": 2,
+    "private_mib": 1584
+  },
+  "note": "after 的 RSS 很小是因为退出批次时 EmptyWorkingSet 把页面换出；以私有字节为准。torch / transformers 库本身的内存随空闲整理进程退出才归还。"
+}

@@ -8,8 +8,10 @@ data_dir = "data"
 [capture]
 interval_seconds = 3.0     # 普通模式采样间隔（方案 4.1）
 recent_cache_size = 4      # 最近已接受画面缓存，用于 A→B→A 精确复用（方案 4.2：3–5 个）
-webp_quality = 92          # 初值，待与无损对比后冻结（方案 6.5）
-webp_lossless = false
+webp_quality = 92          # 只在 webp_lossless = false 时生效
+# 2026-10-23 Windows 编码对照（results/windows/2026-10-23-DESKTOP-PH4UL0H/codec/）：文字为主的截图无损平均 88 KiB、
+# q92 164 KiB；无损逐像素一致、OCR 120/120 不变，q92 每张 OCR 都有变化。故默认无损（大面积照片画面可能更大）
+webp_lossless = true
 webp_method = 4            # 0–6，越大越慢、文件越小
 # 等稳（方案 4.1）：相邻两次观察的变化像素比例低于此值即视为稳定并保存；初值，待事件脚本验证后冻结
 stable_change_ratio = 0.01
@@ -68,7 +70,71 @@ min_free_gib = 2            # 磁盘最低剩余空间
 reserve_mib = 256           # 写入前预留余量，初值
 maintenance_interval_seconds = 300
 
+# ---------------- v3（python -m screenrecall.app）：能读成字的就存字，读不成字的就存截图 ----------------
+# 键与 screenrecall/v3/config.py 的 V3Config 字段同名，没写的用默认值；写错名字会报错。所有能调的数字都在这一节。
+# 新数据库 recall-v3.sqlite3 放在 v3 数据目录里；上面 [storage] 的老数据目录只给旧界面和冻结评测用。
+[v3]
+data_dir = ""                 # 空 = <仓库>/data-v3；环境变量 SCREENRECALL_V3_DATA_DIR、命令行 --data-dir 优先
+
+# ---- 主进程 ----
+port = 8611                   # 主页端口（只在 127.0.0.1 上）；被占用时自动换一个
+open_browser = true           # 启动后打开主页（命令行 --no-browser / --autostart 时不开）
+tray = true                   # 显示托盘图标（命令行 --no-tray 时不显示）
+
+# ---- 录哪些软件 ----
+# 第一次建库时写进名单"录"这一档的进程名（之后以页面上改的为准）。只是数据，不按名字写任何特殊规则
+default_record_apps = ["msedge.exe", "chrome.exe", "firefox.exe", "brave.exe", "opera.exe", "vivaldi.exe"]
+# 无痕窗口：标题里有这些词就跳过（不分大小写）
+private_title_keywords = ["InPrivate", "无痕", "隐身", "Incognito", "Private Browsing"]
+record_url_schemes = ["http", "https", "file"]   # 只录这些网址协议；edge:// chrome:// about: 等内部页跳过
+# 网址以这些开头也算浏览器内部页（新标签页实际打开的是 https 页面）
+internal_url_prefixes = ["https://ntp.msn.com/edge/ntp", "https://ntp.msn.cn/edge/ntp", "https://www.msn.com/spartan/ntp",
+                         "https://www.google.com/_/chrome/newtab"]
+max_background_windows = 2    # "一直录"的窗口最多同时在后台录几个
+
+# ---- ① 拍 ----
+fps = 1.0                     # 每个在录窗口最多几帧/秒
+still_ms = 2000               # 画面停下这么久就拍
+forced_ms = 10000             # 画面一直在动满这么久，强制拍一次
+title_settle_ms = 1000        # 同一窗口标题变了，稳定这么久才算换了页面
+
+# ---- 跳过 ----
+typing_quiet_ms = 5000        # 这个页面这么久内打过字就先不拍（Ctrl 组合键、粘贴、翻页、方向键不算打字）
+
+# ---- ② 读字 ----
+uia_timeout_ms = 1500         # 系统文字最多读这么久（后台 Edge 实测：维基 2 秒、视频页 0.7 秒；超时就 OCR，网址照样有）
+uia_max_nodes = 5000          # 最多遍历这么多个控件
+ocr_min_chars = 100           # 系统文字（正文）少于这么多字就再 OCR
+ocr_min_body_ratio = 0.30     # 或者正文不到读到的字的这个比例（大多是菜单按钮）
+ocr_model = "tiny"            # PP-OCRv6 tiny（约 0.7 秒一个窗口）
+ocr_threads = 2               # OCR 推理线程数
+ocr_models_dir = ""           # 空 = <仓库>/models/ocr
+
+# ---- ⑤ 截图 ----
+jpeg_quality = 80             # JPEG 质量
+shot_max_width = 1920         # 宽超过这么多就等比缩小
+fallback_shot_ms = 60000      # 读不出字的新画面：同一个东西这么久最多一张
+fallback_min_area = 0.05      # 上次拍之后变了、又没有字的地方至少占画面这么多，才算"读不出字的新画面"
+weak_visit_ms = 600000        # 弱标签（软件 + 标题）一直不走：这么久算新的一次
+image_days = 30               # 截图留几天；字一直留着
+min_free_gb = 5.0             # 硬盘剩不到这么多就先不存图
+clip_max_chars = 4000         # 复制的文字最多记这么多字
+
+# ---- ⑥ 时间线 ----
+merge_ms = 300000             # 这么久内回到同一个东西，合成一条
+away_ms = 300000              # 这么久没碰键盘鼠标算走开（不算进"看了多久"）
+
+# ---- 查找 ----
+search_merge_ms = 600000      # 同一个东西这么久内搜到好几次，只显示一条
+
+# ---- 可选（空闲时做） ----
+idle_s = 300.0                # 键鼠这么久没动开始空闲整理
+llm_names = true              # 用 .env 里配的大模型给每样东西起名字、每小时写一句话；没配就用标题
+llm_max_calls = 100           # 一次空闲整理最多调用大模型几次
+vectors = false               # 按意思搜（MiniLM 文字向量）："有空再做"，默认关
+
 [classify]
 # 内容分类器训练产物目录（python -m screenrecall.classify train 的 --out），相对路径以仓库根目录为基准。
-# 留空则不预测；特征模型与 [models] 的全图模型不一致时不会加载
-model_dir = ""
+# 留空则不预测；特征模型与 [models] 的全图模型不一致时不会加载。
+# 默认用随仓库提交的最终模型（test Macro F1 0.868）；后台空闲时给缺预测的旧画面补写类别
+model_dir = "results/classifier/v1"

@@ -1,0 +1,232 @@
+{
+  "writer": {
+    "stills": 1500,
+    "lines_per_still": 40,
+    "new_lines": 12032,
+    "stills_per_s": 571.2,
+    "new_lines_per_s": 4581,
+    "submit_ms_max": 10.172,
+    "submit_ms_p50": 0.0042,
+    "one_still_roundtrip_ms_p50": 4.91,
+    "one_still_roundtrip_ms_max": 19.75
+  },
+  "build": {
+    "lines": 5000000,
+    "segments": 29800,
+    "build_s": 396.7,
+    "bulk_lines_per_s": 12604,
+    "db_mb": 2348.2,
+    "size_mb": {
+      "fts_bigram": 294.3,
+      "fts_trigram": 620.6,
+      "line_indexes": 467.7,
+      "lines": 956.3,
+      "other": 8.8
+    }
+  },
+  "queries": [
+    {
+      "case": "2 字中文·常见",
+      "query_len": 2,
+      "filters": [],
+      "ms_median": 182.96,
+      "ms_max": 188.63,
+      "mode": "recent",
+      "total": 600,
+      "lower_bound": true,
+      "groups": 20
+    },
+    {
+      "case": "2 字中文·较少",
+      "query_len": 2,
+      "filters": [],
+      "ms_median": 31.47,
+      "ms_max": 33.5,
+      "mode": "exact",
+      "total": 2500,
+      "lower_bound": false,
+      "groups": 20
+    },
+    {
+      "case": "2 字中文·随机",
+      "query_len": 2,
+      "filters": [],
+      "ms_median": 0.3,
+      "ms_max": 0.81,
+      "mode": "exact",
+      "total": 16,
+      "lower_bound": false,
+      "groups": 16
+    },
+    {
+      "case": "1 字中文·很少",
+      "query_len": 1,
+      "filters": [],
+      "ms_median": 50.15,
+      "ms_max": 52.6,
+      "mode": "exact",
+      "total": 4296,
+      "lower_bound": false,
+      "groups": 20
+    },
+    {
+      "case": "3-4 字中文·少",
+      "query_len": 4,
+      "filters": [],
+      "ms_median": 4.13,
+      "ms_max": 5.12,
+      "mode": "exact",
+      "total": 250,
+      "lower_bound": false,
+      "groups": 20
+    },
+    {
+      "case": "3-4 字中文·随机",
+      "query_len": 4,
+      "filters": [],
+      "ms_median": 0.29,
+      "ms_max": 1.01,
+      "mode": "exact",
+      "total": 1,
+      "lower_bound": false,
+      "groups": 1
+    },
+    {
+      "case": "英文·少",
+      "query_len": 10,
+      "filters": [],
+      "ms_median": 18.39,
+      "ms_max": 19.4,
+      "mode": "exact",
+      "total": 1000,
+      "lower_bound": false,
+      "groups": 20
+    },
+    {
+      "case": "英文·中等",
+      "query_len": 8,
+      "filters": [],
+      "ms_median": 133.24,
+      "ms_max": 135.25,
+      "mode": "exact",
+      "total": 12500,
+      "lower_bound": false,
+      "groups": 20
+    },
+    {
+      "case": "常见词 the",
+      "query_len": 3,
+      "filters": [],
+      "ms_median": 124.74,
+      "ms_max": 131.73,
+      "mode": "recent",
+      "total": 600,
+      "lower_bound": true,
+      "groups": 20
+    },
+    {
+      "case": "常见词 the + 最近 1 天",
+      "query_len": 3,
+      "filters": [
+        "time_from"
+      ],
+      "ms_median": 132.19,
+      "ms_max": 141.39,
+      "mode": "recent",
+      "total": 600,
+      "lower_bound": true,
+      "groups": 20
+    },
+    {
+      "case": "常见词 the + 应用筛选",
+      "query_len": 3,
+      "filters": [
+        "app"
+      ],
+      "ms_median": 340.9,
+      "ms_max": 355.8,
+      "mode": "recent",
+      "total": 600,
+      "lower_bound": true,
+      "groups": 20
+    },
+    {
+      "case": "中等词 + 应用 + 7 天",
+      "query_len": 8,
+      "filters": [
+        "app",
+        "time_from"
+      ],
+      "ms_median": 102.59,
+      "ms_max": 115.24,
+      "mode": "exact",
+      "total": 162,
+      "lower_bound": false,
+      "groups": 20
+    },
+    {
+      "case": "两个词 AND",
+      "query_len": 10,
+      "filters": [],
+      "ms_median": 106.33,
+      "ms_max": 188.88,
+      "mode": "exact",
+      "total": 0,
+      "lower_bound": false,
+      "groups": 0
+    },
+    {
+      "case": "跨行短语",
+      "query_len": 6,
+      "filters": [],
+      "ms_median": 0.66,
+      "ms_max": 1.9,
+      "mode": "exact",
+      "total": 1,
+      "lower_bound": false,
+      "groups": 1
+    }
+  ],
+  "writer_on_big_db": {
+    "stills": 500,
+    "lines_per_still": 40,
+    "new_lines": 4032,
+    "stills_per_s": 78.5,
+    "new_lines_per_s": 633,
+    "submit_ms_max": 0.381,
+    "submit_ms_p50": 0.0041,
+    "one_still_roundtrip_ms_p50": 14.73,
+    "one_still_roundtrip_ms_max": 113.51
+  },
+  "vectors": [
+    {
+      "rows": 200000,
+      "dim": 384,
+      "disk_mb": 293,
+      "append_rows_per_s": 195789,
+      "reader_open_s": 0.152,
+      "search_ms": 9.27,
+      "search_10pct_time_ms": 3.99,
+      "search_best_per_group_ms": 11.73,
+      "search_group_filter_ms": 13.4,
+      "incremental_refresh_1000_ms": 45.96,
+      "delete_1000_ms": 21.44,
+      "refresh_after_delete_ms": 3.68
+    },
+    {
+      "rows": 1000000,
+      "dim": 384,
+      "disk_mb": 1465,
+      "append_rows_per_s": 190831,
+      "reader_open_s": 0.771,
+      "search_ms": 50.73,
+      "search_10pct_time_ms": 12.94,
+      "search_best_per_group_ms": 60.64,
+      "search_group_filter_ms": 71.49,
+      "incremental_refresh_1000_ms": 57.55,
+      "delete_1000_ms": 32.63,
+      "refresh_after_delete_ms": 9.88
+    }
+  ],
+  "note": "2026-10-27, i5-12600KF, NVMe, Python 3.12 / SQLite 3.53.1. Synthetic text only (python -m screenrecall.store.bench --lines 5000000 --vectors 200000,1000000); vectors re-measured after the per-group top-k change. ms = median of 5 (queries) / 7 (vectors)."
+}
