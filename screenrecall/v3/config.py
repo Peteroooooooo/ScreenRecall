@@ -90,7 +90,9 @@ class V3Config:
     idle_s: float = 300.0              # 键鼠这么久没动开始空闲整理
     llm_names: bool = True             # 用 .env 里配的大模型给每样东西起名字、每小时写一句话；没配就用标题
     llm_max_calls: int = 100           # 一次空闲整理最多调用大模型几次
-    vectors: bool = False              # 按意思搜（MiniLM 文字向量）："有空再做"，默认关
+    vectors: bool = True               # 按意思搜（MiniLM 文字向量）：空闲时给每行字算向量，第一次会把旧的行补上
+    semantic_min_score: float = 0.60   # 按意思搜：相似度（余弦）到这么多才算搜到；低了无关的词也会带出一堆
+    semantic_min_chars: int = 6        # 按意思搜：少于这么多字的行不算（"数据看板"这类短的零碎字和什么都像）
 
     @property
     def db_path(self) -> Path:

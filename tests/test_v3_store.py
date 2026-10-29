@@ -1,5 +1,6 @@
 """v3 数据层：建库、名单、出处 / 条目 / 灰字、字的全库去重、截图与硬盘保护、过期、隐私删除、查询的 JSON 形状。"""
 
+import dataclasses
 import sqlite3
 import threading
 from datetime import datetime
@@ -647,6 +648,38 @@ def test_search_semantic_hits_after_lexical(env):
     assert calls and r["total"] == 2
     assert r["results"][0]["hits"][0]["semantic"] is False  # 全文命中在前（虽然更早）
     assert r["results"][1]["hits"][0] == {**r["results"][1]["hits"][0], "text": "Transformer 的核心", "semantic": True}
+
+
+def test_search_semantic_floor_short_lines_and_score_order(env):
+    cfg, st, q, clk = env
+    assert cfg.vectors and cfg.semantic_min_score == 0.60 and cfg.semantic_min_chars == 6
+    _, _, oa, _ = look(st, URL("https://a.example/"), T0, L("自注意力怎么算的呢"))
+    _, _, ob, _ = look(st, URL("https://b.example/"), T0 + 30 * MIN, L("多头注意力的直观解释"))
+    _, _, oc, _ = look(st, URL("https://c.example/"), T0 + 60 * MIN, L("和题目无关的一行字"))
+    _, _, od, _ = look(st, URL("https://d.example/"), T0 + 90 * MIN, L("数据看板"))
+    ida, idb = oa.ids_by_norm[docs.norm("自注意力怎么算的呢")], ob.ids_by_norm[docs.norm("多头注意力的直观解释")]
+    idc, idd = oc.ids_by_norm[docs.norm("和题目无关的一行字")], od.ids_by_norm[docs.norm("数据看板")]
+    sem = lambda text, k: [(idd, 0.95), (ida, 0.80), (idb, 0.70), (idc, 0.59)]  # noqa: E731
+    r = q.search("attention", semantic=sem)
+    # 0.59 低于下限、"数据看板"太短都不算；只有按意思搜到的按分数排（a 更早但更像，排前面）
+    assert [x["source"]["url"] for x in r["results"]] == ["https://a.example/", "https://b.example/"]
+    assert all(h["semantic"] for x in r["results"] for h in x["hits"])
+    loose = Queries(dataclasses.replace(cfg, semantic_min_score=0.5, semantic_min_chars=0), clock=clk)
+    try:
+        assert loose.search("attention", semantic=sem)["total"] == 4
+    finally:
+        loose.close()
+
+
+def test_search_semantic_error_falls_back_to_lexical(env):
+    cfg, st, q, clk = env
+    look(st, URL("https://a.example/"), T0, L("注意力机制"))
+
+    def broken(text, k):
+        raise RuntimeError("模型没装")
+
+    r = q.search("注意力", semantic=broken)
+    assert r["error"] is None and r["total"] == 1 and r["results"][0]["hits"][0]["semantic"] is False
 
 
 # ---------------- 时间线 / 条目 / 出处 ----------------

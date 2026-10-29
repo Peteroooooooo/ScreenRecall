@@ -305,8 +305,9 @@ def test_line_vectors_stop_between_batches(tmp_path):
 def test_worker_runs_vectors_only_when_enabled(tmp_path):
     rows = [(1, "一行字", NOW, 1)]
     enc = FakeEncoder()
-    rep = worker(tmp_path, queries=FakeQueries(lines=rows), llm=FakeLlm(), encoder_factory=lambda: enc).run(once=True)
-    assert rep["steps"]["vectors"] == 0 and enc.calls == 0
     rep = worker(tmp_path, queries=FakeQueries(lines=rows), llm=FakeLlm(), encoder_factory=lambda: enc,
-                 cfg=cfg_of(tmp_path, vectors=True)).run(once=True)
+                 cfg=cfg_of(tmp_path, vectors=False)).run(once=True)
+    assert rep["steps"]["vectors"] == 0 and enc.calls == 0
+    # 默认开：游标从 0 开始，已有的行第一次就补上
+    rep = worker(tmp_path, queries=FakeQueries(lines=rows), llm=FakeLlm(), encoder_factory=lambda: enc).run(once=True)
     assert rep["steps"]["vectors"] == 1 and enc.calls == 1
