@@ -166,6 +166,9 @@ class FakeStore:
     def meta_get(self, key, default=None):
         return self.meta.get(key, default)
 
+    def meta_put(self, key, value):
+        self.meta[key] = value
+
     def url_apps(self):
         return set(self.learned_url_apps)
 
@@ -225,9 +228,11 @@ class FakeReader:
         self.result = TextResult((), "none")
         self.reads = 0
         self.ocr_asked: bool | None = None
+        self.use_uia: list[bool] = []
 
-    def read_text(self, hwnd, frame, *, want_ocr=None):
+    def read_text(self, hwnd, frame, *, want_ocr=None, use_uia=True):
         self.reads += 1
+        self.use_uia.append(use_uia)
         if want_ocr is not None and len(self.result.lines) < 3:
             self.ocr_asked = bool(want_ocr(self.result))
         return self.result
@@ -476,6 +481,25 @@ def test_app_that_gave_urls_needs_url_from_then_on(P):
     P.store_.learned_url_apps = {"OtherBrowser.exe"}
     P._url_apps = None
     assert P._needs_url("otherbrowser.exe") and not P._needs_url("notepad.exe")
+
+
+def test_app_whose_system_text_times_out_is_read_by_ocr_only(P):
+    """读系统文字超时的软件（读一次就卡住它）：以后只截图认字，重启也记得；浏览器不记（网址要靠它）。"""
+    from screenrecall.v3.read import ReadResult
+
+    P.process(FocusEvent(1000, 1, 1001, "Code.exe", "a.py - Visual Studio Code"))
+    P.reader_.result = ReadResult(lines("一行字"), "ocr", uia_timed_out=True)
+    P.process(snap(3000, app="Code.exe", title="a.py - Visual Studio Code"))
+    P.process(snap(6000, app="Code.exe", title="a.py - Visual Studio Code"))
+    assert P.reader_.use_uia == [True, False]
+    assert P.store_.meta[pipeline_mod.SLOW_UIA_KEY] == '["code.exe"]'
+    P._slow_uia = None
+    assert P._slow_uia_set() == {"code.exe"}
+    P.process(FocusEvent(7000, 2, 1002, "msedge.exe", "文章"))
+    P.reader_.result = ReadResult(lines("正文"), "ocr", url="https://a.example.com/", uia_timed_out=True)
+    P.process(snap(9000, hwnd=2))
+    P.process(snap(12000, hwnd=2))
+    assert P.reader_.use_uia[-2:] == [True, True]
 
 
 def test_forget_deleted_reenters_visit_and_drops_candidates(P):

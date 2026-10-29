@@ -36,6 +36,7 @@ own_origins：每 5 秒读一次 <home>/endpoint.json（app.auth.read_endpoint�
 
 from __future__ import annotations
 
+import json
 import logging
 import queue
 import threading
@@ -53,6 +54,7 @@ log = logging.getLogger(__name__)
 
 ORIGINS_EVERY_MS = 5000
 MAX_WINDOWS_REMEMBERED = 64
+SLOW_UIA_KEY = "uia_slow_apps"   # meta：读系统文字超时过的软件（JSON 列表）
 MAX_SIGNATURES = 256       # 记最近这么多个出处上一拍的小块指纹（每个约 16 KB）
 
 
@@ -114,6 +116,7 @@ class Pipeline:
         self._url_by_hwnd: dict[int, tuple[str, str]] = {}    # 窗口 → (标题, 网址)：最近一次存下的网址出处（_known_url）
         self._sigs: OrderedDict[int, object] = OrderedDict()  # 出处 → 上一拍的小块指纹
         self._url_apps: set[str] | None = None                # 带网址的软件（进程名小写）
+        self._slow_uia: set[str] | None = None                # 读系统文字超时过的软件：只 OCR（_mark_slow_uia）
         self._title_tails: dict[str, str] = {}                # 软件 → 窗口标题里加在网页标题后面的尾巴（_page_name）
         self._lock = threading.RLock()
         self._thread: threading.Thread | None = None
@@ -358,7 +361,11 @@ class Pipeline:
             return api.label_source(ev.app, ev.title, url).kind != KIND_FILE
 
         t0 = time.perf_counter()
-        res = self.reader.read_text(ev.hwnd, ev.frame, want_ocr=want_ocr)
+        app = (ev.app or "").lower()
+        use_uia = app not in self._slow_uia_set()
+        res = self.reader.read_text(ev.hwnd, ev.frame, want_ocr=want_ocr, use_uia=use_uia)
+        if use_uia and getattr(res, "uia_timed_out", False) and not self._needs_url(ev.app):
+            self._mark_slow_uia(app)
         self.timing["read_ms"] += (time.perf_counter() - t0) * 1000
         self.timing["snaps"] += 1
         url = self._known_url(ev, self._page_url(ev.app, res.url))
@@ -514,6 +521,38 @@ class Pipeline:
                 apps |= {a.lower() for a in fn()}
             self._url_apps = apps
         return self._url_apps
+
+    def _slow_uia_set(self) -> set[str]:
+        """读系统文字超时过的软件（进程名小写，存在 meta 里，重启也记得）。"""
+        if self._slow_uia is None:
+            raw = None
+            get = getattr(self.store, "meta_get", None)
+            if get is not None:
+                try:
+                    raw = get(SLOW_UIA_KEY)
+                except Exception:  # noqa: BLE001
+                    raw = None
+            try:
+                self._slow_uia = {str(a).lower() for a in json.loads(raw)} if raw else set()
+            except ValueError:
+                self._slow_uia = set()
+        return self._slow_uia
+
+    def _mark_slow_uia(self, app: str) -> None:
+        """这个软件读系统文字超时了：它的界面要在它自己的界面线程上一项项交出来，读一次就会卡住它（VS Code 这类
+        界面元素特别多的软件）。以后只截图认字，不再碰它的辅助功能树。浏览器不记：网址要靠它，而且找网址很快。"""
+        slow = self._slow_uia_set()
+        if not app or app in slow:
+            return
+        slow.add(app)
+        self._count("uia_slow_marked")
+        log.info("%s 读系统文字超时：以后只截图认字", app)
+        put = getattr(self.store, "meta_put", None)
+        if put is not None:
+            try:
+                put(SLOW_UIA_KEY, json.dumps(sorted(slow)))
+            except Exception:  # noqa: BLE001
+                log.warning("记不下读字慢的软件", exc_info=True)
 
     def _needs_url(self, app: str) -> bool:
         """这个软件的页面靠网址认（默认名单里的浏览器、库里出过网址出处的软件）：读不到网址就不存。"""
