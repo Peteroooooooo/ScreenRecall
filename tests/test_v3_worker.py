@@ -242,6 +242,7 @@ def test_prompts_follow_the_ui_language_and_default_to_english(tmp_path):
         (sys_n, user_n), (sys_h, user_h) = [(m[0]["content"], m[1]["content"]) for m in llm.messages]
         zh = meta.get("ui_lang") == "zh"
         assert want in sys_n and unwanted not in sys_n, meta
+        assert names._ONLY["zh" if zh else "en"] in sys_n and names._ONLY["zh" if zh else "en"] in sys_h
         assert ("中文概括" in sys_h) == zh and ("English sentence" in sys_h) == (not zh)
         assert user_n.startswith(names._DATA["zh" if zh else "en"]) and user_h.startswith(names._DATA["zh" if zh else "en"])
     assert names.UNTRUSTED["zh"] in sys_n and "不超过 14 个字" in sys_n and "不超过 40 字" in sys_h
