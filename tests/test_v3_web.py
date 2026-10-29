@@ -39,6 +39,15 @@ class FakeStore:
         self.tiers: dict[str, str] = {"msedge.exe": "record"}
         self.excl: list[dict] = []
         self.deleted: list[tuple[int, int]] = []
+        self.meta: dict[str, str] = {}
+        self.meta_writes = 0
+
+    def meta_get(self, key, default=None):
+        return self.meta.get(key, default)
+
+    def meta_put(self, key, value):
+        self.meta[key] = value
+        self.meta_writes += 1
 
     def set_control(self, **fields):
         self.ctrl.update(fields)
@@ -442,6 +451,19 @@ def test_settings_post(client, env):
     assert r.json()["autostart"] is False
     for bad in ({"agent_enabled": 1}, {"autostart": "yes"}, {"image_days": 3}):
         assert client.post("/api/v3/settings", json=bad, headers=POST_H).status_code == 400, bad
+
+
+def test_ui_language_is_recorded_only_when_it_changes(client, env):
+    client.get("/api/v3/status")  # 没带 X-Lang（MCP、脚本）：不记
+    assert env.store.meta == {}
+    for _ in range(3):
+        client.get("/api/v3/status", headers={"X-Lang": "en"})
+    assert env.store.meta == {"ui_lang": "en"} and env.store.meta_writes == 1
+    client.post("/api/v3/pause", json={"minutes": 5}, headers=POST_H | {"X-Lang": "zh"})
+    client.get("/api/v3/timeline", headers={"X-Lang": "zh"})
+    assert env.store.meta["ui_lang"] == "zh" and env.store.meta_writes == 2
+    client.get("/api/v3/status", headers={"X-Lang": "fr"})  # 不认识的值不记
+    assert env.store.meta["ui_lang"] == "zh" and env.store.meta_writes == 2
 
 
 def test_config_numbers_cover_all_tunables(env):

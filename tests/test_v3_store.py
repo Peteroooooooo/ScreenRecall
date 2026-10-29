@@ -782,13 +782,17 @@ def test_idle_worker_queries(env):
     assert q.hours_without_line(T0 + 60 * MIN + 59 * MIN) == [h14]  # 15 点这一小时还没完整
     st.put_hour_line(h14, "读了 A", None)
     assert q.hours_without_line(T0 + 3 * 60 * MIN) == [h14 + 60 * MIN]
+    # 界面换了语言：这个时间以前写的那句也要重写
+    assert q.hours_without_line(T0 + 3 * 60 * MIN, stale_before_ms=clk.t) == [h14 + 60 * MIN]
+    assert q.hours_without_line(T0 + 3 * 60 * MIN, stale_before_ms=clk.t + 1) == [h14, h14 + 60 * MIN]
     assert q.hour_digest(h14) == [{"name": "A", "app": "msedge.exe", "dwell_ms": 60 * MIN, "new_lines": 25,
                                    "copied": 0}]
     assert q.hour_digest(h14 + 2 * 60 * MIN) == []
     u = q.unnamed_sources(5)
     assert u[0]["source_id"] == sid and len(u[0]["sample"]) == 20 and u[0]["sample"][0] == "第0行"
     st.set_source_name(sid, "某网页")
-    assert q.unnamed_sources(5) == []
+    assert q.unnamed_sources(5) == [] and q.unnamed_sources(5, stale_before_ms=clk.t) == []
+    assert q.unnamed_sources(5, stale_before_ms=clk.t + 1)[0]["source_id"] == sid  # 名字是换语言以前起的
     after = q.lines_after(0, limit=3)
     assert [x[1] for x in after] == ["第0行", "第1行", "第2行"] and after[0][3] == sid
     assert q.lines_after(after[-1][0], limit=100)[0][1] == "第3行"
