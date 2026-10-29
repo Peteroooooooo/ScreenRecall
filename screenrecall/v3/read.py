@@ -51,6 +51,7 @@ class ReadResult(TextResult):
     window_names：辅助功能里窗口根元素和直接子元素的名字（UiaResult.window_names）。有的浏览器的无痕窗口
     只在这里写着"（无痕）"、窗口标题里没有，调用方拿它和窗口标题一起按无痕关键词判。"""
     window_names: tuple[str, ...] = ()
+    uia_timed_out: bool = False
 
 
 def _usable(res) -> bool:
@@ -181,13 +182,15 @@ class TextReader:
 
     # ----- 对外 -----
 
-    def read_text(self, hwnd: int, frame, *, want_ocr: Callable[[TextResult], bool] | None = None) -> TextResult:
+    def read_text(self, hwnd: int, frame, *, want_ocr: Callable[[TextResult], bool] | None = None,
+                  use_uia: bool = True) -> TextResult:
         """frame 是 rec.frames.Frame（.bgr、.fmap）。从不抛异常。
         want_ocr：系统文字读完、要 OCR 之前问一下调用方（参数是到这一步的结果：url / page_title / window_title）；
-        返回 False（这一拍反正不存：内部页、本地文件、拍完换了页面……）就不 OCR，结果 ocr_skipped=True。"""
+        返回 False（这一拍反正不存：内部页、本地文件、拍完换了页面……）就不 OCR，结果 ocr_skipped=True。
+        use_uia=False：不碰这个窗口的辅助功能树，只 OCR（读系统文字会卡住的软件）。"""
         self.stats["reads"] += 1
         try:
-            return self._read(hwnd, frame, want_ocr)
+            return self._read(hwnd, frame, want_ocr, use_uia)
         except Exception as exc:  # noqa: BLE001
             self.stats["errors"] += 1
             log.warning("读字出错：%s", type(exc).__name__)
@@ -278,8 +281,8 @@ class TextReader:
         except Exception:  # noqa: BLE001 - 取不到就不比
             return None
 
-    def _read(self, hwnd: int, frame, want_ocr=None) -> TextResult:
-        res = self._read_uia(hwnd)
+    def _read(self, hwnd: int, frame, want_ocr=None, use_uia: bool = True) -> TextResult:
+        res = self._read_uia(hwnd) if use_uia else None
         uia_ok = res is not None and res.status in _UIA_OK
         if res is not None and res.status == "timeout":
             self.stats["uia_timeouts"] += 1
@@ -355,4 +358,5 @@ class TextReader:
             lines=tuple(lines), via=via, url=url,
             uia_chars=uia_chars, body_chars=body_chars, uia_ms=uia_ms, ocr_ms=ocr_ms, status=status,
             page_title=page_title, window_title=window_title, ocr_skipped=ocr_skipped, window_names=names,
+            uia_timed_out=res is not None and res.status == "timeout",
         )
