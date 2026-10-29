@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>SR-SCROLL-TEST</title>
+<style>
+  body{margin:0;font:18px/1.7 "Microsoft YaHei UI",sans-serif;background:#fff;color:#222}
+  section{position:relative}
+  .article{max-width:900px;margin:0 auto;padding:40px 24px}
+  .article p{margin:0 0 14px}
+  /* 左右滑动的卡片 */
+  #hs{display:flex;gap:16px;overflow-x:auto;padding:24px;background:#f4f4f6;scroll-behavior:auto}
+  .card{flex:none;width:300px;height:360px;background:#fff;border:1px solid #ddd;border-radius:12px;padding:16px;font-size:16px;overflow:hidden}
+  /* 视差：背景层滚得比前景慢 */
+  #parallax{height:1600px;overflow:hidden;background:#0d1b2a;color:#fff}
+  #parallax .bg{position:absolute;inset:0;font-size:46px;line-height:1.3;color:#24415e;white-space:pre-wrap;word-break:break-all;will-change:transform}
+  #parallax .fg{position:relative;max-width:800px;margin:0 auto;padding:120px 24px}
+  #parallax .fg p{background:rgba(13,27,42,.85);padding:10px 14px;border-radius:8px}
+  /* 钉住：外层很高，里面一屏一直钉在顶上，内容随滚动缩放、横移、换字 */
+  #pin{height:3200px;background:#111}
+  #pin .stage{position:sticky;top:0;height:100vh;overflow:hidden;color:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center}
+  #pin h2{font-size:80px;margin:0;will-change:transform,opacity}
+  #pin .track{display:flex;gap:40px;margin-top:40px;white-space:nowrap;font-size:28px;will-change:transform}
+  #pin .counter{margin-top:30px;font-size:24px;color:#9ad}
+  /* 滚到才淡入 */
+  .reveal p{opacity:0;transform:translateY(40px);transition:opacity .4s, transform .4s}
+  .reveal p.in{opacity:1;transform:none}
+</style>
+</head>
+<body>
+<section class="article" id="article"></section>
+<section id="hs"></section>
+<section id="parallax"><div class="bg" id="bg"></div><div class="fg" id="fg"></div></section>
+<section id="pin"><div class="stage"><h2 id="pinTitle">滚动驱动的标题</h2><div class="track" id="track"></div><div class="counter" id="counter">进度 0%</div></div></section>
+<section class="article reveal" id="reveal"></section>
+<script>
+const W = '检索 增强 生成 模型 编造 事实 数据 集合 网盘 链接 组会 下午 实验 结果 表格 方法 引言 附录 代码 报错 修复 版本 发布 测试 窗口 截图 文字 识别 记忆 时间 线索 片段 概括 证据 位置 滚动 方向 速度 动画 页面 卡片 视差 进度 标题 段落 句子 研究 课题 论文 章节 摘要 图片 公式 向量 索引 排序 关键词 语义 混合 融合 召回 准确 覆盖 评测 盲测 冻结 分支 合并 提交 推送'.split(' ');
+let seed = 42; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+const sent = n => Array.from({length:n}, () => W[Math.floor(rnd() * W.length)]).join('') + '，编号 ' + Math.floor(rnd() * 100000) + '。';
+const art = document.getElementById('article');
+for (let i = 0; i < 140; i++) art.insertAdjacentHTML('beforeend', `<p>第 ${i + 1} 段：${sent(10 + Math.floor(rnd() * 30))}</p>`);
+const hs = document.getElementById('hs');
+for (let i = 0; i < 40; i++) hs.insertAdjacentHTML('beforeend', `<div class="card"><b>卡片 ${i + 1}</b><br>${sent(18)}<br>${sent(14)}</div>`);
+document.getElementById('bg').textContent = Array.from({length:60}, () => sent(8)).join(' ');
+const fg = document.getElementById('fg');
+for (let i = 0; i < 18; i++) fg.insertAdjacentHTML('beforeend', `<p>前景 ${i + 1}：${sent(16)}</p>`);
+const track = document.getElementById('track');
+for (let i = 0; i < 16; i++) track.insertAdjacentHTML('beforeend', `<span>横移 ${i + 1} ${sent(3)}</span>`);
+const rv = document.getElementById('reveal');
+for (let i = 0; i < 40; i++) rv.insertAdjacentHTML('beforeend', `<p>淡入 ${i + 1}：${sent(20)}</p>`);
+
+const bg = document.getElementById('bg'), par = document.getElementById('parallax');
+const pin = document.getElementById('pin'), title = document.getElementById('pinTitle'), counter = document.getElementById('counter');
+function onScroll(){
+  const y = scrollY;
+  bg.style.transform = `translateY(${(y - par.offsetTop) * 0.5}px)`;
+  const p = Math.min(1, Math.max(0, (y - pin.offsetTop) / (pin.offsetHeight - innerHeight)));
+  title.style.transform = `scale(${1 + p * 1.5})`; title.style.opacity = String(1 - p * 0.7);
+  track.style.transform = `translateX(${-p * 1800}px)`;
+  counter.textContent = `进度 ${Math.round(p * 100)}%`;
+  for (const el of rv.children) if (el.getBoundingClientRect().top < innerHeight * 0.9) el.classList.add('in');
+}
+addEventListener('scroll', onScroll, {passive:true}); onScroll();
+window.__sections = () => Object.fromEntries(['article','hs','parallax','pin','reveal'].map(id => [id, document.getElementById(id).offsetTop]));
+</script>
+</body>
+</html>
