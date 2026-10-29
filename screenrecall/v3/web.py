@@ -45,6 +45,7 @@ MAX_THUMB_CACHE = 200
 MAX_DELETE_MINUTES = 366 * 24 * 60
 # no-store：截图不能留在浏览器的磁盘缓存里，不然"删除"之后图片还在（隐私删除要真删）
 IMAGE_CACHE = "private, no-store"
+ICON_CACHE = "private, max-age=86400"  # 软件图标不是屏幕内容，可以缓存一天
 _HOST = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$")
 # 设置页展示的"能调的数字"：V3Config 里的整数 / 小数字段；端口不算（被占用时自动换，不是规则里的数字）
 _NOT_NUMBERS = {"port"}
@@ -72,6 +73,7 @@ class V3Context:
     running_apps: Callable[[], list[dict]] | None = None     # None = winapi.running_apps（不含本进程）
     installed: Callable[[str], bool] | None = None           # None = winapi.app_installed（App Paths 里登记过）
     agents: Any = None                                       # quick_status() / install_all()；None = app.agents
+    icons: Any = None                                        # info(process, running) / running_paths()；None = appicons.AppIcons(winapi)
     # 约定之外加的两个可选项（默认行为和 app.llm 一样）：测试用临时 .env，不碰仓库里真的 .env
     llm_env_files: Sequence[Path] | None = None     # None = 仓库 .env + home/.env
     llm_environ: dict[str, str] | None = None       # None = os.environ
@@ -89,6 +91,16 @@ class V3Context:
             from ..app import autostart
             self.autostart = autostart
         return self.autostart
+
+    def get_icons(self):
+        if self.icons is None:
+            from .appicons import AppIcons
+            try:
+                from .. import winapi
+            except ImportError:
+                winapi = None
+            self.icons = AppIcons(winapi)
+        return self.icons
 
     def forget_thumbs(self) -> None:
         with self._thumb_lock:
@@ -357,6 +369,8 @@ def api_apps(ctx: V3Context, _req: dict) -> dict:
     out = ctx.queries.apps()
     defaults = {a.lower() for a in ctx.cfg.default_record_apps}
     found = _installed_fn(ctx)
+    icons = ctx.get_icons()
+    running = icons.running_paths()
     for a in out["apps"]:
         a["installed"] = True
         if a["process"].lower() in defaults:
@@ -364,7 +378,25 @@ def api_apps(ctx: V3Context, _req: dict) -> dict:
                 a["installed"] = bool(found(a["process"]))
             except Exception:  # noqa: BLE001
                 pass
+        _add_look(a, icons.info(a["process"], running))
+    for u in out.get("unlisted", []):
+        _add_look(u, icons.info(u.get("app") or "", running))
     return out
+
+
+def _add_look(item: dict, info: dict | None) -> None:
+    """名单页显示用：name = exe 的"文件说明"（没有 = null，页面用进程名），icon = 有没有图标可取。"""
+    if not item.get("name"):
+        item["name"] = (info or {}).get("name")
+    item["icon"] = bool(info and info.get("png"))
+
+
+def api_app_icon(ctx: V3Context, req: dict) -> Response:
+    process = _str(req["query"].get("process"), "process", cap=MAX_PROCESS_CHARS)
+    info = ctx.get_icons().info(process)
+    if not info or not info.get("png"):
+        raise ApiError(404, "这个软件取不到图标")
+    return Response(info["png"], media_type="image/png", headers={"Cache-Control": ICON_CACHE})
 
 
 def _agents(ctx: V3Context):
@@ -396,7 +428,14 @@ def api_apps_running(ctx: V3Context, _req: dict) -> dict:
         else:
             found = winapi.running_apps(frozenset({os.getpid()}))
     tiers = {a["process"].lower(): a["tier"] for a in ctx.queries.apps()["apps"]}
-    return {"running": [{**a, "tier": tiers.get(a["process"].lower())} for a in found]}
+    icons = ctx.get_icons()
+    running = icons.running_paths()
+    out = []
+    for a in found:
+        item = {**a, "tier": tiers.get(a["process"].lower())}
+        _add_look(item, icons.info(a["process"], running))
+        out.append(item)
+    return {"running": out}
 
 
 def api_apps_post(ctx: V3Context, req: dict) -> dict:
@@ -634,6 +673,7 @@ def routes(ctx: V3Context) -> list[BaseRoute]:
         Route("/apps", e(api_apps), methods=["GET"]),
         Route("/apps", e(api_apps_post, mutation=True), methods=["POST"]),
         Route("/apps/running", e(api_apps_running), methods=["GET"]),
+        Route("/apps/icon", e(api_app_icon), methods=["GET"]),
         Route("/agents", e(api_agents), methods=["GET"]),
         Route("/agents/install", e(api_agents_install, mutation=True), methods=["POST"]),
         Route("/excludes", e(api_excludes_post, mutation=True), methods=["POST"]),

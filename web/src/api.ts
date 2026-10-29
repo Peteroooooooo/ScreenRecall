@@ -230,14 +230,17 @@ export interface Status {
 
 export interface AppsInfo {
   /** installed：默认名单里的浏览器这台电脑上装了没有（没装的收起来）；没有这一项当作 true */
-  apps: { process: string; tier: Tier; added_ms: number; installed?: boolean }[];
+  /** name：exe 的"文件说明"（取不到 = null，用进程名）；icon：有图标可取（appIconUrl） */
+  apps: { process: string; tier: Tier; added_ms: number; installed?: boolean; name?: string | null; icon?: boolean }[];
   /** 最近 30 天出现过、不在名单里的软件 */
-  unlisted: { app: string; last_ms: number; total_ms: number }[];
+  unlisted: { app: string; last_ms: number; total_ms: number; name?: string | null; icon?: boolean }[];
   excludes: { exclude_id: number; kind: "host" | "title"; value: string; added_ms: number }[];
 }
 
 /** 现在开着窗口的软件；name 是 exe 的文件说明，title 是它第一个窗口的标题；tier = 在名单里的档（不在 = null） */
-export interface RunningApp { process: string; name: string; title: string; windows: number; tier: Tier | null }
+export interface RunningApp { process: string; name: string; title: string; windows: number; tier: Tier | null; icon?: boolean }
+
+export const appIconUrl = (process: string) => `${V3}/apps/icon?process=${encodeURIComponent(process)}`;
 
 export interface Settings {
   /** config 的 [v3] 里能调的数字（只读展示） */

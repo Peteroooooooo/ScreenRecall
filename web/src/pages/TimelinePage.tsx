@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { api, shotThumbUrl, type Entry, type Grey, type Timeline } from "../api";
 import { useT, type T } from "../i18n";
-import { addDays, appName, errText, fmtClock, fmtDuration, fmtInt, fmtMonthDay, hrefOf, localDate, navigate, parseLocalDate, useLoad, weekday } from "../lib";
+import { addDays, appName, errText, fmtClock, fmtDuration, fmtInt, fmtMonthDay, hrefOf, isSystemApp, localDate, navigate, parseLocalDate, useLoad, weekday } from "../lib";
 import { isPaused, usePauseActions } from "../recording";
 import { Av, Empty, LoadError, PageHeader, Skeleton, useStatus, useToast } from "../ui";
 
@@ -133,10 +133,8 @@ function Welcome() {
 type Row = { kind: "hour"; hour_ms: number; text: string } | { kind: "item"; item: Entry | Grey } | { kind: "greys"; items: Grey[] };
 
 /** Windows 自己的程序（桌面、报错窗口、认不出名字的）：在它们里面待着不是"在用别的软件"，时间线上不显示 */
-const SYSTEM_APPS = new Set(["explorer.exe", "werfault.exe", "unknown", "applicationframehost.exe", "searchhost.exe",
-  "shellexperiencehost.exe", "startmenuexperiencehost.exe", "lockapp.exe", "textinputhost.exe", "consent.exe"]);
 const isUnlisted = (it: Entry | Grey): it is Grey => it.type === "grey" && it.reason === "unlisted";
-const hiddenGrey = (it: Entry | Grey) => isUnlisted(it) && (!it.app || SYSTEM_APPS.has(it.app.toLowerCase()));
+const hiddenGrey = (it: Entry | Grey) => isUnlisted(it) && isSystemApp(it.app);
 
 /** 条目按开始时间从早到晚；连着的几段"在没录的软件里"合成一行（系统程序不算）；
  * 每小时一句话插在那个整点之后的第一条前面 */

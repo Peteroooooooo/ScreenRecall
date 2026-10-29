@@ -211,9 +211,15 @@ export function Empty({ title, children, icon, action }: { title: string; childr
   );
 }
 
-export function Av({ app, small = false }: { app: string; small?: boolean }) {
+/** 软件头像：有 icon（软件自己的图标地址）就显示图标，取不到或加载失败显示首字母 */
+export function Av({ app, small = false, icon }: { app: string; small?: boolean; icon?: string }) {
+  const [broken, setBroken] = useState(false);
+  const box = small ? "h-[26px] w-[26px]" : "h-[34px] w-[34px]";
+  if (icon && !broken) {
+    return <img aria-hidden alt="" src={icon} className={`${box} shrink-0 object-contain`} draggable={false} onError={() => setBroken(true)} />;
+  }
   return (
-    <span aria-hidden className={`inline-flex shrink-0 items-center justify-center border border-rule bg-well font-semibold text-ink-2 ${small ? "h-[26px] w-[26px] rounded-[7px] text-xs" : "h-[34px] w-[34px] rounded-[9px] text-sm"}`}>
+    <span aria-hidden className={`inline-flex shrink-0 items-center justify-center border border-rule bg-well font-semibold text-ink-2 ${box} ${small ? "rounded-[7px] text-xs" : "rounded-[9px] text-sm"}`}>
       {initial(app)}
     </span>
   );

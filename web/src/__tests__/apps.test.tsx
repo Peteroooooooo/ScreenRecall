@@ -31,14 +31,35 @@ describe("apps (名单)", () => {
   it("one switch per app: off = 不录, on = 录; 后台也录 = 一直录", async () => {
     const calls = server();
     renderAt("#/apps");
-    const sw = await screen.findByRole("switch", { name: "msedge" });
+    const sw = await screen.findByRole("switch", { name: "Microsoft Edge" });
     expect(sw.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(sw);
     await waitFor(() => expect(posted(calls, { process: "msedge.exe", tier: "never" })).toBe(true));
-    await waitFor(() => expect(screen.getByRole("switch", { name: "msedge" }).getAttribute("aria-checked")).toBe("false"));
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Microsoft Edge" }).getAttribute("aria-checked")).toBe("false"));
     fireEvent.click(within(screen.getAllByTestId("app-row")[1]).getByRole("checkbox", { name: "后台也录" }));
     await waitFor(() => expect(posted(calls, { process: "chrome.exe", tier: "always" })).toBe(true));
     expect(toasts().join()).toContain("chrome：一直录");
+  });
+
+  it("shows the app's own name and icon, keeps row order after a change, hides Windows programs from picks", async () => {
+    const calls = server(apps({
+      apps: [{ process: "chrome.exe", tier: "record", added_ms: 0, name: "Google Chrome", icon: true },
+        { process: "msedge.exe", tier: "record", added_ms: 1 }],
+      unlisted: [{ app: "WerFault.exe", last_ms: 0, total_ms: 1 }, { app: "unknown", last_ms: 0, total_ms: 1 },
+        { app: "QQ.exe", last_ms: 0, total_ms: 1, name: "QQ", icon: true }],
+    }));
+    const { container } = renderAt("#/apps");
+    const sw = await screen.findByRole("switch", { name: "Google Chrome" });
+    expect(container.querySelector(`img[src="/api/v3/apps/icon?process=chrome.exe"]`)).toBeTruthy();
+    expect(screen.getAllByTestId("app-row").map((r) => r.textContent)).toEqual([expect.stringContaining("Google Chrome"), expect.stringContaining("Microsoft Edge")]);
+    fireEvent.click(within(screen.getAllByTestId("app-row")[0]).getByRole("checkbox", { name: "后台也录" }));
+    await waitFor(() => expect(posted(calls, { process: "chrome.exe", tier: "always" })).toBe(true));
+    expect(screen.getAllByTestId("app-row")[0].textContent).toContain("Google Chrome");
+    expect(sw).toBeTruthy();
+    const picks = (await screen.findAllByTestId("open-app")).map((r) => r.textContent ?? "");
+    expect(picks.some((p) => p.includes("QQ"))).toBe(true);
+    expect(picks.join()).not.toMatch(/WerFault|unknown/);
+    expect(container.querySelector(`img[src="/api/v3/apps/icon?process=QQ.exe"]`)).toBeTruthy();
   });
 
   it("default browsers that aren't installed fold into one line", async () => {

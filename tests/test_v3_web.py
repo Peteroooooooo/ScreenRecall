@@ -163,8 +163,19 @@ class Env:
         self.ctx = V3Context(cfg=self.cfg, store=self.store, queries=self.queries, home=tmp / "home",
                              rotate_token=lambda: "sr_session=new; HttpOnly; Path=/",
                              autostart=self.auto, open_in_explorer=self.opened.append, clock=lambda: NOW,
-                             llm_env_files=[self.envfile], llm_environ={})
+                             llm_env_files=[self.envfile], llm_environ={}, icons=FakeIcons())
         self.app = Starlette(routes=routes(self.ctx))
+
+
+class FakeIcons:
+    """只认得 Edge：名字 + 一张小 PNG；别的软件都找不到 exe。"""
+    PNG = b"\x89PNG-fake-edge"
+
+    def running_paths(self):
+        return {}
+
+    def info(self, process, running=None):
+        return {"name": "Microsoft Edge", "png": self.PNG} if process.lower() == "msedge.exe" else None
 
 
 @pytest.fixture
@@ -331,7 +342,8 @@ def test_apps_tiers(client, env):
     assert r.status_code == 200 and set(r.json()) == {"apps", "unlisted", "excludes"}
     r = client.post("/api/v3/apps", json={"process": "Code.exe", "tier": "record"}, headers=POST_H)
     assert r.status_code == 200
-    assert {"process": "code.exe", "tier": "record", "added_ms": NOW, "installed": True} in r.json()["apps"]
+    assert {"process": "code.exe", "tier": "record", "added_ms": NOW, "installed": True,
+            "name": None, "icon": False} in r.json()["apps"]
     for bad in ({"process": "Code.exe", "tier": "sometimes"}, {"process": "", "tier": "record"},
                 {"process": "  ", "tier": "never"}, {"process": "x" * 261, "tier": "record"},
                 {"process": "C:\\a\\b.exe", "tier": "record"}, {"tier": "record"}, {"process": 3, "tier": "record"},
@@ -351,6 +363,18 @@ def test_apps_running_marks_tiers(client, env):
     r = client.get("/api/v3/apps/running")
     assert r.status_code == 200
     assert {a["process"]: a["tier"] for a in r.json()["running"]} == {"Weixin.exe": None, "MSEdge.exe": "always"}
+    assert {a["process"]: a["icon"] for a in r.json()["running"]} == {"Weixin.exe": False, "MSEdge.exe": True}
+
+
+def test_app_names_and_icons_come_from_the_exe(client, env):
+    client.post("/api/v3/apps", json={"process": "msedge.exe", "tier": "record"}, headers=POST_H)
+    edge = next(a for a in client.get("/api/v3/apps").json()["apps"] if a["process"] == "msedge.exe")
+    assert edge["name"] == "Microsoft Edge" and edge["icon"] is True
+    r = client.get("/api/v3/apps/icon?process=MSEdge.exe")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/png" and r.content == FakeIcons.PNG
+    assert "no-store" not in r.headers["cache-control"]
+    assert client.get("/api/v3/apps/icon?process=Weixin.exe").status_code == 404
+    assert client.get("/api/v3/apps/icon").status_code == 400
 
 
 def test_excludes(client, env):
