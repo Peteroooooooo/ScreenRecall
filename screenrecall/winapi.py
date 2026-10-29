@@ -211,18 +211,49 @@ def window_pid(hwnd: int) -> int:
     return int(pid.value)
 
 
-def process_name(pid: int) -> str:
+def process_path(pid: int) -> str | None:
     handle = _OpenProcess(_PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
     if not handle:
-        return "unknown"
+        return None
     try:
         size = _DWORD(32768)
         buf = ctypes.create_unicode_buffer(size.value)
         if _QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
-            return os.path.basename(buf.value)
-        return "unknown"
+            return buf.value
+        return None
     finally:
         _CloseHandle(handle)
+
+
+def process_name(pid: int) -> str:
+    path = process_path(pid)
+    return os.path.basename(path) if path else "unknown"
+
+
+def file_description(path: str) -> str | None:
+    """exe 版本信息里的"文件说明"（如 Weixin.exe → 微信）；没有就 None。"""
+    try:
+        version = ctypes.WinDLL("version")
+    except OSError:
+        return None
+    size = version.GetFileVersionInfoSizeW(path, None)
+    if not size:
+        return None
+    data = ctypes.create_string_buffer(size)
+    if not version.GetFileVersionInfoW(path, 0, size, data):
+        return None
+    ptr, n = ctypes.c_void_p(), _UINT(0)
+    langs = [(0x0409, 0x04B0), (0x0804, 0x04B0), (0x0000, 0x04B0), (0x0409, 0x04E4)]
+    if version.VerQueryValueW(data, "\\VarFileInfo\\Translation", ctypes.byref(ptr), ctypes.byref(n)) and n.value >= 4:
+        pairs = (wintypes.WORD * (n.value // 2)).from_address(ptr.value)
+        langs = [(pairs[i], pairs[i + 1]) for i in range(0, len(pairs) - 1, 2)] + langs
+    for lang, cp in langs:
+        key = f"\\StringFileInfo\\{lang:04x}{cp:04x}\\FileDescription"
+        if version.VerQueryValueW(data, key, ctypes.byref(ptr), ctypes.byref(n)) and n.value > 1:
+            text = ctypes.wstring_at(ptr.value, n.value - 1).strip()
+            if text:
+                return text
+    return None
 
 
 def _window_rect(hwnd: int) -> _RECT | None:
@@ -283,6 +314,28 @@ def list_windows() -> list[WindowInfo]:
         if info and info.title.strip():
             out.append(info)
     return out
+
+
+# UWP 应用的窗口都属于 ApplicationFrameHost.exe，选它等于选了所有商店应用，名字也看不懂
+_NOT_PICKABLE = frozenset({"applicationframehost.exe", "explorer.exe", "searchhost.exe", "startmenuexperiencehost.exe",
+                           "shellexperiencehost.exe", "textinputhost.exe", "lockapp.exe", "unknown"})
+
+
+def running_apps(skip_pids: frozenset[int] = frozenset()) -> list[dict]:
+    """现在开着窗口的软件（按进程名合并）：[{process, name, title, windows}]，窗口多的在前。名单页点选用。
+    name = exe 的"文件说明"（没有就用进程名）；title = 它第一个窗口的标题（有的软件说明是英文，标题才是"微信"）。"""
+    seen: dict[str, dict] = {}
+    for w in list_windows():
+        if w.pid in skip_pids or w.process.lower() in _NOT_PICKABLE:
+            continue
+        hit = seen.get(w.process.lower())
+        if hit:
+            hit["windows"] += 1
+            continue
+        path = process_path(w.pid)
+        name = (file_description(path) if path else None) or os.path.splitext(w.process)[0]
+        seen[w.process.lower()] = {"process": w.process, "name": name, "title": w.title.strip()[:80], "windows": 1}
+    return sorted(seen.values(), key=lambda a: (-a["windows"], a["name"].lower()))
 
 
 # ---------- 捕获 ----------

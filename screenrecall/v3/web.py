@@ -69,6 +69,7 @@ class V3Context:
     semantic: Callable[[str, int], list[tuple[int, float]]] | None = None
     open_in_explorer: Callable[[Path], None] | None = None   # None = explorer.exe /select,<路径>
     clock: Callable[[], int] = utc_ms
+    running_apps: Callable[[], list[dict]] | None = None     # None = winapi.running_apps（不含本进程）
     # 约定之外加的两个可选项（默认行为和 app.llm 一样）：测试用临时 .env，不碰仓库里真的 .env
     llm_env_files: Sequence[Path] | None = None     # None = 仓库 .env + home/.env
     llm_environ: dict[str, str] | None = None       # None = os.environ
@@ -342,6 +343,21 @@ def api_apps(ctx: V3Context, _req: dict) -> dict:
     return ctx.queries.apps()
 
 
+def api_apps_running(ctx: V3Context, _req: dict) -> dict:
+    """现在开着窗口的软件，带它在名单里的档（不在名单 = null）。"""
+    if ctx.running_apps is not None:
+        found = ctx.running_apps()
+    else:
+        try:
+            from .. import winapi
+        except ImportError:
+            found = []
+        else:
+            found = winapi.running_apps(frozenset({os.getpid()}))
+    tiers = {a["process"].lower(): a["tier"] for a in ctx.queries.apps()["apps"]}
+    return {"running": [{**a, "tier": tiers.get(a["process"].lower())} for a in found]}
+
+
 def api_apps_post(ctx: V3Context, req: dict) -> dict:
     body = req["body"]
     process = _str(body.get("process"), "process", cap=MAX_PROCESS_CHARS)
@@ -576,6 +592,7 @@ def routes(ctx: V3Context) -> list[BaseRoute]:
         Route("/shots/{shot_id}/thumb", e(api_shot_thumb), methods=["GET"]),
         Route("/apps", e(api_apps), methods=["GET"]),
         Route("/apps", e(api_apps_post, mutation=True), methods=["POST"]),
+        Route("/apps/running", e(api_apps_running), methods=["GET"]),
         Route("/excludes", e(api_excludes_post, mutation=True), methods=["POST"]),
         Route("/excludes/remove", e(api_excludes_remove, mutation=True), methods=["POST"]),
         Route("/settings", e(api_settings), methods=["GET"]),

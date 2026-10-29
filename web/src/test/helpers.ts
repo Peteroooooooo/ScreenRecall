@@ -159,6 +159,10 @@ export function defaultReply(call: Call): Reply | null {
   if (/^\/api\/v3\/shots\/\d+$/.test(p)) return { body: shotDetail() };
   if (p === "/api/v3/search") return { body: search({ query: queryOf(call.path).get("q") ?? "" }) };
   if (p === "/api/v3/apps" && call.method === "GET") return { body: apps() };
+  if (p === "/api/v3/apps/running") return { body: { running: [
+    { process: "Weixin.exe", name: "Weixin", title: "微信", windows: 1, tier: null },
+    { process: "msedge.exe", name: "Microsoft Edge", title: "新标签页", windows: 2, tier: "record" },
+  ] } };
   if (p === "/api/v3/settings" && call.method === "GET") return { body: settings() };
   if (p === "/api/app/agent-configs") return { body: agentConfigs() };
   return null;

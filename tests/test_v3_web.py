@@ -324,6 +324,15 @@ def test_apps_tiers(client, env):
     assert "notepad" not in {a["process"] for a in r.json()["apps"]}
 
 
+def test_apps_running_marks_tiers(client, env):
+    env.ctx.running_apps = lambda: [{"process": "Weixin.exe", "name": "Weixin", "title": "微信", "windows": 1},
+                                    {"process": "MSEdge.exe", "name": "Microsoft Edge", "title": "x", "windows": 2}]
+    client.post("/api/v3/apps", json={"process": "msedge.exe", "tier": "always"}, headers=POST_H)
+    r = client.get("/api/v3/apps/running")
+    assert r.status_code == 200
+    assert {a["process"]: a["tier"] for a in r.json()["running"]} == {"Weixin.exe": None, "MSEdge.exe": "always"}
+
+
 def test_excludes(client, env):
     r = client.post("/api/v3/excludes", json={"kind": "host", "value": "https://Mail.Example.com/inbox?x=1"},
                     headers=POST_H)

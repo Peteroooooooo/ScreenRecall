@@ -235,6 +235,9 @@ export interface AppsInfo {
   excludes: { exclude_id: number; kind: "host" | "title"; value: string; added_ms: number }[];
 }
 
+/** 现在开着窗口的软件；name 是 exe 的文件说明，title 是它第一个窗口的标题；tier = 在名单里的档（不在 = null） */
+export interface RunningApp { process: string; name: string; title: string; windows: number; tier: Tier | null }
+
 export interface Settings {
   /** config 的 [v3] 里能调的数字（只读展示） */
   numbers: Record<string, number>;
@@ -276,6 +279,7 @@ export const api = {
   shot: (id: number, s?: AbortSignal) => get<ShotDetail>(`${V3}/shots/${id}`, s),
   apps: (s?: AbortSignal) => get<AppsInfo>(`${V3}/apps`, s),
   setTier: (process: string, tier: Tier) => post<AppsInfo>(`${V3}/apps`, { process, tier }),
+  runningApps: (s?: AbortSignal) => get<{ running: RunningApp[] }>(`${V3}/apps/running`, s),
   addExclude: (kind: "host" | "title", value: string) => post<AppsInfo>(`${V3}/excludes`, { kind, value }),
   removeExclude: (exclude_id: number) => post<AppsInfo>(`${V3}/excludes/remove`, { exclude_id }),
   settings: (s?: AbortSignal) => get<Settings>(`${V3}/settings`, s),

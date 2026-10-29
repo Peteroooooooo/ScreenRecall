@@ -30,6 +30,17 @@ export default function TimelinePage({ params }: { params: URLSearchParams }) {
   const d = parseLocalDate(day)!;
   const head = isToday ? t("tl.today") : day === addDays(today, -1) ? t("tl.yesterday") : weekday(d);
   const setDay = (v: string) => navigate("/", { day: v === today ? undefined : v });
+  const pick = useRef<HTMLInputElement>(null);
+  const openPicker = () => {
+    const el = pick.current;
+    if (!el) return;
+    try {
+      el.showPicker();
+    } catch {
+      el.focus();
+      el.click();
+    }
+  };
   const data = tl.data;
 
   return (
@@ -39,13 +50,19 @@ export default function TimelinePage({ params }: { params: URLSearchParams }) {
           <button className="sr-btn sr-btn-line sr-btn-icon sr-btn-sm" aria-label={t("tl.prev")} onClick={() => setDay(addDays(day, -1))}>
             <ChevronLeft size={15} aria-hidden />
           </button>
-          <span className="sr-num min-w-0 flex-1 text-center font-semibold sm:min-w-[150px] sm:flex-none" aria-live="polite">{head} · {fmtMonthDay(d)}</span>
+          <span className="relative min-w-0 flex-1 sm:flex-none">
+            <button className="sr-btn sr-btn-line sr-btn-sm sr-num w-full justify-center font-semibold sm:min-w-[170px]" aria-live="polite"
+              aria-label={`${head} · ${fmtMonthDay(d)}，${t("tl.date")}`} onClick={openPicker}>
+              <CalendarDays size={16} aria-hidden />{head} · {fmtMonthDay(d)}
+            </button>
+            {/* 系统日期面板挂在这个看不见的输入框上，由上面的按钮打开 */}
+            <input ref={pick} id="day-pick" name="day" type="date" tabIndex={-1} aria-label={t("tl.date")}
+              className="pointer-events-none absolute bottom-0 left-0 h-px w-full opacity-0" value={day} max={today}
+              onChange={(e) => parseLocalDate(e.target.value) && setDay(e.target.value <= today ? e.target.value : today)} />
+          </span>
           <button className="sr-btn sr-btn-line sr-btn-icon sr-btn-sm" aria-label={t("tl.next")} disabled={isToday} onClick={() => setDay(addDays(day, 1))}>
             <ChevronRight size={15} aria-hidden />
           </button>
-          <label className="sr-only" htmlFor="day-pick">{t("tl.date")}</label>
-          <input id="day-pick" name="day" type="date" className="sr-field h-8 w-auto" value={day} max={today}
-            onChange={(e) => parseLocalDate(e.target.value) && setDay(e.target.value <= today ? e.target.value : today)} />
         </div>
       </PageHeader>
 
