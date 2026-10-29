@@ -493,6 +493,15 @@ def test_doc_info_prefers_outer_document_of_same_size():
     assert uia.doc_info(local)[0] == "file:///C:/Docs/%E5%90%88.pdf"
 
 
+def test_link_value_is_its_target_not_drawn_text():
+    """链接的名字是屏幕上的字，值是它指向的网址（屏幕上没画）：只收名字。"""
+    elems = [Elem(-1, "Window", rect=WIN),
+             Elem(0, "Hyperlink", name="合成链接文字", value="http://127.0.0.1:8611/#/entry/14", rect=(120, 200, 300, 220)),
+             Elem(0, "Edit", name="合成输入框", value="合成输入框里打的字", rect=(120, 300, 500, 320))]
+    got = _texts(collect_lines(elems, [], WIN))
+    assert "合成链接文字" in got and "http://127.0.0.1:8611/#/entry/14" not in got and "合成输入框里打的字" in got
+
+
 def test_switched_away_tab_left_in_tree_is_not_the_page():
     """Chrome（实测）：切走的标签页的网页还留在树里、不标看不见、和正在看的一样大、排在前面。
     按窗口标题认出正在看的那个：网址取它的，切走的那个网页里的字不收。"""

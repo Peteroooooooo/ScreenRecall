@@ -291,14 +291,14 @@ def test_tools_end_to_end(fq):
     out = text_of(call(mcp, "search", {"query": "组会", "time_from": "today"}))
     assert ms.UNTRUSTED_NOTE in out and "line=200" in out and "piece=v11" in out
     assert "    > 组会改到周三下午三点" in out
-    tl = text_of(call(mcp, "timeline", {"time_from": "today"}))
+    tl = text_of(call(mcp, "list_timeline", {"time_from": "today"}))
     assert "piece=v10" in tl and "新存 12 行" in tl and "没有录（不在名单里的软件（未录））" in tl
     assert "    网址 > https://example.com/a" in tl
     rd = text_of(call(mcp, "read", {"piece_id": "v10", "offset": 10}))
     assert "第 11–12 行，共 12 行" in rd and "已到这一条的末尾" in rd
-    sm = text_of(call(mcp, "summary", {"level": "day", "key": "today"}))
+    sm = text_of(call(mcp, "get_summary", {"level": "day", "key": "today"}))
     assert "> 14:00 读一篇文章" in sm
-    cp = text_of(call(mcp, "copied", {"time_from": "today"}))
+    cp = text_of(call(mcp, "list_copied", {"time_from": "today"}))
     assert "    > 周三下午三点" in cp and "piece=v11" in cp and "2 段" in cp
     blocks = call(mcp, "get_frame", {"frame_id": "s5", "highlight_line_id": 101})
     img = next(b for b in blocks if isinstance(b, ImageContent))
@@ -324,8 +324,8 @@ def test_hidden_entries_are_not_found_end_to_end(fq):
     with pytest.raises(ToolError) as missing:
         call(mcp, "read", {"piece_id": "v404"})
     assert str(hidden.value) == str(missing.value)
-    assert "secret.exe" not in text_of(call(mcp, "copied", {}))
-    assert "secret.exe" not in text_of(call(mcp, "timeline", {"time_from": "today"}))
+    assert "secret.exe" not in text_of(call(mcp, "list_copied", {}))
+    assert "secret.exe" not in text_of(call(mcp, "list_timeline", {"time_from": "today"}))
 
 
 # ---------- 托盘控制 / Agent 策略 ----------

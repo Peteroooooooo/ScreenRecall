@@ -133,6 +133,19 @@ def test_merge_drops_near_duplicate_ocr_copy_of_uia_line():
                                                  ("The quick brown fox jumps over the lazy cat.", "ocr")]
 
 
+def test_hover_link_in_bottom_left_corner_is_dropped(cfg):
+    """鼠标停在链接上时浏览器左下角的小框（帧 800×600）：整行是一个网址、在最下面、从左半边开始的 OCR 行不要；
+    页面正文里的网址、右下角的网址、底部不是网址的字照收。"""
+    ocr = FakeOcr([_ol("127.0.0.1:8611/#/entry/16", 4, 574, 220, 596),
+                   _ol("http://synthetic.test/a/b?c=1", 4, 574, 260, 596),
+                   _ol("正文里的网址 https://synthetic.test/doc", 20, 300, 400, 320),
+                   _ol("https://synthetic.test/right", 520, 574, 790, 596),
+                   _ol("页脚的版权文字 2026", 4, 574, 300, 596)])
+    res = TextReader(cfg, uia=FakeUia(_ok([])), ocr=ocr).read_text(HWND, _frame())
+    assert [ln.text for ln in res.lines] == ["正文里的网址 https://synthetic.test/doc", "页脚的版权文字 2026",
+                                            "https://synthetic.test/right"]
+
+
 def test_ocr_lines_above_chrome_bottom_are_dropped(cfg):
     """标签页条 / 工具栏到屏幕 y=320（帧 y=120）为止：中心在它上面的 OCR 行不要。"""
     ocr = FakeOcr([_ol("合成标签页标题", 10, 10, 200, 40), _ol("合成地址栏网址", 10, 80, 300, 110),

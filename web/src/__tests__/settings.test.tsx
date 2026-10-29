@@ -32,7 +32,7 @@ describe("settings", () => {
     await waitFor(() => expect(calls.filter((c) => c.method === "POST").map((c) => c.body)).toContainEqual({ autostart: true }));
     expect(await screen.findByText("http://127.0.0.1:8611/mcp")).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Claude Code" }).getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByText("copied")).toBeTruthy();
+    expect(screen.getByText("list_copied")).toBeTruthy();
   });
 
   it("deletes the last N minutes after confirming", async () => {
