@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import functools
+import logging
 import ntpath
 import shutil
 import sqlite3
@@ -24,6 +25,8 @@ from ...timeutil import utc_ms
 from ..config import V3Config
 from ..types import KIND_APP, PAUSE_FOREVER_MS
 from . import schema
+
+log = logging.getLogger("screenrecall.v3.queries")
 
 ALIVE_MS = 10_000                # 心跳这么久内算录制进程在运行
 DISK_CHECK_MS = 60_000
@@ -293,7 +296,8 @@ class Queries:
     def search(self, c, q: str, *, start_ms: int | None = None, end_ms: int | None = None, app: str | None = None,
                limit: int = 30, per_result: int = 5,
                semantic: Callable[[str, int], list[tuple[int, float]]] | None = None) -> dict:
-        """全文搜字 + 标题 + 网址；同一个出处 search_merge_ms 内的命中并成一条；从新到旧。"""
+        """全文搜字 + 标题 + 网址；同一个出处 search_merge_ms 内的命中并成一条；从新到旧。
+        semantic(查询, k) → [(line_id, 分数)]：可选的按意思搜，只有它搜到的结果排在后面、按分数从高到低。"""
         p = lexical.plan(q or "")
         out = {"query": q, "terms": [t.text for t in p.terms], "error": None, "total": 0, "results": [],
                "copied": []}
@@ -340,12 +344,19 @@ class Queries:
                 if hit:
                     events[r["source_id"]].append((r["last_seen_ms"], kind, None, 0.0))
         if semantic is not None:
-            scored = {int(lid): float(s) for lid, s in semantic(q, max(50, limit * per_result * 2))
-                      if int(lid) not in lexical_ids}
+            # 只认够像的（分数下限 semantic_min_score）、不太短的行（semantic_min_chars）：
+            # 短的零碎字（"数据看板"、"冷却中"）和什么都像，它们靠字面搜就够了。数字见 results/search/v3-semantic-*.json
+            floor = float(self.cfg.semantic_min_score)
+            try:
+                found = semantic(q, max(50, limit * per_result * 2)) or []
+            except Exception:  # noqa: BLE001 —— 模型缺失 / 加载失败：只用字面命中，不让整个查找失败
+                log.warning("按意思搜出错，这次只用字面命中", exc_info=True)
+                found = []
+            scored = {int(lid): float(s) for lid, s in found if float(s) >= floor and int(lid) not in lexical_ids}
             if scored:
-                sp = dict(params, sem=_ids_json(scored))
+                sp = dict(params, sem=_ids_json(scored), sem_chars=int(self.cfg.semantic_min_chars))
                 for r in c.execute(f"{line_sel}WHERE l.line_id IN (SELECT value FROM json_each(:sem)) "
-                                   f"AND {' AND '.join(filt_l)}", sp):
+                                   f"AND length(trim(l.text)) >= :sem_chars AND {' AND '.join(filt_l)}", sp):
                     events[r["source_id"]].append((r["last_seen_ms"], "text", dict(_line_dict(r), semantic=True),
                                                    scored[r["line_id"]]))
 
@@ -361,9 +372,14 @@ class Queries:
                     clusters.append((sid, cur))
                     cur = [e]
             clusters.append((sid, cur))
-        # 有全文 / 标题 / 网址命中的在前，只有按意思搜到的在后；各自从新到旧
-        clusters.sort(key=lambda sc: (any(not (e[2] and e[2]["semantic"]) for e in sc[1]), sc[1][0][0]),
-                      reverse=True)
+        # 有全文 / 标题 / 网址命中的在前，从新到旧；只有按意思搜到的在后，最像的在前
+        def order(sc):
+            evs = sc[1]
+            if any(not (e[2] and e[2]["semantic"]) for e in evs):
+                return (1, float(evs[0][0]))
+            return (0, max(e[3] for e in evs))
+
+        clusters.sort(key=order, reverse=True)
         out["total"] = len(clusters)
         srcs = self._sources(c, (sid for sid, _ in clusters[:limit]))
         for sid, evs in clusters[:limit]:

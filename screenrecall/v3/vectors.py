@@ -1,9 +1,11 @@
-"""可选（"有空再做"，cfg.vectors 默认关）：每行字一条 MiniLM 向量，按意思搜。
+"""按意思搜（cfg.vectors 默认开）：每行字一条 MiniLM 向量。
 
 向量库：store.vectors.VectorStore(<数据目录>/vectors/lines, dim=384)，id = line_id，ts = 行最近看到的时间，
 group = 最近看到它的出处。空闲整理进程从 meta 'vec_line_cursor' 之后接着编码（Queries.lines_after），
-写完一批再推进游标；进程中途被杀，下次重做的那批里已经在库里的 id 跳过（不重复追加）。
-主进程用 search() 给 Queries.search(semantic=…)。编码器第一次用时才加载（LazyTextEncoder，闲置自动卸载）。
+写完一批再推进游标；游标没有时从 0 开始，所以已有的库第一次开着跑会把旧的行全补上（实测 7420 行约 67 秒）。
+进程中途被杀，下次重做的那批里已经在库里的 id 跳过（不重复追加）。
+主进程用 search() 给 Queries.search(semantic=…)，分数下限、短行过滤在 Queries.search 里（[v3] semantic_min_*）。
+编码器第一次用时才加载（LazyTextEncoder，闲置自动卸载）。
 隐私删除删掉的行：向量还在，但 Queries.search 只认库里还在的 line_id；下次编码不会再碰它们
 （lines.line_id 是 AUTOINCREMENT，删掉的编号不会给新行，旧向量不会冒充新行）。
 """

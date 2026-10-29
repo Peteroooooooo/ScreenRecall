@@ -1,0 +1,1171 @@
+{
+ "date": "2026-10-29",
+ "what": "v3 按意思搜（MiniLM 行向量）在用户真实数据副本上的评测：分数下限 + 短行过滤 + 只按意思搜到的按分数排",
+ "data": {
+  "lines": 7420,
+  "sources": 52,
+  "copy": "data-v3/recall-v3.sqlite3 用 sqlite backup API 复制到临时目录，评测后已删除"
+ },
+ "encoding": {
+  "lines": 7420,
+  "seconds": 67.3,
+  "lines_per_s": 110,
+  "threads": 2,
+  "process_rss_mib_after": 954,
+  "process_peak_working_set_mib": 1169,
+  "vectors_dir_mb": 11.6,
+  "second_run_added": 0,
+  "cursor_start": 0
+ },
+ "metrics": {
+  "found_src@5": "目标行所在的出处出现在前 5 条结果里",
+  "found_line@5": "目标行本身出现在前 5 条结果的命中行里",
+  "junk": "不相关查询里，带出了任何一条按意思搜命中的比例",
+  "unrelated_far": "生活类话题（菜谱、旅游、体育……）",
+  "unrelated_near": "数据里没有的技术 / 电脑话题（k8s、Excel、Photoshop……）"
+ },
+ "chosen": {
+  "semantic_min_score": 0.6,
+  "semantic_min_chars": 6,
+  "related": 34,
+  "found_src@5": 0.676,
+  "found_line@5": 0.529,
+  "junk_far": 0.2,
+  "junk_near": 0.167,
+  "junk_all": 0.188
+ },
+ "sweep_score_order": [
+  {
+   "variant": "lexical_only",
+   "found_src@5": 0.0,
+   "found_line@5": 0.0,
+   "junk_rate": 0.0,
+   "mean_semantic_hits_unrelated": 0.0,
+   "mean_results_related": 0.0
+  },
+  {
+   "variant": "semantic_no_floor",
+   "found_src@5": 0.824,
+   "found_line@5": 0.706,
+   "junk_rate": 1.0,
+   "mean_semantic_hits_unrelated": 124.3,
+   "mean_results_related": 30.0
+  },
+  {
+   "variant": "floor_0.40_minchars_0",
+   "found_src@5": 0.824,
+   "found_line@5": 0.706,
+   "junk_rate": 0.85,
+   "mean_semantic_hits_unrelated": 33.9,
+   "mean_results_related": 24.8
+  },
+  {
+   "variant": "floor_0.50_minchars_0",
+   "found_src@5": 0.824,
+   "found_line@5": 0.618,
+   "junk_rate": 0.6,
+   "mean_semantic_hits_unrelated": 14.6,
+   "mean_results_related": 11.8
+  },
+  {
+   "variant": "floor_0.55_minchars_0",
+   "found_src@5": 0.706,
+   "found_line@5": 0.529,
+   "junk_rate": 0.4,
+   "mean_semantic_hits_unrelated": 9.4,
+   "mean_results_related": 7.1
+  },
+  {
+   "variant": "floor_0.60_minchars_0",
+   "found_src@5": 0.676,
+   "found_line@5": 0.529,
+   "junk_rate": 0.2,
+   "mean_semantic_hits_unrelated": 7.95,
+   "mean_results_related": 2.9
+  },
+  {
+   "variant": "floor_0.65_minchars_0",
+   "found_src@5": 0.471,
+   "found_line@5": 0.324,
+   "junk_rate": 0.15,
+   "mean_semantic_hits_unrelated": 6.45,
+   "mean_results_related": 1.3
+  },
+  {
+   "variant": "floor_0.70_minchars_0",
+   "found_src@5": 0.353,
+   "found_line@5": 0.265,
+   "junk_rate": 0.1,
+   "mean_semantic_hits_unrelated": 4.05,
+   "mean_results_related": 0.7
+  },
+  {
+   "variant": "floor_0.75_minchars_0",
+   "found_src@5": 0.235,
+   "found_line@5": 0.206,
+   "junk_rate": 0.05,
+   "mean_semantic_hits_unrelated": 2.4,
+   "mean_results_related": 0.3
+  },
+  {
+   "variant": "floor_0.40_minchars_6",
+   "found_src@5": 0.824,
+   "found_line@5": 0.706,
+   "junk_rate": 0.85,
+   "mean_semantic_hits_unrelated": 23.9,
+   "mean_results_related": 24.0
+  },
+  {
+   "variant": "floor_0.50_minchars_6",
+   "found_src@5": 0.824,
+   "found_line@5": 0.618,
+   "junk_rate": 0.5,
+   "mean_semantic_hits_unrelated": 10.3,
+   "mean_results_related": 10.9
+  },
+  {
+   "variant": "floor_0.55_minchars_6",
+   "found_src@5": 0.706,
+   "found_line@5": 0.529,
+   "junk_rate": 0.3,
+   "mean_semantic_hits_unrelated": 6.95,
+   "mean_results_related": 6.3
+  },
+  {
+   "variant": "floor_0.60_minchars_6",
+   "found_src@5": 0.676,
+   "found_line@5": 0.529,
+   "junk_rate": 0.2,
+   "mean_semantic_hits_unrelated": 5.95,
+   "mean_results_related": 2.6
+  },
+  {
+   "variant": "floor_0.65_minchars_6",
+   "found_src@5": 0.471,
+   "found_line@5": 0.324,
+   "junk_rate": 0.1,
+   "mean_semantic_hits_unrelated": 4.65,
+   "mean_results_related": 1.1
+  },
+  {
+   "variant": "floor_0.70_minchars_6",
+   "found_src@5": 0.353,
+   "found_line@5": 0.265,
+   "junk_rate": 0.1,
+   "mean_semantic_hits_unrelated": 1.9,
+   "mean_results_related": 0.7
+  },
+  {
+   "variant": "floor_0.75_minchars_6",
+   "found_src@5": 0.235,
+   "found_line@5": 0.206,
+   "junk_rate": 0.05,
+   "mean_semantic_hits_unrelated": 1.45,
+   "mean_results_related": 0.3
+  },
+  {
+   "variant": "floor_0.40_minchars_10",
+   "found_src@5": 0.853,
+   "found_line@5": 0.706,
+   "junk_rate": 0.8,
+   "mean_semantic_hits_unrelated": 17.95,
+   "mean_results_related": 21.5
+  },
+  {
+   "variant": "floor_0.50_minchars_10",
+   "found_src@5": 0.853,
+   "found_line@5": 0.618,
+   "junk_rate": 0.4,
+   "mean_semantic_hits_unrelated": 7.95,
+   "mean_results_related": 9.2
+  },
+  {
+   "variant": "floor_0.55_minchars_10",
+   "found_src@5": 0.676,
+   "found_line@5": 0.529,
+   "junk_rate": 0.25,
+   "mean_semantic_hits_unrelated": 5.35,
+   "mean_results_related": 5.4
+  },
+  {
+   "variant": "floor_0.60_minchars_10",
+   "found_src@5": 0.647,
+   "found_line@5": 0.529,
+   "junk_rate": 0.15,
+   "mean_semantic_hits_unrelated": 4.45,
+   "mean_results_related": 2.2
+  },
+  {
+   "variant": "floor_0.65_minchars_10",
+   "found_src@5": 0.471,
+   "found_line@5": 0.324,
+   "junk_rate": 0.1,
+   "mean_semantic_hits_unrelated": 3.15,
+   "mean_results_related": 1.0
+  },
+  {
+   "variant": "floor_0.70_minchars_10",
+   "found_src@5": 0.353,
+   "found_line@5": 0.265,
+   "junk_rate": 0.1,
+   "mean_semantic_hits_unrelated": 1.85,
+   "mean_results_related": 0.6
+  },
+  {
+   "variant": "floor_0.75_minchars_10",
+   "found_src@5": 0.235,
+   "found_line@5": 0.206,
+   "junk_rate": 0.05,
+   "mean_semantic_hits_unrelated": 1.2,
+   "mean_results_related": 0.3
+  }
+ ],
+ "sweep_old_recency_order": [
+  {
+   "variant": "semantic_no_floor",
+   "found_src@5": 0.265,
+   "found_line@5": 0.147,
+   "junk_rate": 1.0,
+   "mean_semantic_hits_unrelated": 107.1,
+   "mean_results_related": 30.0
+  },
+  {
+   "variant": "floor_0.60",
+   "found_src@5": 0.647,
+   "found_line@5": 0.5,
+   "junk_rate": 0.2,
+   "mean_semantic_hits_unrelated": 7.9,
+   "mean_results_related": 2.9
+  }
+ ],
+ "compare_old_v2_gate": [
+  {
+   "variant": "old_gate_strict(floor0.44,margin0.10,k5)",
+   "found_src@5": 0.559,
+   "found_line@5": 0.382,
+   "junk_rate": 0.0,
+   "mean_semantic_hits_unrelated": 0.0,
+   "mean_results_related": 1.0
+  },
+  {
+   "variant": "old_gate_loose(floor0.36,margin0.10,k10)",
+   "found_src@5": 0.794,
+   "found_line@5": 0.559,
+   "junk_rate": 0.15,
+   "mean_semantic_hits_unrelated": 1.3,
+   "mean_results_related": 2.8
+  }
+ ],
+ "compare_old_v2_gate_near": [
+  {
+   "variant": "floor_0.55",
+   "junk_rate_near": 0.5,
+   "mean_semantic_hits_near": 2.0
+  },
+  {
+   "variant": "floor_0.60",
+   "junk_rate_near": 0.417,
+   "mean_semantic_hits_near": 0.5
+  },
+  {
+   "variant": "floor_0.65",
+   "junk_rate_near": 0.083,
+   "mean_semantic_hits_near": 0.08
+  },
+  {
+   "variant": "semantic_no_floor",
+   "junk_rate_near": 1.0,
+   "mean_semantic_hits_near": 123.33
+  },
+  {
+   "variant": "old_gate_strict",
+   "junk_rate_near": 0.083,
+   "mean_semantic_hits_near": 0.08
+  },
+  {
+   "variant": "old_gate_loose",
+   "junk_rate_near": 0.417,
+   "mean_semantic_hits_near": 1.67
+  }
+ ],
+ "compare_mean_centering": [
+  {
+   "variant": "query_centered_0.40",
+   "found_src@5": 0.765,
+   "found_line@5": 0.647,
+   "junk_rate": 0.65,
+   "mean_semantic_hits_unrelated": 10.0,
+   "mean_results_related": 10.1
+  },
+  {
+   "variant": "query_centered_0.45",
+   "found_src@5": 0.765,
+   "found_line@5": 0.5,
+   "junk_rate": 0.35,
+   "mean_semantic_hits_unrelated": 5.65,
+   "mean_results_related": 5.4
+  },
+  {
+   "variant": "query_centered_0.50",
+   "found_src@5": 0.647,
+   "found_line@5": 0.441,
+   "junk_rate": 0.3,
+   "mean_semantic_hits_unrelated": 3.55,
+   "mean_results_related": 2.6
+  },
+  {
+   "variant": "query_centered_0.55",
+   "found_src@5": 0.471,
+   "found_line@5": 0.353,
+   "junk_rate": 0.3,
+   "mean_semantic_hits_unrelated": 2.65,
+   "mean_results_related": 1.2
+  },
+  {
+   "variant": "line_centered_0.30",
+   "found_src@5": 0.794,
+   "found_line@5": 0.618,
+   "junk_rate": 0.7,
+   "mean_semantic_hits_unrelated": 14.15,
+   "mean_results_related": 16.6
+  },
+  {
+   "variant": "line_centered_0.35",
+   "found_src@5": 0.765,
+   "found_line@5": 0.559,
+   "junk_rate": 0.6,
+   "mean_semantic_hits_unrelated": 9.95,
+   "mean_results_related": 11.3
+  },
+  {
+   "variant": "line_centered_0.40",
+   "found_src@5": 0.765,
+   "found_line@5": 0.529,
+   "junk_rate": 0.4,
+   "mean_semantic_hits_unrelated": 7.3,
+   "mean_results_related": 6.2
+  },
+  {
+   "variant": "line_centered_0.45",
+   "found_src@5": 0.647,
+   "found_line@5": 0.471,
+   "junk_rate": 0.25,
+   "mean_semantic_hits_unrelated": 4.35,
+   "mean_results_related": 3.3
+  },
+  {
+   "variant": "line_centered_0.50",
+   "found_src@5": 0.471,
+   "found_line@5": 0.324,
+   "junk_rate": 0.15,
+   "mean_semantic_hits_unrelated": 2.65,
+   "mean_results_related": 1.5
+  },
+  {
+   "variant": "full_centered_0.40",
+   "found_src@5": 0.824,
+   "found_line@5": 0.647,
+   "junk_rate": 0.9,
+   "mean_semantic_hits_unrelated": 14.55,
+   "mean_results_related": 17.7
+  },
+  {
+   "variant": "full_centered_0.45",
+   "found_src@5": 0.794,
+   "found_line@5": 0.647,
+   "junk_rate": 0.6,
+   "mean_semantic_hits_unrelated": 9.75,
+   "mean_results_related": 11.2
+  },
+  {
+   "variant": "full_centered_0.50",
+   "found_src@5": 0.765,
+   "found_line@5": 0.588,
+   "junk_rate": 0.45,
+   "mean_semantic_hits_unrelated": 7.9,
+   "mean_results_related": 6.7
+  },
+  {
+   "variant": "full_centered_0.55",
+   "found_src@5": 0.706,
+   "found_line@5": 0.5,
+   "junk_rate": 0.35,
+   "mean_semantic_hits_unrelated": 5.1,
+   "mean_results_related": 3.8
+  },
+  {
+   "variant": "full_centered_0.60",
+   "found_src@5": 0.559,
+   "found_line@5": 0.412,
+   "junk_rate": 0.2,
+   "mean_semantic_hits_unrelated": 3.5,
+   "mean_results_related": 1.6
+  }
+ ],
+ "near_minchars": [
+  {
+   "variant": "floor_0.55_minchars_6",
+   "junk_rate_near": 0.5,
+   "mean_semantic_hits_near": 1.67
+  },
+  {
+   "variant": "floor_0.55_minchars_8",
+   "junk_rate_near": 0.417,
+   "mean_semantic_hits_near": 1.25
+  },
+  {
+   "variant": "floor_0.55_minchars_10",
+   "junk_rate_near": 0.333,
+   "mean_semantic_hits_near": 0.67
+  },
+  {
+   "variant": "floor_0.60_minchars_6",
+   "junk_rate_near": 0.167,
+   "mean_semantic_hits_near": 0.25
+  },
+  {
+   "variant": "floor_0.60_minchars_8",
+   "junk_rate_near": 0.167,
+   "mean_semantic_hits_near": 0.25
+  },
+  {
+   "variant": "floor_0.60_minchars_10",
+   "junk_rate_near": 0.167,
+   "mean_semantic_hits_near": 0.25
+  }
+ ],
+ "queries_related": [
+  {
+   "query": "the root user is like a landlord and IAM users are keys",
+   "kind": "zh->en",
+   "target_line_id": 2905,
+   "target_source_ids": [
+    19
+   ],
+   "target_snippet": "root 是房东，拥有整栋楼；IAM 用户是房东发出去的钥匙，每把钥匙只能开指定",
+   "target_cosine": 0.848,
+   "target_rank_among_all_lines": 1,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 6
+  },
+  {
+   "query": "what do I need to sign in as an IAM user",
+   "kind": "zh->en",
+   "target_line_id": 2901,
+   "target_source_ids": [
+    19
+   ],
+   "target_snippet": "• 登录需要三样东西：账户 ID（12 位数字）或别名 + IAM 用户名 + ",
+   "target_cosine": 0.67,
+   "target_rank_among_all_lines": 10,
+   "found_src@5": true,
+   "found_line@5": false,
+   "results": 6
+  },
+  {
+   "query": "can one credit card be used on several AWS accounts",
+   "kind": "zh->en",
+   "target_line_id": 8152,
+   "target_source_ids": [
+    38
+   ],
+   "target_snippet": "AWS 允许同一张信用卡绑定在不同的 AWS 账号上，不会报错。",
+   "target_cosine": 0.79,
+   "target_rank_among_all_lines": 2,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 2
+  },
+  {
+   "query": "idle elastic IP is charged every hour",
+   "kind": "zh->en",
+   "target_line_id": 8122,
+   "target_source_ids": [
+    38
+   ],
+   "target_snippet": "登录进这个账号，确保里面没有运行任何 EC2 实例、没有闲置的弹性公网 IP（E",
+   "target_cosine": 0.52,
+   "target_rank_among_all_lines": 3,
+   "found_src@5": false,
+   "found_line@5": false,
+   "results": 0
+  },
+  {
+   "query": "new account gets 100 dollars credit for 180 days",
+   "kind": "zh->en",
+   "target_line_id": 6363,
+   "target_source_ids": [
+    38
+   ],
+   "target_snippet": "◦ 这是 AWS 针对刚注册的新账号赠送的 180 天 / 100 美元沙盒额度",
+   "target_cosine": 0.625,
+   "target_rank_among_all_lines": 2,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 3
+  },
+  {
+   "query": "亚马逊云免费送两百美元额度",
+   "kind": "en->zh",
+   "target_line_id": 2651,
+   "target_source_ids": [
+    17,
+    37
+   ],
+   "target_snippet": "Get started for free with up to $200 in ",
+   "target_cosine": 0.366,
+   "target_rank_among_all_lines": 101,
+   "found_src@5": false,
+   "found_line@5": false,
+   "results": 1
+  },
+  {
+   "query": "只按用量付费 不会超过设置的上限",
+   "kind": "zh paraphrase",
+   "target_line_id": 6258,
+   "target_source_ids": [
+    36
+   ],
+   "target_snippet": "您仅为实际使用量付费，且 绝不会超过您设定的限额。",
+   "target_cosine": 0.792,
+   "target_rank_among_all_lines": 1,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 5
+  },
+  {
+   "query": "验证银行卡时会跳转到银行网站",
+   "kind": "en->zh",
+   "target_line_id": 6284,
+   "target_source_ids": [
+    36
+   ],
+   "target_snippet": "You might be redirected to your bank's w",
+   "target_cosine": 0.848,
+   "target_rank_among_all_lines": 1,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 3
+  },
+  {
+   "query": "项目最后提交的截止日期",
+   "kind": "en->zh",
+   "target_line_id": 6754,
+   "target_source_ids": [
+    47
+   ],
+   "target_snippet": "Submission deadline: 31/10/2026",
+   "target_cosine": 0.765,
+   "target_rank_among_all_lines": 1,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 7
+  },
+  {
+   "query": "要交一个十到十五分钟的演示视频",
+   "kind": "en->zh",
+   "target_line_id": 6742,
+   "target_source_ids": [
+    47
+   ],
+   "target_snippet": "A video presentation file, .mp4/mov/.wmv",
+   "target_cosine": 0.775,
+   "target_rank_among_all_lines": 1,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 4
+  },
+  {
+   "query": "小组最多几个人",
+   "kind": "en->zh",
+   "target_line_id": 6749,
+   "target_source_ids": [
+    47
+   ],
+   "target_snippet": "Requirements: • Form a project team of m",
+   "target_cosine": 0.366,
+   "target_rank_among_all_lines": 315,
+   "found_src@5": false,
+   "found_line@5": false,
+   "results": 3
+  },
+  {
+   "query": "允许用AI但要如实说明",
+   "kind": "en->zh",
+   "target_line_id": 7905,
+   "target_source_ids": [
+    54
+   ],
+   "target_snippet": "use; your work will be assessed solely o",
+   "target_cosine": 0.619,
+   "target_rank_among_all_lines": 4,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 4
+  },
+  {
+   "query": "mesh VPN management port is exposed to the internet",
+   "kind": "zh->en",
+   "target_line_id": 5033,
+   "target_source_ids": [
+    24
+   ],
+   "target_snippet": "1. EasyTier 的管理端口15888 从公网能连上。修法是在 easyt",
+   "target_cosine": 0.375,
+   "target_rank_among_all_lines": 123,
+   "found_src@5": true,
+   "found_line@5": false,
+   "results": 3
+  },
+  {
+   "query": "ISP throttles long heavy UDP traffic to one server",
+   "kind": "zh->en",
+   "target_line_id": 5563,
+   "target_source_ids": [
+    24
+   ],
+   "target_snippet": "Hy2 总共跑了约233 GB，Reality TCP约45 GB。QUIC 本",
+   "target_cosine": 0.621,
+   "target_rank_among_all_lines": 1,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 1
+  },
+  {
+   "query": "nested TLS handshake pattern can be detected",
+   "kind": "zh->en",
+   "target_line_id": 7538,
+   "target_source_ids": [
+    24
+   ],
+   "target_snippet": "·为什么一定要 Vision：不加 Vision，就是“TLS里套 TLS'。你",
+   "target_cosine": 0.479,
+   "target_rank_among_all_lines": 5,
+   "found_src@5": false,
+   "found_line@5": false,
+   "results": 0
+  },
+  {
+   "query": "use rule based routing so domestic sites go direct",
+   "kind": "zh->en",
+   "target_line_id": 7303,
+   "target_source_ids": [
+    24
+   ],
+   "target_snippet": "6. 客户端用分流模式（规则模式，国内直连)。我看不到你的客户端配置。如果现在是",
+   "target_cosine": 0.444,
+   "target_rank_among_all_lines": 26,
+   "found_src@5": false,
+   "found_line@5": false,
+   "results": 0
+  },
+  {
+   "query": "secrets in the doc were replaced with placeholders",
+   "kind": "zh->en",
+   "target_line_id": 4957,
+   "target_source_ids": [
+    24
+   ],
+   "target_snippet": "所有密钥、UUID、shortld、面板路径和 EasyTier 密码都换成了占",
+   "target_cosine": 0.279,
+   "target_rank_among_all_lines": 173,
+   "found_src@5": false,
+   "found_line@5": false,
+   "results": 0
+  },
+  {
+   "query": "one slow provider made the whole search wait",
+   "kind": "zh->en",
+   "target_line_id": 1544,
+   "target_source_ids": [
+    14
+   ],
+   "target_snippet": "结果因为 grok用了26秒，整次搜索等了26秒。",
+   "target_cosine": 0.527,
+   "target_rank_among_all_lines": 8,
+   "found_src@5": true,
+   "found_line@5": false,
+   "results": 1
+  },
+  {
+   "query": "raise the concurrency limit of the API key",
+   "kind": "zh->en",
+   "target_line_id": 2953,
+   "target_source_ids": [
+    14
+   ],
+   "target_snippet": "如果想放开，在 grok2api的管理后台把 test 这个 key的并发上限从",
+   "target_cosine": 0.367,
+   "target_rank_among_all_lines": 119,
+   "found_src@5": true,
+   "found_line@5": false,
+   "results": 3
+  },
+  {
+   "query": "哪个搜索的来源更杂 有博客和新闻",
+   "kind": "zh paraphrase",
+   "target_line_id": 5255,
+   "target_source_ids": [
+    14
+   ],
+   "target_snippet": "· Tavily 的优势：来源网站更杂，有博客、GitHub、alphaxiv、",
+   "target_cosine": 0.726,
+   "target_rank_among_all_lines": 4,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 6
+  },
+  {
+   "query": "accounts started returning unauthorized two hours after import",
+   "kind": "zh->en",
+   "target_line_id": 8053,
+   "target_source_ids": [
+    51
+   ],
+   "target_snippet": "日志显示，这9个账号导入后正常用了大约2小时，然后在 17:18到17:36之间",
+   "target_cosine": 0.602,
+   "target_rank_among_all_lines": 1,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 1
+  },
+  {
+   "query": "GitHub contributors list takes a while to refresh",
+   "kind": "zh->en",
+   "target_line_id": 7700,
+   "target_source_ids": [
+    49
+   ],
+   "target_snippet": "1. 侧栏不会马上变。GitHub的Contributors列表有缓存，一般要几",
+   "target_cosine": 0.703,
+   "target_rank_among_all_lines": 2,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 5
+  },
+  {
+   "query": "rewriting one commit changes the hashes of all later commits",
+   "kind": "zh->en",
+   "target_line_id": 7690,
+   "target_source_ids": [
+    49
+   ],
+   "target_snippet": "·Git 规定改一个提交：它之后的提交哈希都会跟着变。所以从10-23那个提交往",
+   "target_cosine": 0.606,
+   "target_rank_among_all_lines": 2,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 3
+  },
+  {
+   "query": "write the report before the video",
+   "kind": "zh->en",
+   "target_line_id": 7777,
+   "target_source_ids": [
+    2
+   ],
+   "target_snippet": "你看完表，告诉我先从哪个开始。按分值看，报告和视频合计25%，而且视频要用到报告",
+   "target_cosine": 0.754,
+   "target_rank_among_all_lines": 1,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 2
+  },
+  {
+   "query": "tell me whether a page reload is enough or a restart is needed",
+   "kind": "zh->en",
+   "target_line_id": 278,
+   "target_source_ids": [
+    2
+   ],
+   "target_snippet": "以后我改完会直接告诉你“刷新就行“还是“要重启”。",
+   "target_cosine": 0.394,
+   "target_rank_among_all_lines": 29,
+   "found_src@5": false,
+   "found_line@5": false,
+   "results": 0
+  },
+  {
+   "query": "hovering a link shows its address in the bottom left corner",
+   "kind": "zh->en",
+   "target_line_id": 4342,
+   "target_source_ids": [
+    2
+   ],
+   "target_snippet": "2. 截图认字时会收进一些界面上的零碎字：被截断的标签页标题（\"CPA Ma'、",
+   "target_cosine": 0.468,
+   "target_rank_among_all_lines": 4,
+   "found_src@5": false,
+   "found_line@5": false,
+   "results": 0
+  },
+  {
+   "query": "multi account pool with a web management page",
+   "kind": "zh->en",
+   "target_line_id": 7373,
+   "target_source_ids": [
+    50
+   ],
+   "target_snippet": "feat(core): 多账号号池与 /admin 网页后台",
+   "target_cosine": 0.652,
+   "target_rank_among_all_lines": 1,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 4
+  },
+  {
+   "query": "把差一点符合条件的结果折叠起来",
+   "kind": "en->zh",
+   "target_line_id": 6197,
+   "target_source_ids": [
+    35
+   ],
+   "target_snippet": "feat(web): show near misses in a collaps",
+   "target_cosine": 0.347,
+   "target_rank_among_all_lines": null,
+   "found_src@5": false,
+   "found_line@5": false,
+   "results": 5
+  },
+  {
+   "query": "主页截图用了最后生还者做背景",
+   "kind": "en->zh",
+   "target_line_id": 6175,
+   "target_source_ids": [
+    35
+   ],
+   "target_snippet": "README: home screenshot with The Last of",
+   "target_cosine": 0.663,
+   "target_rank_among_all_lines": 1,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 1
+  },
+  {
+   "query": "free plan locks the region so beginners cannot misconfigure",
+   "kind": "zh->en",
+   "target_line_id": 6884,
+   "target_source_ids": [
+    38
+   ],
+   "target_snippet": "• 特点：它默认锁定了区域、给了 100 美元抵扣金保护机制，为了防止新手乱配，",
+   "target_cosine": 0.442,
+   "target_rank_among_all_lines": 9,
+   "found_src@5": false,
+   "found_line@5": false,
+   "results": 1
+  },
+  {
+   "query": "实例套餐决定了有多少CPU和内存",
+   "kind": "en->zh",
+   "target_line_id": 4750,
+   "target_source_ids": [
+    16,
+    30
+   ],
+   "target_snippet": "Instance plans include the instance's ne",
+   "target_cosine": 0.606,
+   "target_rank_among_all_lines": 7,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 4
+  },
+  {
+   "query": "only the root user can close the account",
+   "kind": "zh->en",
+   "target_line_id": 2897,
+   "target_source_ids": [
+    19
+   ],
+   "target_snippet": "• 有些事只有 root 能做，比如：修改账户邮箱或联系信息、关闭账户、更改支持",
+   "target_cosine": 0.614,
+   "target_rank_among_all_lines": 1,
+   "found_src@5": true,
+   "found_line@5": true,
+   "results": 2
+  },
+  {
+   "query": "regex grabs the version number after the model family name",
+   "kind": "zh->en",
+   "target_line_id": 4891,
+   "target_source_ids": [
+    13
+   ],
+   "target_snippet": "2. 用正则抓紧跟在家族名后面的版本号（converterts:126)。这里抓",
+   "target_cosine": 0.409,
+   "target_rank_among_all_lines": 16,
+   "found_src@5": false,
+   "found_line@5": false,
+   "results": 0
+  },
+  {
+   "query": "spending limit reached and projects get paused",
+   "kind": "zh->en",
+   "target_line_id": 6268,
+   "target_source_ids": [
+    36
+   ],
+   "target_snippet": "如果达到限额，系统将 您的项目已暂停。请提高限额以恢复服务。",
+   "target_cosine": 0.546,
+   "target_rank_among_all_lines": 3,
+   "found_src@5": true,
+   "found_line@5": false,
+   "results": 1
+  }
+ ],
+ "queries_unrelated_far": [
+  {
+   "query": "红烧肉怎么做",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.532,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "how to repot an orchid",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.415,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "猫咪打疫苗多少钱",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.388,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "best hiking trails in Switzerland",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.427,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "钢琴初学者练习曲推荐",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.473,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "symptoms of flu in children",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.354,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "如何申请日本旅游签证",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.567,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "world cup final score",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.539,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "婚礼致辞范文",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.568,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "how to fix a leaking faucet",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.387,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "薛定谔方程推导",
+   "semantic_hits": 11,
+   "results": 7,
+   "top1_cosine_any_line": 0.631,
+   "first_semantic_hit": "69231[2026-10- 29 17:13:00|c1a"
+  },
+  {
+   "query": "马拉松训练计划",
+   "semantic_hits": 7,
+   "results": 7,
+   "top1_cosine_any_line": 0.704,
+   "first_semantic_hit": "使用强化学习训练自主赛车模型"
+  },
+  {
+   "query": "learn to knit a scarf",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.426,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "狗狗掉毛怎么办",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.518,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "best sushi restaurant in Tokyo",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.588,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "家里装电动车充电桩",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.546,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "how to bake sourdough bread",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.555,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "唐诗宋词鉴赏",
+   "semantic_hits": 100,
+   "results": 30,
+   "top1_cosine_any_line": 0.953,
+   "first_semantic_hit": "山假方式立里）"
+  },
+  {
+   "query": "tips for growing tomatoes on a balcony",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.423,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "感冒了喝什么汤好",
+   "semantic_hits": 1,
+   "results": 1,
+   "top1_cosine_any_line": 0.689,
+   "first_semantic_hit": "行我把他冻了"
+  }
+ ],
+ "queries_unrelated_near": [
+  {
+   "query": "kubernetes pod autoscaling",
+   "semantic_hits": 2,
+   "results": 1,
+   "top1_cosine_any_line": 0.627,
+   "first_semantic_hit": "gemini-robotics-er-2-preview"
+  },
+  {
+   "query": "React useEffect cleanup function",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.506,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "Rust borrow checker error",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.405,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "iPhone battery replacement cost",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.332,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "蓝牙耳机老是断连",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.595,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "Excel 数据透视表怎么做",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.688,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "Photoshop 怎么抠图",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.616,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "Android app crashes on startup",
+   "semantic_hits": 1,
+   "results": 1,
+   "top1_cosine_any_line": 0.638,
+   "first_semantic_hit": "Applies after restarting the a"
+  },
+  {
+   "query": "打印机脱机了怎么办",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.542,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "Figma auto layout tips",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.484,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "Unity 角色移动脚本",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.53,
+   "first_semantic_hit": null
+  },
+  {
+   "query": "便宜机票怎么买",
+   "semantic_hits": 0,
+   "results": 0,
+   "top1_cosine_any_line": 0.64,
+   "first_semantic_hit": null
+  }
+ ],
+ "try_relative_to_best_not_adopted": {
+  "note": "在 0.60 / 6 之上再加'离最高分不超过 rel'：found 不变，只把少数'什么都像'的查询带出的几十条压到几条；不相关查询有没有命中的比例不变，所以没加这第三个数",
+  "rows": [
+   {
+    "variant": "floor0.60_mc6_rel0.05",
+    "found_src@5": 0.676,
+    "found_line@5": 0.471,
+    "junk_far": 0.1,
+    "mean_semantic_hits_far": 0.9
+   },
+   {
+    "variant": "floor0.60_mc6_rel0.10",
+    "found_src@5": 0.676,
+    "found_line@5": 0.5,
+    "junk_far": 0.2,
+    "mean_semantic_hits_far": 1.15
+   },
+   {
+    "variant": "floor0.60_mc6_rel0.15",
+    "found_src@5": 0.676,
+    "found_line@5": 0.529,
+    "junk_far": 0.2,
+    "mean_semantic_hits_far": 2.0
+   }
+  ]
+ }
+}
