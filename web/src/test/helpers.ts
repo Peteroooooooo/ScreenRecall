@@ -165,5 +165,6 @@ export function defaultReply(call: Call): Reply | null {
   ] } };
   if (p === "/api/v3/settings" && call.method === "GET") return { body: settings() };
   if (p === "/api/app/agent-configs") return { body: agentConfigs() };
+  if (p === "/api/v3/agents") return { body: { claude: true, codex: false, claude_cli: true } };
   return null;
 }

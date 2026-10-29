@@ -229,7 +229,8 @@ export interface Status {
 }
 
 export interface AppsInfo {
-  apps: { process: string; tier: Tier; added_ms: number }[];
+  /** installed：默认名单里的浏览器这台电脑上装了没有（没装的收起来）；没有这一项当作 true */
+  apps: { process: string; tier: Tier; added_ms: number; installed?: boolean }[];
   /** 最近 30 天出现过、不在名单里的软件 */
   unlisted: { app: string; last_ms: number; total_ms: number }[];
   excludes: { exclude_id: number; kind: "host" | "title"; value: string; added_ms: number }[];
@@ -287,7 +288,12 @@ export const api = {
   remove: (body: DeleteRequest) => post<Record<string, number>>(`${V3}/delete`, body),
   resetToken: () => post<{ ok: boolean }>(`${V3}/agent/reset-token`, {}),
   agentConfigs: (s?: AbortSignal) => get<AgentConfigs>("/api/app/agent-configs", s),
+  agents: (s?: AbortSignal) => get<AgentStatus>(`${V3}/agents`, s),
+  installAgents: () => post<AgentStatus & { messages: string[] }>(`${V3}/agents/install`, {}),
 };
+
+/** Claude Code / Codex 有没有登记 ScreenRecall；claude_cli = 找得到 claude 命令 */
+export interface AgentStatus { claude: boolean; codex: boolean; claude_cli: boolean }
 
 export const shotImageUrl = (id: number) => `${V3}/shots/${id}/image`;
 export const shotThumbUrl = (id: number, w = 240) => `${V3}/shots/${id}/thumb?w=${w}`;

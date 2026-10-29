@@ -30,7 +30,7 @@ export function recView(s: Status | null, lost: boolean, t: T): RecView {
   const ago = fmtAgo(s.last_snap_ms, s.now_ms);
   const snap = ago ? t("st.lastSnap", { x: ago }) : t("st.noSnap");
   if (s.state === "paused" || (isPaused(s) && s.recorder_alive)) return { tone: "idle", label: t("st.paused"), detail: resumeText(s, t), snap };
-  if (!s.recorder_alive) return { tone: "off", label: t("st.dead"), detail: null, snap };
+  if (!s.recorder_alive) return { tone: "off", label: t("st.dead"), detail: t("st.deadHint"), snap };
   if (s.state === "locked") return { tone: "idle", label: t("st.locked"), detail: null, snap };
   if (s.state === "stopped") return { tone: "off", label: t("st.dead"), detail: null, snap };
   const c = s.current;

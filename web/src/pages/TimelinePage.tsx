@@ -66,6 +66,8 @@ export default function TimelinePage({ params }: { params: URLSearchParams }) {
         </div>
       </PageHeader>
 
+      <Welcome />
+
       {!data ? (
         tl.error ? <LoadError text={t("tl.error", { e: errText(tl.error, t("common.offline")) })} onRetry={() => tl.reload()} /> : <Skeleton rows={4} />
       ) : !data.items.length ? (
@@ -81,8 +83,9 @@ export default function TimelinePage({ params }: { params: URLSearchParams }) {
           <ol className="mt-[18px]" aria-label={t("tl.list")}>
             {rows(data).map((r) =>
               r.kind === "hour" ? <HourRow key={`h${r.hour_ms}`} hour_ms={r.hour_ms} text={r.text} />
-                : r.item.type === "grey" ? <GreyRow key={`g${r.item.span_id}`} g={r.item} onAdded={() => reload(true)} />
-                  : <EntryRow key={`e${r.item.visit_id}`} e={r.item} />,
+                : r.kind === "greys" ? <GreyGroup key={`gg${r.items[0].span_id}`} items={r.items} onAdded={() => reload(true)} />
+                  : r.item.type === "grey" ? <GreyRow key={`g${r.item.span_id}`} g={r.item} />
+                    : <EntryRow key={`e${r.item.visit_id}`} e={r.item} />,
             )}
           </ol>
         </>
@@ -91,16 +94,64 @@ export default function TimelinePage({ params }: { params: URLSearchParams }) {
   );
 }
 
-type Row = { kind: "hour"; hour_ms: number; text: string } | { kind: "item"; item: Entry | Grey };
+const WELCOMED = "sr-welcomed";
 
-/** 条目按开始时间从早到晚；每小时一句话插在那个整点之后的第一条前面 */
+function readWelcomed(): boolean {
+  try {
+    return localStorage.getItem(WELCOMED) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** 第一次打开时的三步说明；点"知道了"以后不再出现 */
+function Welcome() {
+  const { t } = useT();
+  const [done, setDone] = useState(readWelcomed);
+  if (done) return null;
+  const close = () => {
+    try {
+      localStorage.setItem(WELCOMED, "1");
+    } catch {
+      /* 存不下：这次关掉，下次还会出现 */
+    }
+    setDone(true);
+  };
+  return (
+    <section className="sr-card mb-5 p-4 sm:p-5" aria-labelledby="wel-h" data-testid="welcome">
+      <h2 id="wel-h" className="text-[15px] font-semibold">{t("wel.title")}</h2>
+      <ol className="mt-2.5 list-decimal space-y-1.5 pl-5 text-[13.5px] text-ink-2">
+        <li>{t("wel.1")}</li>
+        <li>{t("wel.2")} <a className="font-medium text-signal underline-offset-2 hover:underline" href={hrefOf("/apps")}>{t("wel.apps")}</a></li>
+        <li>{t("wel.3")} <a className="font-medium text-signal underline-offset-2 hover:underline" href={hrefOf("/search")}>{t("wel.search")}</a></li>
+      </ol>
+      <button className="sr-btn sr-btn-primary sr-btn-sm mt-3.5" onClick={close}>{t("wel.ok")}</button>
+    </section>
+  );
+}
+
+type Row = { kind: "hour"; hour_ms: number; text: string } | { kind: "item"; item: Entry | Grey } | { kind: "greys"; items: Grey[] };
+
+/** Windows 自己的程序（桌面、报错窗口、认不出名字的）：在它们里面待着不是"在用别的软件"，时间线上不显示 */
+const SYSTEM_APPS = new Set(["explorer.exe", "werfault.exe", "unknown", "applicationframehost.exe", "searchhost.exe",
+  "shellexperiencehost.exe", "startmenuexperiencehost.exe", "lockapp.exe", "textinputhost.exe", "consent.exe"]);
+const isUnlisted = (it: Entry | Grey): it is Grey => it.type === "grey" && it.reason === "unlisted";
+const hiddenGrey = (it: Entry | Grey) => isUnlisted(it) && (!it.app || SYSTEM_APPS.has(it.app.toLowerCase()));
+
+/** 条目按开始时间从早到晚；连着的几段"在没录的软件里"合成一行（系统程序不算）；
+ * 每小时一句话插在那个整点之后的第一条前面 */
 export function rows(d: Timeline): Row[] {
   const hours = [...d.hours].sort((a, b) => a.hour_ms - b.hour_ms);
   const out: Row[] = [];
   let h = 0;
   for (const it of d.items) {
+    if (hiddenGrey(it)) continue;
     while (h < hours.length && hours[h].hour_ms <= it.start_ms) out.push({ kind: "hour", ...hours[h++] });
-    out.push({ kind: "item", item: it });
+    const last = out[out.length - 1];
+    if (isUnlisted(it)) {
+      if (last?.kind === "greys") last.items.push(it);
+      else out.push({ kind: "greys", items: [it] });
+    } else out.push({ kind: "item", item: it });
   }
   while (h < hours.length) out.push({ kind: "hour", ...hours[h++] });
   return out;
@@ -154,33 +205,39 @@ export function reasonsText(reasons: string[], t: T): string | null {
   return known.length ? t("tl.why", { x: known.map((r) => t(`why.${r}`)).join(t("common.sep")) }) : null;
 }
 
+/** 卡片上的名字：窗口标题只是一串程序路径（终端这类）时用软件名 */
+export function displayName(e: Entry): string {
+  return /^(?:[A-Za-z]:[\\/]|\\\\|\/)/.test(e.name.trim()) ? appName(e.source.app) : e.name;
+}
+
 function EntryRow({ e }: { e: Entry }) {
   const { t } = useT();
   const a = fmtClock(e.start_ms);
   const b = e.open ? t("tl.since") : fmtClock(e.end_ms);
-  const why = reasonsText(e.reasons, t);
+  const name = displayName(e);
   return (
     <li className={ROW}>
       <TimeCell a={a} b={b} />
       <Rail live={e.open} />
-      <a href={hrefOf(`/entry/${e.visit_id}`)} aria-label={t("tl.entryLabel", { name: e.name, kind: kindLabel(e, t), a, b })}
+      <a href={hrefOf(`/entry/${e.visit_id}`)} aria-label={t("tl.entryLabel", { name, kind: kindLabel(e, t), a, b })}
         className="my-1.5 flex min-w-0 gap-2.5 rounded-card border border-rule bg-surface p-3 text-inherit shadow-card transition-[border-color,box-shadow] hover:border-rule-strong hover:shadow-lift sm:gap-3 sm:px-4 sm:py-3.5">
         <Av app={e.source.app} />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 sm:flex-nowrap">
-            <span className="min-w-0 truncate font-semibold">{e.name}</span>
+            <span className="min-w-0 truncate font-semibold">{name}</span>
             <span className="sr-num whitespace-nowrap text-[12.5px] text-graphite sm:ml-auto">
               {e.background
                 ? `${t("tl.background")} · ${fmtDuration(e.dwell_ms)}`
                 : e.open ? t("tl.stillLooking") : fmtDuration(e.dwell_ms)}
             </span>
           </div>
-          <div className="text-[12.5px] text-graphite">{kindLabel(e, t)}{e.merged > 0 && ` · ${t("tl.merged", { n: e.merged })}`}</div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <span className={`sr-tag ${e.new_lines > 0 ? "sr-tag-ok" : ""}`}>{e.new_lines > 0 ? t("tl.lines", { n: fmtInt(e.new_lines) }) : t("tl.noNew")}</span>
-            {e.copied > 0 && <span className="sr-tag sr-tag-task">{t("tl.copied", { n: e.copied })}</span>}
-            {why && <span className="sr-tag">{why}</span>}
-          </div>
+          <div className="text-[12.5px] text-graphite">{kindLabel(e, t)}</div>
+          {(e.new_lines > 0 || e.copied > 0) && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {e.new_lines > 0 && <span className="sr-tag sr-tag-ok">{t("tl.lines", { n: fmtInt(e.new_lines) })}</span>}
+              {e.copied > 0 && <span className="sr-tag sr-tag-task">{t("tl.copied", { n: e.copied })}</span>}
+            </div>
+          )}
         </div>
         <Thumb e={e} />
       </a>
@@ -198,21 +255,38 @@ function Thumb({ e }: { e: Entry }) {
           onError={() => setFailed(true)} className="block aspect-[16/10] w-full object-cover object-top" />
       </span>
     );
-  return <span className="sr-tag shrink-0 self-start">{e.thumb && !failed ? t("tl.hasShot") : t("tl.noShot")}</span>;
+  return null;
 }
 
-function GreyRow({ g, onAdded }: { g: Grey; onAdded: () => void }) {
+const GREY_BOX = "my-1.5 rounded-card border border-dashed border-rule-strong px-4 py-2 text-[13px] text-graphite";
+
+/** 暂停 / 锁屏：一行灰字 */
+function GreyRow({ g }: { g: Grey }) {
+  const { t } = useT();
+  const label = g.reason === "paused" ? t(g.end_ms == null ? "grey.paused" : "grey.pausedDone") : t("grey.locked");
+  return (
+    <li className={ROW} data-testid="grey-row">
+      <TimeCell a={fmtClock(g.start_ms)} b={g.end_ms == null ? t("tl.since") : fmtClock(g.end_ms)} />
+      <Rail grey />
+      <div className={GREY_BOX}>{label}</div>
+    </li>
+  );
+}
+
+/** 连着几段在没录的软件里：收成一行"在用没录的软件：A、B"，点开才是每个软件和"以后录它" */
+function GreyGroup({ items, onAdded }: { items: Grey[]; onAdded: () => void }) {
   const { t } = useT();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
-  const label = g.reason === "unlisted" ? t("grey.unlisted", { app: appName(g.app ?? "") })
-    : g.reason === "paused" ? t(g.end_ms == null ? "grey.paused" : "grey.pausedDone") : t("grey.locked");
-  const canAdd = g.reason === "unlisted" && !!g.app && (g.tier ?? "never") === "never";
-  const add = async () => {
+  const apps: Grey[] = [];
+  for (const g of items) if (!apps.some((x) => x.app!.toLowerCase() === g.app!.toLowerCase())) apps.push(g);
+  const first = items[0];
+  const last = items[items.length - 1];
+  const add = async (app: string) => {
     setBusy(true);
     try {
-      await api.setTier(g.app!, "record");
-      toast(t("grey.added", { app: appName(g.app!) }));
+      await api.setTier(app, "record");
+      toast(t("grey.added", { app: appName(app) }));
       onAdded();
     } catch (e) {
       toast(t("common.saveFail", { e: errText(e, t("common.offline")) }), "alarm");
@@ -222,15 +296,23 @@ function GreyRow({ g, onAdded }: { g: Grey; onAdded: () => void }) {
   };
   return (
     <li className={ROW} data-testid="grey-row">
-      <TimeCell a={fmtClock(g.start_ms)} b={g.end_ms == null ? t("tl.since") : fmtClock(g.end_ms)} />
+      <TimeCell a={fmtClock(first.start_ms)} b={last.end_ms == null ? t("tl.since") : fmtClock(last.end_ms)} />
       <Rail grey />
-      <div className="sr-hatch my-1.5 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-card border border-dashed border-rule-strong px-4 py-2.5 text-[13.5px] text-graphite">
-        <span className="min-w-0 [overflow-wrap:anywhere]">{label}</span>
-        {canAdd && (
-          <button className="sr-btn sr-btn-line sr-btn-sm ml-auto" onClick={add} disabled={busy}>{t("grey.add")}</button>
-        )}
-        {g.reason === "unlisted" && !canAdd && g.tier && <span className="sr-tag ml-auto">{t("grey.nowListed")}</span>}
-      </div>
+      <details className={GREY_BOX}>
+        <summary className="cursor-pointer [overflow-wrap:anywhere]">
+          {t("tl.greyGroup", { x: apps.map((g) => appName(g.app!)).join(t("common.sep")) })}
+        </summary>
+        <ul className="mt-1.5">
+          {apps.map((g) => (
+            <li key={g.app} className="flex flex-wrap items-center gap-2 border-t border-rule py-1.5">
+              <span className="min-w-0 flex-1">{t("grey.unlisted", { app: appName(g.app!) })}</span>
+              {(g.tier ?? "never") === "never"
+                ? <button className="sr-btn sr-btn-line sr-btn-sm" onClick={() => void add(g.app!)} disabled={busy}>{t("grey.add")}</button>
+                : <span className="sr-tag">{t("grey.nowListed")}</span>}
+            </li>
+          ))}
+        </ul>
+      </details>
     </li>
   );
 }

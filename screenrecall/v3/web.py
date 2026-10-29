@@ -70,6 +70,8 @@ class V3Context:
     open_in_explorer: Callable[[Path], None] | None = None   # None = explorer.exe /select,<路径>
     clock: Callable[[], int] = utc_ms
     running_apps: Callable[[], list[dict]] | None = None     # None = winapi.running_apps（不含本进程）
+    installed: Callable[[str], bool] | None = None           # None = winapi.app_installed（App Paths 里登记过）
+    agents: Any = None                                       # quick_status() / install_all()；None = app.agents
     # 约定之外加的两个可选项（默认行为和 app.llm 一样）：测试用临时 .env，不碰仓库里真的 .env
     llm_env_files: Sequence[Path] | None = None     # None = 仓库 .env + home/.env
     llm_environ: dict[str, str] | None = None       # None = os.environ
@@ -339,8 +341,47 @@ def api_shot_thumb(ctx: V3Context, req: dict) -> Response:
     return Response(data, media_type="image/jpeg", headers={"Cache-Control": IMAGE_CACHE})
 
 
+def _installed_fn(ctx: V3Context) -> Callable[[str], bool]:
+    if ctx.installed is not None:
+        return ctx.installed
+    try:
+        from .. import winapi
+    except ImportError:
+        return lambda _p: True
+    return getattr(winapi, "app_installed", None) or (lambda _p: True)
+
+
 def api_apps(ctx: V3Context, _req: dict) -> dict:
-    return ctx.queries.apps()
+    """名单 + 每个软件 installed：默认名单里的浏览器这台电脑上装了没有（没装的页面上收起来）；
+    用户自己加的软件不判断（很多软件不在 App Paths 里登记），一律 True。"""
+    out = ctx.queries.apps()
+    defaults = {a.lower() for a in ctx.cfg.default_record_apps}
+    found = _installed_fn(ctx)
+    for a in out["apps"]:
+        a["installed"] = True
+        if a["process"].lower() in defaults:
+            try:
+                a["installed"] = bool(found(a["process"]))
+            except Exception:  # noqa: BLE001
+                pass
+    return out
+
+
+def _agents(ctx: V3Context):
+    if ctx.agents is not None:
+        return ctx.agents
+    from ..app import agents
+
+    return agents
+
+
+def api_agents(ctx: V3Context, _req: dict) -> dict:
+    return _agents(ctx).quick_status()
+
+
+def api_agents_install(ctx: V3Context, _req: dict) -> dict:
+    mod = _agents(ctx)
+    return {"messages": mod.install_all(), **mod.quick_status()}
 
 
 def api_apps_running(ctx: V3Context, _req: dict) -> dict:
@@ -370,7 +411,7 @@ def api_apps_post(ctx: V3Context, req: dict) -> dict:
     if tier not in TIERS:
         raise ApiError(400, "tier 只能是 record（录）、always（一直录）或 never（不录）")
     ctx.store.set_app_tier(process, tier)
-    return ctx.queries.apps()
+    return api_apps(ctx, {})
 
 
 def _norm_host(v: str) -> str:
@@ -398,7 +439,7 @@ def api_excludes_post(ctx: V3Context, req: dict) -> dict:
     if kind == "host":
         value = _norm_host(value)
     ctx.store.add_exclude(kind, value)
-    return ctx.queries.apps()
+    return api_apps(ctx, {})
 
 
 def api_excludes_remove(ctx: V3Context, req: dict) -> dict:
@@ -406,7 +447,7 @@ def api_excludes_remove(ctx: V3Context, req: dict) -> dict:
     if eid is None:
         raise ApiError(400, "请给出 exclude_id")
     ctx.store.remove_exclude(eid)
-    return ctx.queries.apps()
+    return api_apps(ctx, {})
 
 
 def _open_in_explorer(path: Path) -> None:
@@ -593,6 +634,8 @@ def routes(ctx: V3Context) -> list[BaseRoute]:
         Route("/apps", e(api_apps), methods=["GET"]),
         Route("/apps", e(api_apps_post, mutation=True), methods=["POST"]),
         Route("/apps/running", e(api_apps_running), methods=["GET"]),
+        Route("/agents", e(api_agents), methods=["GET"]),
+        Route("/agents/install", e(api_agents_install, mutation=True), methods=["POST"]),
         Route("/excludes", e(api_excludes_post, mutation=True), methods=["POST"]),
         Route("/excludes/remove", e(api_excludes_remove, mutation=True), methods=["POST"]),
         Route("/settings", e(api_settings), methods=["GET"]),

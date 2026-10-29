@@ -316,6 +316,25 @@ def list_windows() -> list[WindowInfo]:
     return out
 
 
+def app_installed(process: str) -> bool:
+    """这个 exe 在"App Paths"里登记过（安装程序一般都写；名单页据此把没装的默认浏览器收起来），或者正开着窗口。"""
+    import winreg
+
+    name = os.path.basename(process or "")
+    if not name:
+        return False
+    sub = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" + name
+    for root, view in ((winreg.HKEY_CURRENT_USER, 0), (winreg.HKEY_LOCAL_MACHINE, winreg.KEY_WOW64_64KEY),
+                       (winreg.HKEY_LOCAL_MACHINE, winreg.KEY_WOW64_32KEY)):
+        try:
+            winreg.CloseKey(winreg.OpenKey(root, sub, 0, winreg.KEY_READ | view))
+            return True
+        except OSError:
+            continue
+    low = name.lower()
+    return any(w.process.lower() == low for w in list_windows())
+
+
 # UWP 应用的窗口都属于 ApplicationFrameHost.exe，选它等于选了所有商店应用，名字也看不懂
 _NOT_PICKABLE = frozenset({"applicationframehost.exe", "explorer.exe", "searchhost.exe", "startmenuexperiencehost.exe",
                            "shellexperiencehost.exe", "textinputhost.exe", "lockapp.exe", "unknown"})

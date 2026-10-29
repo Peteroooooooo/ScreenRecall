@@ -249,7 +249,9 @@ export function Segmented<T extends string>({ value, options, onChange, label, l
   );
 }
 
-export function Switch({ on, onChange, labelledBy, disabled = false }: { on: boolean; onChange: (v: boolean) => void; labelledBy: string; disabled?: boolean }) {
+export function Switch({ on, onChange, labelledBy, disabled = false, onText, offText }: {
+  on: boolean; onChange: (v: boolean) => void; labelledBy: string; disabled?: boolean; onText?: string; offText?: string;
+}) {
   const { t } = useT();
   return (
     <button type="button" role="switch" aria-checked={on} aria-labelledby={labelledBy} disabled={disabled} onClick={() => onChange(!on)}
@@ -257,7 +259,7 @@ export function Switch({ on, onChange, labelledBy, disabled = false }: { on: boo
       <span className={`relative h-6 w-[42px] shrink-0 rounded-full transition-colors ${on ? "bg-signal" : "bg-rule-strong"}`} aria-hidden>
         <span className={`absolute left-[3px] top-[3px] h-[18px] w-[18px] rounded-full bg-white shadow transition-transform ${on ? "translate-x-[18px]" : ""}`} />
       </span>
-      <span>{on ? t("common.on") : t("common.off")}</span>
+      <span>{on ? onText ?? t("common.on") : offText ?? t("common.off")}</span>
     </button>
   );
 }
