@@ -4,6 +4,12 @@
 
 协作方式：两人**轮流接力**开发整个项目，不按方案 8.1 的旧分工划范围。每轮结束更新本文件的"交接记录"和"下一步"，下一位从这里接着做。
 
+## 2026-10-30 肖天奕：提交前检查（分支 `results/windows-coverage-a13`）
+
+- 从 GitHub 新克隆 `main`（8733c6e）到干净目录，照 README 走一遍：`pip install -r requirements.txt`、`npm ci` + `npm run build`、`screenrecall.text.ocr2 --download`、`screenrecall.text.encoder --download`、`screenrecall.v3.demo`、`screenrecall.v3.worker --no-llm`（演示库 19 行向量）、`screenrecall.app --no-children`，浏览器里原词搜索和跨语言按意思搜索（英文问句找到中文行，标"similar"）都正常。`pytest tests` 690 通过，前端 vitest 42 通过。
+- 发现：仓库放在很深的目录时，`.venv` 里 jsonschema_specifications 的文件路径超过 Windows 260 字符上限，`import mcp` 报 FileNotFoundError；README 英文快速入门里写了"放短路径"。界面默认中文（`web/src/i18n.tsx` 写死 `"zh"`），给老师的说明里写了切换方法，代码没改。
+- 本分支把只在本机的两个结果提交（捕获覆盖 10-24、A13 10-25）挑到 `main` 之上，README 加英文快速入门，`.gitattributes` 加 `*.bat` CRLF。未推送。
+
 ## 2026-10-28 v3（分支 `feat/recall-v3`，2026-10-29 合入 `main`）
 
 下面各轮里写的"未提交"是当时的状态，之后都已提交；最新一轮是本节最后的"第一次真实使用 + 修复轮"。
